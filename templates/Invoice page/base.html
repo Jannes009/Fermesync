@@ -1,0 +1,29 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{% block title %}Invoice{% endblock %}</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='Invoice/invoice.css') }}">
+    
+</head>
+<body>
+    {% include 'taskbar.html' %}
+    <form method="POST">
+        <!-- Include the header -->
+        {% include "Invoice page/header.html" %}
+
+        <!-- Main Content Section -->
+        <main class="main-content">
+            {% include "Invoice page/body.html" %}
+
+        </main>
+    </form>
+
+    {% include "Invoice page/adding_sales.html" %}
+    <script src="{{ url_for('static', filename='Invoice/invoice.js') }}"></script>
+    <script src="{{ url_for('static', filename='Invoice/display.js') }}"></script>
+    <script src="{{ url_for('static', filename='Invoice/rules.js') }}"></script>
+    <script src="{{ url_for('static', filename='Invoice/modal.js') }}"></script>
+</body>
+</html>

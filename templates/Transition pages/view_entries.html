@@ -1,0 +1,108 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Bill Of Lading</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='View/view.css') }}">
+    <link rel="stylesheet" href="{{ url_for('static', filename='View/modal.css') }}">
+</head>
+<body>
+    {% include 'taskbar.html' %}
+    <h1>View Entries</h1>
+    <form method="POST" class="filter-section">
+        <h1>Filters</h1>
+        
+        <div class="filter-group">
+            <label for="ZZAgentName">Agent Name:</label>
+            <select name="ZZAgentName">
+                <option value="">All</option>
+                {% for agent in agent_codes %}
+                    <option value="{{ agent }}" {% if filters.agent_name == agent %}selected{% endif %}>{{ agent }}</option>
+                {% endfor %}
+            </select>
+        </div>
+    
+        <div class="filter-group">
+            <label for="start_date">Start Date:</label>
+            <input type="date" name="start_date" value="{{ filters.start_date }}">
+        </div>
+    
+        <div class="filter-group">
+            <label for="end_date">End Date:</label>
+            <input type="date" name="end_date" value="{{ filters.end_date }}">
+        </div>
+    
+        <div class="filter-group">
+            <label for="DeliveryNoteNo">Delivery Note No:</label>
+            <input type="text" name="DeliveryNoteNo" placeholder="Enter note number" value="{{ filters.delivery_note_no }}">
+        </div>
+        
+        
+    
+        <div class="button-group">
+            <button type="submit">Search</button>
+            <button type="button" id="clear-filters">Clear Filters</button>
+        </div>
+    </form>
+    
+    <table>
+        <thead>
+            <tr>
+                <th></th>
+                <th>Date</th>
+                <th>Delivery Note no</th>
+                <th>Agent</th>
+                <th>Market</th>
+                <th>Qty Delivered</th>
+                <th>Qty Sold</th>
+                <th>Qty Invoiced</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for entry in entries %} 
+            <tr class="main-row" data-entry-id="{{ entry[0] }}">
+                <td>
+                    <button class="expand-btn">▶</button>
+                </td>
+                <td>{{ entry[1] }}</td>  <!-- DelDate -->
+                <td>{{ entry[2] }}</td>  <!-- DelNoteNo -->
+                <td>{{ entry[3] }}</td>  <!-- Agent -->
+                <td>{{ entry[4] }}</td>  <!-- Market -->
+                <td>{{ entry[5] }}</td>  <!-- Qty Loaded -->
+                <td>{{ entry[6] }}</td>  <!-- Qty Sold -->
+                <td>{{ entry[7] }}</td>  <!-- Qty Invoiced -->
+                {% if entry[6] ==  0%}  <!-- Check if Qty Sold is not equal to Qty Invoiced -->
+                    <td class="button-row">
+                        <button class="edit-sales-btn" id="edit-del-note" data-id="{{entry[0]}}">
+                            <img src="../static/Image/edit.png" class="action-icon">
+                        </button>
+                    </td>
+                {% endif %}
+            </tr>
+            <tr class="expandable-content hidden" id="details-{{ entry[0] }}">
+                <td colspan="9">
+                    <div>Loading...</div>
+                </td>
+            </tr>
+            {% endfor %}            
+        </tbody>
+    </table>
+    {% include 'Transition pages/modal.html' %}
+    {% include 'Transition pages/product-modal.html' %}
+    <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+    <link href="https://cdn.jsdelivr.net/npm/select2@4.0.13/dist/css/select2.min.css" rel="stylesheet" />
+    <script src="https://cdn.jsdelivr.net/npm/select2@4.0.13/dist/js/select2.min.js"></script>
+
+    <script>
+        $(document).ready(function () {
+            console.log(typeof jQuery); // Should log "function"
+            console.log(typeof $.fn.select2); // Should log "function"
+        });
+    </script>
+    <script src="{{ url_for('static', filename='View/view.js') }}"></script>
+    <script src="{{ url_for('static', filename='View/modal.js') }}"></script>
+    <script src="{{ url_for('static', filename='View/change-product.js') }}"></script>
+    
+</body>
+</html>

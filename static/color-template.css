@@ -1,0 +1,33 @@
+:root {
+    /* Primary Colors */
+    --primary-bg: #f4f6f9; /* Light background for a clean, professional look */
+    --primary-text: #333333; /* Darker, more readable text color */
+    --container-bg: #ffffff; /* Classic white background for containers */
+
+    /* Form & Input Styles */
+    --form-bg: #f9fbfd; /* Light, subtle form background */
+    --input-border: #ced4da; /* Soft gray border for inputs */
+    --input-focus: #0061f2; /* Brighter blue focus color for inputs */
+    --input-shadow: rgba(0, 97, 242, 0.2); /* Light shadow for focus effect */
+
+    /* Button Styles */
+    --button-bg: #4c7cff; /* Softer blue for buttons */
+    --button-hover: #3b6ad8; /* Slightly darker blue on hover */
+    --button-text: #ffffff; /* White text for visibility */
+
+    /* Table Styles */
+    --table-border: #e2e8f0; /* Soft gray border for table elements */
+    --table-header-bg: #e9eff7; /* Soft blue background for headers */
+    --table-header-text: #2b3e51; /* Slightly darker text for table headers */
+    --table-row-even: #f5f7fa; /* Light gray for alternating table rows */
+
+    /* Taskbar Styles */
+    --taskbar-bg: #3e4c59; /* Professional, muted dark background */
+    --taskbar-text: #ffffff; /* White text for contrast */
+    --taskbar-hover: #475866; /* Slightly lighter on hover */
+    --taskbar-user-bg: #2c3e50; /* Subtle darker user background */
+    --taskbar-user-hover: #0061f2; /* Blue hover effect for user section */
+    --taskbar-dropdown-bg: #2c3e50; /* Matching dropdown background */
+    --taskbar-dropdown-hover: #004bb3; /* Hover effect for dropdown */
+}
+

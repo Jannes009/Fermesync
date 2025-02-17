@@ -1,0 +1,330 @@
+/* 1. General Reset (Optional, to ensure uniformity across browsers) */
+@import url('../color-template.css');
+* {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+}
+
+/* 2. Global Styles */
+body {
+    font-family: 'Arial', sans-serif;
+    background-color: var(--primary-bg);
+    color: var(--primary-text);
+    line-height: 1.6;
+    padding: 20px 0;
+}
+
+a {
+    text-decoration: none;
+    color: inherit;
+}
+
+button {
+    cursor: pointer;
+    border: none;
+    background-color: var(--button-hover);
+    transition: background-color 0.3s ease, transform 0.2s ease;
+    display: block;
+    width: 100%;
+    padding: 12px;
+    font-size: 16px;
+    background-color: var(--button-bg);
+    color: var(--button-text);
+    border-radius: 4px;
+    margin-top: 20px;
+}
+
+button:hover {
+    background-color: var(--button-hover);
+    transform: scale(1.03);
+}
+
+/* 3. Layout Styles */
+.container {
+    width: 80%;
+    margin: 0 auto;
+    padding: 20px;
+}
+
+.nav {
+    display: flex;
+    justify-content: space-around;
+    background-color: #444;
+    padding: 10px 0;
+    margin-bottom: 20px;
+    border-radius: 8px;
+}
+
+.nav a {
+    color: white;
+    font-weight: bold;
+    padding: 8px 15px;
+    border-radius: 4px;
+}
+
+.nav a:hover {
+    background-color: #666;
+}
+
+
+/* 4. Component Styles */
+/* Form Styling */
+form {
+    max-width: 800px;
+    margin: 20px auto;
+    padding: 20px;
+    background-color: var(--form-bg);
+    border-radius: 8px;
+    box-shadow: 0 4px 15px rgba(0, 0, 0, 0.1);
+}
+
+/* Transporter, Pallets Out, Pallets Back Styling */
+.form-row {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr); /* Three equal-width columns */
+    gap: 20px; /* Space between items */
+    margin-bottom: 20px; /* Space between rows */
+}
+
+.form-group {
+    flex: 1; /* Default size for all form groups */
+    min-width: 200px;
+}
+
+.form-group.small-group {
+    flex: 0 0 150px; /* Fixed smaller width for Pallets Out and Pallets Back */
+}
+
+@media (max-width: 768px) {
+    .form-row {
+        flex-direction: column; /* Stack items for smaller screens */
+    }
+    .form-group.small-group {
+        flex: 1; /* Expand smaller groups to full width on mobile */
+    }
+}
+
+.headers{
+    display: grid;
+}
+
+
+.form-group label {
+    display: block;
+    font-size: 14px;
+    margin-bottom: 5px;
+    font-weight: bold;
+    color: var(--primary-text);
+}
+
+.form-group input, 
+.form-group select {
+    width: 100%; /* Ensure all inputs and selects take up the same width */
+    padding: 10px; /* Ensure consistent padding */
+    font-size: 16px;
+    line-height: 1.5;
+    height: 40px; /* Ensure consistent height */
+    border: 1px solid var(--input-border);
+    border-radius: 4px;
+    transition: border-color 0.3s ease, box-shadow 0.3s ease;
+}
+
+.form-group input:focus,
+.form-group select:focus {
+    border-color: var(--input-focus);
+    outline: none;
+    box-shadow: 0 0 5px var(--input-shadow);
+}
+
+form button {
+    display: block;
+    width: 100%;
+    padding: 12px;
+    font-size: 16px;
+    background-color: var(--button-bg);
+    color: var(--button-text);
+    border-radius: 4px;
+    margin-top: 20px;
+}
+
+form button:hover {
+    background-color: var(--button-hover);
+}
+
+/* Pivot Styles */
+#pivot-table-container {
+    margin: 20px;
+    border: 1px solid #ccc;
+    border-radius: 8px;
+    overflow: hidden;
+    padding: 10px;
+    background-color: #fff;
+}
+
+#pivot-table, .parent-table, .child-table {
+    width: 100%;
+    border-collapse: collapse;
+    font-family: Arial, sans-serif;
+    margin-bottom: 10px;
+}
+
+#pivot-table th, #pivot-table td, 
+.parent-table th, .parent-table td, 
+.child-table th, .child-table td {
+    padding: 10px;
+    text-align: left;
+    border-bottom: 1px solid var(--table-border);
+}
+
+.expand-icon, .child-expand-icon {
+    cursor: pointer;
+    width: 20px;
+    text-align: center;
+    font-size: 18px;
+    color: #333;
+    transition: transform 0.2s ease-in-out;
+}
+
+.child-expand-icon {
+    font-size: 14px;
+}
+
+.hidden {
+    display: none;
+}
+
+.main-row {
+    font-weight: bold;
+    background-color: #f0f0f0;
+}
+
+.nested-row {
+    background-color: #f9f9f9;
+    font-size: 14px;
+}
+
+.nested-child-row {
+    background-color: #fdfdfd;
+    font-size: 12px;
+    color: #555;
+}
+
+.child-indent {
+    padding-left: 20px;
+    font-style: italic;
+}
+
+.child-indent-level-2 {
+    padding-left: 40px;
+    font-size: 12px;
+    color: #555;
+}
+  
+  tfoot {
+    font-weight: bold;
+    background-color: #eee;
+  }
+  #total-selected {
+    font-weight: bold;
+    font-size: 16px;
+    color: #007b00;
+  }
+ 
+  .hidden{
+    display: none;
+  }
+
+/* Center and style the container */
+#search-container {
+    text-align: center;
+    padding: 20px;
+    border: 1px solid var(--table-border);
+    border-radius: 8px;
+    background-color: var(--form-bg);
+    max-width: 800px;
+    margin: 20px auto;
+    box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+}
+
+/* Style the heading */
+#search-container h2 {
+    margin-bottom: 20px;
+    color: var(--primary-text);
+    font-size: 1.8rem;
+}
+
+/* Horizontal alignment for input boxes */
+#input-group {
+    display: flex;
+    justify-content: space-between;
+    gap: 15px;
+    margin-bottom: 20px;
+}
+
+/* Style the input fields */
+#input-group input {
+    flex: 1;
+    padding: 10px;
+    border: 1px solid #ccc;
+    border-radius: 5px;
+    font-size: 1rem;
+    box-sizing: border-box;
+}
+
+/* Style the button */
+#search-button {
+    padding: 10px 20px;
+    border: none;
+    border-radius: 5px;
+    background-color: var(--button-bg);
+    color: var(--button-text);
+    font-size: 1rem;
+    cursor: pointer;
+    transition: background-color 0.3s ease;
+}
+
+/* Button hover effect */
+#search-button:hover {
+    background-color: var(--button-bg);
+}
+
+/* Make it responsive */
+@media (max-width: 768px) {
+    #input-group {
+        flex-direction: column;
+    }
+
+    #input-group input {
+        width: 100%;
+    }
+}
+
+
+#net-amount {
+    font-weight: bold;
+    color: green;
+}
+
+.input-wrapper {
+    position: relative;
+    display: inline-block;
+    width: 100%;
+}
+
+.input-wrapper input {
+    width: 100%;
+    padding-right: 30px; /* Space for the icon */
+}
+
+.verify-icon {
+    position: absolute;
+    right: 8px;
+    top: 50%;
+    transform: translateY(-50%);
+    width: 18px;
+    height: 18px;
+    cursor: pointer;
+    object-fit: contain;
+    vertical-align: middle;
+}

@@ -1,0 +1,75 @@
+/* ===== General Reset ===== */
+* {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+}
+
+/* ===== Body Styling ===== */
+body {
+    font-family: 'Arial', sans-serif;
+    background-color: #ebeff5; /* Light greyish-blue for a subtle colored background */
+    color: #333;
+    text-align: center;
+    padding: 20px;
+    line-height: 1.6;
+}
+
+/* ===== Headers ===== */
+h1 {
+    font-size: 2.5rem;
+    color: #34495e; /* Darker blue-grey */
+    margin-bottom: 20px;
+}
+
+/* ===== Buttons & Links Styling ===== */
+button, .btn {
+    display: inline-block;
+    padding: 10px 20px;
+    font-size: 1rem;
+    font-family: inherit;
+    color: white;
+    background-color: #586998; /* Main button color */
+    border: none;
+    border-radius: 5px;
+    cursor: pointer;
+    text-decoration: none;
+    margin: 10px;
+    transition: background-color 0.3s ease, transform 0.2s ease;
+    text-align: center;
+}
+
+/* Hover State */
+button:hover, .btn:hover {
+    background-color: #4b5c82; /* Slightly darker blue-grey */
+    transform: scale(1.05);
+}
+
+/* Active State */
+button:active, .btn:active {
+    background-color: #3d4d73;
+    transform: scale(0.98);
+}
+
+/* Links Styled as Buttons */
+a.btn {
+    padding: 10px 20px;
+    display: inline-block;
+    text-align: center;
+}
+
+/* ===== Responsive Design ===== */
+@media (max-width: 768px) {
+    body {
+        padding: 10px;
+    }
+
+    h1 {
+        font-size: 2rem;
+    }
+
+    button, .btn {
+        font-size: 0.9rem;
+        padding: 8px 16px;
+    }
+}

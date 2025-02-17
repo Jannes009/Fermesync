@@ -1,0 +1,183 @@
+<!-- taskbar.html -->
+<header class="taskbar">
+    <nav>
+        <ul>
+            <li><a href="/create_entry" class="taskbar-link" id="create-entry-link">Create Entry</a></li>
+            <li><a href="/view_entries" class="taskbar-link" id="view-database-link">View Database</a></li>
+            <li><a href="/import_page" class="taskbar-link" id="import-link">Import</a></li>
+            <li><a href="/create_invoice" class="taskbar-link" id="invoice-link">Invoice</a></li>
+        </ul>
+    </nav>
+
+    <!-- User Section -->
+    <div class="user-section">
+        <div class="username" id="username">John Doe <span>&#9662;</span></div>
+        <div class="dropdown">
+            <a href="/account">View Account</a>
+            <a href="/logout" id="logout">Logout</a>
+        </div>
+    </div>
+</header>
+<style>
+@import url('../static/color-template.css');
+
+/* Reset default margins */
+body, html {
+    margin: 0;
+    padding: 0;
+    font-family: 'Arial', sans-serif;
+    display: flex;
+    flex-direction: column;
+}
+
+.taskbar {
+    position: sticky;
+    top: 0;
+    left: 0;
+    width: 100%;
+    background-color: var(--taskbar-bg);
+    color: var(--taskbar-text);
+    z-index: 1000;
+    box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 12px 20px;
+    font-family: 'Arial', sans-serif;
+    height: 60px;
+}
+
+/* Ensure content starts after taskbar */
+main {
+    padding: 20px;
+    flex-grow: 1;
+}
+
+/* Navigation */
+.taskbar nav {
+    flex: 1;
+}
+
+.taskbar ul {
+    display: flex;
+    list-style: none;
+    padding: 0;
+    margin: 0;
+}
+
+.taskbar-link {
+    text-decoration: none;
+    color: var(--taskbar-text);
+    font-size: 1rem;
+    padding: 12px 20px;
+    display: inline-block;
+    transition: background 0.3s ease, color 0.3s ease;
+    border-radius: 4px;
+}
+
+.taskbar-link:hover,
+.taskbar-link.active {
+    background-color: var(--taskbar-hover);
+}
+
+/* User Section */
+.user-section {
+    position: relative;
+    display: flex;
+    align-items: center;
+    cursor: pointer;
+}
+
+.username {
+    font-size: 1rem;
+    padding: 12px 15px;
+    background-color: var(--taskbar-user-bg);
+    border-radius: 4px;
+    transition: background 0.3s ease;
+}
+
+.username:hover {
+    background-color: var(--taskbar-user-hover);
+}
+
+/* Dropdown */
+.dropdown {
+    display: none;
+    position: absolute;
+    top: 45px;
+    right: 0;
+    background-color: var(--taskbar-dropdown-bg);
+    border-radius: 4px;
+    min-width: 150px;
+    box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2);
+    padding: 5px 0;
+}
+
+.dropdown a {
+    color: var(--taskbar-text);
+    padding: 10px 20px;
+    display: block;
+    text-decoration: none;
+}
+
+.dropdown a:hover {
+    background-color: var(--taskbar-dropdown-hover);
+}
+
+.user-section:hover .dropdown {
+    display: block;
+}
+
+/* Responsive Design */
+@media (max-width: 768px) {
+    .taskbar {
+        flex-direction: column;
+        align-items: flex-start;
+        height: auto;
+        padding: 10px;
+    }
+
+    .taskbar ul {
+        flex-direction: column;
+        width: 100%;
+    }
+
+    .taskbar-link {
+        width: 100%;
+        text-align: left;
+    }
+
+    .taskbar ul {
+        display: none;
+    }
+
+    .taskbar.open ul {
+        display: flex;
+        flex-direction: column;
+    }
+}
+
+
+</style>
+<script>
+    document.addEventListener("DOMContentLoaded", function () {
+        const path = window.location.pathname;
+        document.querySelectorAll(".taskbar-link").forEach((link) => {
+            if (path.includes(link.getAttribute("href"))) {
+                link.classList.add("active");
+            }
+        });
+
+        // Dropdown handling
+        document.getElementById("username").addEventListener("click", function () {
+            const dropdown = document.querySelector(".dropdown");
+            dropdown.style.display = dropdown.style.display === "block" ? "none" : "block";
+        });
+        fetch('/get_username')  // Create this endpoint in Flask
+            .then(response => response.json())
+            .then(data => {
+                document.getElementById('username').textContent = data.username + " ▼";
+            });
+    });
+
+</script>

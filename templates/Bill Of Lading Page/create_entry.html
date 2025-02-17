@@ -1,0 +1,25 @@
+{% extends 'base.html' %}
+{% block title %}Create Bill of Lading{% endblock %}
+
+{% block header %}
+{% include 'taskbar.html' %}
+    <h1>Bill of Lading Form</h1>
+{% endblock %}
+
+
+{% block content %}
+    <form method="POST">
+        
+        {% include 'Bill Of Lading page/header_info.html' %}
+        {% include 'Bill Of Lading page/product_details.html' %}
+
+        <div id="total-quantity" style="margin-top: 10px; font-weight: bold;">
+            Total Quantity: 0
+        </div>
+        <button type="button" id="add-line-btn">Add Line</button>
+        <button type="button" id="openStockFormBtn">Create Stock Item</button>
+        
+        <button type="submit">Submit</button>
+    </form>
+{% endblock %}
+

@@ -1,0 +1,61 @@
+<div id="pivot-table-container">
+    <table id="pivot-table">
+      <thead>
+        <tr>
+          <th></th>
+          <th>Delivery Note</th>
+          <th>Market Agent</th>
+          <th>Sum of Sales Amount</th>
+          <th>Select</th>
+        </tr>
+      </thead>
+      <tbody>
+        <!-- Parent Row -->
+        <tr class="main-row" data-id="DN123">
+          <td class="expand-icon" data-id="DN123">▶</td>
+          <td>DN123</td>
+          <td>Agent A</td>
+          <td>$1,500</td>
+          <td>
+            <input type="checkbox" class="main-checkbox" data-id="DN123" />
+          </td>
+        </tr>
+        <!-- Child Rows -->
+        <tr class="nested-row DN123 hidden">
+          <td class="child-expand-icon" data-id="DN123-Line1">▶</td>
+          <td class="child-indent">Line 1</td>
+          <td></td>
+          <td>$500</td>
+          <td>
+            <input type="checkbox" class="line-checkbox" data-id="DN123-Line1" />
+          </td>
+        </tr>
+        <tr class="nested-child-row DN123-Line1 hidden">
+          <td></td>
+          <td class="child-indent-level-2">Sales Line 1.1</td>
+          <td></td>
+          <td>$250</td>
+          <td>
+            <input type="checkbox" class="child-line-checkbox" data-id="DN123-Line1-1" />
+          </td>
+        </tr>
+        <tr class="nested-child-row DN123-Line1 hidden">
+          <td></td>
+          <td class="child-indent-level-2">Sales Line 1.2</td>
+          <td></td>
+          <td>$250</td>
+          <td>
+            <input type="checkbox" class="child-line-checkbox" data-id="DN123-Line1-2" />
+          </td>
+        </tr>
+      </tbody>
+      <tfoot>
+        <tr>
+          <td colspan="3" style="text-align: right;">Total Selected:</td>
+          <td id="total-selected">$0</td>
+          <td></td>
+        </tr>
+      </tfoot>
+    </table>
+  </div>
+  

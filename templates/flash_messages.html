@@ -1,0 +1,52 @@
+{% with messages = get_flashed_messages(with_categories=true) %}
+    {% if messages %}
+        <div id="flash-messages" class="flash-container">
+            {% for category, message in messages %}
+                <div class="flash-alert flash-{{ category }}">
+                    {{ message|safe }}
+                    <button type="button" class="flash-close" onclick="this.parentElement.remove(); checkFlashContainer();">&times;</button>
+                </div>
+            {% endfor %}
+        </div>
+
+        <script>
+            function checkFlashContainer() {
+                if (document.querySelectorAll('.flash-alert').length === 0) {
+                    document.getElementById('flash-messages')?.remove();
+                }
+            }
+        </script>
+
+        <style>
+            /* Scoped Bootstrap-like styles */
+            #flash-messages {
+                max-width: 600px;
+                margin: 10px auto;
+                padding: 10px;
+                border-radius: 5px;
+            }
+            .flash-alert {
+                position: relative;
+                padding: 15px;
+                margin-bottom: 10px;
+                border-radius: 5px;
+                font-size: 14px;
+                font-family: Arial, sans-serif;
+            }
+            .flash-success { background-color: #d4edda; color: #155724; }
+            .flash-danger { background-color: #f8d7da; color: #721c24; }
+            .flash-warning { background-color: #fff3cd; color: #856404; }
+            .flash-info { background-color: #d1ecf1; color: #0c5460; }
+            .flash-close {
+                position: absolute;
+                top: 10px;
+                right: 15px;
+                background: none;
+                border: none;
+                font-size: 16px;
+                cursor: pointer;
+                color: inherit;
+            }
+        </style>
+    {% endif %}
+{% endwith %}

@@ -1,0 +1,173 @@
+.modal-overlay, .product-modal-overlay {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background-color: rgba(0, 0, 0, 0.5);
+    display: grid;
+    place-items: center;
+    z-index: 1000;
+}
+
+.modal-content {
+    background-color: var(--primary-bg);
+    border-radius: 8px;
+    box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2);
+    width: 90%; /* Adjust width to fit better */
+    max-width: 600px;
+    padding: 20px;
+    animation: fadeIn 0.3s ease-in-out;
+    position: relative; /* Ensure the close button stays within the modal */
+}
+
+@keyframes fadeIn {
+    from {
+        opacity: 0;
+        transform: scale(0.95);
+    }
+    to {
+        opacity: 1;
+        transform: scale(1);
+    }
+}
+
+.modal-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+
+.close-btn {
+    background: none;
+    border: none;
+    font-size: 2rem;
+    color: #333;
+    cursor: pointer;
+    position: absolute;
+    top: 10px;
+    right: 10px;
+}
+
+.sales-table {
+    width: 100%;
+    table-layout: fixed;
+    border-collapse: collapse;
+    margin-bottom: 20px;
+    word-wrap: break-word;
+}
+
+.sales-table th,
+.sales-table td {
+    border: 1px solid var(--table-border);
+    text-align: center;
+    padding: 8px;
+    max-width: 150px;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.sales-table th {
+    background-color: var(--table-header-bg);
+    color: var(--table-header-text);
+    font-weight: bold;
+}
+
+.sales-table th:nth-child(1),
+.sales-table td:nth-child(1) {
+    width: 22%;
+}
+
+.sales-table th:nth-child(2),
+.sales-table td:nth-child(2) {
+    width: 15%;
+}
+
+.sales-table th:nth-child(3),
+.sales-table td:nth-child(3) {
+    width: 15%;
+}
+
+.sales-table th:nth-child(4),
+.sales-table td:nth-child(4) {
+    width: 15%;
+}
+
+.sales-table th:nth-child(5),
+.sales-table td:nth-child(5) {
+    width: 12%;
+}
+
+.sales-table input[type="date"],
+.sales-table input[type="text"],
+.sales-table input[type="number"] {
+    width: 90%;
+    padding: 5px;
+    border: 1px solid #ccc;
+    border-radius: 4px;
+    text-align: center;
+}
+
+.remove-line-btn {
+    background: none;
+    border: none;
+    cursor: pointer;
+}
+
+.remove-line-btn img {
+    width: 20px;
+    height: 20px;
+}
+
+.remove-line-btn:hover, .close-btn:hover {
+    background-color: transparent;
+    color: #333;
+}
+
+.modal-footer {
+    display: flex;
+    justify-content: center; /* Center the buttons */
+    gap: 20px;
+}
+
+.modal-footer button {
+    background-color: var(--button-bg);
+    color: var(--button-text);
+    border: none;
+    border-radius: 4px;
+    padding: 8px 15px;
+    font-size: 1rem;
+    cursor: pointer;
+    transition: background-color 0.3s ease;
+}
+
+.modal-footer button:hover {
+    background-color: var(--button-hover);
+}
+
+.modal-footer .add-line-btn {
+    background-color: var(--button-bg);
+}
+
+.modal-footer .add-line-btn:hover {
+    background-color: var(--button-hover);
+}
+
+.total-sales-container {
+    margin-top: 20px;
+    font-size: 16px;
+    font-weight: bold;
+    text-align: right;
+}
+
+/* Make the modal body scrollable when content exceeds screen height */
+.modal-body {
+    max-height: 70vh; /* Set max height to 70% of the viewport height */
+    overflow-y: auto; /* Allow vertical scrolling if content overflows */
+}
+
+/* If the table rows exceed the available space, only the table will scroll */
+.table-container {
+    max-height: 400px; /* Adjust this value as needed */
+    overflow-y: auto;
+}

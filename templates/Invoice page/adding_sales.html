@@ -1,0 +1,177 @@
+<!-- Modal for Selecting a Product Line -->
+<div id="salesModal" class="modal" style="display: none;">
+    <div class="modal-content">
+        <button class="close-btn">x</button> <!-- Close button -->
+
+        <div id="productSelection" style="display: none;">
+            <h2>Select a Product Line</h2>
+            <table class="styled-table">
+                <thead>
+                    <tr>
+                        <th>Description</th>
+                        <th>Qty Delivered</th>
+                        <th>Qty Sold</th>
+                        <th>Qty Invoiced</th>
+                    </tr>
+                </thead>
+                <tbody id="productTableBody">
+                    <!-- Products will be inserted here -->
+                </tbody>
+            </table>
+        </div>
+
+        <div id="salesDetails" style="display: none;">
+            <h2>Enter Sale Details</h2>
+            <table class="styled-table">
+                <thead>
+                    <tr>
+                        <th>Date</th>
+                        <th>Quantity</th>
+                        <th>Price</th>
+                        <th>Amount</th>
+                        <th>Action</th>
+                    </tr>
+                </thead>
+                <tbody id="salesTableBody">
+                </tbody>
+            </table>
+            <button id="addLine" type="button" class="modal-button">Add Line</button>
+            <button id="prevStep" type="button" class="modal-button">Back</button>
+            <button id="submitSales" class="modal-button">Submit Sales</button>
+        </div>
+    </div>
+</div>
+
+<!-- Modal Background Overlay -->
+<div id="modalOverlay" class="modal-overlay"></div>
+<style>
+    .modal {
+        position: fixed;
+        top: 50%;
+        left: 50%;
+        transform: translate(-50%, -50%);
+        background: var(--container-bg);
+        padding: 20px;
+        border-radius: 8px;
+        box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2);
+        width: 70%;
+        max-width: 800px;
+        max-height: 80vh; /* Limit the height to 80% of the viewport height */
+        overflow-y: auto; /* Enable vertical scrolling */
+        z-index: 1001;
+    }
+
+
+    .modal-content {
+        text-align: center;
+        padding: 20px;
+    }
+
+    .modal-button {
+        margin: 10px;
+        padding: 10px 20px;
+        border: none;
+        background: var(--button-bg);
+        color: var(--button-text);
+        cursor: pointer;
+        border-radius: 4px;
+        font-size: 16px;
+    }
+
+    .modal-button:hover {
+        background: var(--button-hover);
+    }
+
+    .styled-table {
+        width: 100%;
+        border-collapse: collapse;
+        margin: 20px 0;
+        font-size: 16px;
+        text-align: left;
+        background-color: var(--primary-bg);
+    }
+
+    .styled-table th, .styled-table td {
+        padding: 12px;
+        border: 1px solid var(--table-border);
+    }
+
+    .styled-table th {
+        background-color: var(--table-header-bg);
+        color: var(--table-header-text);
+        font-weight: bold;
+    }
+
+    .styled-table tbody tr:nth-child(odd) {
+        background-color: var(--table-row-even);
+    }
+
+    .styled-table tbody tr:hover {
+        background-color: #ddd;
+    }
+
+    input {
+        padding: 8px;
+        margin: 5px;
+        width: 95%;
+        border-radius: 4px;
+        border: 1px solid var(--input-border);
+    }
+
+    input:focus {
+        border-color: var(--input-focus);
+        box-shadow: 0 0 5px var(--input-shadow);
+    }
+
+    .remove-line-btn {
+        background: none;
+        border: none;
+        cursor: pointer;
+        color: var(--button-bg);
+    }
+
+    .remove-line-btn img {
+        width: 20px;
+        height: 20px;
+    }
+
+    .remove-line-btn:hover, .close-btn:hover {
+        color: var(--button-hover);
+    }
+
+    /* Modal Background Overlay */
+    .modal-overlay {
+        content: "";
+        position: fixed;
+        top: 0;
+        left: 0;
+        width: 100%;
+        height: 100%;
+        background: rgba(0, 0, 0, 0.5);
+        z-index: 1000;
+        display: none;
+    }
+
+    .close-btn {
+        position: absolute;
+        top: 10px;
+        right: 10px;
+        width: 30px;
+        height: 30px;
+        background: #ff3333;
+        color: var(--button-text);
+        border: none;
+        font-size: 18px;
+        font-weight: bold;
+        cursor: pointer;
+        border-radius: 50%;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+    }
+
+    .close-btn:hover {
+        background: #cc0000;
+    }
+
+</style>

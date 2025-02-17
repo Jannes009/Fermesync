@@ -1,0 +1,70 @@
+<div>
+    <h1>Invoice Header</h1>
+    <div class="headers">
+        <div class="form-row">
+            <div class="form-group">
+                
+                    <label for="delivery-note-number">Delivery Note Nr</label>
+                    <div class="input-wrapper">
+                    <input type="text" id="delivery-note-number" placeholder="Enter Delivery Note Number" required/>
+                    <img id="verify-icon" src="{{ url_for('static', filename='Image/neutral.png') }}" 
+                    alt="Status" class="verify-icon">
+                </div>
+            </div>
+            <div class="form-group">
+                <label for="ZZInvoiceDate">Invoice Date</label>
+                <input type="date" id="ZZInvoiceDate" name="ZZInvoiceDate" placeholder="Invoice Date" class="form-input" required>
+            </div>
+            <div class="form-group">
+                <label for="ZZInvoiceNo">Invoice Number</label>
+                <input type="text" id="ZZInvoiceNo" name="ZZInvoiceNo" placeholder="Invoice Number" class="form-input" required>
+            </div>
+        </div>
+        <div class="form-row">
+            <div class="form-group">
+                <label for="InvoiceSalesQty">Sales Quantity</label>
+                <input type="number" id="InvoiceSalesQty" name="InvoiceSalesQty" placeholder="Sales Quantity" class="form-input" required>
+            </div>
+            <div class="form-group">
+                <label for="InvoiceSalesAmnt">Sales Amount</label>
+                <input type="number" id="InvoiceSalesAmnt" name="InvoiceSalesAmnt" placeholder="Sales Amount" class="form-input">
+            </div>
+            <div class="form-group">
+                <label for="ZZInvoiceTotalDeducted">Total Deducted</label>
+                <input type="number" id="ZZInvoiceTotalDeducted" name="ZZInvoiceTotalDeducted" placeholder="Total Deducted" class="form-input">
+            </div>
+        </div>
+        <div class="form-row">
+            <div class="form-group">
+                <label for="ZZInvoiceMarketCommIncl">Market Commission Incl.</label>
+                <input type="number" id="ZZInvoiceMarketCommIncl" name="ZZInvoiceMarketCommIncl" placeholder="Market Commission Incl." class="form-input">
+            </div>
+            <div class="form-group">
+                <label for="ZZInvoiceAgentCommIncl">Agent Commission Incl.</label>
+                <input type="number" id="ZZInvoiceAgentCommIncl" name="ZZInvoiceAgentCommIncl" placeholder="Agent Commission Incl." class="form-input">
+            </div>
+            <div class="form-group">
+                <label for="ZZInvoiceOtherCostsIncl">Other Costs Incl.</label>
+                <input type="number" id="ZZInvoiceOtherCostsIncl" name="ZZInvoiceOtherCostsIncl" placeholder="Other Costs Incl." class="form-input">
+            </div>
+        </div>
+        <div class="form-row">
+            <div class="form-group">
+                <label for="ZZInvoiceMarketCommIncl">Market Commission Excl.</label>
+                <input type="number" id="ZZInvoiceMarketCommExcl" name="ZZInvoiceMarketCommExcl" placeholder="Market Commission Excl." class="form-input">
+            </div>
+            <div class="form-group">
+                <label for="ZZInvoiceAgentCommIncl">Agent Commission Excl.</label>
+                <input type="number" id="ZZInvoiceAgentCommExcl" name="ZZInvoiceAgentCommExcl" placeholder="Agent Commission Encl." class="form-input">
+            </div>
+            <div class="form-group">
+                <label for="ZZInvoiceOtherCostsIncl">Other Costs Excl.</label>
+                <input type="number" id="ZZInvoiceOtherCostsExcl" name="ZZInvoiceOtherCostsExcl" placeholder="Other Costs Excl." class="form-input">
+            </div>
+        </div>
+    </div>
+    <div>
+        <label>Net Amount:</label>
+        <span id="net-amount">R0.00</span>
+    </div>
+</div>

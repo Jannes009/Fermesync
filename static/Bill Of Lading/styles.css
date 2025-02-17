@@ -1,0 +1,329 @@
+/* 1. General Reset (Optional, to ensure uniformity across browsers) */
+@import url('../color-template.css');
+* {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+}
+
+/* 2. Global Styles */
+body {
+    font-family: 'Arial', sans-serif;
+    background-color: var(--primary-bg);
+    color: var(--primary-text);
+    line-height: 1.6;
+    padding: 20px 0;
+}
+
+/* 4. Component Styles */
+/* Form Styling */
+form {
+    max-width: 850px;
+    margin: 20px auto;
+    padding: 20px;
+    background-color: var(--form-bg);
+    border-radius: 8px;
+    box-shadow: 0 4px 15px rgba(0, 0, 0, 0.1);
+}
+
+.headers{
+    display: grid;
+}
+
+.form-group {
+    flex: 1; /* Default size for all form groups */
+    min-width: 200px;
+}
+
+.form-group label {
+    display: block;
+    font-size: 14px;
+    margin-bottom: 5px;
+    font-weight: bold;
+    color: var(--primary-text);
+}
+
+.form-group input, 
+.form-group select {
+    width: 100%; /* Ensure all inputs and selects take up the same width */
+    padding: 10px; /* Ensure consistent padding */
+    font-size: 16px;
+    line-height: 1.5;
+    height: 40px; /* Ensure consistent height */
+    border: 1px solid var(--input-border);
+    border-radius: 4px;
+    transition: border-color 0.3s ease, box-shadow 0.3s ease;
+}
+
+.form-group input:focus,
+.form-group select:focus {
+    border-color: var(--input-focus);
+    outline: none;
+    box-shadow: 0 0 5px var(--input-shadow);
+}
+
+form button {
+    display: block;
+    border: none;
+    width: 100%;
+    padding: 12px;
+    font-size: 16px;
+    background-color: var(--button-bg);
+    color: var(--button-text);
+    border-radius: 4px;
+    margin-top: 20px;
+}
+
+form button:hover {
+    background-color: var(--button-hover);
+    cursor: pointer;
+}
+
+/* Product Table */
+#product-table {
+    width: 100%; /* Adjust this percentage as needed for smaller width */
+    max-width: 100%; /* Optional: set a max width to prevent excessive resizing */
+    margin: 0 auto; /* Centers the table horizontally */
+    border-collapse: collapse;
+    box-shadow: 0 3px 10px rgba(0, 0, 0, 0.1);
+    table-layout: fixed;
+}
+
+#product-table th,
+#product-table td {
+    padding: 12px;
+    border: 1px solid var(--table-border);
+    text-align: center;
+}
+
+#product-table th {
+    background-color: var(--table-header-bg);
+    font-weight: bold;
+    color: #555;
+}
+
+#product-table tr:nth-child(even) {
+    background-color: var(--table-row-even);
+}
+
+#product-table input {
+    padding: 8px;
+    width: 100%;
+    border: 1px solid var(--input-border);
+    border-radius: 4px;
+    box-sizing: border-box;
+}
+
+/* New Styles for View Past Entries Page */
+h1 {
+    text-align: center;
+    margin-bottom: 20px;
+    font-size: 2rem;
+}
+
+form {
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: center;
+    gap: 20px;
+    margin-bottom: 20px;
+}
+
+form label {
+    font-size: 1rem;
+    font-weight: bold;
+}
+
+form select,
+form input {
+    padding: 8px;
+    font-size: 1rem;
+    border: 1px solid var(--input-border);
+    border-radius: 4px;
+    width: 200px;
+    max-width: 100%;
+}
+
+.action-icon {
+    width: 20px; /* Adjust size as needed */
+    height: 20px;
+    vertical-align: middle;
+    margin: 0 5px; /* Optional spacing */
+    display: flex;
+    justify-content: center; /* Centers the icon horizontally */
+    align-items: center; /* Centers the icon vertically */
+}
+
+/* Ensure buttons don't inherit unwanted styles */
+.add-sales-btn, .edit-sales-btn {
+    background-color: transparent; /* Remove any background color */
+    border: 2px solid transparent; /* Remove default border */
+    padding: 2px 5px; /* Adjust the padding for buttons */
+    display: flex;
+    justify-content: center; /* Centers the buttons horizontally */
+    align-items: center; /* Centers the buttons vertically */
+    height: 20px; /* Set a fixed height to control size */
+    width: 20px; /* Set a fixed width to control size */
+}
+
+.delete-row-btn:hover,
+.delete-row-btn:focus {
+    background-color: transparent; /* Keep it transparent on hover */
+    transform: scale(1.1); /* Increase size by 10% */
+    outline: none; /* Remove default focus outline */
+}
+
+.check-btn {
+    border-top-left-radius: 0;
+    border-bottom-left-radius: 0;
+}
+
+/* Styling for the bin icon */
+.bin-icon {
+    width: 20px;
+    height: 20px;
+    cursor: pointer;
+}
+
+.delete-row-btn, .action-button {
+    display: flex; /* Ensures the content wraps tightly */
+    align-items: center; /* Center the icon vertically */
+    justify-content: center; /* Center the icon horizontally */
+    padding: 0; /* Remove extra padding */
+    margin: 0; /* Remove unnecessary margin */
+    width: auto; /* Ensure the width is only as big as the icon itself */
+    background: none; /* Remove any background styling */
+    border: none; /* Remove border for a clean look */
+    cursor: pointer;
+}
+
+.button-row {
+    display: flex; /* Ensures the content wraps tightly */
+    align-items: center; /* Center the items vertically */
+    justify-content: center; /* Center the items horizontally */
+    gap: 10px; /* Optional: adds space between the buttons */
+}
+
+.form-row {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr); /* Three equal-width columns */
+    gap: 20px; /* Space between items */
+    margin-bottom: 20px; /* Space between rows */
+}
+
+.form-group {
+    display: flex;
+    flex-direction: column;
+    justify-content: space-between;
+    height: 100%; /* Ensure consistent height */
+    width: 100%; /* Ensure consistent width */
+}
+
+.form-group label {
+    margin-bottom: 8px; /* Space between label and input */
+    font-size: 14px; /* Adjust label font size */
+}
+
+.form-group input,
+.form-group select {
+    height: 40px; /* Consistent input and dropdown height */
+    padding: 8px; /* Add padding inside inputs */
+    border: 1px solid var(--input-border); /* Match styling */
+    border-radius: 4px; /* Rounded corners */
+    font-size: 16px; /* Consistent font size */
+    box-sizing: border-box; /* Include padding and border in width/height */
+}
+
+.searchable-dropdown {
+    width: 100%; /* Dropdown width matches its container */
+    height: 40px; /* Consistent dropdown height */
+}
+
+/* Responsive adjustments */
+@media (max-width: 768px) {
+    .form-row {
+        grid-template-columns: 1fr; /* Single column layout on smaller screens */
+    }
+}
+
+/* Ensure dropdown has a fixed width when closed */
+.select2-container {
+    width: 100% !important; /* Set a fixed width for the closed dropdown */
+    height: 40px; /* Fix the height when closed */
+    display: inline-block; /* Ensure proper alignment */
+}
+
+/* Maintain consistent appearance when closed */
+.select2-container .select2-selection--single {
+    width: 100%; /* Inherits fixed width */
+    height: 40px !important; /* Fix the height */
+    line-height: 40px !important; /* Center text vertically */
+    padding: 0 10px; /* Match input box padding */
+    box-sizing: border-box; /* Ensure padding doesn't affect size */
+    border: 1px solid var(--input-border); /* Match input border */
+    border-radius: 4px; /* Match input border radius */
+}
+
+/* Flexible width for dropdown when opened */
+.select2-container--open .select2-dropdown {
+    width: auto !important; /* Allow dynamic width */
+    min-width: 300px; /* Set minimum width */
+    max-width: 600px; /* Restrict maximum width */
+    max-height: 400px; /* Limit dropdown height */
+    overflow-y: auto; /* Add scroll for long lists */
+}
+
+/* Dropdown text alignment and arrow adjustments */
+.select2-container--default .select2-selection--single .select2-selection__rendered {
+    line-height: 40px !important; /* Vertically align text */
+    padding: 0 10px; /* Ensure consistent padding */
+}
+
+.select2-container--default .select2-selection--single .select2-selection__arrow {
+    height: 40px !important; /* Match the fixed height */
+    line-height: 40px !important; /* Vertically align arrow */
+}
+
+/* Search box within dropdown */
+.select2-search--dropdown .select2-search__field {
+    width: 100%; /* Ensure full width */
+    padding: 8px; /* Match input styling */
+    font-size: 16px; /* Maintain consistent font size */
+    border: 1px solid var(--input-border); /* Match input border style */
+    border-radius: 4px; /* Match input border radius */
+}
+
+/* Options styling */
+.select2-results__option {
+    white-space: nowrap; /* Prevent text wrapping */
+    padding: 8px; /* Add padding for better readability */
+    font-size: 14px; /* Slightly smaller font size for dropdown options */
+}
+
+/* Form header styling */
+h2 {
+    margin-bottom: 1.5rem;
+    font-size: 1.5rem;
+    text-align: left;
+}
+
+.input-wrapper {
+    position: relative;
+    display: inline-block;
+    width: 100%;
+}
+
+.input-wrapper input {
+    width: 100%;
+    padding-right: 30px; /* Space for the icon */
+}
+
+.verify-icon {
+    position: absolute;
+    right: 8px;
+    top: 50%;
+    transform: translateY(-50%);
+    width: 18px;
+    height: 18px;
+    cursor: pointer;
+}

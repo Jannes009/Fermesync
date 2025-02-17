@@ -1,0 +1,189 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Manual Matching - {{ market_data[2] }}</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            margin: 20px;
+            padding: 10px;
+        }
+        h1, h3 {
+            color: #333;
+        }
+        .market-data-container {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            border: 1px solid #ddd;
+            padding: 15px;
+            margin: 20px 0;
+            background-color: #f9f9f9;
+        }
+        .market-data-container div {
+            text-align: center;
+        }
+        .market-data-container div h4 {
+            margin: 5px 0;
+            font-size: 14px;
+            color: #555;
+        }
+        .market-data-container div p {
+            margin: 5px 0;
+            font-weight: bold;
+        }
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin: 20px 0;
+        }
+        th, td {
+            border: 1px solid #ddd;
+            padding: 8px;
+            text-align: left;
+        }
+        th {
+            background-color: #f2f2f2;
+        }
+        tr {
+            transition: background-color 0.2s ease-in-out;
+        }
+        .drop-target {
+            background-color: #aba9a9;
+        }
+        .matching{
+            background-color: #ddfdc8;
+        }
+        .drop-target.matching{
+            background-color: rgb(102, 199, 99) !important;
+        }
+
+        .confirmation-modal {
+            display: none;
+            position: fixed;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            background-color: white;
+            padding: 20px;
+            border: 1px solid #ccc;
+            box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+            z-index: 1000;
+            width: 300px;
+        }
+        .confirmation-modal button {
+            margin: 10px;
+            background-color: #4a90e2;
+            color: #fff;
+            border: none;
+            border-radius: 5px;
+            padding: 10px 20px;
+            cursor: pointer;
+            font-size: 1rem;
+            font-weight: bold;
+            text-transform: uppercase;
+            transition: background-color 0.3s ease, transform 0.2s ease;
+        }
+        .overlay {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background-color: rgba(0, 0, 0, 0.5);
+            z-index: 999;
+        }
+        td.draggable {
+            cursor: move;
+        }
+    </style>
+</head>
+<body>
+    {% include 'taskbar.html' %}
+    <h1>Consignment Details for ID: {{ market_data[0] }}</h1>
+
+    <h3>Market Data</h3>
+    <div class="market-data-container" draggable="true" id="market-data" ondragstart="dragStart(event)" ondragend="dragEnd(event)">
+        <div>
+            <h4>ConsignmentID</h4>
+            <p id="ConsignmentID">{{ market_data[0] }}</p>
+        </div>
+        <div>
+            <h4>SupplierRef</h4>
+            <p>{{ market_data[1] }}</p>
+        </div>
+        <div>
+            <h4>Product</h4>
+            <p>{{ market_data[2] }}</p>
+        </div>
+        <div>
+            <h4>Mass (kg)</h4>
+            <p>{{ market_data[6] }}</p>
+        </div>
+        
+        <div>
+            <h4>Class</h4>
+            <p>{{ market_data[5] }}</p>
+        </div>
+        <div>
+            <h4>Size</h4>
+            <p>{{ market_data[4] }}</p>
+        </div>
+
+        <div>
+            <h4>Variety</h4>
+            <p>{{ market_data[3] }}</p>
+        </div>
+        <div>
+            <h4>Qty Sent</h4>
+            <p>{{ market_data[7] }}</p>
+        </div>
+    </div>
+
+    <h3>Delivery Note Lines</h3>
+    <table>
+        <thead>
+            <tr>
+                <th>Note Number</th>
+                <th>Product</th>
+                <th>Mass (kg)</th>
+                <th>Class</th>
+                <th>Size</th>
+                <th>Variety</th>
+                <th>Brand</th>
+                <th>Quantity</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for line in del_lines %}
+            <tr ondragover="allowDrop(event)" ondragleave="dragLeave(event)" ondrop="drop(event)">
+                <td data-id="{{ line[8] }}">{{ line[0] }}</td>
+                <td>{{ line[1] }}</td>
+                <td>{{ line[2] }}</td>
+                <td>{{ line[3] }}</td>
+                <td>{{ line[4] }}</td>
+                <td>{{ line[5] }}</td>
+                <td>{{ line[6] }}</td>
+                <td>{{ line[7] }}</td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+
+    <div id="overlay" class="overlay"></div>
+    <div id="confirmation-modal" class="confirmation-modal">
+        <p>Are you sure you want to make this match?</p>
+        <button id="confirm-btn" onclick="confirmMatch()">Yes</button>
+        <button onclick="cancelMatch()">No</button>
+    </div>
+
+    <a href="{{ url_for('import.show_results', result_type='no_match') }}">Back to Results</a>
+
+    <script src="{{ url_for('static', filename='Import/manual_matching.js') }}"></script>
+
+</body>
+</html>
+

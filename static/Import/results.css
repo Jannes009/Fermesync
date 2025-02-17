@@ -1,0 +1,116 @@
+/* General Body Styles */
+@import url('../color-template.css');
+body {
+    font-family: 'Arial', sans-serif;
+    background-color: var(--primary-bg);
+    color: var(--primary-text);
+    margin: 0;
+    padding: 0;
+}
+
+/* Container Styles */
+.container {
+    background-color: var(--container-bg);
+    border-radius: 10px;
+    padding: 20px;
+    box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+    margin-top: 40px;
+}
+
+/* Heading Styles */
+h1 {
+    font-size: 2rem;
+    font-weight: bold;
+    color: var(--primary-text);
+    margin-bottom: 20px;
+    text-align: center;
+}
+
+/* Table Styles */
+table {
+    width: 100%;
+    border-collapse: collapse;
+    margin-top: 20px;
+}
+
+table th, table td {
+    padding: 12px;
+    text-align: left;
+    border-bottom: 1px solid #ddd;
+}
+
+table th {
+    background-color: var(--table-header-bg);
+    font-weight: bold;
+    color: var(--table-header-text);
+    cursor: pointer;
+}
+
+table td {
+    background-color: #ffffff;
+    color: #6c757d;
+}
+
+
+/* Link Button Styles */
+.btn-primary {
+    background-color: var(--button-bg);
+    border-color: var(--button-bg);
+    color: var(--button-text);
+    padding: 10px 20px;
+    font-size: 1rem;
+    text-align: center;
+    border-radius: 5px;
+    transition: background-color 0.3s ease, box-shadow 0.3s ease;
+}
+
+.btn-primary:hover {
+    background-color: var(--button-hover);
+    box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+}
+
+/* Responsive Table */
+@media (max-width: 800px) {
+    table th, table td {
+        font-size: 0.9rem;
+        padding: 8px;
+    }
+
+    table {
+        font-size: 0.9rem;
+    }
+}
+
+/* Additional Spacing */
+.mt-4 {
+    margin-top: 1.5rem;
+}
+
+h3 {
+    font-size: 1.5rem; /* Slightly smaller than h1 */
+    font-weight: 500; /* Medium weight for subtle emphasis */
+    color: var(--primary-text); /* Darker shade for contrast */
+    margin-bottom: 15px; /* Spacing below the h3 */
+    text-align: center; /* Center-align for a cohesive look */
+}
+
+th.sort-asc::after {
+    content: " ⬆️"; /* Up arrow */
+    font-size: 0.8rem;
+}
+
+th.sort-desc::after {
+    content: " ⬇️"; /* Down arrow */
+    font-size: 0.8rem;
+}
+
+/* Clickable row styling */
+.clickable-row {
+    cursor: pointer;
+    background-color: #c2c1c1; /* Initial background */
+    transition: background-color 0.3s ease;
+}
+
+.clickable-row:hover {
+    background-color: #a9a9a9 !important; /* Darker shade on hover */
+}

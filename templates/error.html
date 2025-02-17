@@ -1,0 +1,108 @@
+<!-- templates/error.html -->
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Error - Something Went Wrong</title>
+    <style>
+        @import url('../static/color-template.css'); /* Assuming color template is defined */
+
+        /* Reset default margins */
+        body, html {
+            margin: 0;
+            padding: 0;
+            font-family: 'Arial', sans-serif;
+            display: flex;
+            flex-direction: column;
+            background-color: var(--error-bg); /* Background for the page */
+        }
+
+        .taskbar {
+            position: sticky;
+            top: 0;
+            left: 0;
+            width: 100%;
+            background-color: var(--taskbar-bg);
+            color: var(--taskbar-text);
+            z-index: 1000;
+            box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 12px 20px;
+            font-family: 'Arial', sans-serif;
+            height: 60px;
+        }
+
+        /* Error message container */
+        .error-container {
+            flex-grow: 1;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            padding: 40px 20px;
+            text-align: center;
+        }
+
+        h1 {
+            font-size: 2.5em;
+            color: var(--error-heading-color);
+            margin-bottom: 20px;
+        }
+
+        p {
+            font-size: 1.2em;
+            color: var(--error-text-color);
+            margin-bottom: 30px;
+        }
+
+        .error-details {
+            font-size: 1em;
+            color: var(--error-details-color);
+            padding: 10px;
+            background-color: var(--error-details-bg);
+            border-radius: 8px;
+            border: 1px solid var(--error-details-border);
+            margin-top: 20px;
+        }
+
+        /* Buttons */
+        .error-btn {
+            background-color: var(--error-btn-bg);
+            color: var(--error-btn-text);
+            border: none;
+            padding: 12px 25px;
+            border-radius: 4px;
+            font-size: 1rem;
+            cursor: pointer;
+            transition: background 0.3s ease;
+        }
+
+        .error-btn:hover {
+            background-color: var(--error-btn-hover);
+        }
+
+        /* Responsive Design */
+        @media (max-width: 768px) {
+            .error-container {
+                padding: 30px 10px;
+            }
+        }
+    </style>
+</head>
+<body>
+    {% include 'taskbar.html' %} <!-- Include the taskbar -->
+
+    <div class="error-container">
+        <h1>Oops! Something went wrong.</h1>
+        <p>We encountered an error while processing your request. Please try again later or contact support.</p>
+        <div class="error-details">
+            Error details: {{ error_message }}
+        </div>
+        <br>
+        <button class="error-btn" onclick="window.location.href='/'">Go to Home</button> <!-- A button to guide the user back -->
+    </div>
+</body>
+</html>

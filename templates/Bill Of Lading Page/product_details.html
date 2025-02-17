@@ -1,0 +1,50 @@
+<table id="product-table">
+    <thead>
+        <colgroup>
+            <col style="width: 35%;"> <!-- 20% for the first column -->
+            <col style="width: 20%;"> <!-- 15% for the second column -->
+            <col style="width: 15%;"> <!-- 25% for the third column -->
+            <col style="width: 20%;"> <!-- 30% for the fourth column -->
+            <col style="width: 5%;"> <!-- 10% for the fifth column -->
+        </colgroup>
+        <tr>
+            <th >Product</th>
+            <th>Estimated Price</th>
+            <th>Quantity Bags</th>
+            <th>Comments</th>
+            <th></th>
+        </tr>
+    </thead>
+    <tbody class="product-table">
+        {% if product_quantity_pairs %}
+            {% for product, quantity, price, comment, id in product_quantity_pairs %}
+                <tr class="product-row" data-id="{{ id }}">
+                    <td>
+                        <select name="ZZProduct[]" class="searchable-dropdown product-select" required>
+                            <option value="" disabled>Select a Product</option>
+                            {% for product_option in product_options %}
+                                <option value="{{ product_option[0] }}" {% if product_option[0] == product %}selected{% endif %}>
+                                    {{ product_option[1] }}
+                                </option>
+                            {% endfor %}
+                        </select>
+                    </td>
+                    <td>
+                        <input type="number" name="ZZEstimatedPrice[]" placeholder="Estimated Price" step="any" value="{{ price }}" required>
+                    </td>
+                    <td>
+                        <input type="number" name="ZZQuantityBags[]" placeholder="Enter quantity" step="any" value="{{ quantity }}" required>
+                    </td>
+                    <td>
+                        <input type="text" name="ZZComments[]" placeholder="Enter comments" value="{{ comment }}">
+                    </td>
+                    <td>
+                        <button type="button" class="delete-row-btn">
+                            <img src="../static/Image/recycle-bin.png" alt="Delete" class="bin-icon">
+                        </button>
+                    </td>
+                </tr>
+            {% endfor %}
+        {%endif%}
+    </tbody>
+</table>

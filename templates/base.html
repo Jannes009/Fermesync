@@ -1,0 +1,51 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{% block title %}Bill of Lading{% endblock %}</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='Bill Of Lading/styles.css') }}">
+
+
+</head>
+<body>
+    <header>
+        {% block header %}
+        <!-- You can include header content here if it’s common across pages -->
+        {% endblock %}
+    </header>
+
+    <main>
+        {% block content %}
+        <!-- This will be replaced by the content of each individual page -->
+        {% endblock %}
+    </main>
+
+    <footer>
+        {% block footer %}
+        <!-- Footer content (if any) -->9
+        {% endblock %}
+    </footer>
+    
+    <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/js/select2.min.js"></script>
+    <script src="{{ url_for('static', filename='Bill Of Lading/row.js') }}"></script>
+    <script src="{{ url_for('static', filename='Bill Of Lading/save-form.js') }}"></script>
+    <script src="{{ url_for('static', filename='Bill Of Lading/dropdown.js') }}"></script>
+    <link href="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/css/select2.min.css" rel="stylesheet" />>
+
+    <!-- Inject error message dynamically -->
+    {% if error_message %}
+    <script>
+        const errorMessage = "{{ error_message }}";
+        if (errorMessage) {
+            alert(errorMessage);
+        }
+    </script> 
+    {% endif %}
+    <script>
+        const recycleBinUrl = "{{ url_for('static', filename='recycle-bin.png') }}";
+        const productOptions = {{ product_options | tojson | safe }};
+    </script>   
+</body>
+</html>

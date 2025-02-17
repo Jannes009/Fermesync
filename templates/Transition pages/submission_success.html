@@ -1,0 +1,29 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Submission Success</title>
+    <link rel="stylesheet" href="../static/Submission Success/submission_success.css">
+</head>
+<body>
+    <div class="container">
+        <h1>Entry Submitted Successfully!</h1>
+        <div class="options">
+            <!-- View Entry button now links to the edit_entry page -->
+             {% if last_entry_id %}
+                <button onclick="location.href='{{ url_for('entry.edit_entry', entry_id=last_entry_id) }}'">
+                    View Entry
+                </button>
+            {% endif %}
+            <button onclick="window.location.href='/create_entry'">
+                Create New Entry
+            </button>
+            <button onclick="window.location.href='/'">
+                Back to Home
+            </button>
+        </div>
+    </div>
+</body>
+</html>
+

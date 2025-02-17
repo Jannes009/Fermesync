@@ -1,0 +1,236 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Details Page</title>
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css">
+    <link rel="stylesheet" href="{{ url_for('static', filename='Import/consignment_matches.css') }}">
+</head>
+<body>
+    {% include 'taskbar.html' %}
+    <div class="container mt-4">
+        <h1>Matched Consignments Details</h1>
+        <h3>Select fields to match:</h3>
+        <form method="POST" action="{{ url_for('import.show_matches') }}" class="p-4 border rounded shadow bg-light">
+            <h5 class="mb-3">Filter Options</h5>
+        
+            <div class="row">
+                <div class="col-md-6">
+                    <div class="form-check">
+                        <input class="form-check-input" type="checkbox" name="fields" value="Product" id="product"
+                               {% if 'Product' in selected_fields or not selected_fields %}checked{% endif %}>
+                        <label class="form-check-label" for="product">Product</label>
+                    </div>
+        
+                    <div class="form-check">
+                        <input class="form-check-input" type="checkbox" name="fields" value="Mass" id="mass"
+                               {% if 'Mass' in selected_fields or not selected_fields %}checked{% endif %}>
+                        <label class="form-check-label" for="mass">Mass</label>
+                    </div>
+        
+                    <div class="form-check">
+                        <input class="form-check-input" type="checkbox" name="fields" value="Class" id="class"
+                               {% if 'Class' in selected_fields or not selected_fields %}checked{% endif %}>
+                        <label class="form-check-label" for="class">Class</label>
+                    </div>
+                </div>
+        
+                <div class="col-md-6">
+                    <div class="form-check">
+                        <input class="form-check-input" type="checkbox" name="fields" value="Size" id="size"
+                               {% if 'Size' in selected_fields or not selected_fields %}checked{% endif %}>
+                        <label class="form-check-label" for="size">Size</label>
+                    </div>
+        
+                    <div class="form-check">
+                        <input class="form-check-input" type="checkbox" name="fields" value="Variety" id="variety"
+                               {% if 'Variety' in selected_fields %}{% endif %}>
+                        <label class="form-check-label" for="variety">Variety</label>
+                    </div>
+        
+                    <div class="form-check">
+                        <input class="form-check-input" type="checkbox" name="fields" value="Quantity" id="quantity"
+                               {% if 'Quantity' in selected_fields or not selected_fields %}checked{% endif %}>
+                        <label class="form-check-label" for="quantity">Quantity</label>
+                    </div>
+                </div>
+            </div>
+        
+            <button type="submit" class="btn btn-primary mt-3 w-100">Filter Results</button>
+        </form>
+       
+        
+        
+        <table class="resultTable table table-bordered">
+            <thead>
+                <!-- Row for h2 headers -->
+                <tr>
+                    <th class="group-header" colspan="9">Delivery Note Line Data</th>
+                    <th class="group-header" colspan="8">Imported Data</th>
+                    <th></th>
+                </tr>
+                <!-- Actual column headers -->
+                <tr>
+                    <th>Header</th>
+                    <th>LineId</th>
+                    <th>Product</th>
+                    <th>Mass</th>
+                    <th>Class</th>
+                    <th>Size</th>
+                    <th>Variety</th>
+                    <th>Quantity</th>
+                    <th></th>
+                    <th>SupplierRef</th>
+                    <th>ConsignmentID</th>
+                    <th>Product</th>
+                    <th>Mass</th>
+                    <th>Class</th>
+                    <th>Size</th>
+                    <th>Variety</th>
+                    <th>Quantity</th>
+                    <th>Match</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for row in results %}
+                    <tr>
+                        <td>{{ row[0] }}</td>
+                        <td>{{ row[1] }}</td>
+                        <td>{{ row[2] }}</td>
+                        <td>{{ row[3] }}</td>
+                        <td>{{ row[4] }}</td>
+                        <td>{{ row[5] }}</td>
+                        <td>{{ row[6] }}</td>
+                        <td>{{ row[7] }}</td>
+                        <td></td>
+                        <td>{{ row[8] }}</td>
+                        <td>{{ row[9] }}</td>
+                        <td>{{ row[10] }}</td>
+                        <td>{{ row[11] }}</td>
+                        <td>{{ row[12] }}</td>
+                        <td>{{ row[13] }}</td>
+                        <td>{{ row[14] }}</td>
+                        <td>{{ row[15] }}</td>
+                        <td><input class="form-check-input" type="checkbox" name="fields" value="Size" id="size"></td>
+                    </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+
+        <a href="{{ url_for('import.import_page') }}" class="btn btn-primary mt-4">Back to Import Page</a>
+        <!-- Add this button below the table -->
+    <button id="updateMatchBtn" class="btn btn-primary mt-4">Update Match</button>
+
+
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+    <script>
+        document.getElementById('updateMatchBtn').addEventListener('click', () => {
+            console.log("Update matches")
+            const checkedRows = [];
+            document.querySelectorAll('.resultTable tbody tr').forEach(row => {
+                const checkbox = row.querySelector('input[type="checkbox"]');
+                if (checkbox.checked) {
+                    const consignmentID = row.children[10].textContent.trim();
+                    const lineId = row.children[1].textContent.trim();
+                    checkedRows.push({ lineId, consignmentID });
+                }
+            });
+            console.log(checkedRows)
+            if (checkedRows.length > 0) {
+                fetch("{{ url_for('import.update_match') }}", {
+                    method: "POST",
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify({ matches: checkedRows })
+                })
+                .then(response => response.json())
+                .then(data => {
+                    alert(data.message); // Properly closing the alert statement
+                    window.location.href = "/show_matches"; // Navigate after alert
+                })
+                .catch(error => console.error("Error:", error));
+            } else {
+                alert("No rows selected.");
+            }
+        });
+    </script>
+    
+    <script>
+        document.addEventListener('DOMContentLoaded', () => {
+            const table = document.querySelector('table');
+            const headers = table.querySelectorAll('th');
+            const rows = Array.from(table.querySelectorAll('tbody > tr'));
+
+            headers.forEach((header, index) => {
+                header.addEventListener('click', () => {
+                    const isAscending = header.classList.contains('sorted-asc');
+                    const direction = isAscending ? -1 : 1;
+
+                    // Remove existing sorted classes
+                    headers.forEach(h => h.classList.remove('sorted-asc', 'sorted-desc'));
+                    header.classList.toggle('sorted-asc', !isAscending);
+                    header.classList.toggle('sorted-desc', isAscending);
+
+                    // Sort rows
+                    rows.sort((a, b) => {
+                        const cellA = a.children[index].textContent.trim().toLowerCase();
+                        const cellB = b.children[index].textContent.trim().toLowerCase();
+
+                        if (cellA < cellB) return -1 * direction;
+                        if (cellA > cellB) return 1 * direction;
+                        return 0;
+                    });
+
+                    // Reattach sorted rows
+                    const tbody = table.querySelector('tbody');
+                    tbody.innerHTML = '';
+                    rows.forEach(row => tbody.appendChild(row));
+                });
+            });
+        });
+
+    </script>
+    <script>
+        document.addEventListener('DOMContentLoaded', () => {
+            const table = document.querySelector('.resultTable');
+            if (!table) return;
+    
+            const rows = table.querySelectorAll('tbody tr');
+    
+            rows.forEach(row => {
+                const cells = row.children;
+                
+                // Match corresponding columns
+                if (cells.length >= 16) { // Ensure there are enough columns
+                    const fieldsToCompare = [2, 3, 4, 5, 6]; // Product, Mass, Class, Size, Variety
+                    const quantityIndex = 7; // Quantity column index
+                    const offset = 9; // Offset to the corresponding Imported Data columns
+    
+                    fieldsToCompare.forEach(index => {
+                        if (
+                            cells[index].textContent.trim().toLowerCase() === 
+                            cells[index + offset].textContent.trim().toLowerCase()
+                        ) {
+                            cells[index].style.backgroundColor = 'lightgreen';
+                            cells[index + offset].style.backgroundColor = 'lightgreen';
+                        }
+                    });
+    
+                    // Special case for Quantity (treat "9.0" as "9")
+                    const quantityA = parseFloat(cells[quantityIndex].textContent.trim());
+                    const quantityB = parseFloat(cells[quantityIndex + offset].textContent.trim());
+    
+                    if (!isNaN(quantityA) && !isNaN(quantityB) && quantityA === quantityB) {
+                        cells[quantityIndex].style.backgroundColor = 'lightgreen';
+                        cells[quantityIndex + offset].style.backgroundColor = 'lightgreen';
+                    }
+                }
+            });
+        });
+    </script>
+    
+    
+</body>
+</html>
