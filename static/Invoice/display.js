@@ -84,7 +84,7 @@ function fetch_delivery_note_sales() {
                     const grandChildRow = document.createElement("td");
                     grandChildRow.id = `grandchildren-${line.line_id}`;
                     grandChildRow.setAttribute("colspan", "6");
-                    grandChildRow.classList.add("hidden");
+                    grandChildRow.classList.add("hidden", "grandchild");
                     parentTable.appendChild(grandChildRow);
 
                     const grandChildTable = document.createElement("table");
@@ -157,6 +157,13 @@ function toggleRows(rowId) {
     if (!icon) return; // Safety check
 
     const isCollapsed = icon.textContent === "▶";
+    const grandChildContainers = document.querySelectorAll(`.grandchild`);
+
+    // Loop through the NodeList and add "hidden" class to each element
+    grandChildContainers.forEach(container => {
+        container.classList.add("hidden");
+    });
+
 
     // Update icon
     icon.textContent = isCollapsed ? "▼" : "▶";
@@ -165,6 +172,8 @@ function toggleRows(rowId) {
     const childRows = document.querySelectorAll(".nested-row");
     childRows.forEach(row => {
         row.classList.toggle("hidden", !isCollapsed); // Show if expanding, hide if collapsing
+        const childIcon = row.querySelector(`.child-expand-icon`);
+        childIcon.textContent = "▶";
     });
 
 }
@@ -195,14 +204,19 @@ document.addEventListener("DOMContentLoaded", () => {
             const noteNumber = target.dataset.id;
             const checked = target.checked;
             toggleChildCheckboxes(noteNumber, checked);
-            updateParentCheckboxState(noteNumber);
             updateTotal()
         }
         
         // If the changed target is a child/grandchild checkbox
-        if (target.classList.contains("line-checkbox") || target.classList.contains("child-line-checkbox")) {
-            const noteNumber = target.dataset.id.split("-")[0];
-            updateParentCheckboxState(noteNumber);
+        if (target.classList.contains("line-checkbox")) {
+            const lineId = target.dataset.id.split("-")[1];
+            const checked = target.checked;
+            updateParentCheckboxState(lineId, checked);
+            updateTotal()
+        }
+        if( target.classList.contains("child-line-checkbox")){
+            const lineId = target.dataset.id.split("-")[1];
+            updateParentAndGrandparentCheckboxState(lineId)
             updateTotal()
         }
     });
@@ -213,21 +227,35 @@ function toggleChildCheckboxes(noteNumber, checked) {
     const childCheckboxes = document.querySelectorAll(`input[data-id^="${noteNumber}-"]`);
     childCheckboxes.forEach(childCheckbox => {
         childCheckbox.checked = checked;
+        const grandChildCheckboxes = childCheckbox.querySelectorAll(`.grandchild`)
+        grandChildCheckboxes.forEach(grandChildCheckbox => {
+            grandChildCheckbox.checked = checked;
+        });
     });
 }
 
-function updateParentCheckboxState(noteNumber) {
-    const parentCheckbox = document.querySelector(`input[data-id="${noteNumber}"]`);
+function updateParentCheckboxState(line_id, checked) {
+    const parentCheckbox = document.querySelector(`.main-checkbox`);
     if (!parentCheckbox) return;
 
-    const childCheckboxes = document.querySelectorAll(`input[data-id^="${noteNumber}-"]`);
-    const totalChildCheckboxes = childCheckboxes.length;
-    const checkedChildCheckboxes = Array.from(childCheckboxes).filter(checkbox => checkbox.checked).length;
+    const grandChildCheckboxes = document.querySelectorAll(`#grandchildren-${line_id} .child-line-checkbox`);
+    console.log(grandChildCheckboxes)
+    grandChildCheckboxes.forEach(grandChildCheckbox => {
+        grandChildCheckbox.checked = checked;
+    });
+    // Select all the checkboxes within the nested rows
+    const childCheckboxes = document.querySelectorAll(".nested-row .line-checkbox");
 
-    if (checkedChildCheckboxes === totalChildCheckboxes) {
+    // Count all checkboxes
+    const totalCheckboxes = childCheckboxes.length;
+
+    // Count how many checkboxes are ticked (checked)
+    const checkedCheckboxes = Array.from(childCheckboxes).filter(checkbox => checkbox.checked).length;
+
+    if (checkedCheckboxes === totalCheckboxes) {
         parentCheckbox.checked = true;
         parentCheckbox.indeterminate = false; // No dash
-    } else if (checkedChildCheckboxes === 0) {
+    } else if (checkedCheckboxes=== 0) {
         parentCheckbox.checked = false;
         parentCheckbox.indeterminate = false; // No dash
     } else {
@@ -235,6 +263,54 @@ function updateParentCheckboxState(noteNumber) {
         parentCheckbox.indeterminate = true; // Dash
     }
 }
+
+function updateParentAndGrandparentCheckboxState(line_id) {
+    const parentCheckbox = document.querySelector(`#row-${line_id} .line-checkbox`);
+    const grandparentCheckbox = document.querySelector(` .main-checkbox`);
+
+    if (!parentCheckbox || !grandparentCheckbox) {
+        alert("not found")
+        return;
+    }
+    // Get all the grandchild checkboxes (checkboxes under this line's grandchildren)
+    const grandChildCheckboxes = document.querySelectorAll(`#grandchildren-${line_id} .child-line-checkbox`);
+    const totalGrandChildCheckboxes = grandChildCheckboxes.length;
+    const checkedGrandChildCheckboxes = Array.from(grandChildCheckboxes).filter(checkbox => checkbox.checked).length;
+
+    // Get all the child checkboxes for the parent (checkboxes within this line)
+    const childCheckboxes = document.querySelectorAll(`#row-${line_id} .line-checkbox`);
+    const totalChildCheckboxes = childCheckboxes.length;
+    const checkedChildCheckboxes = Array.from(childCheckboxes).filter(checkbox => checkbox.checked).length;
+
+    // Check the state of the grandparent (parent) checkbox
+    const totalCheckboxes = totalChildCheckboxes + totalGrandChildCheckboxes;
+    const checkedCheckboxes = checkedChildCheckboxes + checkedGrandChildCheckboxes;
+
+    // Update the parent checkbox (child line checkbox)
+    if (checkedGrandChildCheckboxes === totalGrandChildCheckboxes) {
+        parentCheckbox.checked = true;
+        parentCheckbox.indeterminate = false;
+    } else if (checkedGrandChildCheckboxes === 0) {
+        parentCheckbox.checked = false;
+        parentCheckbox.indeterminate = false;
+    } else {
+        parentCheckbox.checked = false;
+        parentCheckbox.indeterminate = true;
+    }
+
+    // Update the grandparent checkbox
+    if (checkedCheckboxes === totalCheckboxes) {
+        grandparentCheckbox.checked = true;
+        grandparentCheckbox.indeterminate = false;
+    } else if (checkedCheckboxes === 0) {
+        grandparentCheckbox.checked = false;
+        grandparentCheckbox.indeterminate = false;
+    } else {
+        grandparentCheckbox.checked = false;
+        grandparentCheckbox.indeterminate = true;
+    }
+}
+
 function updateTotal() {
     let total_amount = 0;
     let total_quantity = 0;
@@ -247,14 +323,12 @@ function updateTotal() {
         // Check if the row contains a class "main-row" or "nested-row"
         if (!row.classList.contains("main-row") && !row.classList.contains("nested-row")) {
 
-
-
             // Only add the amount for leaf nodes
             const amountCell = row.querySelector("td:nth-child(4)");
             const amount = parseFloat(amountCell.textContent.replace(/[$,]/g, "")) || 0;
             total_amount += amount;
 
-            const quantityCell = row.querySelector("td:nth-child(3)");
+            const quantityCell = row.querySelector("td:nth-child(2)");
             const quantity = parseFloat(quantityCell.textContent.replace(/[$,]/g, "")) || 0;
             total_quantity += quantity;
 

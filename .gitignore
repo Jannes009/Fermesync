@@ -1,13 +1,25 @@
 # Ignore Python/Flask virtual environments
 flask-auth/
+env/
 __pycache__/
 build/
 
 # Ignore database files
 *.sqlite3
+*.db
 
 # Ignore system files
 .DS_Store
 user.db
+
+# Ignore sensitive and generated files
+encryption.key
+dist/
+*.exe
+
+# Ignore logs
+*.log
+
+# Ignore JSON files (if they contain sensitive or temporary data)
 *.json
 
