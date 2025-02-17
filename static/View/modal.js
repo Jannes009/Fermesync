@@ -262,7 +262,7 @@ document.addEventListener('DOMContentLoaded', () => {
         const existingRows = document.querySelectorAll('.sales-entries-list tr');
         existingRows.forEach(row => {
             const lineId = currentLineId;
-            const salesId = row.querySelector('.id')?.textContent;
+            const salesId = row.querySelector('button').getAttribute('data-id');  // Get the data-id attribute value;
             const date = row.querySelector('input[type="date"]').value;
             const quantity = row.querySelector('.quantity-input').value;
             const price = row.querySelector('.price-input').value || 0;
@@ -324,7 +324,7 @@ document.addEventListener('DOMContentLoaded', () => {
             alert('No sales data to submit!');
             return;
         }
-
+        console.log(salesData)
         // Send data to the backend
         fetch('/submit_sales_entries', {
             method: 'POST',

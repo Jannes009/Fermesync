@@ -88,7 +88,6 @@ def get_entry_details(entry_id):
 def submit_sales_entry():
     data = request.get_json()
     lines = data.get('salesEntries')
-    print(data)
 
     conn = create_db_connection()
     cursor = conn.cursor()
@@ -161,7 +160,7 @@ def get_sales_entries(lineId):
             """ 
         cursor.execute(query, (lineId,))
         rows = cursor.fetchall()
-
+        print(rows)
         query = """
         Select AvailableQtyForSale from [dbo].[_uvDelQuantities] Where DelLineIndex = ?
         """
