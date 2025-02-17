@@ -88,6 +88,7 @@ def get_entry_details(entry_id):
 def submit_sales_entry():
     data = request.get_json()
     lines = data.get('salesEntries')
+    print(data)
 
     conn = create_db_connection()
     cursor = conn.cursor()
@@ -142,7 +143,7 @@ def submit_sales_entry():
 def get_sales_entries(lineId):
     # Retrieve the `viewMode` parameter from the query string
     view_mode = request.args.get('viewMode', 'false').lower() == 'true'
-    print(lineId)
+
     try:
         conn = create_db_connection()
         cursor = conn.cursor()
@@ -181,7 +182,7 @@ def get_sales_entries(lineId):
             }
             for row in rows 
         ]
-        print(sales_entries)
+
         return jsonify({'success': True, 'sales_entries': sales_entries, 'available_for_sale': available_for_sale})
     except Exception as e:
         print(f'Error retrieving sales entries: {e}')
@@ -218,7 +219,6 @@ def search_sales():
     start_date = request.args.get('startDate')
     end_date = request.args.get('endDate')
     line_id = request.args.get('lineId')
-    print(start_date, end_date, line_id)
     
     if not start_date or not end_date:
         return jsonify({"error": "Both start date and end date are required"}), 400
@@ -244,7 +244,7 @@ def search_sales():
             "price": row[5],
             "amount": row[6]
         })
-    print(sales)
+
     return jsonify({'success': True, 'sales_entries': sales})
 
     # except Exception as e:

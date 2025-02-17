@@ -149,7 +149,7 @@ async function openModal(){
     }
 }
 
-document.getElementById("search-button").addEventListener("click", fetch_delivery_note_sales);
+
 
 function toggleRows(rowId) {
     const icon = document.querySelector(`#row-${rowId} .expand-icon`);
@@ -318,7 +318,6 @@ function updateTotal() {
     document.querySelectorAll("input[type='checkbox']:checked").forEach(checkbox => {
         const checkboxId = checkbox.getAttribute("data-id");
         const row = checkbox.closest("tr");
-        console.log(row.classList)
 
         // Check if the row contains a class "main-row" or "nested-row"
         if (!row.classList.contains("main-row") && !row.classList.contains("nested-row")) {

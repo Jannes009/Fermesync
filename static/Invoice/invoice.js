@@ -1,4 +1,6 @@
 document.addEventListener("DOMContentLoaded", () => {
+
+    document.getElementById("search-button").addEventListener("click", fetch_delivery_note_sales);
     // Function to toggle all descendants
     function toggleDescendants(parentId, isChecked) {
         const descendantCheckboxes = document.querySelectorAll(`input[type='checkbox'][data-id^="${parentId}-"]`);

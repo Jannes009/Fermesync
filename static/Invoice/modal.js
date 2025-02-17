@@ -1,3 +1,5 @@
+let qtyAvailable = 0;
+let selectedProductId = null;
 
 document.addEventListener("DOMContentLoaded", function () {
     const salesModal = document.getElementById("salesModal");
@@ -21,9 +23,7 @@ document.addEventListener("DOMContentLoaded", function () {
     closeButton.addEventListener("click", closeModal);
     modalOverlay.addEventListener("click", closeModal);
 
-    let selectedProductId = null;
     let salesBefore = 0;
-    let qtyAvailable = 0;
 
     function addRow(){
         const row = document.createElement("tr");
@@ -97,7 +97,7 @@ document.addEventListener("DOMContentLoaded", function () {
                     isValid = false;
                     return;
                 }
-    
+                console.log(selectedProductId)
                 // Add the sales entry to the array
                 salesData.push({
                     lineId: selectedProductId,
@@ -129,6 +129,7 @@ document.addEventListener("DOMContentLoaded", function () {
         }
         salesDetails.style.display = "none";
         productSelection.style.display = "block";
+        console.log(salesData)
     
         // Send data to the backend
         fetch('/submit_sales_entries', {
@@ -141,7 +142,7 @@ document.addEventListener("DOMContentLoaded", function () {
             }),
         })
         .then((response) => response.json())
-        .then((data) => {
+        .then(async (data) => {
             if (data.success) {
                 const rowChanged = document.querySelector(`[row-id='${selectedProductId}']`);
                 
@@ -156,7 +157,7 @@ document.addEventListener("DOMContentLoaded", function () {
                         changeBtn.remove();
                     }
                 }
-                fetchProducts()
+                await fetchProducts()
                 alert('Data submitted successfully!');
                 document.querySelector('.modal-overlay').style.display = 'none';
             } else {
@@ -171,65 +172,65 @@ document.addEventListener("DOMContentLoaded", function () {
     addRow()
 });
 
-    // Function to fetch products based on the Delivery Note number
-    async function fetchProducts() {
-        const deliveryNoteNumber = document.getElementById("delivery-note-number").value.trim();
-        let verifyIconSrc = document.getElementById('verify-icon').getAttribute('src');
+// Function to fetch products based on the Delivery Note number
+async function fetchProducts() {
+    const deliveryNoteNumber = document.getElementById("delivery-note-number").value.trim();
+    let verifyIconSrc = document.getElementById('verify-icon').getAttribute('src');
 
-        // Check if 'verifyIconSrc' contains 'neutral' or 'error'
-        if (verifyIconSrc.includes('neutral') || verifyIconSrc.includes('error')) {
-            alert("This delivery note doesn't exist")
-            return false;  // Exit the function or stop further execution
-        }      
-        
-        try {
-            // Wait for the delivery note ID to be fetched before proceeding
-            const deliveryNoteId = await fetchDeliveryNoteId(deliveryNoteNumber);
-            console.log(deliveryNoteId);
+    // Check if 'verifyIconSrc' contains 'neutral' or 'error'
+    if (verifyIconSrc.includes('neutral') || verifyIconSrc.includes('error')) {
+        alert("This delivery note doesn't exist")
+        return false;  // Exit the function or stop further execution
+    }      
+    
+    try {
+        // Wait for the delivery note ID to be fetched before proceeding
+        const deliveryNoteId = await fetchDeliveryNoteId(deliveryNoteNumber);
+        console.log(deliveryNoteId);
 
-            // Fetch the products using the fetched Delivery Note ID
-            const response = await fetch(`/entry/details/${deliveryNoteId}`);
-            const data = await response.json();
+        // Fetch the products using the fetched Delivery Note ID
+        const response = await fetch(`/entry/details/${deliveryNoteId}`);
+        const data = await response.json();
 
-            if (data.success) {
-                const productTableBody = document.getElementById("productTableBody");
-                productTableBody.innerHTML = "";  // Clear previous results
+        if (data.success) {
+            const productTableBody = document.getElementById("productTableBody");
+            productTableBody.innerHTML = "";  // Clear previous results
 
-                data.data.forEach(product => {
-                    const row = document.createElement("tr");
-                    row.classList.add("product-line");
-                    row.dataset.id = product.lineId;
-                    row.innerHTML = `
-                        <td>${product.description}</td>
-                        <td>${product.quantity}</td>
-                        <td>${product.qty_sold}</td>
-                        <td>${product.qty_invoiced}</td>
-                    `;
-                    row.addEventListener("click", function () {
-                        document.querySelectorAll(".product-line").forEach(r => r.classList.remove("selected"));
-                        row.classList.add("selected");
-                        selectedProductId = product.lineId;
-                        salesBefore = product.qty_sold;
-                        qtyAvailable = product.quantity - product.qty_sold
-                        console.log("Sales availbable:", qtyAvailable)
-                        productSelection.style.display = "none";
-                        salesDetails.style.display = "block";
-                    });
-                    productTableBody.appendChild(row);
+            data.data.forEach(product => {
+                const row = document.createElement("tr");
+                row.classList.add("product-line");
+                row.dataset.id = product.lineId;
+                row.innerHTML = `
+                    <td>${product.description}</td>
+                    <td>${product.quantity}</td>
+                    <td>${product.qty_sold}</td>
+                    <td>${product.qty_invoiced}</td>
+                `;
+                row.addEventListener("click", function () {
+                    document.querySelectorAll(".product-line").forEach(r => r.classList.remove("selected"));
+                    row.classList.add("selected");
+                    selectedProductId = product.lineId;
+                    salesBefore = product.qty_sold;
+                    qtyAvailable = product.quantity - product.qty_sold
+                    console.log("Sales availbable:", qtyAvailable)
+                    productSelection.style.display = "none";
+                    salesDetails.style.display = "block";
                 });
+                productTableBody.appendChild(row);
+            });
 
-                productSelection.style.display = "block";
-                return true;
-            } else {
-                alert("Failed to fetch products.");
-                return false;
-            }
-        } catch (error) {
-            console.error("Error fetching products:", error);
-            alert("Error fetching products.");
+            productSelection.style.display = "block";
+            return true;
+        } else {
+            alert("Failed to fetch products.");
             return false;
         }
+    } catch (error) {
+        console.error("Error fetching products:", error);
+        alert("Error fetching products.");
+        return false;
     }
+}
 
 function createEventListener(row){
     const priceInput = row.querySelector('.price-input');
