@@ -29,7 +29,7 @@
 
         <!-- Auto Import Form -->
         <h4>Auto</h4>
-        <form action="{{ url_for('import.auto_import') }}" method="post" class="mt-3">
+        <form id="autoImportForm" class="mt-3">
             <div class="mb-3">
                 <label for="start_date" class="form-label">Start Date</label>
                 <input type="date" class="form-control" id="start_date" name="start_date" required>
@@ -39,9 +39,10 @@
                 <input type="date" class="form-control" id="end_date" name="end_date" required>
             </div>
             <div id="date-error" class="text-danger mt-2" style="display: none;"></div>
-
+        
             <button type="submit" class="btn btn-primary">Auto Import</button>
         </form>
+        
     </div>
 
     <!-- Navigation Buttons -->
@@ -97,6 +98,56 @@
             form.addEventListener("submit", validateDates);
         });
         </script>
+        <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+        <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+<script>
+document.getElementById("autoImportForm").addEventListener("submit", function(event) {
+    event.preventDefault(); // Prevent default form submission
+    
+    let formData = new FormData(this);
+    let startDate = formData.get("start_date");
+    let endDate = formData.get("end_date");
+
+    Swal.fire({
+        title: "Processing...",
+        html: "<div id='statusUpdates'>Initializing...</div>",
+        icon: "info",
+        allowOutsideClick: false,
+        showConfirmButton: false,
+        didOpen: () => {
+            Swal.showLoading();
+
+            // Open SSE connection
+            const eventSource = new EventSource("{{ url_for('import.auto_import') }}");
+
+            eventSource.onmessage = function(event) {
+                let statusText = event.data;
+
+                if (statusText.startsWith("ERROR:")) {
+                    Swal.fire({
+                        title: "Error",
+                        text: statusText.replace("ERROR:", "").trim(),
+                        icon: "error",
+                        confirmButtonText: "OK"
+                    });
+                    eventSource.close();
+                } else if (statusText.startsWith("SUCCESS:")) {
+                    Swal.fire({
+                        title: "Success",
+                        text: statusText.replace("SUCCESS:", "").trim(),
+                        icon: "success",
+                        confirmButtonText: "OK"
+                    });
+                    eventSource.close();
+                } else {
+                    document.getElementById("statusUpdates").innerHTML = statusText;
+                }
+            };
+        }
+    });
+});
+</script>
+
         
 </body>
 </html>

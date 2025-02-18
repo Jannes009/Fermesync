@@ -36,70 +36,70 @@ def get_newest_downloaded_file(existing_files, directory, base_filename, timeout
 
     return None  # Return None if no new file appears within the timeout
 
-@import_bp.route('/auto_import', methods=['POST'])
+from flask import Response, stream_with_context
+
+@import_bp.route('/auto_import', methods=['GET', 'POST'])
 def auto_import():
-    """Automates the report import process from the CRM."""
-    start_date = request.form.get('start_date')
-    end_date = request.form.get('end_date')
+    """Automates the report import process from the CRM with real-time updates."""
 
+    def generate_status():
+        start_date = request.form.get('start_date')
+        end_date = request.form.get('end_date')
 
-    # List existing files before downloading
-    download_folder = r"C:\\Users\\kapok\\Downloads"
-    existing_files = set(os.listdir(download_folder))
+        # List existing files before downloading
+        download_folder = r"C:\\Users\\kapok\\Downloads"
+        existing_files = set(os.listdir(download_folder))
 
-    logging.info("Initializing Selenium WebDriver...")
-    driver = initialize_driver()  # Initialize Selenium WebDriver
+        yield "data: Connecting to Technofresh...\n\n"
+        driver = initialize_driver()
 
-    if not driver:
-        flash("Failed to initialize web driver.", "error")
-        return redirect(url_for('import.import_page'))
+        if not driver:
+            yield "data: ERROR: Failed to connect.\n\n"
+            return
+        
+        try:
+            yield "data: Navigating to report download page...\n\n"
+            driver.get("https://crm.technofresh.co.za/reports/view/8/xls")
 
-    try:
-        logging.info("Navigating to report download page...")
-        driver.get("https://crm.technofresh.co.za/reports/view/8/xls")
+            driver.execute_script("document.getElementsByName('from_date')[0].value = arguments[0]", start_date)
+            driver.execute_script("document.getElementsByName('to_date')[0].value = arguments[0]", end_date)
 
-        driver.execute_script("document.getElementsByName('from_date')[0].value = arguments[0]", start_date)
-        driver.execute_script("document.getElementsByName('to_date')[0].value = arguments[0]", end_date)
+            driver.find_element(By.NAME, "submit").click()
+            yield "data: Report request submitted.\n\n"
 
-        driver.find_element(By.NAME, "submit").click()
-        logging.info("Report request submitted.")
+            # Wait for the file to download
+            base_filename = "Excel_Daily_Sales_Details_Report_"
+            yield "data: Waiting for file to download...\n\n"
+            
+            downloaded_file = get_newest_downloaded_file(existing_files, download_folder, base_filename, timeout=30)
 
-        # Wait for the file to download
-        base_filename = "Excel_Daily_Sales_Details_Report_"
+            if not downloaded_file:
+                yield "data: ERROR: File download failed.\n\n"
+                return
 
-        logging.info("Waiting for file to download...")
-        downloaded_file = get_newest_downloaded_file(existing_files, download_folder, base_filename, timeout=30)
+            yield f"data: File downloaded: {downloaded_file}\n\n"
 
-        if not downloaded_file:
-            flash(session.get('status', "File download failed."), "error")
-            logging.error("File download failed.")
+        except Exception as e:
+            yield f"data: ERROR: {str(e)}\n\n"
+            return
+
+        finally:
             driver.quit()
-            return redirect(url_for('import.import_page'))
 
-        logging.info(f"File downloaded: {downloaded_file}")
+        # Process the downloaded file
+        try:
+            yield "data: Inserting data...\n\n"
+            insert_data(downloaded_file)
+            yield "data: Adding consignments...\n\n"
+            add_consignments()
+            yield "data: Adding sales...\n\n"
+            add_sales()
+            yield "data: SUCCESS: Data import completed successfully!\n\n"
+        except Exception as e:
+            yield f"data: ERROR: {str(e)}\n\n"
 
-    except Exception as e:
-        logging.error(f"Error during report download: {e}")
-        flash("An error occurred while downloading the report.", "error")
-        return redirect(url_for('import.import_page'))
+    return Response(stream_with_context(generate_status()), content_type="text/event-stream")
 
-    finally:
-        driver.quit()  # Ensure the driver quits even if an error occurs
-
-    # Process the downloaded file
-    try:
-        logging.info("Inserting data...")
-        insert_data(downloaded_file)
-        logging.info("Adding consignments...")
-        add_consignments()
-        logging.info("Adding sales...")
-        add_sales()
-        logging.info("Data import completed successfully.")
-    except Exception as e:
-        logging.error(f"Error during data processing: {e}")
-        flash("An error occurred while processing the data.", "error")
-
-    return redirect(url_for('import.import_page'))
 
 
 @import_bp.route('/upload_excel', methods=['POST'])
