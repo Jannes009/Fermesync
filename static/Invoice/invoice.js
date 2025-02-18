@@ -12,9 +12,7 @@ document.addEventListener("DOMContentLoaded", () => {
 
     function updateAncestors(childId) {
         const levels = childId.split("-");
-    
-        // Debugging initial levels
-        console.log("Initial levels:", levels);
+
     
         while (levels.length > 1) {
             levels.pop(); // Remove the last level to move up the hierarchy
