@@ -128,34 +128,34 @@ main {
     display: block;
 }
 
-/* Responsive Design */
-@media (max-width: 768px) {
+@media (max-width: 800px) { /* Adjust breakpoint if needed */
     .taskbar {
-        flex-direction: column;
-        align-items: flex-start;
+        padding: 8px 12px;
         height: auto;
-        padding: 10px;
     }
 
     .taskbar ul {
-        flex-direction: column;
-        width: 100%;
+        display: flex !important; /* Ensure buttons always show */
+        flex-wrap: wrap; /* Prevent overflow */
+        gap: 5px;
     }
 
     .taskbar-link {
-        width: 100%;
-        text-align: left;
+        font-size: 0.9rem;
+        padding: 8px 12px; /* Reduce padding */
     }
 
-    .taskbar ul {
-        display: none;
+    .user-section {
+        padding: 5px;
     }
 
-    .taskbar.open ul {
-        display: flex;
-        flex-direction: column;
+    .username {
+        font-size: 0.9rem;
+        padding: 8px 10px;
     }
 }
+
+
 
 
 </style>
