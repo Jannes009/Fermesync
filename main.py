@@ -33,7 +33,7 @@ def create_app():
     app.register_blueprint(view_bp)
     app.register_blueprint(invoice_bp)
     app.register_blueprint(maintanance_bp)
-    app.register_blueprint(import_bp)
+    app.register_blueprint(import_bp, url_prefix='/import')
 
     # Create all tables
     with app.app_context():

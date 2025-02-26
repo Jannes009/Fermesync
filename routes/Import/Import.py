@@ -1,78 +1,142 @@
-from flask import Blueprint, render_template, request, redirect, url_for, flash, session, jsonify
-from db import create_db_connection, initialize_driver
+from flask import Blueprint, render_template, request, redirect, url_for, flash, jsonify, Response, stream_with_context, session
+from db import create_db_connection
 import pandas as pd
-import pypyodbc
-from routes.db_functions import get_stock_name
+import os, logging, time
 from selenium.webdriver.common.by import By
-import time
-import os, logging
+from routes.db_functions import get_stock_name
+import pypyodbc
+from db import initialize_driver
 
 import_bp = Blueprint('import', __name__)
 
-# Import Page
-@import_bp.route('/import_page', methods=['GET'])
+@import_bp.route('/main', methods=['GET'])
 def import_page():
-    print("succes2")
     return render_template('Import/import.html')
-
 
 logging.basicConfig(level=logging.INFO)
 
 def get_newest_downloaded_file(existing_files, directory, base_filename, timeout=30):
-    """Tracks new downloads by comparing files before and after download."""
-
     start_time = time.time()
     while time.time() - start_time < timeout:
         current_files = set(os.listdir(directory))
-        new_files = current_files - existing_files  # Find newly added files
-
-        # Check if any new files match the expected pattern
+        new_files = current_files - existing_files
         matching_files = [f for f in new_files if f.startswith(base_filename)]
         if matching_files:
-            # Sort by modification time and return the most recent one
             return os.path.join(directory, sorted(matching_files, key=lambda x: os.path.getmtime(os.path.join(directory, x)), reverse=True)[0])
+        time.sleep(1)
+    return None
 
-        time.sleep(1)  # Wait and check again
+@import_bp.route('/get_imported_results', methods=['GET'])
+def get_import_results():
+    conn = create_db_connection()
+    cursor = conn.cursor()
 
-    return None  # Return None if no new file appears within the timeout
+    # Get unique records from MarketData
+    cursor.execute("""
+        SELECT DISTINCT
+            SupplierRef, ConsignmentID, Product, Variety, Size, Class, Mass_kg, QtySent
+        FROM MarketData
+    """)
+    summary_data = cursor.fetchall()
 
-from flask import Response, stream_with_context
+    results = []
+    for row in summary_data:
+        supplier_ref, consignment_id, product, variety, size, class_, mass_kg, qty_sent = row
 
-@import_bp.route('/auto_import', methods=['GET', 'POST'])
+        # Check if ConsignmentID exists in ZZDeliveryNoteLines
+        cursor.execute("SELECT COUNT(*) FROM ZZDeliveryNoteLines WHERE ConsignmentID = ?", (consignment_id,))
+        match_count = cursor.fetchone()[0]
+        matched_status = "Yes" if match_count > 0 else "No"
+
+        # Get the top MatchCount and MaxMatchDuplicate from PotentialMatches
+        cursor.execute("""
+            SELECT 
+                MAX(MatchCount) AS TopMatchCount,
+                CASE 
+                    WHEN COUNT(*) > 1 THEN 'Yes' 
+                    ELSE 'No' 
+                END AS MaxMatchDuplicate
+            FROM PotentialMatches
+            WHERE ConsignmentID = ?
+        """, (consignment_id,))
+        match_result = cursor.fetchone()
+        top_match_count = match_result[0] if match_result[0] is not None else 0
+        max_match_duplicate = match_result[1]
+
+        results.append({
+            "SupplierRef": supplier_ref,
+            "ConsignmentID": consignment_id,
+            "Product": product,
+            "Variety": variety,
+            "Size": size,
+            "Class": class_,
+            "Mass_kg": mass_kg,
+            "QtySent": qty_sent,
+            "Matched": matched_status,
+            "TopMatchCount": top_match_count,
+            "MaxMatchDuplicate": max_match_duplicate
+        })
+
+    conn.close()
+    return jsonify(results)
+
+
+@import_bp.route('/get_dockets/<consignment_id>', methods=['GET'])
+def get_dockets(consignment_id):
+    conn = create_db_connection()
+    cursor = conn.cursor()
+
+    cursor.execute("""
+        SELECT DocketNumber, QtySold, Price, SalesValue, DateSold
+        FROM MarketData
+        WHERE ConsignmentID = ?
+    """, (consignment_id,))
+
+    dockets = cursor.fetchall()
+    conn.close()
+
+    return jsonify([{
+        "DocketNumber": row[0],
+        "QtySold": row[1],
+        "Price": row[2],
+        "SalesValue": row[3],
+        "Date": row[4], 
+    } for row in dockets])
+
+
+
+@import_bp.route('/auto_import', methods=['GET'])
 def auto_import():
-    """Automates the report import process from the CRM with real-time updates."""
-
     def generate_status():
-        start_date = request.form.get('start_date')
-        end_date = request.form.get('end_date')
+        start_date = request.args.get('start_date')
+        end_date = request.args.get('end_date')
 
-        # List existing files before downloading
+        if not start_date or not end_date:
+            yield "data: ERROR: Missing start_date or end_date.\n\n"
+            return
+
         download_folder = r"C:\\Users\\kapok\\Downloads"
         existing_files = set(os.listdir(download_folder))
 
         yield "data: Connecting to Technofresh...\n\n"
         driver = initialize_driver()
-
         if not driver:
             yield "data: ERROR: Failed to connect.\n\n"
             return
-        
+
         try:
             yield "data: Navigating to report download page...\n\n"
             driver.get("https://crm.technofresh.co.za/reports/view/8/xls")
 
             driver.execute_script("document.getElementsByName('from_date')[0].value = arguments[0]", start_date)
             driver.execute_script("document.getElementsByName('to_date')[0].value = arguments[0]", end_date)
-
             driver.find_element(By.NAME, "submit").click()
-            yield "data: Report request submitted.\n\n"
+            yield "data: Report request submitted...\n\n"
 
-            # Wait for the file to download
             base_filename = "Excel_Daily_Sales_Details_Report_"
             yield "data: Waiting for file to download...\n\n"
-            
-            downloaded_file = get_newest_downloaded_file(existing_files, download_folder, base_filename, timeout=30)
 
+            downloaded_file = get_newest_downloaded_file(existing_files, download_folder, base_filename, timeout=30)
             if not downloaded_file:
                 yield "data: ERROR: File download failed.\n\n"
                 return
@@ -82,18 +146,13 @@ def auto_import():
         except Exception as e:
             yield f"data: ERROR: {str(e)}\n\n"
             return
-
         finally:
             driver.quit()
 
-        # Process the downloaded file
         try:
             yield "data: Inserting data...\n\n"
-            insert_data(downloaded_file)
-            yield "data: Adding consignments...\n\n"
-            add_consignments()
-            yield "data: Adding sales...\n\n"
-            add_sales()
+            docket_count = insert_data(downloaded_file)  # Modify `insert_data` to return count
+            yield f"data: Dockets imported: {docket_count}\n\n"
             yield "data: SUCCESS: Data import completed successfully!\n\n"
         except Exception as e:
             yield f"data: ERROR: {str(e)}\n\n"
@@ -101,139 +160,74 @@ def auto_import():
     return Response(stream_with_context(generate_status()), content_type="text/event-stream")
 
 
-
 @import_bp.route('/upload_excel', methods=['POST'])
 def upload_excel():
     file = request.files.get('file')
+    if not file:
+        return jsonify({"results": [{"file": "N/A", "status": "Failed", "message": "No file selected!"}]}), 400
 
-    insert_data(file)
-    add_consignments()
-    add_sales()
+    try:
+        count = insert_data(file)  # Import the data and get the count of inserted rows
 
-    return redirect(url_for('import.import_page'))
+        return jsonify({
+            "results": [{
+                "file": file.filename,
+                "status": "Success" if count > 0 else "Failed",
+                "message": f"{count} lines imported successfully!" if count > 0 else "No lines imported"
+            }]
+        }), 200
+
+    except Exception as e:
+        return jsonify({
+            "results": [{
+                "file": file.filename if file else "Unknown",
+                "status": "Failed",
+                "message": str(e)
+            }]
+        }), 500
+
+
 
 def insert_data(file):
-    if not file:
-        flash('No file selected!', 'error')
-        return redirect(url_for('import.import_page'))
-    
-    # Read Excel file into a DataFrame
     df = pd.read_excel(file, skiprows=9)
-
-    # Rename columns to match SQL table column names
     df.columns = [
         'Market', 'Agent', 'Product', 'Variety', 'Size', 'Class', 'Container',
         'Mass_kg', 'Count', 'DeliveryID', 'ConsignmentID', 'SupplierRef',
         'QtySent', 'QtyAmendedTo', 'QtySold', 'DeliveryDate', 'DateSold',
         'DatePaid', 'DocketNumber', 'PaymentReference', 'MarketAvg', 'Price', 'SalesValue'
     ]
-
-    # Ensure date columns are formatted correctly
+    
     date_columns = ['DeliveryDate', 'DateSold', 'DatePaid']
     for col in date_columns:
         df[col] = pd.to_datetime(df[col], format='%m-%d-%y', errors='coerce')
 
-    # Connect to SQL Server
     conn = create_db_connection()
     cursor = conn.cursor()
-    count = 0
 
-    # Remove unwanted special characters from string columns (example for a specific column)
-    df['DocketNumber'] = df['DocketNumber'].str.replace('*', '-', regex=False)
-    df['SupplierRef'] = df['SupplierRef'].str.replace('*', '-', regex=False)
-    df['PaymentReference'] = df['PaymentReference'].str.replace('*', '-', regex=False)
+    df['DocketNumber'] = df['DocketNumber'].astype(str).str.replace('*', '-', regex=False)
+    df['SupplierRef'] = df['SupplierRef'].astype(str).str.replace('*', '-', regex=False)
+    df['PaymentReference'] = df['PaymentReference'].astype(str).str.replace('*', '-', regex=False)
 
     cursor.execute("TRUNCATE TABLE MarketData")
-    # Insert data into SQL table
+    
+    count = 0
     for _, row in df.iterrows():
         count += 1
-        # replace nan with valid data(Null)
         row_data = {col: (None if pd.isna(val) else val) for col, val in row.items()}
-
-        cursor.execute(
-            """
-            INSERT INTO MarketData (
-                Market, Agent, Product, Variety, Size, Class, Container,
-                Mass_kg, Count, DeliveryID, ConsignmentID, SupplierRef,
-                QtySent, QtyAmendedTo, QtySold, DeliveryDate, DateSold,
-                DatePaid, DocketNumber, PaymentReference, MarketAvg, Price, SalesValue
-            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-            """,
-            (row_data['Market'], row_data['Agent'], row_data['Product'], row_data['Variety'],
-            row_data['Size'], row_data['Class'], row_data['Container'], row_data['Mass_kg'],
-            row_data['Count'], row_data['DeliveryID'], row_data['ConsignmentID'], row_data['SupplierRef'],
-            row_data['QtySent'], row_data['QtyAmendedTo'], row_data['QtySold'], row_data['DeliveryDate'],
-            row_data['DateSold'], row_data['DatePaid'], row_data['DocketNumber'], row_data['PaymentReference'],
-            row_data['MarketAvg'], row_data['Price'], row_data['SalesValue'],)
-        )
-
-
-    conn.commit()
-    cursor.close()
-    conn.close()
-    
-    if count > 0:
-        flash(f'{count} lines imported successfully!', 'success')
-    else:
-        flash(f'No lines imported', 'danger')
-
-def add_consignments():
-    matched = False
-    new_consignment_matches = []
-    # Connect to SQL Server
-    conn = create_db_connection()
-    cursor = conn.cursor()
-    if conn:
-        print("Database connection successful")
-    else:
-        print("Database connection failed")
-
-    # Find Delivery Note Lines without ConsignmentID
-    cursor.execute("""
-        SELECT DelLineIndex
-        FROM ZZDeliveryNoteLines 
-        WHERE ConsignmentID IS NULL
-    """)
-    
-    lines_without_consig = cursor.fetchall()
-    
-    # Iterate over lines without ConsignmentID
-    for line in lines_without_consig:
-        del_line_index = line[0]
-        
-        # Check if the Delivery Note Line's ID exists in the MarketDataProductView
         cursor.execute("""
-            SELECT ConsignmentID 
-            FROM [dbo].[MarketDataProductView]
-            WHERE DelLineIndex = ?
-        """, (del_line_index,))
-        
-        result = cursor.fetchone()
-        
-        # If a ConsignmentID is found in the view, update the Delivery Note Line
-        if result:
-            matched = True
-            new_consignment_id = result[0]
-            new_consignment_matches.append(del_line_index)
-
-            # Update ConsignmentID in DeliveryNoteLines
-            cursor.execute("""
-                UPDATE ZZDeliveryNoteLines
-                SET ConsignmentID = ?
-                WHERE DelLineIndex = ?
-            """, (new_consignment_id, del_line_index))
-            print(f"Updated ConsignmentID for DelLineIndex {del_line_index}.")
+            INSERT INTO MarketData (
+                Market, Agent, Product, Variety, Size, Class, Container, Mass_kg, Count,
+                DeliveryID, ConsignmentID, SupplierRef, QtySent, QtyAmendedTo, QtySold,
+                DeliveryDate, DateSold, DatePaid, DocketNumber, PaymentReference, 
+                MarketAvg, Price, SalesValue
+            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+        """, tuple(row_data.values()))
 
     conn.commit()
     cursor.close()
     conn.close()
-    session['consignment_matches'] = new_consignment_matches
 
-    if matched:
-        flash(f'{len(new_consignment_matches)} consignmentsID\'s were successfully matched', 'success')
-    else:
-        flash('No new delivery note line matches', 'warning')
-
+    return count  # Return number of inserted rows
 
 def add_sales():
     error_occured = False
@@ -295,7 +289,6 @@ def add_sales():
         else:
             no_match = True
             no_matches[0].append(data_id)
-            no_matches[1].append(has_header(row[6]))
 
     cursor.commit()
     session['succesess'] = succesess
@@ -314,225 +307,93 @@ def add_sales():
         flash(f'<a href="{url_for("import.show_results", result_type="error")}" class="alert-link">'
         f'{len(errors)} transactions were already added previously</a>', 'danger')
 
-@import_bp.route('/show_results/<result_type>')
-def show_results(result_type):
-    no_matches = False
-    ids = []
 
-    # Map the result type to the corresponding list
-    if result_type == "success":
-        ids = session.get("succesess") or []
-        title = "Successfully Added Transactions"
-        explanation = "These transactions were successfully created in the database:"
-    elif result_type == "no_match":
-        ids = session.get("no_matches") or [[], []]  # Ensure it has two lists
-        title = "Transactions Not Matched"
-        explanation = "These transactions didn't have a matching Delivery Note line:"
-        no_matches = True
-    elif result_type == "error":
-        ids = session.get("errors") or []
-        title = "Errors in Transactions"
-        explanation = "These transactions were already previously added to the database and can't be added again:"
-    else:
-        title = "Unknown Results"
-        explanation = "An unknown error occurred."
-
-    results = []
-
-    # Ensure there are IDs before querying the database
-    if ids:
-        conn = create_db_connection()
-        cursor = conn.cursor()
-
-        if no_matches and ids[0]:  # Ensure ids[0] is not empty
-            placeholders = ",".join("?" * len(ids[0]))  # Create placeholders dynamically
-            query = f"""
-                SELECT 
-                    ConsignmentID, SupplierRef, Product, Variety, Size, Class, Mass_kg, QtySold, Price, QtySent
-                FROM MarketData
-                WHERE Id IN ({placeholders})
-            """
-            cursor.execute(query, ids[0])
-            fetched_results = cursor.fetchall()
-
-            # Append ids[1] to each row safely
-            results = [row + (ids[1][index],) for index, row in enumerate(fetched_results)]
-        elif not no_matches and ids:  # Regular case
-            placeholders = ",".join("?" * len(ids))
-            query = f"""
-                SELECT 
-                    ConsignmentID, SupplierRef, Product, Variety, Size, Class, Mass_kg, QtySold, Price, QtySent
-                FROM MarketData
-                WHERE Id IN ({placeholders})
-            """
-            cursor.execute(query, ids)
-            results = cursor.fetchall()
-
-        cursor.close()
-        conn.close()
-
-    print(result_type)
-    # Render the results page with the fetched data
-    return render_template('Import/results.html', results=results, title=title, explanation=explanation, no_matches=no_matches, result_type=result_type)
-
-
-
-def has_header(header):
-    conn = create_db_connection()
-    cursor = conn.cursor()
-    header_id = header[5:]
+def get_consignment_details(consignment_id):
     query = """
-    Select * from [dbo].[ZZDeliveryNoteHeader]
-    WHERE DelNoteNo = ?
-    """
-    cursor.execute(query, (header_id,))
-    check_result = cursor.fetchone()
-    if check_result:
-        cursor.close()
-        conn.close()
-        return True
-    else:
-        cursor.close()
-        conn.close()
-        return False
-    
-@import_bp.route('/manual_matching/<string:consignment_id>')
-def manual_matching(consignment_id):
-    print(f"Consignment ID: {consignment_id}")
-    conn = create_db_connection()
-    cursor = conn.cursor()
-
-    # Query to fetch details from MarketData
-    query = """
-    SELECT 
-        ConsignmentID, SupplierRef, Product, Variety, Size, Class, Mass_kg, QtySent, SupplierRef
-    FROM MarketData
+    SELECT DISTINCT 
+        ImportProduct, ImportVariety, ImportClass, ImportMass, ImportSize, ImportQty
+    FROM PotentialMatches
     WHERE ConsignmentID = ?
     """
-    cursor.execute(query, (consignment_id,))
-    market_data = cursor.fetchone()
-    header_number = market_data[8][5:]
-
-    if not market_data:
-        return "Consignment ID not found", 404
-
-    query = """
-    Select * from [dbo].[ZZDeliveryNoteHeader]
-    WHERE DelNoteNo = ?
-    """
-    cursor.execute(query, (header_number,))
-    header_id = cursor.fetchone()
-
-    # Query to fetch details from ZZDeliveryNoteLines
-    del_query = """
+    
+    matches_query = """
     SELECT 
-        DelHeaderId, DelLineIndex, DelLineStockId, DelLineQuantityBags, ConsignmentID
-    FROM ZZDeliveryNoteLines
-    WHERE DelHeaderId = ?
-    """
-    cursor.execute(del_query, (header_id[0],))
-    del_lines = cursor.fetchall()
-    result = []
-    for row in del_lines:
-        if row[4] == None:
-            stock_description = get_stock_name(row[2], cursor)
-            # Split the description into its parts
-            description_parts = stock_description[0].split('-')
-            result.append([header_number] + description_parts + [row[3]] + [row[1]])
-
-    cursor.close()
-    conn.close()
-
-    # Return the results to the template
-    return render_template('Import/manual_matching.html', market_data=market_data, del_lines=result)
-
-@import_bp.route('/create_match', methods=['POST'])
-def create_match():
-    # Extract data from the AJAX request
-    data = request.json
-    consignment_id = data.get('consignment_id')
-    line_id = data.get('line_id')
-
-    conn = create_db_connection()
-    cursor = conn.cursor()
-
-    query = """
-    UPDATE [dbo].[ZZDeliveryNoteLines]
-    SET ConsignmentID = ?
-    WHERE DelLineIndex = ?
-    """
-    cursor.execute(query, (consignment_id, line_id,))
-    cursor.commit()
-    add_consignments()
-    add_sales()
-
-    print("Success")
-    return redirect(url_for('import.import_page'))
-
-
-@import_bp.route('/show_matches', methods=['GET', 'POST'])
-def show_matches():
-    # Get the selected fields from the form
-    selected_fields = request.form.getlist('fields') 
-
-    if request.method == 'GET':
-        selected_fields = ['Product', 'Mass', 'Class', 'Size', 'Quantity']
-
-    print(selected_fields, request.method)
-    # Base query
-    base_query = """
-    SELECT ProductNoteNo, DelLineIndex, LineProduct, LineMass, LineClass, LineSize, LineVariety,  LineQty, 
-           MarketNoteNo, ConsignmentID, ImportProduct, ImportMass, ImportClass, ImportSize, ImportVariety, ImportQty
-    FROM [dbo].[PotentialMatches]
-    WHERE 1=1
+        ProductNoteNo, MarketNoteNo, DelLineIndex, ConsignmentID,
+        LineProduct, ImportProduct, LineMass, ImportMass, 
+        LineClass, ImportClass, LineSize, ImportSize, 
+        LineVariety, ImportVariety, LineQty, ImportQty, MatchCount, DuplicateMaxMatch,
+        LineBrand  -- Add this column to the query
+    FROM PotentialMatches
+    WHERE ConsignmentID = ?
+    ORDER BY MatchCount DESC
     """
 
-    # Add conditions based on selected fields
-    if 'Product' in selected_fields:
-        base_query += " AND LineProduct = ImportProduct"
-    if 'Mass' in selected_fields:
-        base_query += " AND LineMass = ImportMass"
-    if 'Class' in selected_fields:
-        base_query += " AND LineClass = ImportClass"
-    if 'Size' in selected_fields:
-        base_query += " AND LineSize = ImportSize"
-    if 'Variety' in selected_fields:
-        base_query += " AND LineVariety = ImportVariety"
-    if 'Quantity' in selected_fields:
-        base_query += " AND LineQty = ImportQty"
-
-    # Execute the query
     try:
         conn = create_db_connection()
         cursor = conn.cursor()
-        cursor.execute(base_query)
-        results = cursor.fetchall()
+
+        # Get consignment details
+        cursor.execute(query, (consignment_id,))
+        consignment = cursor.fetchone()
+
+        if not consignment:
+            return jsonify({"error": "Consignment not found"}), 404
+
+        consignment_details = {
+            "ImportProduct": consignment[0],
+            "ImportVariety": consignment[1],
+            "ImportClass": consignment[2],
+            "ImportMass": consignment[3],
+            "ImportSize": consignment[4],
+            "ImportQty": consignment[5]
+        }
+
+        # Get top matches
+        cursor.execute(matches_query, (consignment_id,))
+        matches = cursor.fetchall()
+
+        matches_list = [
+            {
+                "ProductNoteNo": row[0],
+                "MarketNoteNo": row[1],
+                "DelLineIndex": row[2],
+                "ConsignmentID": row[3],
+                "LineProduct": row[4],
+                "ImportProduct": row[5],
+                "LineMass": row[6],
+                "ImportMass": row[7],
+                "LineClass": row[8],
+                "ImportClass": row[9],
+                "LineSize": row[10],
+                "ImportSize": row[11],
+                "LineVariety": row[12],
+                "ImportVariety": row[13],
+                "LineQty": row[14],
+                "ImportQty": row[15],
+                "MatchCount": row[16],
+                "DuplicateMaxMatch": row[17],
+                "LineBrand": row[18]  # Add this line to handle the new field
+            }
+            for row in matches
+        ]
+
+        return jsonify({
+            "consignment_details": consignment_details,
+            "matches": matches_list
+        })
+
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+
+    finally:
+        cursor.close()
         conn.close()
 
-        # Render the results in a template or return as JSON
-        return render_template('Import/consignment_matches.html', results=results, selected_fields=selected_fields)
-    except Exception as e:
-        return f"An error occurred: {str(e)}", 500
+@import_bp.route("/get_consignment_details", methods=["GET"])
+def fetch_consignment_details():
+    consignment_id = request.args.get("consignment_id")
 
-@import_bp.route('/update_match', methods=['POST'])
-def update_match():
-    data = request.json
-    print("Inserting the following data: ", data)
-    if not data or 'matches' not in data:
-        return jsonify({'message': 'Invalid request'}), 400
+    if not consignment_id:
+        return jsonify({"error": "Consignment ID is required"}), 400
 
-    conn = create_db_connection()
-    cursor = conn.cursor()
-
-    for match in data['matches']:
-        print(match)
-        cursor.execute(
-            "UPDATE ZZDeliveryNoteLines SET ConsignmentID = ? WHERE DelLineIndex = ?",
-            (match['consignmentID'], match['lineId']))
-    print("These matches were inserted:", data['matches'])
-    cursor.commit()
-    add_sales()
-    conn.commit()
-    conn.close()
-    
-    return jsonify({'message': 'Matches updated successfully'})
+    return get_consignment_details(consignment_id)
