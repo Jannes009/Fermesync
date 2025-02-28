@@ -36,6 +36,7 @@ def get_import_results():
         SELECT DISTINCT
             SupplierRef, ConsignmentID, Product, Variety, Size, Class, Mass_kg, QtySent
         FROM MarketData
+        ORDER BY SupplierRef, Product, Mass_kg, Class, Size, QtySent;
     """)
     summary_data = cursor.fetchall()
 
@@ -53,7 +54,7 @@ def get_import_results():
             SELECT 
                 MAX(MatchCount) AS TopMatchCount,
                 CASE 
-                    WHEN COUNT(*) > 1 THEN 'Yes' 
+                    WHEN Max(DuplicateMaxMatch) != '0' THEN 'Yes' 
                     ELSE 'No' 
                 END AS MaxMatchDuplicate
             FROM PotentialMatches
@@ -62,6 +63,28 @@ def get_import_results():
         match_result = cursor.fetchone()
         top_match_count = match_result[0] if match_result[0] is not None else 0
         max_match_duplicate = match_result[1]
+
+        # Get the top MatchCount and MaxMatchDuplicate from PotentialMatches
+        cursor.execute("""
+            SELECT Price
+            FROM MarketData
+            WHERE ConsignmentID = ?
+        """, (consignment_id,))
+
+        # Fetch all prices as a list of tuples
+        totalSales = cursor.fetchall()
+
+        # Check if there are any results
+        if not totalSales:
+            print("No sales data found for this consignment.")
+            averagePrice = 0  # Default value if no data
+        else:
+            # Extract prices from tuples
+            prices = [row[0] for row in totalSales]  
+            averagePrice = sum(prices) / len(prices)
+
+        print("Average Price:", averagePrice)
+
 
         results.append({
             "SupplierRef": supplier_ref,
@@ -72,6 +95,7 @@ def get_import_results():
             "Class": class_,
             "Mass_kg": mass_kg,
             "QtySent": qty_sent,
+            "AveragePrice": averagePrice,
             "Matched": matched_status,
             "TopMatchCount": top_match_count,
             "MaxMatchDuplicate": max_match_duplicate
@@ -354,22 +378,13 @@ def get_consignment_details(consignment_id):
 
         matches_list = [
             {
-                "ProductNoteNo": row[0],
-                "MarketNoteNo": row[1],
                 "DelLineIndex": row[2],
-                "ConsignmentID": row[3],
                 "LineProduct": row[4],
-                "ImportProduct": row[5],
                 "LineMass": row[6],
-                "ImportMass": row[7],
                 "LineClass": row[8],
-                "ImportClass": row[9],
                 "LineSize": row[10],
-                "ImportSize": row[11],
                 "LineVariety": row[12],
-                "ImportVariety": row[13],
                 "LineQty": row[14],
-                "ImportQty": row[15],
                 "MatchCount": row[16],
                 "DuplicateMaxMatch": row[17],
                 "LineBrand": row[18]  # Add this line to handle the new field
@@ -397,3 +412,32 @@ def fetch_consignment_details():
         return jsonify({"error": "Consignment ID is required"}), 400
 
     return get_consignment_details(consignment_id)
+
+@import_bp.route("/match_consignment/<consignment_id>/<int:line_id>", methods=["POST"])
+def match_consignment(consignment_id, line_id):
+    query = """
+    UPDATE ZZDeliveryNoteLines
+    SET ConsignmentID = ?
+    WHERE DelLineIndex = ?
+    """
+
+    try:
+        conn = create_db_connection()  # Replace with your DB connection method
+        cursor = conn.cursor()
+
+        # Execute the update query
+        cursor.execute(query, (consignment_id, line_id))
+        conn.commit()
+
+        # Check if any rows were affected
+        if cursor.rowcount == 0:
+            return jsonify({"error": "No matching line found for the given line ID."}), 404
+
+        return jsonify({"message": "Consignment matched successfully."}), 200
+
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+
+    finally:
+        cursor.close()
+        conn.close()

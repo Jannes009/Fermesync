@@ -1,3 +1,4 @@
+document.addEventListener("DOMContentLoaded", fetchImportedData)
 document.getElementById("manualImportForm").addEventListener("submit", function (event) {
     event.preventDefault();
     let formData = new FormData(this);
@@ -105,9 +106,16 @@ function fetchImportedData() {
             data.forEach(row => {
                 let tr = document.createElement("tr");
                 tr.innerHTML = `
-                    <td><button class="btn btn-sm btn-info expand-btn" data-consignment="${row.ConsignmentID}">▶</button></td>
+                    <td><button class="btn expand-btn" data-consignment="${row.ConsignmentID}">▶</button></td>
                     <td>${row.ConsignmentID || '-'}</td>
                     <td>${row.Matched || '-'}</td>
+                    <td>${row.SupplierRef || '-'}</td>
+                    <td>${row.Product || '-'}</td>
+                    <td>${row.Class || '-'}</td>
+                    <td>${row.Size || '-'}</td>
+                    <td>${row.Variety || '-'}</td>
+                    <td>${row.QtySent || '-'}</td>
+                    <td>${(row.AveragePrice).toFixed(2) || '-'}</td>
                     <td>${row.TopMatchCount || '-'}</td>
                     <td>${row.MaxMatchDuplicate || '-'}</td>
                     <td><button class="btn btn-sm btn-primary view-details-btn" data-consignment="${row.ConsignmentID}">View Details</button></td>
@@ -130,6 +138,7 @@ function fetchImportedData() {
             });
 
             table.style.display = "table";
+            table.style.maxWidth = "100%"
         })
         .catch(error => {
             console.error("Error fetching imported data:", error);
@@ -154,16 +163,16 @@ function toggleDocketDetails(button, consignmentId) {
             detailsRow.classList.add("docket-details");
 
             let detailsCell = document.createElement("td");
-            detailsCell.colSpan = 10;
+            detailsCell.colSpan = 13;
 
             if (dockets.length === 0) {
                 detailsCell.innerHTML = "<em>No dockets found for this consignment.</em>";
             } else {
                 let detailsTable = `
+                <h5>Dockets<h5>
                     <table class="table table-bordered mt-2">
                         <thead>
                             <tr>
-                                <th>Docket Number</th>
                                 <th>Date</th>
                                 <th>Qty Sold</th>
                                 <th>Price</th>
@@ -173,7 +182,6 @@ function toggleDocketDetails(button, consignmentId) {
                         <tbody>
                             ${dockets.map(docket => `
                                 <tr>
-                                    <td>${docket.DocketNumber}</td>
                                     <td>${docket.Date}</td>
                                     <td>${docket.QtySold}</td>
                                     <td>${docket.Price}</td>
@@ -206,18 +214,41 @@ function showConsignmentDetails(consignmentId) {
             let { ImportProduct, ImportVariety, ImportClass, ImportMass, ImportSize, ImportQty } = data.consignment_details;
             let matches = data.matches || [];
 
-            let matchOptions = matches.map(match => `
-                <tr>
-                    <td><input type="radio" name="match" value="${match.ConsignmentID}"></td>
-                    <td>${match.LineProduct}</td>
-                    <td>${match.LineVariety}</td>
-                    <td>${match.LineClass}</td>
-                    <td>${match.LineMass}</td>
-                    <td>${match.LineSize}</td>
-                    <td>${match.LineBrand}</td>
-                    <td>${match.LineQty}</td>
-                </tr>
-            `).join('');
+            // Function to check if values match (case-insensitive, ignores units)
+            function isMatch(value1, value2) {
+                if (value1 == null || value2 == null) return false;
+
+                // Convert to strings, trim spaces, lowercase for case-insensitivity
+                let v1 = String(value1).trim().toLowerCase();
+                let v2 = String(value2).trim().toLowerCase();
+
+                // Remove non-numeric characters for numbers (e.g., "10 kg" → "10")
+                let num1 = parseFloat(v1.replace(/[^\d.-]/g, ""));
+                let num2 = parseFloat(v2.replace(/[^\d.-]/g, ""));
+
+                // If both are numbers, compare as numbers
+                if (!isNaN(num1) && !isNaN(num2)) {
+                    return num1 === num2;
+                }
+
+                // Otherwise, compare as case-insensitive strings
+                return v1 === v2;
+            }
+
+            let matchOptions = matches.map(match => {
+                return `
+                    <tr>
+                        <td><input type="radio" name="match" value="${match.DelLineIndex}"></td>
+                        <td style="${isMatch(match.LineProduct, ImportProduct) ? 'background-color: #52eb34;' : ''}">${match.LineProduct}</td>
+                        <td style="${isMatch(match.LineVariety, ImportVariety) ? 'background-color: #52eb34;' : ''}">${match.LineVariety}</td>
+                        <td style="${isMatch(match.LineClass, ImportClass) ? 'background-color: #52eb34;' : ''}">${match.LineClass}</td>
+                        <td style="${isMatch(match.LineMass, ImportMass) ? 'background-color: #52eb34;' : ''}">${match.LineMass}</td>
+                        <td style="${isMatch(match.LineSize, ImportSize) ? 'background-color: #52eb34;' : ''}">${match.LineSize}</td>
+                        <td>${match.LineBrand}</td>
+                        <td style="${isMatch(match.LineQty, ImportQty) ? 'background-color: #52eb34;' : ''}">${match.LineQty}</td>
+                    </tr>
+                `;
+            }).join('');
 
             Swal.fire({
                 title: `Consignment ID: ${consignmentId}`,
@@ -246,7 +277,7 @@ function showConsignmentDetails(consignmentId) {
                     </table>
                 `,
                 showCancelButton: true,
-                width: '80%',  // Set modal width to 80% of the screen width
+                width: '80%',
                 confirmButtonText: "Match",
                 cancelButtonText: "Close",
                 preConfirm: () => {
@@ -258,16 +289,22 @@ function showConsignmentDetails(consignmentId) {
                 }
             }).then(result => {
                 if (result.isConfirmed) {
-                    let matchID = result.value;
-                    fetch(`/import/match_consignment/${consignmentId}/${matchID}`, { method: "POST" })
-                        .then(() => {
-                            Swal.fire("Matched!", "Consignment has been successfully matched.", "success");
+                    let lineId = result.value;
+                    console.log(result)
+                    fetch(`/import/match_consignment/${consignmentId}/${lineId}`, { method: "POST" })
+                    .then(response => response.json())
+                    .then(data => {
+                        if (data.error) {
+                            Swal.fire("Error!", data.error, "error");
+                        } else {
+                            Swal.fire("Matched!", data.message, "success");
                             fetchImportedData();
-                        })
-                        .catch(error => {
-                            console.error("Match error:", error);
-                            Swal.fire("Error!", "Failed to match consignment.", "error");
-                        });
+                        }
+                    })
+                    .catch(error => {
+                        console.error("Match error:", error);
+                        Swal.fire("Error!", "Failed to match consignment.", "error");
+                    });
                 }
             });
         })

@@ -1,9 +1,10 @@
-/* General Page Styling */
+/* Import Page Styling */
 @import url('../color-template.css');
+
 body {
-    font-family: Arial, sans-serif;
+    font-family: 'Arial', sans-serif;
     margin: 0;
-    padding: 0;
+    padding: 20px;
     background-color: var(--primary-bg);
     color: var(--primary-text);
     display: flex;
@@ -11,17 +12,15 @@ body {
     align-items: center;
     justify-content: flex-start;
     min-height: 100vh;
-    padding-top: 20px; /* To give space for the header */
 }
 
 /* Container Styling */
 .container {
-    max-width: 600px;
     width: 100%;
     background-color: #ffffff;
     border-radius: 10px;
     padding: 20px 30px;
-    box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+    box-shadow: 0 4px 10px rgba(0, 0, 0, 0.1);
     text-align: left;
     margin-bottom: 30px;
 }
@@ -29,14 +28,15 @@ body {
 /* Heading Styles */
 h2 {
     font-size: 1.8rem;
-    margin-bottom: 20px;
-    color: var(--primary-text);
+    margin-bottom: 15px;
     text-align: center;
+    color: var(--primary-text);
 }
 
 h4 {
-    font-size: 1.5rem;
-    margin-bottom: 15px;
+    font-size: 1.4rem;
+    margin-bottom: 12px;
+    color: var(--secondary-text);
 }
 
 /* Form Styles */
@@ -49,7 +49,6 @@ label {
     font-weight: bold;
     margin-bottom: 5px;
     display: block;
-    color: var(--primary-text);
 }
 
 input[type="file"],
@@ -57,8 +56,8 @@ input[type="date"],
 select {
     width: 100%;
     padding: 10px;
-    border: 1px solid #ddd;
-    border-radius: 5px;
+    border: 1px solid #ccc;
+    border-radius: 6px;
     background-color: var(--form-bg);
     font-size: 1rem;
     margin-bottom: 15px;
@@ -67,13 +66,13 @@ select {
 /* Button Styles */
 button {
     border: none;
-    border-radius: 8px;
-    padding: 12px 20px;
+    border-radius: 6px;
+    padding: 12px 18px;
     cursor: pointer;
     font-size: 1rem;
     font-weight: bold;
     text-transform: uppercase;
-    transition: background-color 0.3s ease, transform 0.2s ease;
+    transition: all 0.3s ease;
 }
 
 .btn-primary {
@@ -83,7 +82,7 @@ button {
 
 .btn-primary:hover {
     background-color: var(--button-hover);
-    transform: translateY(-2px);
+    transform: scale(1.05);
 }
 
 /* Flash Messages */
@@ -91,19 +90,26 @@ button {
     font-size: 0.9rem;
     text-align: left;
     margin-bottom: 20px;
+    padding: 10px;
+    border-radius: 5px;
 }
 
-/* Results Table Styles */
+/* Table Styling */
 table {
+    max-width: 100%;
     width: 100%;
     margin-top: 20px;
     border-collapse: collapse;
+    border-radius: 10px;
+    overflow: hidden;
+    background-color: #fff;
 }
 
 table th, table td {
     padding: 12px 15px;
     border: 1px solid #ddd;
     text-align: left;
+    font-size: 0.95rem;
 }
 
 table th {
@@ -116,32 +122,15 @@ table td {
     background-color: var(--table-cell-bg);
 }
 
-/* Button Group Styles for Table Row Expansion */
-.btn-group {
-    display: flex;
-    justify-content: flex-start;
-    gap: 10px;
-}
-
-.btn-group .btn-info {
-    font-size: 0.85rem;
-    padding: 5px 10px;
-}
-
 /* Responsive Design */
-@media (max-width: 768px) {
-    body {
-        padding-top: 40px; /* Add space for the taskbar */
-    }
-
+@media (max-width: 1000px) {
     .container {
-        max-width: 90%;
+        max-width: 95%;
         padding: 15px;
     }
 
     h2 {
         font-size: 1.6rem;
-        margin-bottom: 15px;
     }
 
     h4 {
@@ -150,61 +139,16 @@ table td {
 
     button {
         font-size: 0.9rem;
-        padding: 10px 15px;
+        padding: 10px;
     }
 
-    .btn-group {
-        flex-direction: column;
+    table th, table td {
+        font-size: 0.85rem;
+        padding: 8px;
     }
 
-    .btn-group .btn-primary {
+    .btn-primary {
         width: 100%;
-    }
-
-    table th, table td {
-        font-size: 0.9rem;
-        padding: 8px;
-    }
-
-    .btn-info {
-        font-size: 0.8rem;
-        padding: 5px 10px;
-    }
-}
-
-/* Table Styles */
-table {
-    width: 100%;
-    border-collapse: collapse;
-    margin-top: 20px;
-    background-color: #f9f9f9; /* Light background color */
-}
-
-table th, table td {
-    padding: 12px;
-    text-align: left;
-    border: 1px solid #ddd;
-}
-
-table th {
-    background-color: var(--primary-bg);
-    color: var(--primary-text);
-    font-weight: bold;
-}
-
-table td {
-    background-color: #fff;
-    color: var(--primary-text);
-}
-
-/* Responsive Table Styles */
-@media (max-width: 768px) {
-    table th, table td {
-        padding: 8px;
-    }
-    
-    /* Allow table to be scrollable horizontally on smaller screens */
-    .container {
-        overflow-x: auto;
+        text-align: center;
     }
 }
