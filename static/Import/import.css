@@ -152,3 +152,28 @@ table td {
         text-align: center;
     }
 }
+
+.filter-buttons {
+    text-align: center; /* Center the buttons */
+    margin-top: 10px;
+}
+
+.filter-buttons button {
+    background-color: #ddd; /* Light gray */
+    color: black;
+    border: none;
+    padding: 8px 16px;
+    font-size: 14px;
+    cursor: pointer;
+    margin: 5px;
+}
+
+.filter-buttons button:hover {
+    background-color: #ccc; /* Slightly darker gray */
+}
+
+.filter-buttons button.active {
+    background-color: #007bff; /* Blue for active */
+    color: white;
+    border-color: #0056b3;
+}

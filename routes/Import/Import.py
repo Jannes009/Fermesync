@@ -35,7 +35,7 @@ def get_import_results():
     cursor.execute("""
         SELECT DISTINCT
             SupplierRef, ConsignmentID, Product, Variety, Size, Class, Mass_kg, QtySent
-        FROM MarketData
+        FROM ZZMarketDataTrn
         ORDER BY SupplierRef, Product, Mass_kg, Class, Size, QtySent;
     """)
     summary_data = cursor.fetchall()
@@ -67,7 +67,7 @@ def get_import_results():
         # Get the top MatchCount and MaxMatchDuplicate from PotentialMatches
         cursor.execute("""
             SELECT Price
-            FROM MarketData
+            FROM ZZMarketDataTrn
             WHERE ConsignmentID = ?
         """, (consignment_id,))
 
@@ -112,7 +112,7 @@ def get_dockets(consignment_id):
 
     cursor.execute("""
         SELECT DocketNumber, QtySold, Price, SalesValue, DateSold
-        FROM MarketData
+        FROM ZZMarketDataTrn
         WHERE ConsignmentID = ?
     """, (consignment_id,))
 
@@ -176,7 +176,8 @@ def auto_import():
         try:
             yield "data: Inserting data...\n\n"
             docket_count = insert_data(downloaded_file)  # Modify `insert_data` to return count
-            yield f"data: Dockets imported: {docket_count}\n\n"
+            yield f"data: Adding Sales...\n\n"
+
             yield "data: SUCCESS: Data import completed successfully!\n\n"
         except Exception as e:
             yield f"data: ERROR: {str(e)}\n\n"
@@ -247,90 +248,17 @@ def insert_data(file):
             ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
         """, tuple(row_data.values()))
 
+    # copy transactions from MarketData to ZZMarketDataTrn
+    cursor.execute("Exec [dbo].[SIGCopyImprtTrn]")
+
+    # add sales to ZZSalesLines if linked data was imported
+    cursor.execute("EXEC SIGCreateSalesFromTrn")
+
     conn.commit()
     cursor.close()
     conn.close()
 
     return count  # Return number of inserted rows
-
-def add_sales():
-    error_occured = False
-    no_match = False
-    success = False
-    
-    errors = []
-    no_matches = [[],[]]
-    succesess = []
-    # Connect to SQL Server
-    conn = create_db_connection()
-    cursor = conn.cursor()
-
-    # Select all the relevant data from MarketData table
-    market_data_query = """
-        SELECT ConsignmentID, QtySold, Price, DateSold, DocketNumber, Id, SupplierRef
-        FROM MarketData
-    """
-    cursor.execute(market_data_query)
-    result = cursor.fetchall()
-
-    # Loop over the rows from the MarketData table
-    for row in result:
-        consignment_id = row[0]
-        qty_sold = row[1]
-        price = row[2]
-        date_sold = row[3]
-        docket_number = row[4]
-        data_id = row[5]
-
-        # Check if ConsignmentID exists in ZZDeliveryNoteLines
-        check_query = """
-            SELECT DelLineIndex, DelLineStockId 
-            FROM ZZDeliveryNoteLines 
-            WHERE ConsignmentID = ?
-        """
-        cursor.execute(check_query, (consignment_id,))
-        check_result = cursor.fetchone()
-
-        # If a matching row is found in ZZDeliveryNoteLines, insert into ZZAutoSales
-        if check_result:
-            del_line_index = check_result[0]
-            try:
-                # Insert into ZZSalesLines
-                insert_query = """
-                    INSERT INTO ZZSalesLines (SalesQty, SalesPrice, 
-                    SalesDate, DocketNumber, SalesAmnt, SalesStockId, SalesDelLineId, AutoSale)
-                    VALUES (?,?,?,?,?,?,?,?)
-                """
-                cursor.execute(insert_query, (
-                    qty_sold, price,
-                    date_sold, docket_number, qty_sold * price, check_result[1], del_line_index, 1
-                ))
-                success = True
-                succesess.append(data_id)
-            except pypyodbc.IntegrityError as e:
-                errors.append(data_id)
-                error_occured = True
-        else:
-            no_match = True
-            no_matches[0].append(data_id)
-
-    cursor.commit()
-    session['succesess'] = succesess
-    session['no_matches'] = no_matches
-    session['errors'] = errors
-        
-    if(success):
-        flash(f'<a href="{url_for("import.show_results", result_type="success")}" class="alert-link">'
-        f'{len(succesess)} transactions have been successfully added!</a>', 'success')
-    else:
-        flash('No transactions added', 'warning')
-    if(no_match):
-        flash(f'<a href="{url_for("import.show_results", result_type="no_match")}" class="alert-link">'
-        f'{len(no_matches[0])} transactions have not been matched</a>', 'warning')
-    if error_occured:
-        flash(f'<a href="{url_for("import.show_results", result_type="error")}" class="alert-link">'
-        f'{len(errors)} transactions were already added previously</a>', 'danger')
-
 
 def get_consignment_details(consignment_id):
     query = """
@@ -422,7 +350,7 @@ def match_consignment(consignment_id, line_id):
     """
 
     try:
-        conn = create_db_connection()  # Replace with your DB connection method
+        conn = create_db_connection() 
         cursor = conn.cursor()
 
         # Execute the update query
@@ -432,6 +360,9 @@ def match_consignment(consignment_id, line_id):
         # Check if any rows were affected
         if cursor.rowcount == 0:
             return jsonify({"error": "No matching line found for the given line ID."}), 404
+        
+        cursor.execute("EXEC SIGCreateSalesFromTrn")
+        conn.commit()
 
         return jsonify({"message": "Consignment matched successfully."}), 200
 

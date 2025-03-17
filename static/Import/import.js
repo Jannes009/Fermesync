@@ -1,4 +1,4 @@
-document.addEventListener("DOMContentLoaded", fetchImportedData)
+
 document.getElementById("manualImportForm").addEventListener("submit", function (event) {
     event.preventDefault();
     let formData = new FormData(this);
@@ -46,12 +46,30 @@ document.getElementById("autoImportForm").addEventListener("submit", function (e
     const startDate = document.getElementById("start_date").value;
     const endDate = document.getElementById("end_date").value;
 
+    let isCancelled = false; // Flag to track cancellation
+
     Swal.fire({
         title: "Auto Import in Progress",
         html: `<div id="swal-status">Connecting...</div>`,
         allowOutsideClick: false,
         showConfirmButton: false,
-        didOpen: () => { Swal.showLoading(); }
+        showCancelButton: true,  // Built-in cancel button
+        cancelButtonText: "Cancel",
+        didOpen: () => {
+            Swal.showLoading();
+        }
+    }).then((result) => {
+        if (result.dismiss === Swal.DismissReason.cancel) {
+            isCancelled = true;
+            if (window.eventSource) {
+                window.eventSource.close();
+            }
+            Swal.fire({
+                icon: "warning",
+                title: "Import Cancelled",
+                text: "The import process has been stopped."
+            });
+        }
     });
 
     if (window.eventSource) {
@@ -61,6 +79,8 @@ document.getElementById("autoImportForm").addEventListener("submit", function (e
     window.eventSource = new EventSource(`/import/auto_import?start_date=${startDate}&end_date=${endDate}`);
 
     window.eventSource.onmessage = function (event) {
+        if (isCancelled) return; // Stop processing if cancelled
+
         const message = event.data.replace("data: ", "");
         document.getElementById("swal-status").innerHTML = message;
 
@@ -82,10 +102,27 @@ document.getElementById("autoImportForm").addEventListener("submit", function (e
     };
 
     window.eventSource.onerror = function () {
-        Swal.fire({ icon: "error", title: "Connection Lost", text: "Failed to connect to the server." });
+        if (!isCancelled) {
+            Swal.fire({ icon: "error", title: "Connection Lost", text: "Failed to connect to the server." });
+        }
         window.eventSource.close();
     };
 });
+
+
+document.addEventListener("DOMContentLoaded", () => {
+    fetchImportedData();
+
+    document.querySelectorAll(".filter-buttons button").forEach(button => {
+        button.addEventListener("click", function () {
+            document.querySelectorAll(".filter-buttons button").forEach(btn => btn.classList.remove("active"));
+            this.classList.add("active");
+            filterTable(this.id.replace("Btn", "").toLowerCase()); // Call filterTable with the correct type
+        });
+    });
+});
+
+let importedData = []; // Store fetched data for filtering
 
 function fetchImportedData() {
     let table = document.getElementById("resultsTable");
@@ -96,54 +133,72 @@ function fetchImportedData() {
     fetch("/import/get_imported_results")
         .then(response => response.json())
         .then(data => {
-            tbody.innerHTML = "";
-
-            if (data.length === 0) {
-                tbody.innerHTML = `<tr><td colspan="10">No records found.</td></tr>`;
-                return;
-            }
-
-            data.forEach(row => {
-                let tr = document.createElement("tr");
-                tr.innerHTML = `
-                    <td><button class="btn expand-btn" data-consignment="${row.ConsignmentID}">▶</button></td>
-                    <td>${row.ConsignmentID || '-'}</td>
-                    <td>${row.Matched || '-'}</td>
-                    <td>${row.SupplierRef || '-'}</td>
-                    <td>${row.Product || '-'}</td>
-                    <td>${row.Class || '-'}</td>
-                    <td>${row.Size || '-'}</td>
-                    <td>${row.Variety || '-'}</td>
-                    <td>${row.QtySent || '-'}</td>
-                    <td>${(row.AveragePrice).toFixed(2) || '-'}</td>
-                    <td>${row.TopMatchCount || '-'}</td>
-                    <td>${row.MaxMatchDuplicate || '-'}</td>
-                    <td><button class="btn btn-sm btn-primary view-details-btn" data-consignment="${row.ConsignmentID}">View Details</button></td>
-                `;
-                tbody.appendChild(tr);
-            });
-
-            document.querySelectorAll(".view-details-btn").forEach(button => {
-                button.addEventListener("click", function () {
-                    let consignmentId = this.getAttribute("data-consignment");
-                    showConsignmentDetails(consignmentId);
-                });
-            });            
-
-            document.querySelectorAll(".expand-btn").forEach(button => {
-                button.addEventListener("click", function () {
-                    let consignmentId = this.getAttribute("data-consignment");
-                    toggleDocketDetails(this, consignmentId);
-                });
-            });
-
-            table.style.display = "table";
-            table.style.maxWidth = "100%"
+            importedData = data; // Store the data for filtering
+            displayTable(data);  // Show all data initially
+            filterTable("matched");
+            document.getElementById("matchedBtn").classList.add("active"); // Highlight the default button
         })
         .catch(error => {
             console.error("Error fetching imported data:", error);
             tbody.innerHTML = `<tr><td colspan="10">Error loading data. Please try again.</td></tr>`;
         });
+    console.log("Imported")
+}
+
+function displayTable(data) {
+    let tbody = document.getElementById("resultsTable").querySelector("tbody");
+    tbody.innerHTML = "";
+
+    if (data.length === 0) {
+        tbody.innerHTML = `<tr><td colspan="10">No records found.</td></tr>`;
+        return;
+    }
+
+    data.forEach(row => {
+        let tr = document.createElement("tr");
+        tr.innerHTML = `
+            <td><button class="btn expand-btn" data-consignment="${row.ConsignmentID}">▶</button></td>
+            <td>${row.ConsignmentID || '-'}</td>
+            <td>${row.SupplierRef || '-'}</td>
+            <td>${row.Product || '-'}</td>
+            <td>${row.Class || '-'}</td>
+            <td>${row.Size || '-'}</td>
+            <td>${row.Variety || '-'}</td>
+            <td>${row.QtySent || '-'}</td>
+            <td>${(row.AveragePrice).toFixed(2) || '-'}</td>
+            <td><button class="btn btn-sm btn-primary view-details-btn" data-consignment="${row.ConsignmentID}">View Details</button></td>
+        `;
+        tbody.appendChild(tr);
+    });
+
+    document.querySelectorAll(".view-details-btn").forEach(button => {
+        button.addEventListener("click", function () {
+            let consignmentId = this.getAttribute("data-consignment");
+            showConsignmentDetails(consignmentId);
+        });
+    });
+
+    document.querySelectorAll(".expand-btn").forEach(button => {
+        button.addEventListener("click", function () {
+            let consignmentId = this.getAttribute("data-consignment");
+            toggleDocketDetails(this, consignmentId);
+        });
+    });
+}
+
+function filterTable(type) {
+    let filteredData = [];
+    console.log(type)
+    if (type === "linked") {
+        filteredData = importedData.filter(row => row.Matched === "Yes");
+    } else if (type === "matched") {
+        filteredData = importedData.filter(row => row.Matched === "No" && row.TopMatchCount !== 0);
+    } else if (type === "nomatch") {
+        filteredData = importedData.filter(row => row.Matched !== "Yes" && row.TopMatchCount === 0);
+       
+    }
+
+    displayTable(filteredData);
 }
 
 function toggleDocketDetails(button, consignmentId) {

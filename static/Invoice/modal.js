@@ -158,9 +158,7 @@ document.addEventListener("DOMContentLoaded", function () {
                     }
                 }
                 await fetchProducts()
-                alert('Data submitted 
-                    
-                    successfully!');
+                alert('Data submitted successfully!');
                 document.querySelector('.modal-overlay').style.display = 'none';
             } else {
                 alert('Failed to submit data: ' + data.message);

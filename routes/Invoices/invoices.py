@@ -1,7 +1,7 @@
 from flask import render_template, Blueprint, request, jsonify
 import pypyodbc as odbc
 from db import create_db_connection, close_db_connection
-from routes.db_functions import agent_code_to_agent_name, get_stock_name, get_invoice_id
+from routes.db_functions import agent_code_to_agent_name, get_stock_name, get_invoice_id, del_note_number_to_del_id
 
 invoice_bp = Blueprint('invoice', __name__)
 
@@ -121,6 +121,7 @@ def get_delivery_note_lines():
 def submit_invoice():
     try:
         data = request.json
+        print(data)
 
         # Extract data from request
         InvoiceDate = data.get('InvoiceDate')
@@ -129,14 +130,17 @@ def submit_invoice():
         InvoiceQty = data.get('InvoiceQty')
         InvoiceGross = data.get('InvoiceGross')
         InvoiceTotalDeducted = data.get('InvoiceTotalDeducted')
-        InvoiceMarketCommExcl = data.get('InvoiceMarketCommExcl')
-        InvoiceAgentCommExcl = data.get('InvoiceAgentCommExcl')
+        InvoiceMarketCommIncl = data.get('InvoiceMarketCommIncl')
+        InvoiceAgentCommIncl = data.get('InvoiceAgentCommIncl')
         InvoiceOtherCostsIncl = data.get('InvoiceOtherCostsIncl')
         SalesLines = data.get('tickedLines')
 
         # Insert into database
         conn = create_db_connection()
         cursor = conn.cursor()
+
+        DelNoteId = del_note_number_to_del_id(InvoiceDelNoteNo, cursor)
+        print(DelNoteId)
 
         query = """
         Select [DeliClientId] From [dbo].[ZZDeliveryNoteHeader]
@@ -147,21 +151,21 @@ def submit_invoice():
 
         query = """
         INSERT INTO [dbo].[ZZInvoiceHeader] (
-            [InvoiceDate], [InvoiceNo], [InvoiceDelNoteNo],
+            [InvoiceDate], [InvoiceNo], [InvoiceDelNoteId], [InvoiceDelNoteNo],
             [InvoiceQty], [InvoiceGross], [InvoiceTotalDeducted],
-            [InvoiceMarketCommExcl], [InvoiceAgentCommExcl], [InvoiceOtherCostsIncl], 
+            [InvoiceMarketCommIncl], [InvoiceAgentCommIncl], [InvoiceOtherCostsIncl], 
             [InvoiceiClientId]
-        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
         """
         cursor.execute(query, (
-            InvoiceDate, InvoiceNo, InvoiceDelNoteNo,
+            InvoiceDate, InvoiceNo, DelNoteId[0], InvoiceDelNoteNo,
             InvoiceQty, InvoiceGross, InvoiceTotalDeducted,
-            InvoiceMarketCommExcl, InvoiceAgentCommExcl, InvoiceOtherCostsIncl,
+            InvoiceMarketCommIncl, InvoiceAgentCommIncl, InvoiceOtherCostsIncl,
             clientId[0],
         ))
 
         headerId = get_invoice_id(InvoiceNo, cursor)
-        print(SalesLines)
+
         for line in SalesLines:
             line = dict(line)
             print(headerId, type(headerId))
@@ -173,6 +177,9 @@ def submit_invoice():
             cursor.execute(query, (
                 headerId, line['salesLineId'],
             ))
+
+        # create invoice
+        cursor.execute("EXEC [dbo].[SIGCreateSalesOrder]")
 
         conn.commit()
         cursor.close()

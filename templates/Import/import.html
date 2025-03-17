@@ -44,10 +44,14 @@
         <h2>Import Results</h2>
         <table id="resultsTable" class="table table-bordered">
             <thead>
+                <div class="filter-buttons">
+                    <button id="matchedBtn">Matched</button>
+                    <button id="linkedBtn">Linked</button>
+                    <button id="noMatchBtn">No Match</button>
+                </div>                               
                 <tr>
                     <th></th>
                     <th>ConsignmentID</th>
-                    <th>Already Matched</th>
                     <th>SupplierRef</th>
                     <th>Product</th>
                     <th>Class</th>
@@ -55,8 +59,6 @@
                     <th>Variety</th>
                     <th>Quantity</th>
                     <th>Average Price</th>
-                    <th>MatchCount</th>
-                    <th>Duplicate</th>
                     <th></th>
                 </tr>
             </thead>
