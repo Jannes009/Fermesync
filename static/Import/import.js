@@ -46,7 +46,33 @@ document.getElementById("autoImportForm").addEventListener("submit", function (e
     const startDate = document.getElementById("start_date").value;
     const endDate = document.getElementById("end_date").value;
 
-    let isCancelled = false; // Flag to track cancellation
+    // Convert input dates to Date objects
+    const start = new Date(startDate);
+    const end = new Date(endDate);
+
+    // Check if end date is before start date
+    if (start > end) {
+        Swal.fire({
+            icon: "error",
+            title: "Invalid Date Range",
+            text: "Start date cannot be later than end date."
+        });
+        return;
+    }
+
+    // Check if the date range exceeds 31 days
+    const differenceInDays = (end - start) / (1000 * 60 * 60 * 24);
+    if (differenceInDays > 7) {
+        Swal.fire({
+            icon: "error",
+            title: "Date Range Too Large",
+            text: "Please select a date range of 7 days or less."
+        });
+        return;
+    }
+    console.log(differenceInDays)
+
+    let isCancelled = false;
 
     Swal.fire({
         title: "Auto Import in Progress",
@@ -55,6 +81,7 @@ document.getElementById("autoImportForm").addEventListener("submit", function (e
         showConfirmButton: false,
         showCancelButton: true,  // Built-in cancel button
         cancelButtonText: "Cancel",
+        icon: Swal.showLoading(),
         didOpen: () => {
             Swal.showLoading();
         }
@@ -101,7 +128,7 @@ document.getElementById("autoImportForm").addEventListener("submit", function (e
         }
     };
 
-    window.eventSource.onerror = function () {
+    window.EventSource.onerror = function () {
         if (!isCancelled) {
             Swal.fire({ icon: "error", title: "Connection Lost", text: "Failed to connect to the server." });
         }
@@ -124,6 +151,39 @@ document.addEventListener("DOMContentLoaded", () => {
 
 let importedData = []; // Store fetched data for filtering
 
+function filterTable(type) {
+    let filteredData = [];
+    console.log(type)
+    if (type === "linked") {
+        filteredData = importedData.filter(row => row.Matched === "Yes");
+    } else if (type === "matched") {
+        filteredData = importedData.filter(row => row.Matched === "No" && row.TopMatchCount !== 0);
+    } else if (type === "nomatch") {
+        filteredData = importedData.filter(row => row.Matched !== "Yes" && row.TopMatchCount === 0);
+       
+    }
+
+    displayTable(filteredData);
+}
+
+function showEditSupplierRefModal(consignmentId, currentValue) {
+    Swal.fire({
+        title: "Edit Supplier Reference",
+        input: "text",
+        inputValue: currentValue,
+        showCancelButton: true,
+        confirmButtonText: "Save",
+        preConfirm: (newSupplierRef) => {
+            if (!newSupplierRef.trim()) {
+                Swal.showValidationMessage("Supplier Reference cannot be empty");
+                return false;
+            }
+            return updateSupplierRef(currentValue, newSupplierRef);
+        }
+    });
+}
+
+
 function fetchImportedData() {
     let table = document.getElementById("resultsTable");
     let tbody = table.querySelector("tbody");
@@ -144,7 +204,6 @@ function fetchImportedData() {
         });
     console.log("Imported")
 }
-
 function displayTable(data) {
     let tbody = document.getElementById("resultsTable").querySelector("tbody");
     tbody.innerHTML = "";
@@ -156,50 +215,88 @@ function displayTable(data) {
 
     data.forEach(row => {
         let tr = document.createElement("tr");
+
+        let supplierRefCell = `<span class="supplier-ref-text">${row.SupplierRef || "-"}</span>`;
+        
+        // Only show the edit button in No Match mode
+        if (row.Matched !== "Yes" && row.TopMatchCount === 0) {
+            supplierRefCell += `
+                <button class="btn btn-sm btn-warning edit-supplier-ref" 
+                    data-consignment="${row.ConsignmentID}" 
+                    data-supplier-ref="${row.SupplierRef || ""}">
+                    Edit
+                </button>
+            `;
+        }
+
         tr.innerHTML = `
             <td><button class="btn expand-btn" data-consignment="${row.ConsignmentID}">▶</button></td>
             <td>${row.ConsignmentID || '-'}</td>
-            <td>${row.SupplierRef || '-'}</td>
+            <td>${supplierRefCell}</td>
             <td>${row.Product || '-'}</td>
             <td>${row.Class || '-'}</td>
             <td>${row.Size || '-'}</td>
             <td>${row.Variety || '-'}</td>
             <td>${row.QtySent || '-'}</td>
-            <td>${(row.AveragePrice).toFixed(2) || '-'}</td>
+            <td>${row.AveragePrice !== undefined && row.AveragePrice !== null ? row.AveragePrice.toFixed(2) : '-'}</td>
             <td><button class="btn btn-sm btn-primary view-details-btn" data-consignment="${row.ConsignmentID}">View Details</button></td>
         `;
+
+        // Attach event listeners inside the loop
         tbody.appendChild(tr);
-    });
 
-    document.querySelectorAll(".view-details-btn").forEach(button => {
-        button.addEventListener("click", function () {
-            let consignmentId = this.getAttribute("data-consignment");
-            showConsignmentDetails(consignmentId);
-        });
-    });
+        // Add event listeners for buttons within this row
+        let editButton = tr.querySelector(".edit-supplier-ref");
+        if (editButton) {
+            editButton.addEventListener("click", function () {
+                let consignmentId = this.getAttribute("data-consignment");
+                let currentValue = this.getAttribute("data-supplier-ref");
+                showEditSupplierRefModal(consignmentId, currentValue);
+            });
+        }
 
-    document.querySelectorAll(".expand-btn").forEach(button => {
-        button.addEventListener("click", function () {
+        let viewDetailsButton = tr.querySelector(".view-details-btn");
+        if (viewDetailsButton) {
+            viewDetailsButton.addEventListener("click", function () {
+                let consignmentId = this.getAttribute("data-consignment");
+                showConsignmentDetails(consignmentId);
+            });
+        }
+
+        let expandButton = tr.querySelector(".expand-btn");
+        expandButton.addEventListener("click", function () {
             let consignmentId = this.getAttribute("data-consignment");
             toggleDocketDetails(this, consignmentId);
         });
     });
 }
 
-function filterTable(type) {
-    let filteredData = [];
-    console.log(type)
-    if (type === "linked") {
-        filteredData = importedData.filter(row => row.Matched === "Yes");
-    } else if (type === "matched") {
-        filteredData = importedData.filter(row => row.Matched === "No" && row.TopMatchCount !== 0);
-    } else if (type === "nomatch") {
-        filteredData = importedData.filter(row => row.Matched !== "Yes" && row.TopMatchCount === 0);
-       
-    }
-
-    displayTable(filteredData);
+function updateSupplierRef(oldDelNoteNo, newDelNoteNo) {
+    console.log(oldDelNoteNo, newDelNoteNo)
+    return fetch("/import/update_supplier_ref", {
+        method: "POST",
+        headers: {
+            "Content-Type": "application/json"
+        },
+        body: JSON.stringify({
+            oldDelNoteNo: oldDelNoteNo,
+            newDelNoteNo: newDelNoteNo
+        })
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.status === "success") {
+            Swal.fire("Success", data.message, "success");
+        } else {
+            Swal.fire("Error", data.message, "error");
+        }
+    })
+    .catch(error => {
+        Swal.fire("Error", "Failed to update supplier reference.", "error");
+        console.error("Update error:", error);
+    });
 }
+
 
 function toggleDocketDetails(button, consignmentId) {
     let row = button.closest("tr");

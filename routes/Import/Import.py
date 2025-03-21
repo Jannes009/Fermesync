@@ -31,18 +31,23 @@ def get_import_results():
     conn = create_db_connection()
     cursor = conn.cursor()
 
-    # Get unique records from MarketData
+    # Get unique records from ZZMarketDataTrn
     cursor.execute("""
         SELECT DISTINCT
-            SupplierRef, ConsignmentID, Product, Variety, Size, Class, Mass_kg, QtySent
-        FROM ZZMarketDataTrn
-        ORDER BY SupplierRef, Product, Mass_kg, Class, Size, QtySent;
+            DelNoteNo, ConsignmentID, Product, Variety, Size, Class, Mass_kg, QtySent
+        FROM (
+            Select * 
+            from ZZMarketDataTrn TRN
+            LEFT JOIN (Select Distinct DocketNumber InvDocketNumber from [dbo].[_uvMarketInvoiceLines])INVDEL on INVDEL.InvDocketNumber = TRN.DocketNumber
+            where INVDEL.InvDocketNumber is NULL
+            )ZZ
+        ORDER BY DelNoteNo, Product, Mass_kg, Class, Size, QtySent;
     """)
     summary_data = cursor.fetchall()
 
     results = []
     for row in summary_data:
-        supplier_ref, consignment_id, product, variety, size, class_, mass_kg, qty_sent = row
+        del_note_no, consignment_id, product, variety, size, class_, mass_kg, qty_sent = row
 
         # Check if ConsignmentID exists in ZZDeliveryNoteLines
         cursor.execute("SELECT COUNT(*) FROM ZZDeliveryNoteLines WHERE ConsignmentID = ?", (consignment_id,))
@@ -76,18 +81,15 @@ def get_import_results():
 
         # Check if there are any results
         if not totalSales:
-            print("No sales data found for this consignment.")
             averagePrice = 0  # Default value if no data
         else:
             # Extract prices from tuples
             prices = [row[0] for row in totalSales]  
             averagePrice = sum(prices) / len(prices)
 
-        print("Average Price:", averagePrice)
-
 
         results.append({
-            "SupplierRef": supplier_ref,
+            "SupplierRef": del_note_no,
             "ConsignmentID": consignment_id,
             "Product": product,
             "Variety": variety,
@@ -128,6 +130,34 @@ def get_dockets(consignment_id):
     } for row in dockets])
 
 
+@import_bp.route("/update_supplier_ref", methods=["POST"])
+def update_supplier_ref():
+    data = request.json  # Extract JSON data from the frontend
+    new_del_note_no = data.get("newDelNoteNo")  # Ensure key matches frontend
+    old_del_note_no = data.get("oldDelNoteNo")  # Ensure key matches frontend
+
+    print(new_del_note_no, old_del_note_no)
+    if not new_del_note_no or not old_del_note_no:
+        return jsonify({"status": "error", "message": "Missing required fields"}), 400
+
+    try:
+        conn = create_db_connection()
+        cursor = conn.cursor()
+        cursor.execute("""
+            UPDATE ZZMarketDataTrn SET DelNoteNo = ?
+            FROM ZZMarketDataTrn
+            WHERE DelNoteNo = ?
+        """, (new_del_note_no, old_del_note_no))
+        
+        conn.commit()  # Commit changes
+        return jsonify({"status": "success", "message": "Supplier Reference updated successfully"})
+
+    except Exception as e:
+        return jsonify({"status": "error", "message": str(e)}), 500
+
+    finally:
+        cursor.close()
+        conn.close()
 
 @import_bp.route('/auto_import', methods=['GET'])
 def auto_import():
