@@ -155,11 +155,11 @@ function filterTable(type) {
     let filteredData = [];
     console.log(type)
     if (type === "linked") {
-        filteredData = importedData.filter(row => row.Matched === "Yes");
+        filteredData = importedData.filter(row => row.linconsignmentidexist === 1);
     } else if (type === "matched") {
-        filteredData = importedData.filter(row => row.Matched === "No" && row.TopMatchCount !== 0);
+        filteredData = importedData.filter(row => row.linconsignmentidexist === 0 && row.matchcount > 0);
     } else if (type === "nomatch") {
-        filteredData = importedData.filter(row => row.Matched !== "Yes" && row.TopMatchCount === 0);
+        filteredData = importedData.filter(row => row.linconsignmentidexist === 0 && row.matchcount === null);
        
     }
 
@@ -204,11 +204,12 @@ function fetchImportedData() {
         });
     console.log("Imported")
 }
+
 function displayTable(data) {
     let tbody = document.getElementById("resultsTable").querySelector("tbody");
     tbody.innerHTML = "";
 
-    if (data.length === 0) {
+    if (!data || data.length === 0) {
         tbody.innerHTML = `<tr><td colspan="10">No records found.</td></tr>`;
         return;
     }
@@ -216,33 +217,39 @@ function displayTable(data) {
     data.forEach(row => {
         let tr = document.createElement("tr");
 
-        let supplierRefCell = `<span class="supplier-ref-text">${row.SupplierRef || "-"}</span>`;
-        
+        let supplierRefCell = `<span class="supplier-ref-text">${row.delnoteno || "-"}</span>`;
+        let detailsButton = `<td>`
+
         // Only show the edit button in No Match mode
-        if (row.Matched !== "Yes" && row.TopMatchCount === 0) {
+        if (row.linconsignmentidexist !== 1 && row.matchcount === null) {
             supplierRefCell += `
                 <button class="btn btn-sm btn-warning edit-supplier-ref" 
-                    data-consignment="${row.ConsignmentID}" 
-                    data-supplier-ref="${row.SupplierRef || ""}">
+                    data-consignment="${row.consignmentid}" 
+                    data-supplier-ref="${row.delnoteno || ""}">
                     Edit
                 </button>
             `;
         }
 
-        tr.innerHTML = `
-            <td><button class="btn expand-btn" data-consignment="${row.ConsignmentID}">▶</button></td>
-            <td>${row.ConsignmentID || '-'}</td>
-            <td>${supplierRefCell}</td>
-            <td>${row.Product || '-'}</td>
-            <td>${row.Class || '-'}</td>
-            <td>${row.Size || '-'}</td>
-            <td>${row.Variety || '-'}</td>
-            <td>${row.QtySent || '-'}</td>
-            <td>${row.AveragePrice !== undefined && row.AveragePrice !== null ? row.AveragePrice.toFixed(2) : '-'}</td>
-            <td><button class="btn btn-sm btn-primary view-details-btn" data-consignment="${row.ConsignmentID}">View Details</button></td>
-        `;
+        // Only show the edit button in No Match mode
+        if (row.linconsignmentidexist !== 1 && row.matchcount > 0) {
+            detailsButton += `
+                <button class="btn btn-sm btn-primary view-details-btn" data-consignment="${row.consignmentid}">Confirm Match</button>
+            `;
+        }
 
-        // Attach event listeners inside the loop
+        tr.innerHTML = `
+            <td><button class="btn expand-btn" data-consignment="${row.consignmentid}">▶</button></td>
+            <td>${row.consignmentid || '-'}</td>
+            <td>${row.delnoteno, supplierRefCell}</td>
+            <td>${row.product || '-'}</td>
+            <td>${row.class || '-'}</td>
+            <td>${row.size || '-'}</td>
+            <td>${row.variety || '-'}</td>
+            <td>${row.qtysent || '-'}</td>
+            <td>${row.averageprice}</td>
+            ${detailsButton}</td>
+        `;
         tbody.appendChild(tr);
 
         // Add event listeners for buttons within this row
@@ -264,12 +271,15 @@ function displayTable(data) {
         }
 
         let expandButton = tr.querySelector(".expand-btn");
-        expandButton.addEventListener("click", function () {
-            let consignmentId = this.getAttribute("data-consignment");
-            toggleDocketDetails(this, consignmentId);
-        });
+        if (expandButton) {
+            expandButton.addEventListener("click", function () {
+                let consignmentId = this.getAttribute("data-consignment");
+                toggleDocketDetails(this, consignmentId);
+            });
+        }
     });
 }
+
 
 function updateSupplierRef(oldDelNoteNo, newDelNoteNo) {
     console.log(oldDelNoteNo, newDelNoteNo)
@@ -287,6 +297,7 @@ function updateSupplierRef(oldDelNoteNo, newDelNoteNo) {
     .then(data => {
         if (data.status === "success") {
             Swal.fire("Success", data.message, "success");
+            fetchImportedData()
         } else {
             Swal.fire("Error", data.message, "error");
         }

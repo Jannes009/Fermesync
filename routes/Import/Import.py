@@ -31,79 +31,21 @@ def get_import_results():
     conn = create_db_connection()
     cursor = conn.cursor()
 
-    # Get unique records from ZZMarketDataTrn
-    cursor.execute("""
-        SELECT DISTINCT
-            DelNoteNo, ConsignmentID, Product, Variety, Size, Class, Mass_kg, QtySent
-        FROM (
-            Select * 
-            from ZZMarketDataTrn TRN
-            LEFT JOIN (Select Distinct DocketNumber InvDocketNumber from [dbo].[_uvMarketInvoiceLines])INVDEL on INVDEL.InvDocketNumber = TRN.DocketNumber
-            where INVDEL.InvDocketNumber is NULL
-            )ZZ
-        ORDER BY DelNoteNo, Product, Mass_kg, Class, Size, QtySent;
-    """)
-    summary_data = cursor.fetchall()
+    # Fetch data from _uvMarketTrnConsignments
+    cursor.execute("SELECT * FROM _uvMarketTrnConsignments")
+    rows = cursor.fetchall()
 
-    results = []
-    for row in summary_data:
-        del_note_no, consignment_id, product, variety, size, class_, mass_kg, qty_sent = row
+    # Get column names
+    column_names = [column[0] for column in cursor.description]
 
-        # Check if ConsignmentID exists in ZZDeliveryNoteLines
-        cursor.execute("SELECT COUNT(*) FROM ZZDeliveryNoteLines WHERE ConsignmentID = ?", (consignment_id,))
-        match_count = cursor.fetchone()[0]
-        matched_status = "Yes" if match_count > 0 else "No"
+    # Process data into list of dictionaries
+    results = [dict(zip(column_names, row)) for row in rows]
 
-        # Get the top MatchCount and MaxMatchDuplicate from PotentialMatches
-        cursor.execute("""
-            SELECT 
-                MAX(MatchCount) AS TopMatchCount,
-                CASE 
-                    WHEN Max(DuplicateMaxMatch) != '0' THEN 'Yes' 
-                    ELSE 'No' 
-                END AS MaxMatchDuplicate
-            FROM PotentialMatches
-            WHERE ConsignmentID = ?
-        """, (consignment_id,))
-        match_result = cursor.fetchone()
-        top_match_count = match_result[0] if match_result[0] is not None else 0
-        max_match_duplicate = match_result[1]
-
-        # Get the top MatchCount and MaxMatchDuplicate from PotentialMatches
-        cursor.execute("""
-            SELECT Price
-            FROM ZZMarketDataTrn
-            WHERE ConsignmentID = ?
-        """, (consignment_id,))
-
-        # Fetch all prices as a list of tuples
-        totalSales = cursor.fetchall()
-
-        # Check if there are any results
-        if not totalSales:
-            averagePrice = 0  # Default value if no data
-        else:
-            # Extract prices from tuples
-            prices = [row[0] for row in totalSales]  
-            averagePrice = sum(prices) / len(prices)
-
-
-        results.append({
-            "SupplierRef": del_note_no,
-            "ConsignmentID": consignment_id,
-            "Product": product,
-            "Variety": variety,
-            "Size": size,
-            "Class": class_,
-            "Mass_kg": mass_kg,
-            "QtySent": qty_sent,
-            "AveragePrice": averagePrice,
-            "Matched": matched_status,
-            "TopMatchCount": top_match_count,
-            "MaxMatchDuplicate": max_match_duplicate
-        })
-
+    print(results)
+    # Close connections
+    cursor.close()
     conn.close()
+
     return jsonify(results)
 
 
