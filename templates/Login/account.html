@@ -1,0 +1,170 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Account Settings</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="{{ url_for('static', filename='colour-template.css') }}">  <!-- Link to color template CSS -->
+    <style>
+        body {
+            padding: 20px;
+            background-color: var(--primary-bg);  /* Use primary background color */
+        }
+        .account-card {
+            max-width: 800px;
+            margin: 0 auto;
+            box-shadow: 0 0 10px rgba(0,0,0,0.1);
+            background-color: var(--container-bg);  /* Container background */
+        }
+        .card-header {
+            background-color: var(--primary-bg);  /* Use primary background color for card header */
+            color: var(--primary-text);  /* Use primary text color */
+        }
+        .service-badge {
+            font-size: 0.9rem;
+            margin-right: 5px;
+        }
+        .technofresh-badge {
+            background-color: #6f42c1;
+        }
+        .freshlinq-badge {
+            background-color: #20c997;
+        }
+        .table-striped tbody tr:nth-child(odd) {
+            background-color: var(--table-row-even);  /* Use even row color for table */
+        }
+        .table thead {
+            background-color: var(--table-header-bg);  /* Table header background */
+            color: var(--table-header-text);  /* Table header text color */
+        }
+        .btn-primary {
+            background-color: var(--button-bg);  /* Use button background */
+            border-color: var(--button-bg);  /* Border color matches button background */
+        }
+        .btn-primary:hover {
+            background-color: var(--button-hover);  /* Button hover effect */
+            border-color: var(--button-hover);  /* Border color on hover */
+        }
+        .form-control:focus {
+            border-color: var(--input-focus);  /* Input focus border color */
+            box-shadow: 0 0 0 0.25rem var(--input-shadow);  /* Input focus shadow */
+        }
+    </style>
+    {% include 'taskbar.html' %}
+</head>
+<body>
+    <div class="container">
+        <div class="card account-card mb-4">
+            <div class="card-header">
+                <h3 class="mb-0">Account Information</h3>
+            </div>
+            <div class="card-body">
+                {% with messages = get_flashed_messages(with_categories=true) %}
+                    {% if messages %}
+                        {% for category, message in messages %}
+                            <div class="alert alert-{{ category }} alert-dismissible fade show" role="alert">
+                                {{ message }}
+                                <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+                            </div>
+                        {% endfor %}
+                    {% endif %}
+                {% endwith %}
+
+                <div class="mb-4">
+                    <h5>Basic Information</h5>
+                    <div class="row">
+                        <div class="col-md-6">
+                            <p><strong>Username:</strong> {{ user.username }}</p>
+                        </div>
+                        <div class="col-md-6">
+                            <p><strong>Role:</strong> <span class="badge bg-secondary">{{ user.role }}</span></p>
+                        </div>
+                    </div>
+                    <div class="row">
+                        <div class="col-md-6">
+                            <p><strong>Server:</strong> {{ user.server_name }}</p>
+                        </div>
+                        <div class="col-md-6">
+                            <p><strong>Database:</strong> {{ user.database_name }}</p>
+                        </div>
+                    </div>
+                </div>
+
+                <hr>
+
+                <div class="mb-4">
+                    <h5>Connected Services</h5>
+                    {% if user.connected_services %}
+                        <div class="table-responsive">
+                            <table class="table table-striped">
+                                <thead>
+                                    <tr>
+                                        <th>Service</th>
+                                        <th>Username</th>
+                                        <th>Actions</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    {% for service in user.connected_services %}
+                                        <tr>
+                                            <td>
+                                                <span class="badge service-badge 
+                                                    {% if service.service_type == 'Technofresh' %}technofresh-badge
+                                                    {% elif service.service_type == 'FreshLinq' %}freshlinq-badge
+                                                    {% else %}bg-info{% endif %}">
+                                                    {{ service.service_type }}
+                                                </span>
+                                            </td>
+                                            <td>{{ service.username or 'N/A' }}</td>
+                                            <td>
+                                                <form method="POST" action="{{ url_for('account.remove_service', service_id=service.id) }}" class="d-inline">
+                                                    <button type="submit" class="btn btn-sm btn-danger">Remove</button>
+                                                </form>
+                                            </td>
+                                        </tr>
+                                    {% endfor %}
+                                </tbody>
+                            </table>
+                        </div>
+                    {% else %}
+                        <div class="alert alert-info">No connected services yet.</div>
+                    {% endif %}
+
+                    <div class="card mt-3">
+                        <div class="card-header">Add New Service</div>
+                        <div class="card-body">
+                            <form method="POST" action="{{ url_for('account.add_service') }}">
+                                <div class="mb-3">
+                                    <label for="service_type" class="form-label">Service Type</label>
+                                    <select class="form-select" id="service_type" name="service_type" required>
+                                        <option value="" selected disabled>Select a service</option>
+                                        <option value="Technofresh">Technofresh</option>
+                                        <option value="FreshLinq">FreshLinq</option>
+                                    </select>
+                                </div>
+                                <div class="mb-3">
+                                    <label for="service_username" class="form-label">Username</label>
+                                    <input type="text" class="form-control" id="service_username" name="service_username">
+                                </div>
+                                <div class="mb-3">
+                                    <label for="service_password" class="form-label">Password</label>
+                                    <input type="password" class="form-control" id="service_password" name="service_password" required>
+                                </div>
+                                <div class="mb-3">
+                                    <label for="account_password" class="form-label">Your Account Password</label>
+                                    <input type="password" class="form-control" id="account_password" name="account_password" required>
+                                    <div class="form-text">For security verification</div>
+                                </div>
+                                <button type="submit" class="btn btn-primary">Add Service</button>
+                            </form>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+</body>
+</html>

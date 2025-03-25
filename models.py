@@ -32,6 +32,7 @@ def load_encryption_key():
 SECRET_KEY = load_encryption_key()
 cipher = Fernet(SECRET_KEY)
 
+# models.py
 class User(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     username = db.Column(db.String(25), unique=True, nullable=False)
@@ -40,8 +41,6 @@ class User(db.Model):
     server_name = db.Column(db.String(100), nullable=False)
     database_name = db.Column(db.String(100), nullable=False)
     db_password = db.Column(db.String(250), nullable=False)  # Encrypted
-    technofresh_username = db.Column(db.String(100), nullable=True)
-    technofresh_password = db.Column(db.String(250), nullable=True)  # Encrypted
 
     def set_password(self, password):
         self.password_hash = generate_password_hash(password)
@@ -61,8 +60,18 @@ class User(db.Model):
     def get_db_password(self):
         return self.decrypt_password(self.db_password)
 
-    def set_technofresh_password(self, password):
-        self.technofresh_password = self.encrypt_password(password)
+class ConnectedService(db.Model):
+    id = db.Column(db.Integer, primary_key=True)
+    user_id = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=False)
+    service_type = db.Column(db.String(50), nullable=False)  # e.g., 'technofresh', 'shopware', etc.
+    username = db.Column(db.String(100), nullable=True)
+    encrypted_password = db.Column(db.String(250), nullable=False)
+    created_at = db.Column(db.DateTime, default=db.func.current_timestamp())
 
-    def get_technofresh_password(self):
-        return self.decrypt_password(self.technofresh_password)
+    user = db.relationship('User', backref=db.backref('connected_services', lazy=True))
+
+    def set_password(self, password):
+        self.encrypted_password = cipher.encrypt(password.encode()).decode()
+
+    def get_password(self):
+        return cipher.decrypt(self.encrypted_password.encode()).decode()

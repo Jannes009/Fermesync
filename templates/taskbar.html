@@ -13,8 +13,8 @@
     <div class="user-section">
         <div class="username" id="username">John Doe <span>&#9662;</span></div>
         <div class="dropdown">
-            <a href="/account">View Account</a>
-            <a href="/logout" id="logout">Logout</a>
+            <a href="{{ url_for('account.view_account') }}">View Account</a>
+            <a href="{{ url_for('logout') }}">Logout</a>
         </div>
     </div>
 </header>

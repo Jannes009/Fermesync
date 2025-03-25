@@ -1,11 +1,11 @@
 from flask import Blueprint, render_template, request, redirect, url_for, flash, jsonify, Response, stream_with_context, session
-from db import create_db_connection
+from db import create_db_connection, close_db_connection
 import pandas as pd
 import os, logging, time
 from selenium.webdriver.common.by import By
 from routes.db_functions import get_stock_name
 import pypyodbc
-from db import initialize_driver
+from db import TechnofreshLogin
 
 import_bp = Blueprint('import', __name__)
 
@@ -115,7 +115,7 @@ def auto_import():
         existing_files = set(os.listdir(download_folder))
 
         yield "data: Connecting to Technofresh...\n\n"
-        driver = initialize_driver()
+        driver = TechnofreshLogin()
         if not driver:
             yield "data: ERROR: Failed to connect.\n\n"
             return
