@@ -4,14 +4,18 @@ import pandas as pd
 import os, logging, time
 from selenium.webdriver.common.by import By
 from routes.db_functions import get_stock_name
+from flask_login import login_required, current_user
 import pypyodbc
-from db import TechnofreshLogin
+from models import db, User, ConnectedService  # Changed from relative import
+from db import TechnofreshLogin, download_freshlinq_report
+from routes.Import.freshlinq import process_excel
 
 import_bp = Blueprint('import', __name__)
 
 @import_bp.route('/main', methods=['GET'])
 def import_page():
-    return render_template('Import/import.html')
+    connected_services = ConnectedService.query.filter_by(user_id=current_user.id).all()
+    return render_template("Import/import.html", services=[service.service_type for service in connected_services])
 
 logging.basicConfig(level=logging.INFO)
 
@@ -41,7 +45,6 @@ def get_import_results():
     # Process data into list of dictionaries
     results = [dict(zip(column_names, row)) for row in rows]
 
-    print(results)
     # Close connections
     cursor.close()
     conn.close()
@@ -101,62 +104,7 @@ def update_supplier_ref():
         cursor.close()
         conn.close()
 
-@import_bp.route('/auto_import', methods=['GET'])
-def auto_import():
-    def generate_status():
-        start_date = request.args.get('start_date')
-        end_date = request.args.get('end_date')
-
-        if not start_date or not end_date:
-            yield "data: ERROR: Missing start_date or end_date.\n\n"
-            return
-
-        download_folder = r"C:\\Users\\kapok\\Downloads"
-        existing_files = set(os.listdir(download_folder))
-
-        yield "data: Connecting to Technofresh...\n\n"
-        driver = TechnofreshLogin()
-        if not driver:
-            yield "data: ERROR: Failed to connect.\n\n"
-            return
-
-        try:
-            yield "data: Navigating to report download page...\n\n"
-            driver.get("https://crm.technofresh.co.za/reports/view/8/xls")
-
-            driver.execute_script("document.getElementsByName('from_date')[0].value = arguments[0]", start_date)
-            driver.execute_script("document.getElementsByName('to_date')[0].value = arguments[0]", end_date)
-            driver.find_element(By.NAME, "submit").click()
-            yield "data: Report request submitted...\n\n"
-
-            base_filename = "Excel_Daily_Sales_Details_Report_"
-            yield "data: Waiting for file to download...\n\n"
-
-            downloaded_file = get_newest_downloaded_file(existing_files, download_folder, base_filename, timeout=30)
-            if not downloaded_file:
-                yield "data: ERROR: File download failed.\n\n"
-                return
-
-            yield f"data: File downloaded: {downloaded_file}\n\n"
-
-        except Exception as e:
-            yield f"data: ERROR: {str(e)}\n\n"
-            return
-        finally:
-            driver.quit()
-
-        try:
-            yield "data: Inserting data...\n\n"
-            docket_count = insert_data(downloaded_file)  # Modify `insert_data` to return count
-            yield f"data: Adding Sales...\n\n"
-
-            yield "data: SUCCESS: Data import completed successfully!\n\n"
-        except Exception as e:
-            yield f"data: ERROR: {str(e)}\n\n"
-
-    return Response(stream_with_context(generate_status()), content_type="text/event-stream")
-
-
+        
 @import_bp.route('/upload_excel', methods=['POST'])
 def upload_excel():
     file = request.files.get('file')
@@ -183,6 +131,88 @@ def upload_excel():
             }]
         }), 500
 
+@import_bp.route('/auto_import', methods=['GET'])
+def auto_import():
+    def generate_status():
+        service = request.args.get('service')  # Get the mode (Technofresh or FreshLinq)
+        start_date = request.args.get('start_date')
+        end_date = request.args.get('end_date')
+
+        if not service:
+            yield "data: ERROR: Missing service parameter.\n\n"
+            return
+
+        if not start_date or not end_date:
+            yield "data: ERROR: Missing start_date or end_date.\n\n"
+            return
+
+        if service == "Technofresh":
+            yield from extract_technofresh(start_date, end_date)
+
+        elif service == "FreshLinq":
+            # Extract FreshLinq report and get the downloaded file path
+            # file_path = download_freshlinq_report("uitdraai2@gmail.com", "Uitdraai123#", start_date,)
+
+            # print(f"Processing file: {file_path}")
+            process_excel("C:\\Users\\kapok\\Downloads\\report.xlsx", "result.xlsx")
+            yield "SUCCESS: Excel processing completed.\n\n"
+
+
+        else:
+            yield "data: ERROR: Invalid service type.\n\n"
+
+    return Response(stream_with_context(generate_status()), content_type="text/event-stream")
+
+
+
+def extract_technofresh(start_date, end_date):
+    """Handles Technofresh extraction."""
+    download_folder = r"C:\\Users\\kapok\\Downloads"
+    existing_files = set(os.listdir(download_folder))
+
+    yield "data: Connecting to Technofresh...\n\n"
+    driver = TechnofreshLogin()
+    if not driver:
+        yield "data: ERROR: Failed to connect.\n\n"
+        return
+
+    try:
+        yield "data: Navigating to report download page...\n\n"
+        driver.get("https://crm.technofresh.co.za/reports/view/8/xls")
+
+        driver.execute_script("document.getElementsByName('from_date')[0].value = arguments[0]", start_date)
+        driver.execute_script("document.getElementsByName('to_date')[0].value = arguments[0]", end_date)
+        driver.find_element(By.NAME, "submit").click()
+        yield "data: Report request submitted...\n\n"
+
+        base_filename = "Excel_Daily_Sales_Details_Report_"
+        yield "data: Waiting for file to download...\n\n"
+
+        downloaded_file = get_newest_downloaded_file(existing_files, download_folder, base_filename, timeout=30)
+        if not downloaded_file:
+            yield "data: ERROR: File download failed.\n\n"
+            return
+
+        yield f"data: File downloaded: {downloaded_file}\n\n"
+
+    except Exception as e:
+        yield f"data: ERROR: {str(e)}\n\n"
+        return
+    finally:
+        driver.quit()
+
+    try:
+        yield "data: Inserting data...\n\n"
+        docket_count = insert_data(downloaded_file)
+        yield f"data: SUCCESS: {docket_count} records added!\n\n"
+    except Exception as e:
+        yield f"data: ERROR: {str(e)}\n\n"
+
+
+def extract_freshlinq(start_date):
+    """Handles FreshLinq extraction."""
+    download_freshlinq_report("uitdraai2@gmail.com", "Uitdraai123#", start_date)
+    yield "data: FreshLinq extraction not yet implemented.\n\n"
 
 
 def insert_data(file):
