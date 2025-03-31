@@ -164,25 +164,39 @@ document.addEventListener("DOMContentLoaded", () => {
     if (window.location.pathname.includes("/create_entry")) {
         loadSavedFormData();
     }
-
-    // Function to check session status
-    async function checkSession() {
-        try {
-            const response = await fetch('/check_session');
-            const data = await response.json();
-
-            if (!data.session_active) {
-                // Redirect to login page if session expired
-                saveFormData(); // Save form data before redirecting
-                window.location.href = '/'; // Replace '/login' with your desired redirect URL
-            }
-        } catch (error) {
-            console.error('Error checking session:', error);
-        }
-    }
-
-    // Poll the session status every 60 seconds
-    setInterval(checkSession, 60000);
     calculateTotalQuantity()
 });
 
+document.addEventListener("DOMContentLoaded", function () {
+    const headers = document.querySelectorAll(".resizable");
+
+    headers.forEach((header) => {
+        const resizer = document.createElement("div");
+        resizer.classList.add("resizer");
+        header.appendChild(resizer);
+
+        resizer.addEventListener("mousedown", onMouseDown);
+
+        function onMouseDown(event) {
+            
+            event.preventDefault();
+
+            const startX = event.clientX;
+            const startWidth = header.offsetWidth;
+
+            function onMouseMove(e) {
+                const newWidth = startWidth + (e.clientX - startX);
+                
+                header.style.width = `${newWidth}px`;
+            }
+
+            function onMouseUp() {
+                document.removeEventListener("mousemove", onMouseMove);
+                document.removeEventListener("mouseup", onMouseUp);
+            }
+
+            document.addEventListener("mousemove", onMouseMove);
+            document.addEventListener("mouseup", onMouseUp);
+        }
+    });
+});

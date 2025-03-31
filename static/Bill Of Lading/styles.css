@@ -82,25 +82,57 @@ form button:hover {
 /* Product Table */
 #product-table {
     width: 100%; /* Adjust this percentage as needed for smaller width */
-    max-width: 100%; /* Optional: set a max width to prevent excessive resizing */
     margin: 0 auto; /* Centers the table horizontally */
     border-collapse: collapse;
     box-shadow: 0 3px 10px rgba(0, 0, 0, 0.1);
     table-layout: fixed;
 }
 
-#product-table th,
-#product-table td {
-    padding: 12px;
+#product-table th, #product-table td {
     border: 1px solid var(--table-border);
+    padding: 12px;
     text-align: center;
+    position: relative;
 }
 
 #product-table th {
     background-color: var(--table-header-bg);
     font-weight: bold;
     color: #555;
+
 }
+
+.resizable {
+    position: relative;
+}
+
+.resizable::after {
+    content: "";
+    position: absolute;
+    right: 0;
+    top: 0;
+    width: 5px;
+    height: 100%;
+    cursor: col-resize;
+    background-color: transparent;
+}
+
+.resizable:hover::after {
+    background-color: rgba(0, 0, 0, 0.2);
+}
+
+.resizer {
+    width: 5px;
+    cursor: col-resize;
+    position: absolute;
+    right: 0;
+    top: 0;
+    bottom: 0;
+    z-index: 10;
+    pointer-events: auto; /* Ensure clicks are registered */
+    background-color: transparent; /* Make it visible if needed */
+  }
+  
 
 #product-table tr:nth-child(even) {
     background-color: var(--table-row-even);

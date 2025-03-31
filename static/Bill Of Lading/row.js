@@ -17,47 +17,116 @@ document.addEventListener("DOMContentLoaded", () => {
 
     $("form").on("submit", function (e) {
         console.log("Submit clicked");
-
+    
         if (isProgrammaticSubmit) {
-            // Allow the programmatic submission to proceed without triggering the handler
-            return;
+            return; // Allow programmatic submission without checking
         }
+    
+        e.preventDefault(); // Always prevent default initially
 
+        // Step 5: Continue with total quantity validation
         const totalQuantity = calculateTotalQuantity();
         const headerTotalQuantity = parseFloat($("#ZZTotalQty").val());
-
+    
         if (totalQuantity !== headerTotalQuantity) {
-            alert("Quantities don't match.");
-            e.preventDefault(); // Prevent form submission if quantities don't match
-        } else {
-            e.preventDefault(); // Prevent default submission initially
-
-            // Start the fetch to clear the saved data
-            fetch("/api/clear-saved-form", {
-                method: "POST",
-                headers: {
-                    "Content-Type": "application/json"
-                },
-                body: JSON.stringify({ clear: true })
-            })
-            .then(response => {
-                if (!response.ok) {
-                    throw new Error("Failed to clear saved form data.");
+            Swal.fire("Quantities don't match!", "", "error");
+            return;
+        }
+    
+        // Step 1: Detect duplicate products
+        const productRows = $(".product-row");
+        const productMap = new Map();
+    
+        productRows.each(function () {
+            const productSelect = $(this).find(".product-select");
+            const productID = productSelect.val();
+            const productText = productSelect.find("option:selected").text();
+            const quantityInput = $(this).find("input[name='ZZQuantityBags[]']");
+            const quantity = parseFloat(quantityInput.val()) || 0;
+    
+            if (productID) {
+                if (productMap.has(productID)) {
+                    productMap.get(productID).quantity += quantity;
+                    productMap.get(productID).rows.push($(this));
+                } else {
+                    productMap.set(productID, { name: productText, quantity, rows: [$(this)] });
                 }
-                return response.json();
-            })
-            .then(data => {
-                alert("Saved data cleared: " + data.message); // Display the success message
-                // Set the flag and submit the form programmatically
+            }
+        });
+    
+        // Step 2: Find duplicates and prepare a message
+        let duplicatesFound = false;
+        let mergeMessage = "<b>The following products will be merged:</b><br><br>";
+    
+        productMap.forEach((productData) => {
+            if (productData.rows.length > 1) {
+                duplicatesFound = true;
+                mergeMessage += `✅ <b>${productData.name}</b>: <i>${productData.quantity} bags</i><br>`;
+            }
+        });
+    
+        if (duplicatesFound) {
+            Swal.fire({
+                title: "Duplicate Products Found",
+                html: mergeMessage,
+                icon: "warning",
+                showCancelButton: true,
+                confirmButtonText: "Yes, Merge",
+                cancelButtonText: "No, Cancel"
+            }).then((result) => {
+                if (result.isConfirmed) {
+                    // Step 3: Merge duplicate quantities
+                    productMap.forEach((productData) => {
+                        if (productData.rows.length > 1) {
+                            let totalQuantity = productData.quantity;
+                            let firstRow = productData.rows[0];
+                            let quantityInput = firstRow.find("input[name='ZZQuantityBags[]']");
+                            quantityInput.val(totalQuantity); // Update quantity in first row
+    
+                            // Remove all other duplicate rows
+                            for (let i = 1; i < productData.rows.length; i++) {
+                                productData.rows[i].remove();
+                            }
+                        }
+                    });
+    
+                    // Step 4: Show success message and proceed with form submission
+                    Swal.fire({
+                        title: "Merged Successfully",
+                        text: "Duplicate products have been merged.",
+                        icon: "success"
+                    }).then(() => {
+                        $("form").trigger("submit"); // Resubmit form after merging
+                    });
+                }
+            });
+    
+            return; // Stop further execution until user decides
+        }
+    
+        // Step 6: Proceed with API call to clear saved data before final submission
+        fetch("/api/clear-saved-form", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ clear: true })
+        })
+        .then(response => {
+            if (!response.ok) {
+                throw new Error("Failed to clear saved form data.");
+            }
+            return response.json();
+        })
+        .then(data => {
+            Swal.fire("Saved data cleared", data.message, "success").then(() => {
                 isProgrammaticSubmit = true;
                 $("form")[0].submit(); // Programmatically submit the form
-            })
-            .catch(error => {
-                console.error("Error:", error);
-                alert("An error occurred. Please try again.");
             });
-        }
-    });
+        })
+        .catch(error => {
+            console.error("Error:", error);
+            Swal.fire("An error occurred", "Please try again.", "error");
+        });
+    });    
 
     // Add new row
     $("#add-line-btn").on("click", function () {
@@ -224,7 +293,7 @@ function addCleanLine() {
                     <option value="" disabled selected>Select a Product</option>
                 </select>
             </td>
-            <td><input type="number" name="ZZEstimatedPrice[]" placeholder="Estimated Price" step="any" required></td>
+            <td><input type="number" name="ZZEstimatedPrice[]" placeholder="Estimated Price" step="any" value="0" required></td>
             <td><input type="number" name="ZZQuantityBags[]" placeholder="Enter quantity" step="any" required></td>
             <td><input type="text" name="ZZComments[]" placeholder="Enter comments"></td>
             <td><button type="button" class="delete-row-btn"><img src="/static/Image/recycle-bin.png" alt="Delete" class="bin-icon"></button></td>

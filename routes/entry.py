@@ -113,7 +113,7 @@ def create_entry():
 
             session['last_entry_id'] = header_id
             print(header_id, session.get('last_entry_id'))
-            return redirect(url_for('entry.submission_success'))
+            return redirect(url_for('entry.create_entry'))
 
         except odbc.IntegrityError as e:
             error_data = integrity_error(e, request.form)

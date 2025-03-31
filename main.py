@@ -1,6 +1,5 @@
 from flask import Flask, render_template, request, redirect, session, url_for, flash, make_response
 from datetime import timedelta
-from waitress import serve
 from flask_session import Session
 from flask_login import login_user, logout_user, current_user, login_required
 import logging
@@ -171,4 +170,4 @@ def create_app():
 
 if __name__ == "__main__":
     app = create_app()
-    app.run(debug=True)
+    app.run(host='0.0.0.0', port=8000)

@@ -1,18 +1,11 @@
 <table id="product-table">
     <thead>
-        <colgroup>
-            <col style="width: 35%;"> <!-- 20% for the first column -->
-            <col style="width: 20%;"> <!-- 15% for the second column -->
-            <col style="width: 15%;"> <!-- 25% for the third column -->
-            <col style="width: 20%;"> <!-- 30% for the fourth column -->
-            <col style="width: 5%;"> <!-- 10% for the fifth column -->
-        </colgroup>
         <tr>
-            <th >Product</th>
-            <th>Estimated Price</th>
-            <th>Quantity Bags</th>
-            <th>Comments</th>
-            <th></th>
+            <th style="width: 35%;" class="resizable">Product</th>
+            <th style="width: 15%;" class="resizable">Estimated Price</th>
+            <th style="width: 20%;" class="resizable">Quantity</th>
+            <th style="width: 20%;" class="resizable">Comments</th>
+            <th style="width: 5%;"></th>
         </tr>
     </thead>
     <tbody class="product-table">
@@ -45,6 +38,6 @@
                     </td>
                 </tr>
             {% endfor %}
-        {%endif%}
+        {% endif %}
     </tbody>
 </table>
