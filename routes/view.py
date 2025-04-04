@@ -109,9 +109,11 @@ def submit_sales_entry():
             date = item['date']
             price = item['price']
             quantity = item['quantity']
+            discount = item['discount']
             amount = item['amount']
             stockId = get_stock_id(lineId, cursor)
 
+            print(discount, item)
             # workout price or amount
             if price == 0 and amount != 0:
                 price = int(amount) / int(quantity)
@@ -121,14 +123,14 @@ def submit_sales_entry():
             if salesId != None:
                 cursor.execute("""
                 UPDATE ZZSalesLines
-                    SET SalesDate = ?, SalesQty = ?, salesAmnt = ?, SalesStockId = ?, SalesPrice = ?
+                    SET SalesDate = ?, SalesQty = ?, DiscountAmnt = ?, SalesAmnt = ?, SalesStockId = ?, SalesPrice = ?
                     WHERE SalesLineIndex = ?
-                """, (date, quantity, amount, stockId, price, salesId))
+                """, (date, quantity, discount, amount, stockId, price, salesId,))
             else:
                 cursor.execute("""
-                INSERT INTO ZZSalesLines (SalesDelLineId, SalesDate, SalesQty, SalesAmnt, SalesPrice, SalesStockId, AutoSale)
-                VALUES (?, ?, ?, ?, ?, ?, ?)
-                """, (lineId, date, quantity, amount, price, stockId, 0))
+                INSERT INTO ZZSalesLines (SalesDelLineId, SalesDate, SalesQty, SalesAmnt, SalesPrice, SalesStockId, AutoSale, DiscountAmnt)
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+                """, (lineId, date, quantity, amount, price, stockId, 0, discount,))
         conn.commit()
         conn.close()
         return jsonify({'success': True})

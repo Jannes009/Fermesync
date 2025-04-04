@@ -68,11 +68,11 @@ def close_db_connection(cursor, connection):
 logging.basicConfig(level=logging.INFO)
 
 
-
 def TechnofreshLogin():
     """Initializes the Selenium WebDriver and logs into the CRM using Technofresh credentials from ConnectedService."""
-    logging.info(f"Trying to log in")
-        # Check if a user is logged in
+    logging.info("Trying to log in")
+
+    # Check if a user is logged in
     if not current_user.is_authenticated:
         logging.warning("No user logged in.")
         return None
@@ -82,7 +82,7 @@ def TechnofreshLogin():
         logging.error("Current user object is missing user ID.")
         return None
 
-    # Fetch Technofresh credentials from the connected_service table using current_user's ID
+    # Fetch Technofresh credentials from the connected_service table
     service = ConnectedService.query.filter_by(user_id=current_user.id, service_type="Technofresh").first()
     if not service:
         logging.warning(f"No Technofresh credentials found for user '{current_user.username}' (ID: {current_user.id}).")
@@ -91,22 +91,32 @@ def TechnofreshLogin():
     try:
         technofresh_username = service.username
         technofresh_password = service.get_password()  # Use class method to decrypt password
-        
 
         # Set up Selenium WebDriver options
         options = webdriver.ChromeOptions()
-        options.add_argument('--headless')
-        options.add_argument('--disable-gpu')
-        options.add_argument('--no-sandbox')
+        # REMOVE HEADLESS MODE TO SEE THE BROWSER
+        # options.add_argument("--headless")  # Keep commented out for now
+        options.add_argument("--disable-gpu")
+        options.add_argument("--window-size=1920,1080")
+        options.add_argument("--no-sandbox")
 
+        # Initialize WebDriver
         driver = webdriver.Chrome(service=Service(ChromeDriverManager().install()), options=options)
         driver.get("https://crm.technofresh.co.za/user/login")
 
-        driver.find_element(By.NAME, "username").send_keys(technofresh_username)
-        driver.find_element(By.NAME, "password").send_keys(technofresh_password)
-        driver.find_element(By.NAME, "submit").click()
+        # Wait for login fields and enter credentials
+        WebDriverWait(driver, 10).until(EC.presence_of_element_located((By.NAME, "username"))).send_keys(technofresh_username)
+        WebDriverWait(driver, 10).until(EC.presence_of_element_located((By.NAME, "password"))).send_keys(technofresh_password)
+        WebDriverWait(driver, 10).until(EC.element_to_be_clickable((By.NAME, "submit"))).click()
 
-        time.sleep(3)  # Wait for login to complete
+        # Wait for page to load after login
+        time.sleep(3)  
+
+        # CHECK IF LOGIN WAS SUCCESSFUL (URL SHOULD NOT CONTAIN 'login')
+        if "login" in driver.current_url.lower():
+            logging.error("Login failed: Still on login page.")
+            driver.quit()
+            return None
 
         logging.info(f"Successfully logged into CRM for user '{current_user.username}'.")
         return driver

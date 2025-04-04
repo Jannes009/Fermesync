@@ -162,7 +162,7 @@ document.getElementById("autoImportForm").addEventListener("submit", function (e
         }
     };
 
-    window.EventSource.onerror = function () {
+    window.eventSource.onerror = function () {
         if (!isCancelled) {
             Swal.fire({ icon: "error", title: "Connection Lost", text: "Failed to connect to the server." });
         }

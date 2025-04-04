@@ -191,6 +191,7 @@ document.addEventListener('DOMContentLoaded', () => {
             <td><input type="date" placeholder="Enter date" value="${dateValue}" name="date" required></td>
             <td><input type="text" placeholder="Quantity" class="quantity-input" name="quantity" required></td>
             <td><input type="number" placeholder="Price" class="price-input name = "price"></td>
+            <td><input type="number" placeholder="Discount" class="discount-input name="discount"></td>
             <td><input type="number" placeholder="Amount" class="amount-input" name="amount"></td>
             <td>
                 <button class="remove-line-btn" onclick="removeRow(this)">
@@ -216,6 +217,7 @@ document.addEventListener('DOMContentLoaded', () => {
                             <td><input type="date" value="${entry.sale_date}" name="date" required></td>
                             <td><input type="number" value="${entry.quantity}" class="quantity-input" name="quantity" required></td>
                             <td><input type="number" value="${entry.price}" class="price-input" name="price" required></td>
+                            <td><input type="number" value="${entry.discount}" class="discount-input" name="discount" required></td>
                             <td><input type="number" value="${entry.amount}" class="amount-input" name="amount" required></td>
                             <td>
                                 <button class="remove-line-btn" data-id="${entry.salesLineIndex}" onclick="removeRow(this)">
@@ -267,6 +269,7 @@ document.addEventListener('DOMContentLoaded', () => {
             const quantity = row.querySelector('.quantity-input').value;
             const price = row.querySelector('.price-input').value || 0;
             const amount = row.querySelector('.amount-input').value || 0;
+            const discountValue = amount / quantity - price;
 
             if (!date || !quantity) {
                 alert('Date and quantity values are required!');
@@ -284,6 +287,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 date,
                 quantity,
                 price,
+                discountValue,
                 amount,
             });
         });
@@ -297,6 +301,7 @@ document.addEventListener('DOMContentLoaded', () => {
     
                 const price = row.querySelector('input[placeholder="Price"]').value || 0;
                 const amount = row.querySelector('input[placeholder="Amount"]').value || 0;
+                const discount = row.querySelector('input[placeholder="Discount"]').value * price / 100 * quantity;
     
                 if (price == 0 && amount == 0) {
                     alert("Price or amount is required");
@@ -310,6 +315,7 @@ document.addEventListener('DOMContentLoaded', () => {
                     date,
                     quantity,
                     price,
+                    discount,
                     amount,
                 });
             }
@@ -360,7 +366,7 @@ document.addEventListener('DOMContentLoaded', () => {
         })
         .catch((error) => console.error('Error:', error));
     });
-    $(document).on('keydown', 'input[name="date"], input[name="quantity"], input[name="price"], input[name="amount"]', function (e) {
+    $(document).on('keydown', 'input[name="date"], input[name="quantity"], input[name="price"], input[name="discount"] input[name="amount"]', function (e) {
         if (e.key === 'Tab' || e.keyCode === 9) {
             e.preventDefault(); // Prevent default tabbing behavior
     
@@ -390,6 +396,7 @@ function createEventListener(row){
     const priceInput = row.querySelector('.price-input');
     const amountInput = row.querySelector('.amount-input');
     const quantityInput = row.querySelector('.quantity-input');
+    const discountInput = row.querySelector('.discount-input');
 
     // Update amount when price changes
     priceInput.addEventListener('input', () => {
@@ -413,6 +420,15 @@ function createEventListener(row){
         const quantity = parseFloat(quantityInput.value) || 0;
         const price = parseFloat(priceInput.value) || 0;
         amountInput.value = (quantity * price).toFixed(2);
+        updateTotalSalesAmount()
+    });
+
+    // Update amount when discount changes
+    discountInput.addEventListener('input', () => {
+        const quantity = parseFloat(quantityInput.value) || 0;
+        const price = parseFloat(priceInput.value) || 0;
+        const discount = parseFloat(priceInput.value) || 0;
+        amountInput.value = (quantity * (price * 1 - discount / 100)).toFixed(2);
         updateTotalSalesAmount()
     });
 }
@@ -470,6 +486,7 @@ function fetchSalesEntries(lineId, viewMode=false) {
                         <td><input type="date" value="${entry.date}" required></td>
                         <td><input type="number" value="${entry.quantity}" class="quantity-input" required></td>
                         <td><input type="number" placeholder="price" value="${entry.price}" class="price-input" required></td>
+                        <td><input type="number" placeholder="discount" value="${entry.discount}" class="discount-input" required></td>
                         <td><input type="number" placeholder="amount" value="${entry.amount}" class="amount-input" required></td>
                         <td>
                             <button class="remove-line-btn" onclick="removeRow(this)" data-id="${entry.salesLineIndex}">

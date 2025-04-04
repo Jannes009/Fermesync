@@ -9,6 +9,7 @@ import pypyodbc
 from models import db, User, ConnectedService  # Changed from relative import
 from db import TechnofreshLogin, download_freshlinq_report
 from routes.Import.freshlinq import process_excel
+from setup import download_folder
 
 import_bp = Blueprint('import', __name__)
 
@@ -164,10 +165,8 @@ def auto_import():
     return Response(stream_with_context(generate_status()), content_type="text/event-stream")
 
 
-
 def extract_technofresh(start_date, end_date):
     """Handles Technofresh extraction."""
-    download_folder = r"C:\\Users\\kapok\\Downloads"
     existing_files = set(os.listdir(download_folder))
 
     yield "data: Connecting to Technofresh...\n\n"
@@ -188,7 +187,16 @@ def extract_technofresh(start_date, end_date):
         base_filename = "Excel_Daily_Sales_Details_Report_"
         yield "data: Waiting for file to download...\n\n"
 
-        downloaded_file = get_newest_downloaded_file(existing_files, download_folder, base_filename, timeout=30)
+        downloaded_file = None
+        max_wait_time = 60  # Max 60 seconds wait time
+
+        for _ in range(max_wait_time):  
+            downloaded_file = get_newest_downloaded_file(existing_files, download_folder, base_filename)
+            print(existing_files, )
+            if downloaded_file:
+                break
+            time.sleep(1)  # Wait a second and check again
+
         if not downloaded_file:
             yield "data: ERROR: File download failed.\n\n"
             return
@@ -199,7 +207,8 @@ def extract_technofresh(start_date, end_date):
         yield f"data: ERROR: {str(e)}\n\n"
         return
     finally:
-        driver.quit()
+        if driver:
+            driver.quit()  # Close the browser session properly
 
     try:
         yield "data: Inserting data...\n\n"
@@ -207,7 +216,6 @@ def extract_technofresh(start_date, end_date):
         yield f"data: SUCCESS: {docket_count} records added!\n\n"
     except Exception as e:
         yield f"data: ERROR: {str(e)}\n\n"
-
 
 def extract_freshlinq(start_date):
     """Handles FreshLinq extraction."""

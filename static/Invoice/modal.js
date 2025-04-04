@@ -31,6 +31,7 @@ document.addEventListener("DOMContentLoaded", function () {
             <td><input type="date" name="date-input" required></td>
             <td><input type="number" class="quantity-input" name="quantity-input" placeholder="Quantity" required></td>
             <td><input type="number" class="price-input" placeholder="Price"></td>
+            <td><input type="number" class="discount-input" value="0" placeholder="Discount"></td>
             <td><input type="number" class="amount-input" placeholder="Amount"></td>
             <td>
                 <button class="remove-line-btn" onclick="removeRow(this)">
@@ -77,6 +78,7 @@ document.addEventListener("DOMContentLoaded", function () {
                 const price = Number(priceInput.value) || 0;
                 const amount = Number(amountInput.value) || 0;
                 salesAdded += quantity;
+                discount = price - amount / quantity;
                 
                 if (!date || isNaN(new Date(date).getTime())) {
                     errorMessage = 'A valid date is required.';
@@ -105,6 +107,7 @@ document.addEventListener("DOMContentLoaded", function () {
                     date,
                     quantity,
                     price,
+                    discount,
                     amount,
                 });
             }
@@ -236,6 +239,7 @@ function createEventListener(row){
     const priceInput = row.querySelector('.price-input');
     const amountInput = row.querySelector('.amount-input');
     const quantityInput = row.querySelector('.quantity-input');
+    const discountInput = row.querySelector('.discount-input');
 
     // Update amount when price changes
     priceInput.addEventListener('input', () => {
@@ -259,6 +263,15 @@ function createEventListener(row){
         const quantity = parseFloat(quantityInput.value) || 0;
         const price = parseFloat(priceInput.value) || 0;
         amountInput.value = (quantity * price).toFixed(2);
+        // updateTotalSalesAmount()
+    });
+    // Update amount when discount changes
+    discountInput.addEventListener('input', () => {
+        const quantity = parseFloat(quantityInput.value) || 0;
+        const price = parseFloat(priceInput.value) || 0;
+        const discount = parseFloat(discountInput.value) || 0;
+        console.log(quantity, price, discount, quantity * (price * (1 - discount / 100)))
+        amountInput.value = (quantity * (price * (1 - discount / 100))).toFixed(2);
         // updateTotalSalesAmount()
     });
 }
