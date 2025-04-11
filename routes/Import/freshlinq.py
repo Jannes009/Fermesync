@@ -1,47 +1,54 @@
+import time
+import datetime
+import tempfile
+import subprocess
 import pandas as pd
 from pandas.errors import OutOfBoundsDatetime
 from db import create_db_connection
 
-
+# ---------------------------
+# Helper function for safe value extraction
+# ---------------------------
 def safe_value(value, default=""):
     """Return a valid value if it's not NaN; otherwise, return the default."""
     return default if pd.isna(value) else value
 
-
+# ---------------------------
+# Process Excel and yield status messages
+# ---------------------------
 def process_excel(file_path, output_file):
-    # Read the Excel file into a DataFrame
     xl = pd.ExcelFile(file_path)
     df = xl.parse(xl.sheet_names[0])
-
-    # List to store combined data
     combined_data = []
+    lot_count = 0
 
-    # Loop through the rows and extract parent + sales data
+    # Loop through the rows to extract lot and sales information.
     for idx, row in df.iterrows():
         if row.values[0] == 'Lot No.:':
-            lot_no = safe_value(row.iloc[1])  
-            brand = safe_value(row.iloc[9])  
-            commodity = safe_value(row.iloc[18])  
+            lot_count += 1
+            yield f"data: Processing row #{lot_count}...\n\n"
 
-            # Extract Delivery Note No., Packaging, Variety, Created At from the next row
+            # Extract parent lot data
+            lot_no = safe_value(row.iloc[1])
+            brand = safe_value(row.iloc[9])
+            commodity = safe_value(row.iloc[18])
+
             delivery_note_no = packaging = variety = created_at = None
             if idx + 1 < len(df):
                 next_row = df.iloc[idx + 1]
-                delivery_note_no = safe_value(next_row.iloc[1])  
-                packaging = safe_value(next_row.iloc[9])  
-                variety = safe_value(next_row.iloc[18])  
-                created_at = safe_value(next_row.iloc[25])  
+                delivery_note_no = safe_value(next_row.iloc[1])
+                packaging = safe_value(next_row.iloc[9])
+                variety = safe_value(next_row.iloc[18])
+                created_at = safe_value(next_row.iloc[25])
 
-            # Extract from the second-next row (idx + 2)
             delivery_date = weight = size = lot_status = None
             if idx + 2 < len(df):
                 second_next_row = df.iloc[idx + 2]
                 delivery_date = safe_value(second_next_row.iloc[1])
-                weight = safe_value(second_next_row.iloc[9], default=0)  # Default weight to 0 if NaN
-                size = safe_value(second_next_row.iloc[18], default=0)  # Default size to 0 if NaN
+                weight = safe_value(second_next_row.iloc[9], default=0)
+                size = safe_value(second_next_row.iloc[18], default=0)
                 lot_status = safe_value(second_next_row.iloc[25])
 
-            # Extract from the third-next row (idx + 3)
             branch = lot_notes = quality = agent = None
             if idx + 3 < len(df):
                 third_next_row = df.iloc[idx + 3]
@@ -50,7 +57,6 @@ def process_excel(file_path, output_file):
                 quality = safe_value(third_next_row.iloc[18])
                 agent = safe_value(third_next_row.iloc[25])
 
-            # Extract from the sixth-next row (idx + 6)
             movement = weighted_average = qty_delivered = qty_sold = remaining = lot_depletions = reclassifications = None
             if idx + 6 < len(df):
                 sixth_next_row = df.iloc[idx + 6]
@@ -62,11 +68,12 @@ def process_excel(file_path, output_file):
                 lot_depletions = safe_value(sixth_next_row.iloc[21], default=0)
                 reclassifications = safe_value(sixth_next_row.iloc[25], default=0)
 
+            # Extract sales data from rows starting at idx + 11
+            sales_data, sales_messages = get_sales_info(df, idx + 11)
+            for msg in sales_messages:
+                yield f"data: {msg}\n\n"
 
-            # Get sales data starting from idx + 11
-            sales_data = get_sales_info(df, idx + 11)
-
-            # Combine parent details with sales data
+            # Combine parent lot info with each sales record
             for sale in sales_data:
                 combined_data.append({
                     "Lot No.": lot_no,
@@ -97,46 +104,42 @@ def process_excel(file_path, output_file):
                     "Value": sale["Value"]
                 })
 
-    # Insert extracted data into the database
-    insert_into_database(combined_data)
+            yield f"data:   ↳ Finished processing lot #{lot_count}.\n\n"
 
+    yield "data: Inserting data into database...\n\n"
+    yield from insert_into_database(combined_data)
 
 def get_sales_info(df, start_line):
     sales_data = []
-
-    # Loop through rows starting from the given line
+    messages = []
     for idx, row in df.iterrows():
         if idx >= start_line:
-            if not pd.isna(row.iloc[5]):  # Check if 'Date' is not NaN
+            if not pd.isna(row.iloc[5]):
                 try:
                     date = pd.to_datetime(row.iloc[5], errors='raise').normalize()
-
-                    # Extract other details
                     quantity = safe_value(row.iloc[11])
                     price = safe_value(row.iloc[17])
                     value = safe_value(row.iloc[22])
-
                     sales_data.append({
-                        "Date": date.strftime('%Y-%m-%d'),  
+                        "Date": date.strftime('%Y-%m-%d'),
                         "Quantity": quantity,
                         "Price": price,
                         "Value": value
                     })
-                except (ValueError, TypeError, OutOfBoundsDatetime):
-                    break  # Stop processing sales data if an error occurs
+                except Exception:
+                    messages.append(f"Stopped reading sales at row {idx} due to invalid date.")
+                    break
             else:
-                break  # Stop if the first NaN is found
+                break
+    messages.append(f"  ↳ Found {len(sales_data)} sales records.")
+    return sales_data, messages
 
-    return sales_data
-
-
-# Function to insert data into the SQL Server table
 def insert_into_database(data):
     conn = create_db_connection()
     cursor = conn.cursor()
-    cursor.execute("Truncate table ZZFreshLinqImport")
+    cursor.execute("TRUNCATE TABLE ZZFreshLinqImport")
+    yield "data:  ↳ Table ZZFreshLinqImport truncated.\n\n"
 
- # SQL INSERT statement
     sql = """
     INSERT INTO ZZFreshLinqImport (
         lot_no, brand, commodity, delivery_note_no, packaging, variety, created_at,
@@ -146,7 +149,9 @@ def insert_into_database(data):
     ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
     """
 
-    for row in data:
+    for i, row in enumerate(data, 1):
+        yield f"data: Inserting row {i}...\n\n"
+
         def parse_date(date_value):
             try:
                 return pd.to_datetime(date_value, errors='coerce').strftime('%Y-%m-%d') if pd.notna(date_value) else None
@@ -181,7 +186,6 @@ def insert_into_database(data):
         price = parse_float(row["Price"])
         value = parse_float(row["Value"])
 
-
         cursor.execute(sql, (
             row["Lot No."], row["Brand"], row["Commodity"], row["Delivery Note No."],
             row["Packaging"], row["Variety"], created_at, delivery_date,
@@ -190,8 +194,12 @@ def insert_into_database(data):
             qty_delivered, qty_sold, remaining, lot_depletions,
             reclassifications, sale_date, quantity, price, value
         ))
-        conn.commit()
 
+        if i % 50 == 0:
+            yield f"data:   ↳ Inserted {i} rows...\n\n"
+            conn.commit()
+
+    cursor.execute("EXEC SIGCopyImprtFreshlinqTrn")
     conn.commit()
     conn.close()
-    print("Data successfully inserted into the database.")
+    yield f"data:   ↳ Finished inserting {len(data)} rows.\n\n"

@@ -62,6 +62,7 @@ function displayTable(data) {
             <td>${row.class || '-'}</td>
             <td>${row.size || '-'}</td>
             <td>${row.variety || '-'}</td>
+            <td>${row.brand || '-'}</td>
             <td>${row.qtysent || '-'}</td>
             <td>${row.averageprice}</td>
             ${detailsButton}</td>
@@ -190,7 +191,7 @@ function showConsignmentDetails(consignmentId) {
                 throw new Error(data.error);
             }
 
-            let { ImportProduct, ImportVariety, ImportClass, ImportMass, ImportSize, ImportQty } = data.consignment_details;
+            let { ImportProduct, ImportVariety, ImportClass, ImportMass, ImportSize, ImportQty, ImportBrand } = data.consignment_details;
             let matches = data.matches || [];
 
             // Function to check if values match (case-insensitive, ignores units)
@@ -223,7 +224,7 @@ function showConsignmentDetails(consignmentId) {
                         <td style="${isMatch(match.LineClass, ImportClass) ? 'background-color: #52eb34;' : ''}">${match.LineClass}</td>
                         <td style="${isMatch(match.LineMass, ImportMass) ? 'background-color: #52eb34;' : ''}">${match.LineMass}</td>
                         <td style="${isMatch(match.LineSize, ImportSize) ? 'background-color: #52eb34;' : ''}">${match.LineSize}</td>
-                        <td>${match.LineBrand}</td>
+                        <td style="${isMatch(match.LineBrand, ImportBrand) ? 'background-color: #52eb34;' : ''}">${match.LineBrand}</td>
                         <td style="${isMatch(match.LineQty, ImportQty) ? 'background-color: #52eb34;' : ''}">${match.LineQty}</td>
                     </tr>
                 `;
@@ -237,6 +238,7 @@ function showConsignmentDetails(consignmentId) {
                     <b>Class:</b> ${ImportClass} <br>
                     <b>Mass:</b> ${ImportMass} kg <br>
                     <b>Size:</b> ${ImportSize} <br>
+                    <b>Brand:</b> ${ImportBrand} <br>
                     <b>Quantity:</b> ${ImportQty} <br>
                     <br>
                     <table class="table table-bordered">

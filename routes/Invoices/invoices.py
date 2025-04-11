@@ -194,3 +194,30 @@ def submit_invoice():
     except Exception as e:
         print(f"Error: {e}")
         return jsonify({'success': False, 'error': str(e)})
+
+
+@invoice_bp.route('/get-tax-rate', methods=['GET'])
+def get_tax_rate():
+    date_str = request.args.get('date')
+    if not date_str:
+        return jsonify({'error': 'Date parameter is required'}), 400
+
+    try:
+        conn = create_db_connection()
+        cursor = conn.cursor()
+
+        print(date_str)
+        cursor.execute("EXEC SIGGetTaxRateByDate @InputDate = ?", [date_str])
+        result = cursor.fetchone()
+
+        if result:
+            return jsonify({'date': date_str, 'tax_rate': float(result[0])})
+        else:
+            return jsonify({'date': date_str, 'message': 'No tax rate found for the given date'}), 404
+
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
+
+    finally:
+        if 'conn' in locals():
+            conn.close()

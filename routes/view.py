@@ -120,17 +120,21 @@ def submit_sales_entry():
             elif amount == 0 and price != 0:
                 amount = int(price) * int(quantity)
 
+            gross_amount = float(price) * float(quantity)
+
             if salesId != None:
                 cursor.execute("""
                 UPDATE ZZSalesLines
-                    SET SalesDate = ?, SalesQty = ?, DiscountAmnt = ?, SalesAmnt = ?, SalesStockId = ?, SalesPrice = ?
+                    SET SalesDate = ?, SalesQty = ?, DiscountAmnt = ?, 
+                    SalesAmnt = ?, SalesStockId = ?, SalesPrice = ?,
+                    GrossSalesAmnt = ?
                     WHERE SalesLineIndex = ?
-                """, (date, quantity, discount, amount, stockId, price, salesId,))
+                """, (date, quantity, discount, amount, stockId, price, salesId, gross_amount,))
             else:
                 cursor.execute("""
-                INSERT INTO ZZSalesLines (SalesDelLineId, SalesDate, SalesQty, SalesAmnt, SalesPrice, SalesStockId, AutoSale, DiscountAmnt)
-                VALUES (?, ?, ?, ?, ?, ?, ?, ?)
-                """, (lineId, date, quantity, amount, price, stockId, 0, discount,))
+                INSERT INTO ZZSalesLines (SalesDelLineId, SalesDate, SalesQty, SalesAmnt, SalesPrice, SalesStockId, AutoSale, DiscountAmnt, GrossSalesAmnt)
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+                """, (lineId, date, quantity, amount, price, stockId, 0, discount, gross_amount,))
         conn.commit()
         conn.close()
         return jsonify({'success': True})
@@ -150,13 +154,13 @@ def get_sales_entries(lineId):
         cursor = conn.cursor()
         if(view_mode != True):
             query = """
-            SELECT SalesDate, SalesQty, SalesPrice, SalesAmnt, SalesStockId, SalesLineIndex
+            SELECT SalesDate, SalesQty, SalesPrice, DiscountAmnt, SalesAmnt, SalesStockId, SalesLineIndex
             FROM [dbo].[_uvMarketSales]
             WHERE SalesDelLineId = ? AND Invoiced = 'FALSE'
             """
         elif(view_mode == True):
            query = """
-            SELECT SalesDate, SalesQty, SalesPrice, SalesAmnt, SalesStockId, SalesLineIndex
+            SELECT SalesDate, SalesQty, SalesPrice, DiscountAmnt, SalesAmnt, SalesStockId, SalesLineIndex
             FROM [dbo].[ZZSalesLines]
             WHERE SalesDelLineId = ?
             """ 
@@ -177,9 +181,10 @@ def get_sales_entries(lineId):
                 'date': row[0],
                 'quantity': row[1],
                 'price': row[2],
-                'amount': row[3],
-                'stockId': row[4],
-                'salesLineIndex': row[5]
+                'discount': row[3],
+                'amount': row[4],
+                'stockId': row[5],
+                'salesLineIndex': row[6]
             }
             for row in rows 
         ]

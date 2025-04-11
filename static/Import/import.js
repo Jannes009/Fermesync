@@ -83,7 +83,7 @@ document.getElementById("autoImportForm").addEventListener("submit", function (e
         // Convert input date to Date object
         const selectedDate = new Date(startDate);
         const oneYearAgo = new Date();
-        oneYearAgo.setFullYear(oneYearAgo.getFullYear() - 1); // Calculate one year ago
+        oneYearAgo.setFullYear(oneYearAgo.getFullYear() - 2); // Calculate one year ago
 
         // Ensure date is not older than a year
         if (selectedDate < oneYearAgo) {

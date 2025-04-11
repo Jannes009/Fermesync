@@ -135,34 +135,45 @@ def upload_excel():
 @import_bp.route('/auto_import', methods=['GET'])
 def auto_import():
     def generate_status():
-        service = request.args.get('service')  # Get the mode (Technofresh or FreshLinq)
+        def yield_status(message):
+            # Yield message in SSE format and give a small delay for delivery
+            yield f"data: {message}\n\n"
+
+        service = request.args.get('service')
         start_date = request.args.get('start_date')
         end_date = request.args.get('end_date')
 
         if not service:
-            yield "data: ERROR: Missing service parameter.\n\n"
+            yield from yield_status("ERROR: Missing service parameter.")
             return
-
         if not start_date or not end_date:
-            yield "data: ERROR: Missing start_date or end_date.\n\n"
+            yield from yield_status("ERROR: Missing start_date or end_date.")
             return
 
         if service == "Technofresh":
-            yield from extract_technofresh(start_date, end_date)
-
+            # extract_technofresh should also be updated similarly (not shown here)
+            yield from extract_technofresh(start_date, end_date, yield_status)
         elif service == "FreshLinq":
-            # Extract FreshLinq report and get the downloaded file path
-            # file_path = download_freshlinq_report("uitdraai2@gmail.com", "Uitdraai123#", start_date,)
+            yield from yield_status("Downloading FreshLinq report...")
+            file_path = yield from download_freshlinq_report("uitdraai2@gmail.com", "Uitdraai123#", start_date, yield_status)
+            if not file_path:
+                yield from yield_status("ERROR: Failed to download FreshLinq report.")
+                return
 
-            # print(f"Processing file: {file_path}")
-            process_excel("C:\\Users\\kapok\\Downloads\\report.xlsx", "result.xlsx")
-            yield "SUCCESS: Excel processing completed.\n\n"
-
-
+            yield from process_excel(file_path, None)
+            # Remove the temporary file after processing
+            try:
+                import os
+                os.remove(file_path)
+                yield from yield_status("Temporary file removed.")
+            except Exception as e:
+                yield from yield_status(f"WARNING: Could not remove temporary file - {str(e)}")
+            yield from yield_status("SUCCESS: Excel processing completed.")
         else:
-            yield "data: ERROR: Invalid service type.\n\n"
+            yield from yield_status("ERROR: Invalid service type.")
 
     return Response(stream_with_context(generate_status()), content_type="text/event-stream")
+
 
 
 def extract_technofresh(start_date, end_date):
@@ -273,7 +284,7 @@ def insert_data(file):
 def get_consignment_details(consignment_id):
     query = """
     SELECT DISTINCT 
-        ImportProduct, ImportVariety, ImportClass, ImportMass, ImportSize, ImportQty
+        ImportProduct, ImportVariety, ImportClass, ImportMass, ImportSize, ImportQty, ImportBrand
     FROM PotentialMatches
     WHERE ConsignmentID = ?
     """
@@ -307,7 +318,8 @@ def get_consignment_details(consignment_id):
             "ImportClass": consignment[2],
             "ImportMass": consignment[3],
             "ImportSize": consignment[4],
-            "ImportQty": consignment[5]
+            "ImportQty": consignment[5],
+            "ImportBrand": consignment[6]
         }
 
         # Get top matches

@@ -27,8 +27,8 @@ function fetch_delivery_note_sales() {
                 <thead>
                     <tr>
                         <th></th>
-                        <th>Note Number</th>
-                        <th>Market ID</th>
+                        <th>Delivery Note</th>
+                        <th>Market Agent</th>
                         <th>Quantity</th>
                         <th>Amount</th>
                         <th><button type="button" id="open-modal" class="button">+</button></th>

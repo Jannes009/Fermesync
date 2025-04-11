@@ -1,3 +1,204 @@
+let qtySold = null
+let currentLineId = null
+let salesBefore = null;
+let salesBeforeDefined = false;
+let salesAdded = null;
+let view_mode = false;
+
+function openSalesModal(mode) {
+    const template = document.getElementById("sales-modal-template");
+    const contentClone = template.content.cloneNode(true);
+
+    // Wrap the cloned content in a container element
+    const wrapper = document.createElement("div");
+    wrapper.appendChild(contentClone);
+
+    view_mode = false;
+    currentMode = mode;
+
+    // Set modal title based on mode
+    let modalTitle = "";
+    if (mode === "add") modalTitle = "Add Sales";
+    else if (mode === "edit") modalTitle = "Edit Sales";
+    else if (mode === "view") modalTitle = "View Sales";
+
+    Swal.fire({
+        title: modalTitle,
+        html: wrapper,
+        width: "90%",
+        showConfirmButton: mode !== 'view',
+        showCancelButton: mode !== 'view',
+        confirmButtonText: "Save",
+        cancelButtonText: "Add Line",
+        reverseButtons: true,
+        showCloseButton: true,
+        didOpen: () => {
+            const container = Swal.getHtmlContainer();
+
+            const totalSalesAmount = container.querySelector('#totalSalesAmount');
+            const totalSalesQuantity = container.querySelector('#totalSalesQuantity');
+            const salesEntriesList = container.querySelector('.sales-entries-list');
+            const newEntryRow = container.querySelector('.new-entry-row');
+
+            totalSalesAmount.textContent = "R0.00";
+            totalSalesQuantity.textContent = "0";
+
+            if (mode === "add") {
+                salesEntriesList.innerHTML = '';
+                newEntryRow.innerHTML = '';
+                salesBefore = qtySold;
+                fetchQtyAvailable(currentLineId);
+                const newRow = addNewRow();
+                newEntryRow.appendChild(newRow);
+            } else if (mode === 'edit') {
+                fetchSalesEntries(currentLineId);
+            } else if (mode === 'view') {
+                view_mode = true;
+                fetchSalesEntries(currentLineId, true);
+            }
+
+            // Save for use in event handlers
+            window.salesModalRefs = {
+                container,
+                salesEntriesList,
+                newEntryRow,
+                totalSalesAmount,
+                totalSalesQuantity,
+            };
+        },
+        preConfirm: () => {
+            return submitSales(); // Only triggered in 'add' and 'edit'
+        },
+        didRender: () => {
+            // Add Line logic
+            const addLineBtn = Swal.getCancelButton();
+            if (addLineBtn) {
+                addLineBtn.addEventListener('click', (e) => {
+                    e.preventDefault(); // Prevent modal from closing
+                    const newRow = addNewRow();
+                    const { newEntryRow } = window.salesModalRefs;
+                    newEntryRow.appendChild(newRow);
+                });
+            }
+        }
+    });
+}
+
+
+function submitSales(){
+    const salesData = [];
+    let isValid = true; // Flag to track if submission should continue
+    salesAdded = document.getElementById('totalSalesQuantity').textContent;
+
+
+    // Collect data from existing entries
+    const existingRows = document.querySelectorAll('.sales-entries-list tr');
+    existingRows.forEach(row => {
+        const lineId = currentLineId;
+        const salesId = row.querySelector('button').getAttribute('data-id');  // Get the data-id attribute value;
+        const date = row.querySelector('input[type="date"]').value;
+        const quantity = row.querySelector('.quantity-input').value;
+        const price = row.querySelector('.price-input').value || 0;
+        const amount = row.querySelector('.amount-input').value || 0;
+        const discountValue = amount / quantity - price;
+
+        if (!date || !quantity) {
+            alert('Date and quantity values are required!');
+            isValid = false; // Set the flag to false, preventing form submission
+            return; // Stop the loop and function execution
+        } else if (price == 0 && amount == 0) {
+            alert('Either Price or Amount are required');
+            isValid = false;
+            return;
+        }
+
+        salesData.push({
+            lineId,
+            salesId,
+            date,
+            quantity,
+            price,
+            discountValue,
+            amount,
+        });
+    });
+
+    // Collect data from new entries
+    const newRows = document.querySelectorAll('.new-entry-row tr');
+    newRows.forEach(row => {
+        if(row.querySelector('input[type="date"]')){
+            const date = row.querySelector('input[type="date"]').value;
+            const quantity = row.querySelector('.quantity-input').value;
+
+            const price = row.querySelector('input[placeholder="Price"]').value || 0;
+            const amount = row.querySelector('input[placeholder="Amount"]').value || 0;
+            const discount = row.querySelector('input[placeholder="Discount"]').value * price / 100 * quantity;
+
+            if (price == 0 && amount == 0) {
+                alert("Price or amount is required");
+                isValid = false;
+                return; // Stop further execution if data is invalid
+            }
+
+            salesData.push({
+                lineId: currentLineId,
+                salesId: null,
+                date,
+                quantity,
+                price,
+                discount,
+                amount,
+            });
+        }
+
+    });
+
+    if (!isValid) {
+        return; // If any validation failed, prevent submission
+    }
+
+    if (salesData.length === 0) {
+        alert('No sales data to submit!');
+        return;
+    }
+    console.log(salesData)
+    // Send data to the backend
+    fetch('/submit_sales_entries', {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+            salesEntries: salesData,
+        }),
+    })
+    .then((response) => response.json())
+    .then((data) => {
+        if (data.success) {
+            const rowChanged = document.querySelector(`[row-id='${currentLineId}']`);
+            
+            // update quantity sold
+            const qtySold = parseInt(salesBefore) + parseInt(salesAdded);
+            rowChanged.querySelector('#qty-sold').textContent = qtySold;
+
+            // remove product change button if qty sold > 0
+            if(qtySold > 0){
+                const changeBtn = rowChanged.querySelector('.change-product-btn')
+                if(changeBtn){
+                    changeBtn.remove()
+                }
+            }
+
+            alert('Data submitted successfully!');
+            document.querySelector('.modal-overlay').style.display = 'none';
+        } else {
+            alert('Failed to submit data: ' + data['message']);
+        }
+    })
+    .catch((error) => console.error('Error:', error));
+}
+
+
 function updateTotalSalesAmount() {
     let total_amount = 0;
     let total_quantity = 0;
@@ -57,20 +258,9 @@ async function fetchQtyAvailable(saleId) {
 
 
 document.addEventListener('DOMContentLoaded', () => {
-    const modalOverlay = document.querySelector('.modal-overlay');
     const productModalOverlay = document.querySelector('.product-modal-overlay');
-    const closeModalButton = document.querySelector('.close-btn');
-    const defaultDateInput = document.getElementById('default-date');
-    const defaultDateContainer = document.getElementById('default-date-container');
-    const dateFilterContainer = document.getElementById('date-filter-container');
     const salesEntriesList = document.querySelector('.sales-entries-list');
-    const newEntryRow = document.querySelector('.new-entry-row');
-    let currentLineId = null;
-    let salesBefore = null;
-    let salesBeforeDefined = false;
-    let salesAdded = null;
-    let qtySold = null;
-    let view_mode = false;
+
     // Open modal for Add or Edit
     function addBtnEventlistener(){
         document.querySelectorAll('.change-product-btn').forEach((button) => {
@@ -89,52 +279,13 @@ document.addEventListener('DOMContentLoaded', () => {
         document.querySelectorAll('.add-sales-btn, .edit-sales-btn, .view-sales-btn').forEach((button) => {
             const row = button.closest('tr');
             button.addEventListener('click', (event) => {
-                
                 const action = button.getAttribute('data-action');
-                view_mode = false;
-                currentMode = action;
+                openSalesModal(action)
                 currentLineId = button.getAttribute('data-id') || null;
-                modalOverlay.style.display = 'block';
-        
                 qtySold = row.querySelector('#qty-sold').textContent;
-
-                document.querySelector('.add-line-btn').style.display = 'flex';
-                document.querySelector('.save-btn').style.display = 'flex';
-        
-                // Update the total sales amount display
-                document.getElementById('totalSalesAmount').textContent = "R0.00";
-                document.getElementById('totalSalesQuantity').textContent = "0";
-        
-                // Toggle modal content based on mode
-                if (action === 'add') {
-                    document.getElementById('modal-title').textContent = 'Add Sales';
-                    defaultDateContainer.style.display = 'block';
-                    dateFilterContainer.style.display = 'none';
-                    salesEntriesList.innerHTML = ''; // Clear existing rows
-                    newEntryRow.innerHTML = ''; // Clear new entry rows
-                    salesBefore = qtySold;
-                    fetchQtyAvailable(currentLineId);
-                    addNewRow(); // Add a clean row
-                } else if (action === 'edit') {
-                    document.getElementById('modal-title').textContent = 'Edit Sales';
-                    defaultDateContainer.style.display = 'none';
-                    dateFilterContainer.style.display = 'block';
-                    fetchSalesEntries(currentLineId); // Fetch past entries
-                } else if (action === 'view') {
-                    view_mode = true;
-                    document.getElementById('modal-title').textContent = 'View Sales';
-                    defaultDateContainer.style.display = 'none';
-                    dateFilterContainer.style.display = 'block';
-                    fetchSalesEntries(currentLineId, true); // Fetch past entries
-        
-                    // Hide Save and Add Line buttons
-                    document.querySelector('.add-line-btn').style.display = 'none';
-                    document.querySelector('.save-btn').style.display = 'none';
-                }
             });
         });         
     }
-
 
     // MutationObserver to monitor when new rows are added to the table
     const observer = new MutationObserver(() => {
@@ -170,39 +321,6 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     });
 
-    // Observe changes in the salesEntriesList and newEntryRow containers
-    observer.observe(salesEntriesList, { childList: true });
-    observer.observe(newEntryRow, { childList: true });
-
-    // Close modal
-    closeModalButton.addEventListener('click', () => {
-        modalOverlay.style.display = 'none';
-    });
-
-    // Add new line
-    document.querySelector('.add-line-btn').addEventListener('click', () => {
-        addNewRow();
-    });
-
-    function addNewRow() {
-        const dateValue = defaultDateInput.value || ''; // Use default date if set
-        const newRow = document.createElement('tr');
-        newRow.innerHTML = `
-            <td><input type="date" placeholder="Enter date" value="${dateValue}" name="date" required></td>
-            <td><input type="text" placeholder="Quantity" class="quantity-input" name="quantity" required></td>
-            <td><input type="number" placeholder="Price" class="price-input name = "price"></td>
-            <td><input type="number" placeholder="Discount" class="discount-input name="discount"></td>
-            <td><input type="number" placeholder="Amount" class="amount-input" name="amount"></td>
-            <td>
-                <button class="remove-line-btn" onclick="removeRow(this)">
-                    <img src="/static/Image/recycle-bin.png" alt="Delete" class="bin-icon">
-                </button>
-            </td>
-        `;
-        newEntryRow.appendChild(newRow);
-        createEventListener(newRow);
-        return newRow
-    }
 
     function filterSalesEntries(lineId, startDate, endDate) {
         fetch(`/filter_sales_entries?startDate=${startDate}&endDate=${endDate}&lineId=${lineId}`)
@@ -239,158 +357,29 @@ document.addEventListener('DOMContentLoaded', () => {
 
     }
     
-    document.getElementById('filter-sales-btn').addEventListener('click', () => {
-        const startDate = document.getElementById('start-date').value;
-        const endDate = document.getElementById('end-date').value;
-
-        if (!startDate || !endDate) {
-            alert('Please select both start and end dates.');
-            return;
-        }
-
-        filterSalesEntries(currentLineId, startDate, endDate)
-    });
     document.addEventListener('triggerAddBtnListener', () => {
         addBtnEventlistener()
-    });
-    // Submit sales data
-    document.querySelector('.modal-footer button[type="submit"]').addEventListener('click', () => {
-        const salesData = [];
-        let isValid = true; // Flag to track if submission should continue
-        salesAdded = document.getElementById('totalSalesQuantity').textContent;
-
-
-        // Collect data from existing entries
-        const existingRows = document.querySelectorAll('.sales-entries-list tr');
-        existingRows.forEach(row => {
-            const lineId = currentLineId;
-            const salesId = row.querySelector('button').getAttribute('data-id');  // Get the data-id attribute value;
-            const date = row.querySelector('input[type="date"]').value;
-            const quantity = row.querySelector('.quantity-input').value;
-            const price = row.querySelector('.price-input').value || 0;
-            const amount = row.querySelector('.amount-input').value || 0;
-            const discountValue = amount / quantity - price;
-
-            if (!date || !quantity) {
-                alert('Date and quantity values are required!');
-                isValid = false; // Set the flag to false, preventing form submission
-                return; // Stop the loop and function execution
-            } else if (price == 0 && amount == 0) {
-                alert('Either Price or Amount are required');
-                isValid = false;
-                return;
-            }
-
-            salesData.push({
-                lineId,
-                salesId,
-                date,
-                quantity,
-                price,
-                discountValue,
-                amount,
-            });
-        });
-
-        // Collect data from new entries
-        const newRows = document.querySelectorAll('.new-entry-row tr');
-        newRows.forEach(row => {
-            if(row.querySelector('input[type="date"]')){
-                const date = row.querySelector('input[type="date"]').value;
-                const quantity = row.querySelector('.quantity-input').value;
-    
-                const price = row.querySelector('input[placeholder="Price"]').value || 0;
-                const amount = row.querySelector('input[placeholder="Amount"]').value || 0;
-                const discount = row.querySelector('input[placeholder="Discount"]').value * price / 100 * quantity;
-    
-                if (price == 0 && amount == 0) {
-                    alert("Price or amount is required");
-                    isValid = false;
-                    return; // Stop further execution if data is invalid
-                }
-    
-                salesData.push({
-                    lineId: currentLineId,
-                    salesId: null,
-                    date,
-                    quantity,
-                    price,
-                    discount,
-                    amount,
-                });
-            }
-
-        });
-
-        if (!isValid) {
-            return; // If any validation failed, prevent submission
-        }
-
-        if (salesData.length === 0) {
-            alert('No sales data to submit!');
-            return;
-        }
-        console.log(salesData)
-        // Send data to the backend
-        fetch('/submit_sales_entries', {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json',
-            },
-            body: JSON.stringify({
-                salesEntries: salesData,
-            }),
-        })
-        .then((response) => response.json())
-        .then((data) => {
-            if (data.success) {
-                const rowChanged = document.querySelector(`[row-id='${currentLineId}']`);
-                
-                // update quantity sold
-                const qtySold = parseInt(salesBefore) + parseInt(salesAdded);
-                rowChanged.querySelector('#qty-sold').textContent = qtySold;
-
-                // remove product change button if qty sold > 0
-                if(qtySold > 0){
-                    const changeBtn = rowChanged.querySelector('.change-product-btn')
-                    if(changeBtn){
-                        changeBtn.remove()
-                    }
-                }
-
-                alert('Data submitted successfully!');
-                document.querySelector('.modal-overlay').style.display = 'none';
-            } else {
-                alert('Failed to submit data: ' + data['message']);
-            }
-        })
-        .catch((error) => console.error('Error:', error));
-    });
-    $(document).on('keydown', 'input[name="date"], input[name="quantity"], input[name="price"], input[name="discount"] input[name="amount"]', function (e) {
-        if (e.key === 'Tab' || e.keyCode === 9) {
-            e.preventDefault(); // Prevent default tabbing behavior
-    
-            let currentInput = $(this);
-            let currentRow = currentInput.closest('tr');
-            let nextRow = currentRow.next(); // Get the next row
-            let inputName = currentInput.attr('name');
-    
-            let nextInput = nextRow.find(`input[name="${inputName}"]`);
-    
-            if (nextRow.length === 0) {
-                let newRow = $(addNewRow()); // Convert returned plain DOM element to a jQuery object
-                nextInput = newRow.find(`input[name="${inputName}"]`);
-            }
-    
-            if (nextInput.length) {
-                nextInput.focus();
-            }
-        }
     });
        
 });
 
-
+function addNewRow() {
+    const newRow = document.createElement('tr');
+    newRow.innerHTML = `
+        <td><input type="date" placeholder="Enter date" name="date" required></td>
+        <td><input type="text" placeholder="Quantity" class="quantity-input" name="quantity" required></td>
+        <td><input type="number" placeholder="Price" class="price-input name = "price"></td>
+        <td><input type="number" placeholder="Discount" class="discount-input name="discount"></td>
+        <td><input type="number" placeholder="Amount" class="amount-input" name="amount"></td>
+        <td>
+            <button class="remove-line-btn" onclick="removeRow(this)">
+                <img src="/static/Image/recycle-bin.png" alt="Delete" class="bin-icon">
+            </button>
+        </td>
+    `;
+    createEventListener(newRow);
+    return newRow
+}
 
 function createEventListener(row){
     const priceInput = row.querySelector('.price-input');
@@ -427,10 +416,13 @@ function createEventListener(row){
     discountInput.addEventListener('input', () => {
         const quantity = parseFloat(quantityInput.value) || 0;
         const price = parseFloat(priceInput.value) || 0;
-        const discount = parseFloat(priceInput.value) || 0;
-        amountInput.value = (quantity * (price * 1 - discount / 100)).toFixed(2);
-        updateTotalSalesAmount()
+        const discount = parseFloat(discountInput.value) || 0;  // Corrected this line
+        const discountedPrice = price * (1 - discount / 100);
+        amountInput.value = (quantity * discountedPrice).toFixed(2);
+        console.log("Updating amount with value", (quantity * discountedPrice).toFixed(2));
+        updateTotalSalesAmount();
     });
+
 }
 
 function removeRow(button) {
@@ -481,6 +473,7 @@ function fetchSalesEntries(lineId, viewMode=false) {
                 salesEntriesList.innerHTML = ''; // Clear existing entries
 
                 data.sales_entries.forEach((entry) => {
+                    console.log(entry)
                     const row = document.createElement('tr');
                     row.innerHTML = `
                         <td><input type="date" value="${entry.date}" required></td>
@@ -510,16 +503,3 @@ function fetchSalesEntries(lineId, viewMode=false) {
             console.error('Error fetching sales entries:', error);
         });
 }
-
-document.getElementById('default-date').addEventListener('change', function(event) {
-    // Get the changed value of the default date
-    const selectedDate = event.target.value;
-
-    // Select all input elements with type="date"
-    const dateInputs = document.querySelectorAll('input[type="date"]');
-
-    // Set the value of each input[type="date"] to the selected value
-    dateInputs.forEach(input => {
-        input.value = selectedDate;
-    });
-});
