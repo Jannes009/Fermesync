@@ -94,6 +94,7 @@ document.addEventListener("DOMContentLoaded", () => {
                     Swal.fire({
                         title: "Merged Successfully",
                         text: "Duplicate products have been merged.",
+                        timer: 1,
                         icon: "success"
                     }).then(() => {
                         $("form").trigger("submit"); // Resubmit form after merging
@@ -117,10 +118,17 @@ document.addEventListener("DOMContentLoaded", () => {
             return response.json();
         })
         .then(data => {
-            Swal.fire("Saved data cleared", data.message, "success").then(() => {
-                isProgrammaticSubmit = true;
-                $("form")[0].submit(); // Programmatically submit the form
+            Swal.fire({
+                title: "Saved data cleared",
+                text: data.message,
+                icon: "success",
+                timer: 1000,
+                showConfirmButton: false
             });
+            
+            isProgrammaticSubmit = true;
+            $("form")[0].submit(); // Programmatically submit the form
+            
         })
         .catch(error => {
             console.error("Error:", error);

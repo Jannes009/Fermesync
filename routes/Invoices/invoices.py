@@ -2,10 +2,12 @@ from flask import render_template, Blueprint, request, jsonify
 import pypyodbc as odbc
 from db import create_db_connection, close_db_connection
 from routes.db_functions import agent_code_to_agent_name, get_stock_name, get_invoice_id, del_note_number_to_del_id
+from auth import role_required
 
 invoice_bp = Blueprint('invoice', __name__)
 
 @invoice_bp.route('/create_invoice')
+@role_required()
 def invoice_page():
     return render_template('Invoice page/base.html')
 
@@ -97,6 +99,7 @@ def get_delivery_note_details(note_number, start_date, end_date):
         return None
 
 @invoice_bp.route('/get_delivery_note_lines', methods=['POST'])
+@role_required()
 def get_delivery_note_lines():
     # Get the delivery note number from the POST request
     data = request.get_json()  # For handling JSON data
@@ -118,6 +121,7 @@ def get_delivery_note_lines():
     
 
 @invoice_bp.route('/submit_invoice', methods=['POST'])
+@role_required()
 def submit_invoice():
     try:
         data = request.json
@@ -134,6 +138,7 @@ def submit_invoice():
         InvoiceAgentCommIncl = data.get('InvoiceAgentCommIncl')
         InvoiceOtherCostsIncl = data.get('InvoiceOtherCostsIncl')
         SalesLines = data.get('tickedLines')
+        TaxRate = data.get('TaxRate')
 
         # Insert into database
         conn = create_db_connection()
@@ -154,14 +159,14 @@ def submit_invoice():
             [InvoiceDate], [InvoiceNo], [InvoiceDelNoteId], [InvoiceDelNoteNo],
             [InvoiceQty], [InvoiceGross], [InvoiceTotalDeducted],
             [InvoiceMarketCommIncl], [InvoiceAgentCommIncl], [InvoiceOtherCostsIncl], 
-            [InvoiceiClientId]
-        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+            [InvoiceiClientId], [InvoiceTaxRate]
+        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
         """
         cursor.execute(query, (
             InvoiceDate, InvoiceNo, DelNoteId[0], InvoiceDelNoteNo,
             InvoiceQty, InvoiceGross, InvoiceTotalDeducted,
             InvoiceMarketCommIncl, InvoiceAgentCommIncl, InvoiceOtherCostsIncl,
-            clientId[0],
+            clientId[0], TaxRate,
         ))
 
         headerId = get_invoice_id(InvoiceNo, cursor)
@@ -197,6 +202,7 @@ def submit_invoice():
 
 
 @invoice_bp.route('/get-tax-rate', methods=['GET'])
+@role_required()
 def get_tax_rate():
     date_str = request.args.get('date')
     if not date_str:
@@ -221,3 +227,17 @@ def get_tax_rate():
     finally:
         if 'conn' in locals():
             conn.close()
+
+@invoice_bp.route('/check_invoice_no', methods=['POST'])
+def check_delivery_note():
+    data = request.json
+    invoice_number = data.get('invoiceNo')
+
+    conn = create_db_connection()
+    cursor = conn.cursor()
+    
+    cursor.execute("SELECT COUNT(*) FROM ZZInvoiceHeader WHERE InvoiceNo = ?", (invoice_number,))
+    exists = cursor.fetchone()[0] > 0
+
+    conn.close()
+    return jsonify({'exists': exists})

@@ -15,7 +15,7 @@ def create_app():
     # Enhanced session configuration
     app.config.update(
         SESSION_PERMANENT=False,
-        PERMANENT_SESSION_LIFETIME=timedelta(hours=1),
+        # PERMANENT_SESSION_LIFETIME=timedelta(hours=1),
         SESSION_COOKIE_HTTPONLY=True,
         SESSION_COOKIE_SECURE=True,
         SESSION_COOKIE_SAMESITE='Lax',
@@ -63,7 +63,9 @@ def create_app():
             return redirect(url_for('dashboard'))
             
         if request.method == "GET":
+            print("rendering template")
             return render_template('Login/index.html', next=request.args.get('next'))
+
         
         username = request.form.get('username')
         password = request.form.get('password')
@@ -74,12 +76,12 @@ def create_app():
             user_login.load_user_data()  # Load credentials from DB
             login_user(user_login)
             
-            next_page = request.args.get('next') or request.form.get('next')
+            next_page = request.form.get('next')
             if next_page and next_page.startswith('/'):
                 return redirect(next_page)
             return redirect(url_for('dashboard'))
         
-        flash("Invalid username or password", "error")
+        print("Invalid username or password", "error")
         return redirect(url_for('login', next=request.form.get('next')))
 
     @app.route("/logout")
@@ -171,3 +173,4 @@ def create_app():
 if __name__ == "__main__":
     app = create_app()
     app.run(host='0.0.0.0', port=5001, debug=True)
+

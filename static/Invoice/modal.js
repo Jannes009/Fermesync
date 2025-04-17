@@ -178,10 +178,10 @@ document.addEventListener("DOMContentLoaded", function () {
 // Function to fetch products based on the Delivery Note number
 async function fetchProducts() {
     const deliveryNoteNumber = document.getElementById("delivery-note-number").value.trim();
-    let verifyIconSrc = document.getElementById('verify-icon').getAttribute('src');
+    let noteNumberIconSrc = document.getElementById('del-note-number-icon').getAttribute('src');
 
-    // Check if 'verifyIconSrc' contains 'neutral' or 'error'
-    if (verifyIconSrc.includes('neutral') || verifyIconSrc.includes('error')) {
+    // Check if 'noteNumberIconSrc' contains 'neutral' or 'error'
+    if (noteNumberIconSrc.includes('neutral') || noteNumberIconSrc.includes('error')) {
         alert("This delivery note doesn't exist")
         return false;  // Exit the function or stop further execution
     }      
@@ -278,13 +278,13 @@ function createEventListener(row){
 
 function check_delivery_note(){
     let inputField = document.getElementById('delivery-note-number');
-    let verifyIcon = document.getElementById('verify-icon');
+    let noteNumberIcon = document.getElementById('del-note-number-icon');
     
     let delNoteNo = inputField.value.trim();
     console.log("Checking DelNoteNo", delNoteNo);
 
     if (delNoteNo === '') {
-        verifyIcon.src = "/static/image/neutral.png"; // Reset icon
+        noteNumberIcon.src = "/static/image/neutral.png"; // Reset icon
         deliveryNoteStatus = null;
         return;
     }
@@ -297,18 +297,46 @@ function check_delivery_note(){
     .then(response => response.json())
     .then(data => {
         if (data.exists) {
-            verifyIcon.src = "/static/image/check.png"; // Red cross
+            noteNumberIcon.src = "/static/image/check.png"; // Red cross
             deliveryNoteStatus = "Delivery Note already exists!";
             fetch_delivery_note_sales()
         } else {
-            verifyIcon.src = "/static/image/incorrect.png"; // Green check
+            noteNumberIcon.src = "/static/image/incorrect.png"; // Green check
             deliveryNoteStatus = "Delivery Note is available!";
         }
     })
     .catch(error => console.error("Error:", error));
 }
 
+function check_invoice_number(){
+    let inputField = document.getElementById('ZZInvoiceNo');
+    let invoiceNumberIcon = document.getElementById('invoice-icon');
+    
+    let invoiceNo = inputField.value.trim();
 
+    if (invoiceNo === '') {
+        invoiceNumberIcon.src = "/static/image/neutral.png"; // Reset icon
+        invoiceStatus = null;
+        return;
+    }
+
+    fetch('/check_invoice_no', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ invoiceNo: invoiceNo })
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.exists) {
+            invoiceNumberIcon.src = "/static/image/incorrect.png"; 
+            invoiceStatus = "Invoice already exists!";
+        } else {
+            invoiceNumberIcon.src = "/static/image/check.png";
+            invoiceStatus = "This Invoice Number doesn't exist.";
+        }
+    })
+    .catch(error => console.error("Error:", error));
+}
     // Function to fetch the Delivery Note ID (asynchronous)
     async function fetchDeliveryNoteId(DelNoteNo) {
         console.log(DelNoteNo);  // Check the delivery note number passed in

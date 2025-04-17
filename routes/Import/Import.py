@@ -2,36 +2,26 @@ from flask import Blueprint, render_template, request, redirect, url_for, flash,
 from db import create_db_connection, close_db_connection
 import pandas as pd
 import os, logging, time
-from selenium.webdriver.common.by import By
 from routes.db_functions import get_stock_name
 from flask_login import login_required, current_user
-import pypyodbc
 from models import db, User, ConnectedService  # Changed from relative import
-from db import TechnofreshLogin, download_freshlinq_report
-from routes.Import.freshlinq import process_excel
+from routes.Import.freshlinq import Freshlinq
 from setup import download_folder
+from auth import role_required
+from routes.Import.technofresh import Technofresh
 
 import_bp = Blueprint('import', __name__)
 
 @import_bp.route('/main', methods=['GET'])
+@role_required()
 def import_page():
     connected_services = ConnectedService.query.filter_by(user_id=current_user.id).all()
     return render_template("Import/import.html", services=[service.service_type for service in connected_services])
 
 logging.basicConfig(level=logging.INFO)
 
-def get_newest_downloaded_file(existing_files, directory, base_filename, timeout=30):
-    start_time = time.time()
-    while time.time() - start_time < timeout:
-        current_files = set(os.listdir(directory))
-        new_files = current_files - existing_files
-        matching_files = [f for f in new_files if f.startswith(base_filename)]
-        if matching_files:
-            return os.path.join(directory, sorted(matching_files, key=lambda x: os.path.getmtime(os.path.join(directory, x)), reverse=True)[0])
-        time.sleep(1)
-    return None
-
 @import_bp.route('/get_imported_results', methods=['GET'])
+@role_required()
 def get_import_results():
     conn = create_db_connection()
     cursor = conn.cursor()
@@ -54,6 +44,7 @@ def get_import_results():
 
 
 @import_bp.route('/get_dockets/<consignment_id>', methods=['GET'])
+@role_required()
 def get_dockets(consignment_id):
     conn = create_db_connection()
     cursor = conn.cursor()
@@ -77,12 +68,12 @@ def get_dockets(consignment_id):
 
 
 @import_bp.route("/update_supplier_ref", methods=["POST"])
+@role_required()
 def update_supplier_ref():
     data = request.json  # Extract JSON data from the frontend
     new_del_note_no = data.get("newDelNoteNo")  # Ensure key matches frontend
     old_del_note_no = data.get("oldDelNoteNo")  # Ensure key matches frontend
 
-    print(new_del_note_no, old_del_note_no)
     if not new_del_note_no or not old_del_note_no:
         return jsonify({"status": "error", "message": "Missing required fields"}), 400
 
@@ -106,33 +97,35 @@ def update_supplier_ref():
         conn.close()
 
         
-@import_bp.route('/upload_excel', methods=['POST'])
-def upload_excel():
-    file = request.files.get('file')
-    if not file:
-        return jsonify({"results": [{"file": "N/A", "status": "Failed", "message": "No file selected!"}]}), 400
+# @import_bp.route('/upload_excel', methods=['POST'])
+# @role_required()
+# def upload_excel():
+#     file = request.files.get('file')
+#     if not file:
+#         return jsonify({"results": [{"file": "N/A", "status": "Failed", "message": "No file selected!"}]}), 400
 
-    try:
-        count = insert_data(file)  # Import the data and get the count of inserted rows
+#     try:
+#         count = insert_data(file)  # Import the data and get the count of inserted rows
 
-        return jsonify({
-            "results": [{
-                "file": file.filename,
-                "status": "Success" if count > 0 else "Failed",
-                "message": f"{count} lines imported successfully!" if count > 0 else "No lines imported"
-            }]
-        }), 200
+#         return jsonify({
+#             "results": [{
+#                 "file": file.filename,
+#                 "status": "Success" if count > 0 else "Failed",
+#                 "message": f"{count} lines imported successfully!" if count > 0 else "No lines imported"
+#             }]
+#         }), 200
 
-    except Exception as e:
-        return jsonify({
-            "results": [{
-                "file": file.filename if file else "Unknown",
-                "status": "Failed",
-                "message": str(e)
-            }]
-        }), 500
+#     except Exception as e:
+#         return jsonify({
+#             "results": [{
+#                 "file": file.filename if file else "Unknown",
+#                 "status": "Failed",
+#                 "message": str(e)
+#             }]
+#         }), 500
 
 @import_bp.route('/auto_import', methods=['GET'])
+@role_required()
 def auto_import():
     def generate_status():
         def yield_status(message):
@@ -152,153 +145,27 @@ def auto_import():
 
         if service == "Technofresh":
             # extract_technofresh should also be updated similarly (not shown here)
-            yield from extract_technofresh(start_date, end_date, yield_status)
+            yield from Technofresh(start_date, end_date)
         elif service == "FreshLinq":
-            yield from yield_status("Downloading FreshLinq report...")
-            file_path = yield from download_freshlinq_report("uitdraai2@gmail.com", "Uitdraai123#", start_date, yield_status)
-            if not file_path:
-                yield from yield_status("ERROR: Failed to download FreshLinq report.")
-                return
+            yield from Freshlinq(start_date)
 
-            yield from process_excel(file_path, None)
-            # Remove the temporary file after processing
-            try:
-                import os
-                os.remove(file_path)
-                yield from yield_status("Temporary file removed.")
-            except Exception as e:
-                yield from yield_status(f"WARNING: Could not remove temporary file - {str(e)}")
-            yield from yield_status("SUCCESS: Excel processing completed.")
         else:
             yield from yield_status("ERROR: Invalid service type.")
 
     return Response(stream_with_context(generate_status()), content_type="text/event-stream")
 
-
-
-def extract_technofresh(start_date, end_date):
-    """Handles Technofresh extraction."""
-    existing_files = set(os.listdir(download_folder))
-
-    yield "data: Connecting to Technofresh...\n\n"
-    driver = TechnofreshLogin()
-    if not driver:
-        yield "data: ERROR: Failed to connect.\n\n"
-        return
-
-    try:
-        yield "data: Navigating to report download page...\n\n"
-        driver.get("https://crm.technofresh.co.za/reports/view/8/xls")
-
-        driver.execute_script("document.getElementsByName('from_date')[0].value = arguments[0]", start_date)
-        driver.execute_script("document.getElementsByName('to_date')[0].value = arguments[0]", end_date)
-        driver.find_element(By.NAME, "submit").click()
-        yield "data: Report request submitted...\n\n"
-
-        base_filename = "Excel_Daily_Sales_Details_Report_"
-        yield "data: Waiting for file to download...\n\n"
-
-        downloaded_file = None
-        max_wait_time = 60  # Max 60 seconds wait time
-
-        for _ in range(max_wait_time):  
-            downloaded_file = get_newest_downloaded_file(existing_files, download_folder, base_filename)
-            print(existing_files, )
-            if downloaded_file:
-                break
-            time.sleep(1)  # Wait a second and check again
-
-        if not downloaded_file:
-            yield "data: ERROR: File download failed.\n\n"
-            return
-
-        yield f"data: File downloaded: {downloaded_file}\n\n"
-
-    except Exception as e:
-        yield f"data: ERROR: {str(e)}\n\n"
-        return
-    finally:
-        if driver:
-            driver.quit()  # Close the browser session properly
-
-    try:
-        yield "data: Inserting data...\n\n"
-        docket_count = insert_data(downloaded_file)
-        yield f"data: SUCCESS: {docket_count} records added!\n\n"
-    except Exception as e:
-        yield f"data: ERROR: {str(e)}\n\n"
-
-def extract_freshlinq(start_date):
-    """Handles FreshLinq extraction."""
-    download_freshlinq_report("uitdraai2@gmail.com", "Uitdraai123#", start_date)
-    yield "data: FreshLinq extraction not yet implemented.\n\n"
-
-
-def insert_data(file):
-    df = pd.read_excel(file, skiprows=9)
-    df.columns = [
-        'Market', 'Agent', 'Product', 'Variety', 'Size', 'Class', 'Container',
-        'Mass_kg', 'Count', 'DeliveryID', 'ConsignmentID', 'SupplierRef',
-        'QtySent', 'QtyAmendedTo', 'QtySold', 'DeliveryDate', 'DateSold',
-        'DatePaid', 'DocketNumber', 'PaymentReference', 'MarketAvg', 'Price', 'SalesValue'
-    ]
-    
-    date_columns = ['DeliveryDate', 'DateSold', 'DatePaid']
-    for col in date_columns:
-        df[col] = pd.to_datetime(df[col], format='%m-%d-%y', errors='coerce')
-
-    conn = create_db_connection()
-    cursor = conn.cursor()
-
-    df['DocketNumber'] = df['DocketNumber'].astype(str).str.replace('*', '-', regex=False)
-    df['SupplierRef'] = df['SupplierRef'].astype(str).str.replace('*', '-', regex=False)
-    df['PaymentReference'] = df['PaymentReference'].astype(str).str.replace('*', '-', regex=False)
-
-    cursor.execute("TRUNCATE TABLE MarketData")
-    
-    count = 0
-    for _, row in df.iterrows():
-        count += 1
-        row_data = {col: (None if pd.isna(val) else val) for col, val in row.items()}
-        cursor.execute("""
-            INSERT INTO MarketData (
-                Market, Agent, Product, Variety, Size, Class, Container, Mass_kg, Count,
-                DeliveryID, ConsignmentID, SupplierRef, QtySent, QtyAmendedTo, QtySold,
-                DeliveryDate, DateSold, DatePaid, DocketNumber, PaymentReference, 
-                MarketAvg, Price, SalesValue
-            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-        """, tuple(row_data.values()))
-
-    # copy transactions from MarketData to ZZMarketDataTrn
-    cursor.execute("Exec [dbo].[SIGCopyImprtTrn]")
-
-    # add sales to ZZSalesLines if linked data was imported
-    cursor.execute("EXEC SIGCreateSalesFromTrn")
-
-    conn.commit()
-    cursor.close()
-    conn.close()
-
-    return count  # Return number of inserted rows
-
 def get_consignment_details(consignment_id):
     query = """
     SELECT DISTINCT 
-        ImportProduct, ImportVariety, ImportClass, ImportMass, ImportSize, ImportQty, ImportBrand
-    FROM PotentialMatches
+        Product ,Variety ,Class ,Mass_kg ,Size ,QtySent ,Brand ,DelNoteNo
+    FROM [dbo].[ZZMarketDataTrn]
     WHERE ConsignmentID = ?
     """
     
     matches_query = """
-    SELECT 
-        ProductNoteNo, MarketNoteNo, DelLineIndex, ConsignmentID,
-        LineProduct, ImportProduct, LineMass, ImportMass, 
-        LineClass, ImportClass, LineSize, ImportSize, 
-        LineVariety, ImportVariety, LineQty, ImportQty, MatchCount, DuplicateMaxMatch,
-        LineBrand  -- Add this column to the query
-    FROM PotentialMatches
-    WHERE ConsignmentID = ?
-    ORDER BY MatchCount DESC
+    Select DelLineIndex ,Product ,Variety ,Class ,Mass ,Size ,Brand ,DelLineQuantityBags
+    from DelNoteLineLookup
+    Where DelNoteNo = ?
     """
 
     try:
@@ -308,7 +175,6 @@ def get_consignment_details(consignment_id):
         # Get consignment details
         cursor.execute(query, (consignment_id,))
         consignment = cursor.fetchone()
-
         if not consignment:
             return jsonify({"error": "Consignment not found"}), 404
 
@@ -321,23 +187,22 @@ def get_consignment_details(consignment_id):
             "ImportQty": consignment[5],
             "ImportBrand": consignment[6]
         }
+        DelNoteNo = consignment[7]
 
         # Get top matches
-        cursor.execute(matches_query, (consignment_id,))
+        cursor.execute(matches_query, (DelNoteNo,))
         matches = cursor.fetchall()
 
         matches_list = [
             {
-                "DelLineIndex": row[2],
-                "LineProduct": row[4],
-                "LineMass": row[6],
-                "LineClass": row[8],
-                "LineSize": row[10],
-                "LineVariety": row[12],
-                "LineQty": row[14],
-                "MatchCount": row[16],
-                "DuplicateMaxMatch": row[17],
-                "LineBrand": row[18]  # Add this line to handle the new field
+                "DelLineIndex": row[0],
+                "LineProduct": row[1],
+                "LineMass": row[4],
+                "LineClass": row[3],
+                "LineSize": row[5],
+                "LineVariety": row[2],
+                "LineQty": row[7],
+                "LineBrand": row[6]  # Add this line to handle the new field
             }
             for row in matches
         ]
@@ -355,6 +220,7 @@ def get_consignment_details(consignment_id):
         conn.close()
 
 @import_bp.route("/get_consignment_details", methods=["GET"])
+@role_required()
 def fetch_consignment_details():
     consignment_id = request.args.get("consignment_id")
 
@@ -364,6 +230,7 @@ def fetch_consignment_details():
     return get_consignment_details(consignment_id)
 
 @import_bp.route("/match_consignment/<consignment_id>/<int:line_id>", methods=["POST"])
+@role_required()
 def match_consignment(consignment_id, line_id):
     query = """
     UPDATE ZZDeliveryNoteLines

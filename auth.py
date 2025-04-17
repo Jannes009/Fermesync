@@ -1,5 +1,5 @@
 from functools import wraps
-from flask import redirect, url_for, flash
+from flask import redirect, url_for, flash, request
 from flask_login import LoginManager, UserMixin, current_user
 from models import db, User
 
@@ -35,13 +35,13 @@ def load_user(user_id):
         return user_login
     return None
 
-def login_required(role=None):
+def role_required(role=None):
     def decorator(f):
         @wraps(f)
         def decorated_function(*args, **kwargs):
             if not current_user.is_authenticated:
                 flash('Please log in to access this page.', 'warning')
-                return redirect(url_for('index'))
+                return redirect(url_for('login', next=request.path))
 
             if role and current_user.role != role:
                 flash('You do not have permission to access this page.', 'danger')

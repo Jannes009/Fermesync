@@ -149,7 +149,8 @@ document.getElementById("autoImportForm").addEventListener("submit", function (e
             Swal.fire({
                 icon: "success",
                 title: "Import Completed!",
-                text: "Import finished successfully."
+                text: "Import finished successfully.",
+                setTimeout: 1
             }).then(() => {
                 window.eventSource.close();
                 fetchImportedData();

@@ -95,11 +95,13 @@ def create_product():
     brand_code = request.form.get('brandCode')
     output_tax_rate = request.form.get('taxRate')
 
+    print(output_tax_rate, stock_item_code, product_code, type_code)
     query = "SELECT InputidTaxRate FROM [dbo].[_uvTaxRates] WHERE OutputidTaxRate = ?"
     cursor.execute(query, (output_tax_rate,))
     input_tax_rate = cursor.fetchone()
 
     if not all([product_code, type_code, class_code, size_code, weight_code, brand_code]):
+        print("Not all fields entered")
         return jsonify({"error": "All fields are required"}), 400
 
     # SQL Insert Query
@@ -112,13 +114,14 @@ def create_product():
     values = (stock_item_code, product_code, class_code, weight_code, size_code, type_code, brand_code,
               output_tax_rate, input_tax_rate[0])
 
-    try:
-        cursor.execute(query, values)
-        conn.commit()
-        cursor.execute("EXEC [dbo].[SIGCreateEvoStockItem]")
-        conn.commit()
-    except Exception as e:
-        return jsonify({"error": str(e)}), 500
+    # try:
+
+    cursor.execute(query, values)
+    conn.commit()
+    cursor.execute("EXEC [dbo].[SIGCreateEvoStockItem]")
+    conn.commit()
+    # except Exception as e:
+    #     return jsonify({"error": str(e)}), 500
 
     # Retrieve updated product options
     try:

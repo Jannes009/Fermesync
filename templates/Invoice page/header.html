@@ -3,11 +3,10 @@
     <div class="headers">
         <div class="form-row">
             <div class="form-group">
-                
-                    <label for="delivery-note-number">Delivery Note Nr</label>
-                    <div class="input-wrapper">
+                <label for="delivery-note-number">Delivery Note Nr</label>
+                <div class="input-wrapper">
                     <input type="text" id="delivery-note-number" placeholder="Enter Delivery Note Number" required/>
-                    <img id="verify-icon" src="{{ url_for('static', filename='Image/neutral.png') }}" 
+                    <img id="del-note-number-icon" src="{{ url_for('static', filename='Image/neutral.png') }}" 
                     alt="Status" class="verify-icon">
                 </div>
             </div>
@@ -17,7 +16,11 @@
             </div>
             <div class="form-group">
                 <label for="ZZInvoiceNo">Invoice Number</label>
-                <input type="text" id="ZZInvoiceNo" name="ZZInvoiceNo" placeholder="Invoice Number" class="form-input" required>
+                <div class="input-wrapper">
+                    <input type="text" id="ZZInvoiceNo" name="ZZInvoiceNo" placeholder="Invoice Number" class="form-input" required>
+                    <img id="invoice-icon" src="{{ url_for('static', filename='Image/neutral.png') }}" 
+                    alt="Status" class="verify-icon">
+                </div>
             </div>
         </div>
         <div class="form-row">
@@ -66,5 +69,11 @@
     <div>
         <label>Net Amount:</label>
         <span id="net-amount">R0.00</span>
+        <div class="tax-rate-info">
+            <span id="current-tax-rate">Tax Rate: <span id="tax-rate-value">15</span>%</span>
+            <img id="change-tax-rate-icon" src="{{ url_for('static', filename='Image/edit.png') }}" alt="Change Tax Rate" class="change-tax-icon" title="Change Default Tax Rate">
+        </div>
     </div>
+
+    
 </div>

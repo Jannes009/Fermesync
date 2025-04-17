@@ -1,33 +1,67 @@
 document.addEventListener("DOMContentLoaded", () => {
     const salesAmountField = document.getElementById("InvoiceSalesAmnt");
     const totalDeductedField = document.getElementById("ZZInvoiceTotalDeducted");
+    const otherCostsField = document.getElementById("ZZInvoiceOtherCostsExcl");
     const netAmountDisplay = document.getElementById('net-amount');
     const dateInput = document.getElementById('ZZInvoiceDate');
+    const taxRateDisplay = document.getElementById("tax-rate-value");
+    const manualTaxButton = document.getElementById("change-tax-rate-icon");
+
+    let manualTaxRate = null;
 
     async function getTaxRate(dateStr) {
-        // Check if dateStr is a valid date
+        if (manualTaxRate !== null) {
+            return manualTaxRate;
+        }
+
         let parsedDate = Date.parse(dateStr);
         if (isNaN(parsedDate)) {
             const today = new Date();
-            dateStr = today.toISOString().split("T")[0]; // Format as 'YYYY-MM-DD'
+            dateStr = today.toISOString().split("T")[0];
         }
-    
+
         try {
-            console.log(dateStr)
             const response = await fetch(`/get-tax-rate?date=${encodeURIComponent(dateStr)}`);
             const data = await response.json();
             if (response.ok && data.tax_rate !== undefined) {
+                updateTaxRateDisplay(data.tax_rate);
                 return data.tax_rate;
             } else {
                 console.error("Failed to get tax rate:", data.error || data.message);
-                return getTaxRate(); // fallback
+                return 15; // fallback default
             }
         } catch (error) {
             console.error("Error fetching tax rate:", error);
-            return getTaxRate();
+            return 15; // fallback default
         }
     }
-    
+
+    function updateTaxRateDisplay(rate) {
+        taxRateDisplay.textContent = rate;
+    }
+
+    manualTaxButton.addEventListener("click", async () => {
+        const { value: newRate } = await Swal.fire({
+            title: "Enter Manual Tax Rate",
+            input: "number",
+            inputLabel: "Tax Rate (%)",
+            inputValue: manualTaxRate ?? "",
+            inputAttributes: {
+                min: 0,
+                max: 100,
+                step: 0.01
+            },
+            showCancelButton: true,
+            confirmButtonText: "Set"
+        });
+
+        if (newRate !== undefined && newRate !== null && newRate !== "") {
+            manualTaxRate = parseFloat(newRate);
+            updateTaxRateDisplay(manualTaxRate);
+            updateFields();
+            updateOtherCosts();
+        }
+    });
 
     function calculateNetAmount() {
         const salesAmount = parseFloat(salesAmountField.value) || 0;
@@ -42,10 +76,12 @@ document.addEventListener("DOMContentLoaded", () => {
         const markCommExcl = parseFloat(document.getElementById("ZZInvoiceMarketCommExcl").value) || 0;
         const agentCommExcl = parseFloat(document.getElementById("ZZInvoiceAgentCommExcl").value) || 0;
         const otherCostsExcl = parseFloat(document.getElementById("ZZInvoiceOtherCostsExcl").value) || 0;
+        const otherCostsIncl = (otherCostsExcl * (1 + vatMultiplier / 100)).toFixed(2);
 
         document.getElementById("ZZInvoiceMarketCommIncl").value = (markCommExcl * (1 + vatMultiplier / 100)).toFixed(2);
         document.getElementById("ZZInvoiceAgentCommIncl").value = (agentCommExcl * (1 + vatMultiplier / 100)).toFixed(2);
-        document.getElementById("ZZInvoiceOtherCostsIncl").value = (otherCostsExcl * (1 + vatMultiplier / 100)).toFixed(2);
+        document.getElementById("ZZInvoiceOtherCostsIncl").value = otherCostsIncl;
+        return otherCostsIncl; 
     }
 
     async function updateExclFields() {
@@ -55,9 +91,9 @@ document.addEventListener("DOMContentLoaded", () => {
         const agentCommInc = parseFloat(document.getElementById("ZZInvoiceAgentCommIncl").value) || 0;
         const otherCostsIncl = parseFloat(document.getElementById("ZZInvoiceOtherCostsIncl").value) || 0;
 
-        document.getElementById("ZZInvoiceMarketCommExcl").value = (markCommInc * (1 - vatMultiplier / 100)).toFixed(2);
-        document.getElementById("ZZInvoiceAgentCommExcl").value = (agentCommInc * (1 - vatMultiplier / 100)).toFixed(2);
-        document.getElementById("ZZInvoiceOtherCostsExcl").value = (otherCostsIncl * (1 - vatMultiplier / 100)).toFixed(2);
+        document.getElementById("ZZInvoiceMarketCommExcl").value = (markCommInc / (1 + vatMultiplier / 100)).toFixed(2);
+        document.getElementById("ZZInvoiceAgentCommExcl").value = (agentCommInc / (1 + vatMultiplier / 100)).toFixed(2);
+        document.getElementById("ZZInvoiceOtherCostsExcl").value = (otherCostsIncl / (1 + vatMultiplier / 100)).toFixed(2);
     }
 
     async function updateFields() {
@@ -69,8 +105,8 @@ document.addEventListener("DOMContentLoaded", () => {
         const marketComm = (salesAmount * marketCommPerc).toFixed(2);
         const agentComm = (salesAmount * agentCommPerc).toFixed(2);
         const totalDeductedIncl = (
-            parseFloat(marketComm * vatMultiplier) +
-            parseFloat(agentComm * vatMultiplier)
+            parseFloat(marketComm * (1 + vatMultiplier / 100)) +
+            parseFloat(agentComm * (1 + vatMultiplier / 100))
         ).toFixed(2);
 
         document.getElementById("ZZInvoiceTotalDeducted").value = totalDeductedIncl;
@@ -89,7 +125,7 @@ document.addEventListener("DOMContentLoaded", () => {
         const agentComm = parseFloat(document.getElementById("ZZInvoiceAgentCommIncl").value) || 0;
 
         const otherCostsIncl = totalDeducted - marketComm - agentComm;
-        const otherCostsExcl = otherCostsIncl / vatMultiplier;
+        const otherCostsExcl = otherCostsIncl / (1 + vatMultiplier / 100);
 
         document.getElementById("ZZInvoiceOtherCostsIncl").value = otherCostsIncl.toFixed(2);
         document.getElementById("ZZInvoiceOtherCostsExcl").value = otherCostsExcl.toFixed(2);
@@ -97,28 +133,59 @@ document.addEventListener("DOMContentLoaded", () => {
         calculateNetAmount();
     }
 
+    async function updateTotalDeducted(otherCostsIncl=null){
+        const otherCostsInclValue = otherCostsIncl !== null
+        ? otherCostsIncl
+        : parseFloat(document.getElementById("ZZInvoiceOtherCostsIncl").value) || 0;
+        console.log(otherCostsInclValue, otherCostsIncl)
+        const salesAmount = parseFloat(salesAmountField.value) || 0;
+        const vatMultiplier = await getTaxRate(dateInput.value);
+        let marketCommPerc = window.marketComm / 100;
+        let agentCommPerc = window.agentComm / 100;
+
+        const marketComm = (salesAmount * marketCommPerc).toFixed(2);
+        const agentComm = (salesAmount * agentCommPerc).toFixed(2);
+        const totalDeductedIncl = (
+            parseFloat(marketComm * (1 + vatMultiplier / 100)) +
+            parseFloat(agentComm * (1 + vatMultiplier / 100)) +
+            parseFloat(otherCostsInclValue)
+        ).toFixed(2);
+        document.getElementById("ZZInvoiceTotalDeducted").value = totalDeductedIncl;
+        console.log(totalDeductedIncl)
+    }
+
     salesAmountField.addEventListener("input", updateFields);
     totalDeductedField.addEventListener("input", updateOtherCosts);
     document.getElementById("delivery-note-number").addEventListener("input", check_delivery_note);
+    document.getElementById("ZZInvoiceNo").addEventListener("input", check_invoice_number);
 
+    document.querySelectorAll('input[id*="Excl"]').forEach(input => {
+        input.addEventListener("input", async () => {
+            const otherCostsIncl = input.id.includes("OtherCosts") ? await updateInclFields() : await updateInclFields();
+    
+            if (input.id.includes("OtherCosts")) {
+                updateTotalDeducted(otherCostsIncl);  // Pass it directly
+            }
+        });
+    });   
+    
     document.querySelectorAll('input[id*="Incl"]').forEach(input => {
         input.addEventListener("input", () => {
             updateExclFields();
+    
+            if (input.id.includes("OtherCosts")) {
+                updateTotalDeducted();
+            }
         });
-    });
-
-    document.querySelectorAll('input[id*="Excl"]').forEach(input => {
-        input.addEventListener("input", () => {
-            updateInclFields();
-        });
-    });
+    }); 
 
     dateInput.addEventListener("change", () => {
+        manualTaxRate = null;  // Clear manual rate on date change
         updateFields();
         updateOtherCosts();
     });
 
-    updateFields();
+    updateFields(); // initial load
 });
 
 document.addEventListener("DOMContentLoaded", () => {
@@ -137,6 +204,7 @@ document.addEventListener("DOMContentLoaded", () => {
             InvoiceMarketCommIncl: parseFloat(document.querySelector('input[name="ZZInvoiceMarketCommIncl"]').value),
             InvoiceAgentCommIncl: parseFloat(document.querySelector('input[name="ZZInvoiceAgentCommIncl"]').value),
             InvoiceOtherCostsIncl: parseFloat(document.querySelector('input[name="ZZInvoiceOtherCostsIncl"]').value) || 0,
+            TaxRate: parseFloat(document.getElementById("tax-rate-value").textContent),
             tickedLines: [],
         };
 

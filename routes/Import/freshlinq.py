@@ -3,9 +3,134 @@ import datetime
 import tempfile
 import subprocess
 import pandas as pd
-from pandas.errors import OutOfBoundsDatetime
 from db import create_db_connection
+from playwright.sync_api import sync_playwright
+from flask_login import current_user
+from models import ConnectedService
 
+def Freshlinq(start_date):
+    def status(message):
+        yield f"data: {message}\n\n"
+
+    if not hasattr(current_user, 'id'):
+        yield from status("ERROR: Current user object is missing user ID.")
+        return
+
+    service = ConnectedService.query.filter_by(user_id=current_user.id, service_type="FreshLinq").first()
+    if not service:
+        yield from status(f"ERROR: No Freshlinq credentials found for user '{current_user.username}' (ID: {current_user.id}).")
+        return
+
+    username = service.username
+    password = service.get_password()
+
+    yield from status("Attempting to connect to FreshLinq...")
+    file_path = yield from download_freshlinq_report(username, password, start_date, status)
+    if not file_path:
+        yield from status("ERROR: Failed to download FreshLinq report.")
+        return
+
+    yield from process_excel(file_path, None)
+    try:
+        import os
+        os.remove(file_path)
+        yield from status("Temporary file removed.")
+    except Exception as e:
+        yield from status(f"WARNING: Could not remove temporary file - {str(e)}")
+
+    yield from status("SUCCESS: Excel processing completed")
+
+    yield "data: Attempting to connect to FreshLinq...\n\n"
+    file_path = yield from download_freshlinq_report("uitdraai2@gmail.com", "Uitdraai123#", start_date, status)
+    if not file_path:
+        yield "data: ERROR: Failed to download FreshLinq report.\n\n"
+        return
+    yield from process_excel(file_path, None)
+    # Remove the temporary file after processing
+    try:
+        import os
+        os.remove(file_path)
+        yield "data: Temporary file removed.\n\n"
+    except Exception as e:
+        yield f"data: WARNING: Could not remove temporary file - {str(e)}\n\n"
+    yield "data: SUCCESS: Excel processing completed\n\n"
+
+def download_freshlinq_report(username, password, report_date, status):
+    ensure_playwright_browsers_installed()
+    formatted_date = report_date.strftime("%Y-%m-%d") if isinstance(report_date, datetime.date) else report_date
+    report_url = f"https://trade.freshlinq.com/Report/Render/ProducerSalesSummaryAllLots/17578?Date={formatted_date}&Time=0000"
+
+    with sync_playwright() as p:
+        browser = p.chromium.launch(headless=True)
+        context = browser.new_context(accept_downloads=True)
+        page = context.new_page()
+
+        try:
+            yield from status("Opening FreshLinq login page...")
+            page.goto("https://freshlinq.com/", timeout=60000)
+            page.fill("input#login-username", username)
+            page.fill("input#Input_Password", password)
+            page.click("button[name='selectedAction'][value='login']")
+            page.wait_for_load_state("domcontentloaded")
+            time.sleep(3)
+
+            if "login" in page.url.lower():
+                yield from status("ERROR: Login failed. Still on login page.")
+                return False
+
+            yield from status("Login successful. Navigating to reports page...")
+            page.goto(report_url)
+            page.wait_for_load_state("load")
+            yield from status("Report page loaded.")
+
+            yield from status("Waiting for report processing to complete...")
+            error_pane = page.locator("div.trv-error-pane").first
+            start_time = time.time()
+            timeout_seconds = 60
+
+            while time.time() - start_time < timeout_seconds:
+                text_content = error_pane.text_content()
+                text = text_content.strip() if text_content else ""
+                if 'done' in text.lower():
+                    yield from status("File download in progress...")
+                    break
+                yield from status(f"Status: {text}")
+                time.sleep(1)
+
+            if 'done' not in text.lower():
+                yield from status("ERROR: Timeout - report did not finish generating.")
+                return False
+
+            try:
+                page.evaluate("document.querySelector('#trv-main-menu-export-command').classList.remove('k-disabled');")
+            except Exception:
+                pass
+
+            page.locator('li#trv-main-menu-export-command').click()
+            time.sleep(2)
+
+            with page.expect_download(timeout=50000) as download_info:
+                page.locator('ul#trv-main-menu-export-format-list li:nth-child(3)').click()
+                download = download_info.value
+
+            with tempfile.NamedTemporaryFile(delete=False, suffix=".xlsx") as tmp_file:
+                download.save_as(tmp_file.name)
+                yield from status("Download complete.")
+                return tmp_file.name
+
+        except Exception as e:
+            yield from status(f"ERROR: Exception while downloading report - {str(e)}")
+            return False
+
+        finally:
+            browser.close()
+
+
+def ensure_playwright_browsers_installed():
+    try:
+        subprocess.run(["playwright", "install"], check=True)
+    except Exception as e:
+        print(f"Failed to install Playwright browsers: {e}")
 # ---------------------------
 # Helper function for safe value extraction
 # ---------------------------
@@ -69,7 +194,7 @@ def process_excel(file_path, output_file):
                 reclassifications = safe_value(sixth_next_row.iloc[25], default=0)
 
             # Extract sales data from rows starting at idx + 11
-            sales_data, sales_messages = get_sales_info(df, idx + 11)
+            sales_data, sales_messages = get_sales_info(df, idx + 10)
             for msg in sales_messages:
                 yield f"data: {msg}\n\n"
 

@@ -10,6 +10,7 @@ function fetchImportedData() {
         .then(response => response.json())
         .then(data => {
             importedData = data; // Store the data for filtering
+            console.log(importedData)
             displayTable(data);  // Show all data initially
             filterTable("matched");
             document.getElementById("matchedBtn").classList.add("active"); // Highlight the default button
@@ -37,7 +38,7 @@ function displayTable(data) {
         let detailsButton = `<td>`
 
         // Only show the edit button in No Match mode
-        if (row.linconsignmentidexist !== 1 && row.matchcount === null) {
+        if (row.linconsignmentidexist !== 1 && row.headelnotenoexist === 0) {
             supplierRefCell += `
                 <button class="btn btn-sm btn-warning edit-supplier-ref" 
                     data-consignment="${row.consignmentid}" 
@@ -48,7 +49,7 @@ function displayTable(data) {
         }
 
         // Only show the edit button in No Match mode
-        if (row.linconsignmentidexist !== 1 && row.matchcount > 0) {
+        if (row.linconsignmentidexist !== 1 && row.headelnotenoexist === 1) {
             detailsButton += `
                 <button class="btn btn-sm btn-primary view-details-btn" data-consignment="${row.consignmentid}">Confirm Match</button>
             `;
@@ -113,7 +114,14 @@ function updateSupplierRef(oldDelNoteNo, newDelNoteNo) {
     .then(response => response.json())
     .then(data => {
         if (data.status === "success") {
-            Swal.fire("Success", data.message, "success");
+            Swal.fire({
+                title: "Success",
+                text: data.message,
+                icon: "success",
+                timer: 1000,
+                showConfirmButton: false
+              });
+              
             fetchImportedData()
         } else {
             Swal.fire("Error", data.message, "error");
@@ -278,7 +286,13 @@ function showConsignmentDetails(consignmentId) {
                         if (data.error) {
                             Swal.fire("Error!", data.error, "error");
                         } else {
-                            Swal.fire("Matched!", data.message, "success");
+                            Swal.fire({
+                                title: "Matched!",
+                                text: data.message,
+                                icon: "success",
+                                timer: 1000,
+                                showConfirmButton: false
+                            })
                             fetchImportedData();
                         }
                     })
@@ -316,15 +330,14 @@ let importedData = []; // Store fetched data for filtering
 
 function filterTable(type) {
     let filteredData = [];
-    console.log(type)
+    console.log(importedData)
     if (type === "linked") {
         filteredData = importedData.filter(row => row.linconsignmentidexist === 1);
     } else if (type === "matched") {
-        filteredData = importedData.filter(row => row.linconsignmentidexist === 0 && row.matchcount > 0);
+        filteredData = importedData.filter(row => row.linconsignmentidexist === 0 && row.headelnotenoexist === 1);
     } else if (type === "nomatch") {
-        filteredData = importedData.filter(row => row.linconsignmentidexist === 0 && row.matchcount === null);
-       
+        filteredData = importedData.filter(row => row.linconsignmentidexist === 0 && row.headelnotenoexist === 0);
     }
-
+    console.log(filteredData)
     displayTable(filteredData);
 }

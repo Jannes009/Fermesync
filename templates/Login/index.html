@@ -140,11 +140,12 @@
                 <input type="password" id="db_password" name="db_password">
             </div>
         </div>
-        
+        <input type="hidden" name="next" value="{{ next or request.args.get('next') }}">
+      
         
 
         <!-- Buttons for login and register actions -->
-        <button type="submit" id="submit-btn" onclick="setFormAction">Login</button>
+        <button type="submit" id="submit-btn">Login</button>
         <button type="button" id="toggle-btn" onclick="toggleForm()">Register</button>
     </form>
 </div>
