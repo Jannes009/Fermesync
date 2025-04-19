@@ -102,45 +102,83 @@ def submit_sales_entry():
         return jsonify({'success': False, 'message': 'Not enough stock'})
 
 
-    try:
-        for item in lines:
-            lineId = item['lineId']
-            salesId = item['salesId']
-            date = item['date']
-            price = item['price']
-            quantity = item['quantity']
-            discount = item['discount']
-            amount = item['amount']
-            stockId = get_stock_id(lineId, cursor)
+    # try:
+    for item in lines:
+        print(item)
+        lineId = item['lineId']
+        salesId = item['salesId']
+        date = item['date']
+        price = item['price']
+        quantity = item['quantity']
+        discount = item['discount']
+        discountAmnt = item['discountAmnt']
+        amount = item['amount']
+        stockId = get_stock_id(lineId, cursor)
 
-            print(discount, item)
-            # workout price or amount
-            if price == 0 and amount != 0:
-                price = int(amount) / int(quantity)
-            elif amount == 0 and price != 0:
-                amount = int(price) * int(quantity)
+        print(discount, item)
+        # workout price or amount
+        if price == 0 and amount != 0:
+            price = int(amount) / int(quantity)
+        elif amount == 0 and price != 0:
+            amount = int(price) * int(quantity)
 
-            gross_amount = float(price) * float(quantity)
+        gross_amount = float(price) * float(quantity)
 
-            if salesId != None:
-                cursor.execute("""
-                UPDATE ZZSalesLines
-                    SET SalesDate = ?, SalesQty = ?, DiscountAmnt = ?, 
-                    SalesAmnt = ?, SalesStockId = ?, SalesPrice = ?,
-                    GrossSalesAmnt = ?
-                    WHERE SalesLineIndex = ?
-                """, (date, quantity, discount, amount, stockId, price, salesId, gross_amount,))
-            else:
-                cursor.execute("""
-                INSERT INTO ZZSalesLines (SalesDelLineId, SalesDate, SalesQty, SalesAmnt, SalesPrice, SalesStockId, AutoSale, DiscountAmnt, GrossSalesAmnt)
-                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
-                """, (lineId, date, quantity, amount, price, stockId, 0, discount, gross_amount,))
-        conn.commit()
-        conn.close()
-        return jsonify({'success': True})
-    except Exception as e:
-        print(e)
-        return jsonify({'success': False, 'message': 'Error inserting data'})
+        if salesId != None:
+            cursor.execute("""
+            Select 
+                AGENT.AgentComm
+                ,AGENT.MarketComm
+            from ZZDeliveryNoteLines DELLIN
+            JOIN ZZDeliveryNoteHeader DELHEA on DELHEA.DelIndex = DELLIN.DelHeaderId
+            Join _uvMarketAgent AGENT on AGENT.DCLink = DELHEA.DeliClientId
+            Where DELLIN.DelLineIndex = ?
+            """,(lineId,))
+            row = cursor.fetchone()
+            agent_commission = row[0]
+            market_commission = row[1]
+            net_sales = float(amount) - (float(amount) * (float(agent_commission) + float(market_commission)) / 100)
+        
+            cursor.execute("""
+            UPDATE ZZSalesLines
+                SET SalesDate = ?, SalesQty = ?, DiscountPercent = ?, DiscountAmnt = ?, 
+                SalesAmnt = ?, SalesStockId = ?, SalesPrice = ?, GrossSalesAmnt = ?, 
+                SalesMarketComPercent = ?, SalesAgentComPercent = ?, NettSalesAmnt = ? 
+                WHERE SalesLineIndex = ?
+            """, (date, quantity, discount, discountAmnt, amount, stockId, price, gross_amount, market_commission, agent_commission, net_sales, salesId, ))
+        else:
+            cursor.execute("""
+            Select 
+                AGENT.AgentComm
+                ,AGENT.MarketComm
+            from ZZDeliveryNoteLines DELLIN
+            JOIN ZZDeliveryNoteHeader DELHEA on DELHEA.DelIndex = DELLIN.DelHeaderId
+            Join _uvMarketAgent AGENT on AGENT.DCLink = DELHEA.DeliClientId
+            Where DELLIN.DelLineIndex = ?
+            """,(lineId,))
+            row = cursor.fetchone()
+            agent_commission = row[0]
+            market_commission = row[1]
+            net_sales = float(amount) - (float(amount) * (float(agent_commission) + float(market_commission)) / 100)
+        
+            cursor.execute("""
+            INSERT INTO ZZSalesLines (
+            SalesDelLineId, SalesDate, SalesQty, SalesAmnt,
+            SalesPrice, SalesStockId, AutoSale, DiscountPercent,
+            DiscountAmnt, GrossSalesAmnt,
+            SalesMarketComPercent, SalesAgentComPercent, NettSalesAmnt
+            )
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+            """, (lineId, date, quantity, amount, 
+                  price, stockId, 0, discount, 
+                  discountAmnt, gross_amount,
+                  market_commission, agent_commission, net_sales))
+    conn.commit()
+    conn.close()
+    return jsonify({'success': True})
+    # except Exception as e:
+    #     print(e)
+    #     return jsonify({'success': False, 'message': 'Error inserting data'})
 
 
 
@@ -154,13 +192,13 @@ def get_sales_entries(lineId):
         cursor = conn.cursor()
         if(view_mode != True):
             query = """
-            SELECT SalesDate, SalesQty, SalesPrice, DiscountAmnt, SalesAmnt, SalesStockId, SalesLineIndex
+            SELECT SalesDate, SalesQty, SalesPrice, DiscountPercent, SalesAmnt, SalesStockId, SalesLineIndex
             FROM [dbo].[_uvMarketSales]
             WHERE SalesDelLineId = ? AND Invoiced = 'FALSE'
             """
         elif(view_mode == True):
            query = """
-            SELECT SalesDate, SalesQty, SalesPrice, DiscountAmnt, SalesAmnt, SalesStockId, SalesLineIndex
+            SELECT SalesDate, SalesQty, SalesPrice, DiscountPercent, SalesAmnt, SalesStockId, SalesLineIndex
             FROM [dbo].[ZZSalesLines]
             WHERE SalesDelLineId = ?
             """ 
@@ -219,45 +257,7 @@ def delete_sales_entry(sales_id):
     finally:
         close_db_connection(cursor, conn)
 
-@view_bp.route('/filter_sales_entries', methods=['GET'])
-def search_sales():
-    # Retrieve query parameters (e.g., start date, end date)
-    start_date = request.args.get('startDate')
-    end_date = request.args.get('endDate')
-    line_id = request.args.get('lineId')
-    
-    if not start_date or not end_date:
-        return jsonify({"error": "Both start date and end date are required"}), 400
-    
-    # Create the SQL query to fetch records between start and end dates
-    query = """
-    SELECT * FROM [dbo].[ZZSalesLines]
-    WHERE SalesDate BETWEEN ? AND ? AND SalesDelLineId = ?
-    """
-
-    conn = create_db_connection()
-    cursor = conn.cursor()
-    cursor.execute(query, (start_date, end_date, line_id))
-    results = cursor.fetchall()
-
-    # Format results as a list of dictionaries
-    sales = []
-    for row in results:
-        sales.append({
-            "id": row[0],  # Access by column name
-            "sale_date": row[1],
-            "quantity": row[4],
-            "price": row[5],
-            "amount": row[6]
-        })
-
-    return jsonify({'success': True, 'sales_entries': sales})
-
-    # except Exception as e:
-    #     return jsonify({"error": str(e)}), 500
-    # finally:
-    conn.close()
-
+        
 @view_bp.route('/get_qty_available', methods=['GET'])
 def get_qty_available():
     sale_id = request.args.get('saleId')

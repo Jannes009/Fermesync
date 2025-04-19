@@ -301,3 +301,26 @@ def check_delivery_note():
 
     conn.close()
     return jsonify({'exists': exists})
+
+@entry_bp.route("/get-last-sales-price", methods=["POST"])
+def get_last_sales_price():
+    data = request.json
+    stock_link = data.get("stockLink")
+    whse_link = data.get("whseLink")
+
+    if not stock_link or not whse_link:
+        return jsonify({"error": "Missing parameters"}), 400
+
+    conn = create_db_connection()
+    cursor = conn.cursor()
+    cursor.execute("""
+        SELECT LastSalesPrice 
+        FROM _uvMarketProductWhse 
+        WHERE StockLink = ? AND WhseLink = ?
+    """, (stock_link, whse_link))
+    result = cursor.fetchone()
+
+    if result:
+        return jsonify({"lastSalesPrice": result[0]})
+    else:
+        return jsonify({"lastSalesPrice": None})

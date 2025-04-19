@@ -71,14 +71,18 @@ document.addEventListener("DOMContentLoaded", function () {
             const quantityInput = row.querySelector('input[placeholder="Quantity"]');
             const priceInput = row.querySelector('input[placeholder="Price"]');
             const amountInput = row.querySelector('input[placeholder="Amount"]');
+            const discountInput = row.querySelector('input[placeholder="Discount"]');
     
             if (dateInput && quantityInput) {
                 const date = dateInput.value;
                 const quantity = Number(quantityInput.value);
                 const price = Number(priceInput.value) || 0;
                 const amount = Number(amountInput.value) || 0;
+                const discount = Number(discountInput.value) || 0;
                 salesAdded += quantity;
-                discount = price - amount / quantity;
+                const discountAmnt = price * quantity * (discount / 100);
+
+                console.log(amount, discount, discount / 100, discountAmnt)
                 
                 if (!date || isNaN(new Date(date).getTime())) {
                     errorMessage = 'A valid date is required.';
@@ -99,7 +103,6 @@ document.addEventListener("DOMContentLoaded", function () {
                     isValid = false;
                     return;
                 }
-                console.log(selectedProductId)
                 // Add the sales entry to the array
                 salesData.push({
                     lineId: selectedProductId,
@@ -108,6 +111,7 @@ document.addEventListener("DOMContentLoaded", function () {
                     quantity,
                     price,
                     discount,
+                    discountAmnt,
                     amount,
                 });
             }

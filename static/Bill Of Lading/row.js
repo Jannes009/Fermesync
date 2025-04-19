@@ -1,6 +1,53 @@
 document.addEventListener("DOMContentLoaded", () => {
-
-
+    
+    $(document).on('select2:select', '.searchable-dropdown', function (e) {
+        // Only proceed if this specific dropdown has name="ZZProduct[]"
+        if ($(this).attr('name') === 'ZZProduct[]') {
+            const selectedValue = $(this).val();
+            handleProductSelection(selectedValue, this);
+        }
+    });
+    
+    async function handleProductSelection(value, selectElement) {
+        const market = document.querySelector("select[name='ZZMarket']").value;
+        if (!market) {
+            console.warn("Market not selected");
+            return;
+        }
+    
+        const stockLink = value;
+        const whseLink = market;
+    
+        try {
+            const response = await fetch("/get-last-sales-price", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({
+                    stockLink: stockLink,
+                    whseLink: whseLink
+                })
+            });
+    
+            const data = await response.json();
+    
+            const row = selectElement.closest("tr");
+            const priceInput = row.querySelector("input[name='ZZEstimatedPrice[]']");
+    
+            if (data.lastSalesPrice !== null && priceInput) {
+                console.log("Fetched price:", data.lastSalesPrice);
+                priceInput.value = data.lastSalesPrice;
+            } else if (priceInput) {
+                console.warn("No price found for this product & market.");
+                priceInput.value = 0;
+            }
+    
+        } catch (err) {
+            console.error("Error fetching price:", err);
+        }
+    }
+    
+    
+    
     const addLineBtn = document.getElementById("add-line-btn");
     const productTable = $(".product-table");
     const openStockFormBtn = document.getElementById("openStockFormBtn");
@@ -256,38 +303,12 @@ function initializeDropdowns() {
 
     // Ensure search box is focused when dropdown opens
     $('.searchable-dropdown').on('select2:open', function () {
-        console.log("Dropdown opened");
         setTimeout(() => {
             let searchField = document.querySelector('.select2-container--open .select2-search__field');
             if (searchField) {
                 searchField.focus();
             }
         }, 10); // Short delay to ensure the field is available
-    });
-
-
-    // // Detect if the Tab key was pressed and store that information
-    // $(document).on('keydown', '.searchable-dropdown', function (e) {
-    //     console.log('Key pressed:', e.key);  // Log the key that was pressed
-    //     if (e.key === 'Tab' || e.keyCode === 9) {
-    //         lastKeyPressed = 'Tab'; // Store Tab key press
-    //     }
-    // });
-
-
-    // Log the key (name) and selected value or Tab when the dropdown closes
-    $('.searchable-dropdown').on('select2:close', function () {
-        const fieldName = $(this).attr('name'); // Get the name of the dropdown
-        const selectedValue = $(this).val();   // Get the selected value (or null if no selection)
-        
-        if (lastKeyPressed === 'Tab') {
-            console.log(`Dropdown with name "${fieldName}" closed with TAB key.`);
-        } else {
-            console.log(`Dropdown with name "${fieldName}" closed with selected value: "${selectedValue}"`);
-        }
-        
-        // Reset lastKeyPressed after handling
-        lastKeyPressed = null;
     });
 }
 
@@ -331,3 +352,4 @@ function calculateTotalQuantity() {
     totalQuantityDisplay.text(`Total Quantity: ${totalQuantity.toFixed(0)}`);
     return totalQuantity;
 }
+

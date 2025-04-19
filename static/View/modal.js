@@ -51,6 +51,7 @@ function openSalesModal(mode) {
                 const newRow = addNewRow();
                 newEntryRow.appendChild(newRow);
             } else if (mode === 'edit') {
+                salesBefore = 0;
                 fetchSalesEntries(currentLineId);
             } else if (mode === 'view') {
                 view_mode = true;
@@ -100,14 +101,25 @@ function submitSales(){
         const quantity = row.querySelector('.quantity-input').value;
         const price = row.querySelector('.price-input').value || 0;
         const amount = row.querySelector('.amount-input').value || 0;
-        const discountValue = amount / quantity - price;
+        const discount = row.querySelector('.discount-input').value || 0;
+        const discountAmnt = price * quantity * (discount / 100);
 
         if (!date || !quantity) {
-            alert('Date and quantity values are required!');
+            Swal.fire({
+                icon: 'error',
+                title: 'Invalid input',
+                text: 'Date and quantity values are required!',
+                timer: 3000,
+            });
             isValid = false; // Set the flag to false, preventing form submission
             return; // Stop the loop and function execution
         } else if (price == 0 && amount == 0) {
-            alert('Either Price or Amount are required');
+            Swal.fire({
+                icon: 'error',
+                title: 'Invalid input',
+                text: 'Either Price or Amount are required',
+                timer: 3000,
+            });
             isValid = false;
             return;
         }
@@ -118,7 +130,8 @@ function submitSales(){
             date,
             quantity,
             price,
-            discountValue,
+            discount,
+            discountAmnt,
             amount,
         });
     });
@@ -132,10 +145,16 @@ function submitSales(){
 
             const price = row.querySelector('input[placeholder="Price"]').value || 0;
             const amount = row.querySelector('input[placeholder="Amount"]').value || 0;
-            const discount = row.querySelector('input[placeholder="Discount"]').value * price / 100 * quantity;
+            const discount = row.querySelector('input[placeholder="Discount"]').value;
+            const discountAmnt = price * amount * (discount / 100)
 
             if (price == 0 && amount == 0) {
-                alert("Price or amount is required");
+                Swal.fire({
+                    icon: 'error',
+                    title: 'Invalid input',
+                    text: "Price or amount is required",
+                    timer: 3000,
+                });
                 isValid = false;
                 return; // Stop further execution if data is invalid
             }
@@ -147,6 +166,7 @@ function submitSales(){
                 quantity,
                 price,
                 discount,
+                discountAmnt,
                 amount,
             });
         }
@@ -158,10 +178,14 @@ function submitSales(){
     }
 
     if (salesData.length === 0) {
-        alert('No sales data to submit!');
+        Swal.fire({
+            icon: 'warning',
+            title: 'No sales data',
+            text: 'No sales data to submit!',
+            timer: 3000,
+        });
         return;
     }
-    console.log(salesData)
     // Send data to the backend
     fetch('/submit_sales_entries', {
         method: 'POST',
@@ -188,11 +212,19 @@ function submitSales(){
                     changeBtn.remove()
                 }
             }
-
-            alert('Data submitted successfully!');
-            document.querySelector('.modal-overlay').style.display = 'none';
+            Swal.fire({
+                icon: 'success',
+                title: 'Success',
+                text: 'Data submitted successfully!',
+                timer: 3000,
+            });
         } else {
-            alert('Failed to submit data: ' + data['message']);
+            Swal.fire({
+                icon: 'error',
+                title: 'Submission failed',
+                text: 'Failed to submit data: ' + data['message'],
+                timer: 3000,
+            });
         }
     })
     .catch((error) => console.error('Error:', error));
@@ -239,8 +271,12 @@ async function fetchQtyAvailable(saleId) {
         const data = await response.json();
 
         if (data.error) {
-            console.error(`Backend error: ${data.error}`);
-            alert(`Error fetching quantity: ${data.error}`);
+            Swal.fire({
+                icon: 'error',
+                title: 'Error',
+                text: `Error fetching quantity: ${data.error}`,
+                timer: 3000,
+            });
             return;
         }
 
@@ -251,8 +287,12 @@ async function fetchQtyAvailable(saleId) {
         // Update the UI or perform further actions
         document.getElementById('available-for-sale').textContent = qtyAvailable;
     } catch (error) {
-        console.error(`Failed to fetch quantity available: ${error.message}`);
-        alert(`Failed to fetch quantity available: ${error.message}`);
+        Swal.fire({
+            icon: 'error',
+            title: 'Error',
+            text: `Failed to fetch quantity available: ${error.message}`,
+            timer: 3000,
+        });
     }
 }
 
@@ -321,42 +361,6 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     });
 
-
-    function filterSalesEntries(lineId, startDate, endDate) {
-        fetch(`/filter_sales_entries?startDate=${startDate}&endDate=${endDate}&lineId=${lineId}`)
-            .then((response) => response.json())
-            .then((data) => {
-                if (data.success) {
-                    console.log(data)
-                    salesEntriesList.innerHTML = ''; // Clear existing entries
-                    data.sales_entries.forEach((entry) => {
-                        const row = document.createElement('tr');
-                        row.innerHTML = `
-                            <td><input type="date" value="${entry.sale_date}" name="date" required></td>
-                            <td><input type="number" value="${entry.quantity}" class="quantity-input" name="quantity" required></td>
-                            <td><input type="number" value="${entry.price}" class="price-input" name="price" required></td>
-                            <td><input type="number" value="${entry.discount}" class="discount-input" name="discount" required></td>
-                            <td><input type="number" value="${entry.amount}" class="amount-input" name="amount" required></td>
-                            <td>
-                                <button class="remove-line-btn" data-id="${entry.salesLineIndex}" onclick="removeRow(this)">
-                                    <img src="/static/Image/recycle-bin.png" alt="Delete" class="bin-icon">
-                                </button>
-                            </td>
-                        `;
-                        salesEntriesList.appendChild(row);
-                        salesBeforeDefined = false;
-                        createEventListener(row);
-                    });
-                } else {
-                    alert('No sales entries found for the specified dates.');
-                }
-            })
-            .catch((error) => {
-                console.error('Error fetching filtered sales entries:', error);
-            });
-
-    }
-    
     document.addEventListener('triggerAddBtnListener', () => {
         addBtnEventlistener()
     });
@@ -425,6 +429,24 @@ function createEventListener(row){
 
 }
 
+const Toast = Swal.mixin({
+    toast: true,
+    position: 'top-end',
+    showConfirmButton: false,
+    timer: 1800,
+    timerProgressBar: true,
+    didOpen: (toast) => {
+        toast.addEventListener('mouseenter', Swal.stopTimer);
+        toast.addEventListener('mouseleave', Swal.resumeTimer);
+    },
+    // This prevents modal conflicts
+    allowOutsideClick: false,
+    allowEscapeKey: false,
+    allowEnterKey: false,
+    backdrop: false,
+});
+
+
 function removeRow(button) {
     const rowToDelete = button.closest('tr');
     if (!rowToDelete) return;
@@ -436,7 +458,6 @@ function removeRow(button) {
         return;
     }
 
-    // Send delete request to the backend
     fetch(`/delete_sales_entry/${salesId}`, {
         method: 'DELETE',
         headers: {
@@ -446,19 +467,31 @@ function removeRow(button) {
     .then((response) => response.json())
     .then((data) => {
         if (data.success) {
-            // Remove the row only if the backend deletion is successful
             rowToDelete.remove();
-            alert('Entry deleted successfully!');
             updateTotalSalesAmount();
+
+            Toast.fire({
+                icon: 'success',
+                title: 'Entry deleted'
+            });
         } else {
-            alert('Failed to delete entry!');
+            Toast.fire({
+                icon: 'error',
+                title: 'Delete failed',
+                text: data.message || 'Unable to delete entry.'
+            });
         }
     })
     .catch((error) => {
         console.error('Error deleting entry:', error);
-        alert('An error occurred while deleting the entry.');
+        Toast.fire({
+            icon: 'error',
+            title: 'Unexpected error',
+            text: error.message || 'Something went wrong.'
+        });
     });
 }
+
 
 function fetchSalesEntries(lineId, viewMode=false) {
     const salesEntriesList = document.querySelector('.sales-entries-list');
@@ -496,7 +529,12 @@ function fetchSalesEntries(lineId, viewMode=false) {
                 document.getElementById('available-for-sale').innerText = data.available_for_sale
 
             } else {
-                alert('Failed to retrieve sales entries');
+                Swal.fire({
+                    icon: 'error',
+                    title: 'Load Failed',
+                    text: 'Failed to retrieve sales entries. Please try again later.',
+                    confirmButtonText: 'OK'
+                });                
             }
         })
         .catch((error) => {
