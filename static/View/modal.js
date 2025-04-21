@@ -212,11 +212,9 @@ function submitSales(){
                     changeBtn.remove()
                 }
             }
-            Swal.fire({
-                icon: 'success',
-                title: 'Success',
-                text: 'Data submitted successfully!',
-                timer: 3000,
+            Toast.fire({
+                title: 'Sales Created Succesfully',
+                icon: 'success'
             });
         } else {
             Swal.fire({
@@ -439,10 +437,6 @@ const Toast = Swal.mixin({
         toast.addEventListener('mouseenter', Swal.stopTimer);
         toast.addEventListener('mouseleave', Swal.resumeTimer);
     },
-    // This prevents modal conflicts
-    allowOutsideClick: false,
-    allowEscapeKey: false,
-    allowEnterKey: false,
     backdrop: false,
 });
 

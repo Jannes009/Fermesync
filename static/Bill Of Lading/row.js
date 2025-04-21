@@ -1,3 +1,16 @@
+const Toast = Swal.mixin({
+    toast: true,
+    position: 'top-end',
+    showConfirmButton: false,
+    timer: 1800,
+    timerProgressBar: true,
+    didOpen: (toast) => {
+        toast.addEventListener('mouseenter', Swal.stopTimer);
+        toast.addEventListener('mouseleave', Swal.resumeTimer);
+    },
+    backdrop: false,
+});
+
 document.addEventListener("DOMContentLoaded", () => {
     
     $(document).on('select2:select', '.searchable-dropdown', function (e) {
@@ -165,12 +178,9 @@ document.addEventListener("DOMContentLoaded", () => {
             return response.json();
         })
         .then(data => {
-            Swal.fire({
-                title: "Saved data cleared",
-                text: data.message,
+            Toast.fire({
+                title: "Entry submitted",
                 icon: "success",
-                timer: 1000,
-                showConfirmButton: false
             });
             
             isProgrammaticSubmit = true;
@@ -223,8 +233,6 @@ document.addEventListener("DOMContentLoaded", () => {
 
     initializeDropdowns();
 });
-
-let deliveryNoteStatus = null; // Global variable to store status
 
 function check_delivery_note(){
     let inputField = document.getElementById('ZZDelNoteNo');

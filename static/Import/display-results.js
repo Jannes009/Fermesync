@@ -1,5 +1,4 @@
-
-
+let currentSearchValue = null
 function fetchImportedData() {
     let table = document.getElementById("resultsTable");
     let tbody = table.querySelector("tbody");
@@ -12,6 +11,7 @@ function fetchImportedData() {
             importedData = data; // Store the data for filtering
             console.log(importedData)
             displayTable(data);  // Show all data initially
+            updateFilterButtonCounts()
             filterTable("matched");
             document.getElementById("matchedBtn").classList.add("active"); // Highlight the default button
         })
@@ -330,7 +330,7 @@ let importedData = []; // Store fetched data for filtering
 
 function filterTable(type) {
     let filteredData = [];
-    console.log(importedData)
+
     if (type === "linked") {
         filteredData = importedData.filter(row => row.linconsignmentidexist === 1);
     } else if (type === "matched") {
@@ -338,6 +338,63 @@ function filterTable(type) {
     } else if (type === "nomatch") {
         filteredData = importedData.filter(row => row.linconsignmentidexist === 0 && row.headelnotenoexist === 0);
     }
-    console.log(filteredData)
+
+    // Apply search filtering if needed
+    if (currentSearchValue) {
+        const search = currentSearchValue.toLowerCase();
+        filteredData = filteredData.filter(row => {
+            const ref = (row.delnoteno || "").toString().toLowerCase();
+            return currentSearchMode === "exact" ? ref === search : ref.includes(search);
+        });
+    }
+
     displayTable(filteredData);
+    updateFilterButtonCounts();
+}
+
+
+function updateFilterButtonCounts() {
+    let filtered = importedData;
+
+    if (currentSearchValue) {
+        const search = currentSearchValue.toLowerCase();
+        filtered = importedData.filter(row => {
+            const ref = (row.delnoteno || "").toString().toLowerCase();
+            return currentSearchMode === "exact" ? ref === search : ref.includes(search);
+        });
+    }
+
+    const matchedCount = filtered.filter(row => row.linconsignmentidexist === 0 && row.headelnotenoexist === 1).length;
+    const linkedCount = filtered.filter(row => row.linconsignmentidexist === 1).length;
+    const noMatchCount = filtered.filter(row => row.linconsignmentidexist === 0 && row.headelnotenoexist === 0).length;
+
+    document.getElementById("matchedBtn").textContent = `Matched (${matchedCount})`;
+    document.getElementById("linkedBtn").textContent = `Linked (${linkedCount})`;
+    document.getElementById("noMatchBtn").textContent = `No Match (${noMatchCount})`;
+}
+
+
+function searchSupplierRef() {
+    const searchInput = document.getElementById("supplierRefSearch").value.trim();
+    const searchType = document.getElementById("searchType").value;
+    currentSearchValue = searchInput
+
+    if (!searchInput) {
+        Swal.fire("Empty search", "Please enter a supplier reference.", "info");
+        return;
+    }
+
+    let filtered = importedData.filter(row => {
+        const ref = String(row.delnoteno || "").toLowerCase();
+        const query = searchInput.toLowerCase();
+        return searchType === "exact" ? ref === query : ref.includes(query);
+    });
+
+    displayTable(filtered);
+}
+
+function resetSearch() {
+    document.getElementById("supplierRefSearch").value = "";
+    currentSearchValue = null
+    displayTable(importedData); // Show all
 }

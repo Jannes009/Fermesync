@@ -1,4 +1,4 @@
-
+let deliveryNoteStatus = null; // Global variable to store status
 document.addEventListener("DOMContentLoaded", () => {
     let preventSave = false;
 

@@ -38,6 +38,7 @@ def create_app():
     from routes.Maintanance.product import maintanance_bp
     from routes.Import.Import import import_bp
     from routes.view_account import account_bp
+    from routes.Document.document import document_bp
 
     app.register_blueprint(entry_bp)
     app.register_blueprint(view_bp)
@@ -45,6 +46,7 @@ def create_app():
     app.register_blueprint(maintanance_bp)
     app.register_blueprint(import_bp, url_prefix='/import')
     app.register_blueprint(account_bp)
+    app.register_blueprint(document_bp)
 
     # Create all tables
     with app.app_context():

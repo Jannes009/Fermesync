@@ -1,3 +1,16 @@
+const Toast = Swal.mixin({
+    toast: true,
+    position: 'top-end',
+    showConfirmButton: false,
+    timer: 1800,
+    timerProgressBar: true,
+    didOpen: (toast) => {
+        toast.addEventListener('mouseenter', Swal.stopTimer);
+        toast.addEventListener('mouseleave', Swal.resumeTimer);
+    },
+    backdrop: false,
+});
+
 document.addEventListener("DOMContentLoaded", () => {
     const salesAmountField = document.getElementById("InvoiceSalesAmnt");
     const totalDeductedField = document.getElementById("ZZInvoiceTotalDeducted");
@@ -248,6 +261,10 @@ document.addEventListener("DOMContentLoaded", () => {
         .then(data => {
             if (data.success) {
                 window.location.href = '/create_invoice';
+                Toast.fire({
+                    title: "Invoice Created Successfully",
+                    icon: "success",
+                });
                 alert("Invoice created successfully!");
             } else {
                 alert(`Failed to submit invoice: ${data.error}`);
