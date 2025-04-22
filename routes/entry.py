@@ -121,6 +121,7 @@ def create_entry():
             form_data = error_data["form_data"]
 
     dropdown_options = fetch_dropdown_options(cursor)
+
     close_db_connection(cursor, connection)
 
     return render_template('Bill Of Lading page/create_entry.html',

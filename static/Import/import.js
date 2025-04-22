@@ -1,45 +1,45 @@
+let eventSource; // Local scoped
+// document.getElementById("manualImportForm").addEventListener("submit", function (event) {
+//     event.preventDefault();
+//     let formData = new FormData(this);
 
-document.getElementById("manualImportForm").addEventListener("submit", function (event) {
-    event.preventDefault();
-    let formData = new FormData(this);
+//     Swal.fire({
+//         title: "Importing...",
+//         html: "<b>Processing file...</b>",
+//         allowOutsideClick: false,
+//         showConfirmButton: false,
+//         didOpen: () => { Swal.showLoading(); }
+//     });
 
-    Swal.fire({
-        title: "Importing...",
-        html: "<b>Processing file...</b>",
-        allowOutsideClick: false,
-        showConfirmButton: false,
-        didOpen: () => { Swal.showLoading(); }
-    });
+//     fetch("/import/upload_excel", {  // Adjusted the route
+//         method: "POST",
+//         body: formData
+//     })
+//     .then(response => response.json())
+//     .then(data => {
+//         Swal.close();
 
-    fetch("/import/upload_excel", {  // Adjusted the route
-        method: "POST",
-        body: formData
-    })
-    .then(response => response.json())
-    .then(data => {
-        Swal.close();
+//         let result = data.results[0];
 
-        let result = data.results[0];
-
-        if (result.status === "Success") {
-            Swal.fire({
-                icon: "success",
-                title: "Import Completed!",
-                text: result.message
-            }).then(() => fetchImportedData());
-        } else {
-            Swal.fire({
-                icon: "error",
-                title: "Import Failed",
-                text: result.message
-            });
-        }
-    })
-    .catch(error => {
-        Swal.fire("Error!", "An error occurred while importing.", "error");
-        console.error("Import error:", error);
-    });
-});
+//         if (result.status === "Success") {
+//             Swal.fire({
+//                 icon: "success",
+//                 title: "Import Completed!",
+//                 text: result.message
+//             }).then(() => fetchImportedData());
+//         } else {
+//             Swal.fire({
+//                 icon: "error",
+//                 title: "Import Failed",
+//                 text: result.message
+//             });
+//         }
+//     })
+//     .catch(error => {
+//         Swal.fire("Error!", "An error occurred while importing.", "error");
+//         console.error("Import error:", error);
+//     });
+// });
 
 document.getElementById("autoImportForm").addEventListener("submit", function (event) {
     event.preventDefault();
@@ -119,8 +119,8 @@ document.getElementById("autoImportForm").addEventListener("submit", function (e
     }).then((result) => {
         if (result.dismiss === Swal.DismissReason.cancel) {
             isCancelled = true;
-            if (window.eventSource) {
-                window.eventSource.close();
+            if (eventSource) {
+                eventSource.close();
             }
             Swal.fire({
                 icon: "warning",
@@ -131,15 +131,15 @@ document.getElementById("autoImportForm").addEventListener("submit", function (e
     });
 
     // Close any previous eventSource connection before opening a new one
-    if (window.eventSource) {
-        window.eventSource.close();
+    if (eventSource) {
+        eventSource.close();
     }
 
-    window.eventSource = new EventSource(
+    eventSource = new EventSource(
         `/import/auto_import?start_date=${startDate}&end_date=${endDate}&service=${service}`
     );
 
-    window.eventSource.onmessage = function (event) {
+    eventSource.onmessage = function (event) {
         if (isCancelled) return; // Stop processing if cancelled
 
         const message = event.data.replace("data: ", "");
@@ -149,25 +149,25 @@ document.getElementById("autoImportForm").addEventListener("submit", function (e
             Swal.fire({
                 icon: "success",
                 title: "Import Completed!",
-                text: "Import finished successfully.",
-                setTimeout: 1
+                text: "Import finished successfully."
             }).then(() => {
-                window.eventSource.close();
+                eventSource.close();
                 fetchImportedData();
             });
         }
 
         if (message.includes("ERROR")) {
             Swal.fire({ icon: "error", title: "Error", text: message });
-            window.eventSource.close();
+            eventSource.close();
         }
     };
 
-    window.eventSource.onerror = function () {
+    eventSource.onerror = function () {
         if (!isCancelled) {
-            Swal.fire({ icon: "error", title: "Connection Lost", text: "Failed to connect to the server." });
+            console.log( "Failed to connect to the server.");
+            //Swal.fire({ icon: "error", title: "Connection Lost", text: "Failed to connect to the server." });
         }
-        window.eventSource.close();
+        eventSource.close();
     };
 });
 

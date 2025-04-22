@@ -165,8 +165,6 @@ document.addEventListener("DOMContentLoaded", function () {
                     }
                 }
                 await fetchProducts()
-                alert('Data submitted successfully!');
-                document.querySelector('.modal-overlay').style.display = 'none';
             } else {
                 alert('Failed to submit data: ' + data.message);
             }
@@ -249,8 +247,8 @@ function createEventListener(row){
     priceInput.addEventListener('input', () => {
         const quantity = parseFloat(quantityInput.value) || 0;
         const price = parseFloat(priceInput.value) || 0;
-        const amount = parseFloat(quantityInput.value) || 0;
-        amountInput.value = (quantity * price).toFixed(2);
+        const discount = parseFloat(discountInput.value) || 0;
+        amountInput.value = (quantity * (price * (1 - discount / 100))).toFixed(2);
         // updateTotalSalesAmount()
     });
 
@@ -258,7 +256,10 @@ function createEventListener(row){
     amountInput.addEventListener('input', () => {
         const quantity = parseFloat(quantityInput.value) || 0;
         const amount = parseFloat(amountInput.value) || 0;
-        priceInput.value = quantity ? (amount / quantity).toFixed(2) : '0.00';
+        const price = quantity ? (amount / quantity).toFixed(2) : '0.00';
+        priceInput.value = price;
+        const discount = parseFloat(discountInput.value) || 0;
+        amountInput.value = (quantity * (price * (1 - discount / 100))).toFixed(2);
         // updateTotalSalesAmount()
     });
 
@@ -266,7 +267,8 @@ function createEventListener(row){
     quantityInput.addEventListener('input', () => {
         const quantity = parseFloat(quantityInput.value) || 0;
         const price = parseFloat(priceInput.value) || 0;
-        amountInput.value = (quantity * price).toFixed(2);
+        const discount = parseFloat(discountInput.value) || 0;
+        amountInput.value = (quantity * (price * (1 - discount / 100))).toFixed(2);
         // updateTotalSalesAmount()
     });
     // Update amount when discount changes
@@ -274,7 +276,6 @@ function createEventListener(row){
         const quantity = parseFloat(quantityInput.value) || 0;
         const price = parseFloat(priceInput.value) || 0;
         const discount = parseFloat(discountInput.value) || 0;
-        console.log(quantity, price, discount, quantity * (price * (1 - discount / 100)))
         amountInput.value = (quantity * (price * (1 - discount / 100))).toFixed(2);
         // updateTotalSalesAmount()
     });
