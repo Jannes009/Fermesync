@@ -67,15 +67,15 @@
 
     <div class="container mt-5">
         <h2>Import Results</h2>
-        <!-- <div class="d-flex mb-3 align-items-center gap-2">
-            <input type="text" id="supplierRefSearch" placeholder="Search Supplier Ref..." class="form-control" style="max-width: 250px;">
-            <select id="searchType" class="form-select" style="max-width: 150px;">
+        <div class="search-container" style="margin-bottom: 1rem;">
+            <input type="text" id="searchInput" placeholder="Search Delivery Note No..." class="form-control" style="width: 250px; display: inline-block; margin-right: 10px;" />
+        
+            <select id="searchMode" class="form-select" style="width: 120px; display: inline-block;">
+                <option value="contains">Contains</option>
                 <option value="exact">Exact</option>
-                <option value="approx">Approximate</option>
             </select>
-            <button class="btn btn-secondary" onclick="searchSupplierRef()">Search</button>
-            <button class="btn btn-outline-secondary" onclick="resetSearch()">Reset</button>
-        </div>         -->
+        </div>
+        
         <table id="resultsTable" class="table table-bordered">
             <thead>
                 <div class="filter-buttons">

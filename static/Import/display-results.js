@@ -1,4 +1,7 @@
-let currentSearchValue = null
+let currentSearchValue = "";
+let currentSearchMode = "contains"; // or "exact"
+let currentFilterType = "matched"; // or default to "all" if needed
+
 function fetchImportedData() {
     let table = document.getElementById("resultsTable");
     let tbody = table.querySelector("tbody");
@@ -373,28 +376,12 @@ function updateFilterButtonCounts() {
     document.getElementById("noMatchBtn").textContent = `No Match (${noMatchCount})`;
 }
 
+document.getElementById("searchInput").addEventListener("input", function () {
+    currentSearchValue = this.value.trim();
+    filterTable(currentFilterType); // or call with default filter like "all"
+});
 
-function searchSupplierRef() {
-    const searchInput = document.getElementById("supplierRefSearch").value.trim();
-    const searchType = document.getElementById("searchType").value;
-    currentSearchValue = searchInput
-
-    if (!searchInput) {
-        Swal.fire("Empty search", "Please enter a supplier reference.", "info");
-        return;
-    }
-
-    let filtered = importedData.filter(row => {
-        const ref = String(row.delnoteno || "").toLowerCase();
-        const query = searchInput.toLowerCase();
-        return searchType === "exact" ? ref === query : ref.includes(query);
-    });
-
-    displayTable(filtered);
-}
-
-function resetSearch() {
-    document.getElementById("supplierRefSearch").value = "";
-    currentSearchValue = null
-    displayTable(importedData); // Show all
-}
+document.getElementById("searchMode").addEventListener("change", function () {
+    currentSearchMode = this.value;
+    filterTable(currentFilterType);
+});
