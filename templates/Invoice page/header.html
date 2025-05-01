@@ -23,6 +23,7 @@
                 </div>
             </div>
         </div>
+
         <div class="form-row">
             <div class="form-group">
                 <label for="InvoiceSalesQty">Sales Quantity</label>
@@ -37,6 +38,7 @@
                 <input type="number" id="ZZInvoiceTotalDeducted" name="ZZInvoiceTotalDeducted" placeholder="Total Deducted" class="form-input">
             </div>
         </div>
+
         <div class="form-row">
             <div class="form-group">
                 <label for="ZZInvoiceMarketCommIncl">Market Commission Incl.</label>
@@ -47,25 +49,27 @@
                 <input type="number" id="ZZInvoiceAgentCommIncl" name="ZZInvoiceAgentCommIncl" placeholder="Agent Commission Incl." class="form-input">
             </div>
             <div class="form-group">
-                <label for="ZZInvoiceOtherCostsIncl">Other Costs Incl.</label>
-                <input type="number" id="ZZInvoiceOtherCostsIncl" name="ZZInvoiceOtherCostsIncl" placeholder="Other Costs Incl." class="form-input">
+                <label>Other Costs Incl.</label>
+                <div id="ZZInvoiceOtherCostsIncl" class="form-static">R0.00</div>
             </div>
         </div>
+
         <div class="form-row">
             <div class="form-group">
-                <label for="ZZInvoiceMarketCommIncl">Market Commission Excl.</label>
+                <label for="ZZInvoiceMarketCommExcl">Market Commission Excl.</label>
                 <input type="number" id="ZZInvoiceMarketCommExcl" name="ZZInvoiceMarketCommExcl" placeholder="Market Commission Excl." class="form-input">
             </div>
             <div class="form-group">
-                <label for="ZZInvoiceAgentCommIncl">Agent Commission Excl.</label>
-                <input type="number" id="ZZInvoiceAgentCommExcl" name="ZZInvoiceAgentCommExcl" placeholder="Agent Commission Encl." class="form-input">
+                <label for="ZZInvoiceAgentCommExcl">Agent Commission Excl.</label>
+                <input type="number" id="ZZInvoiceAgentCommExcl" name="ZZInvoiceAgentCommExcl" placeholder="Agent Commission Excl." class="form-input">
             </div>
             <div class="form-group">
-                <label for="ZZInvoiceOtherCostsIncl">Other Costs Excl.</label>
-                <input type="number" id="ZZInvoiceOtherCostsExcl" name="ZZInvoiceOtherCostsExcl" placeholder="Other Costs Excl." class="form-input">
+                <label>Other Costs Excl.</label>
+                <div id="ZZInvoiceOtherCostsExcl" class="form-static">R0.00</div>
             </div>
         </div>
     </div>
+
     <div>
         <label>Net Amount:</label>
         <span id="net-amount">R0.00</span>
@@ -74,6 +78,4 @@
             <img id="change-tax-rate-icon" src="{{ url_for('static', filename='Image/edit.png') }}" alt="Change Tax Rate" class="change-tax-icon" title="Change Default Tax Rate">
         </div>
     </div>
-
-    
 </div>

@@ -13,15 +13,16 @@ class UserLogin(UserMixin):
         self.role = role
         self.server_name = None
         self.database_name = None
+        self.db_username = None
         self.db_password = None
 
     def load_user_data(self):
-        """Fetch user credentials from the database and store them."""
         user = db.session.get(User, self.id)
         if user:
             self.server_name = user.server_name
             self.database_name = user.database_name
-            self.db_password = user.get_db_password()  # Decrypt password
+            self.db_username = user.db_username
+            self.db_password = user.get_db_password()
 
     def get_db_password(self):
         return self.db_password if self.db_password else None

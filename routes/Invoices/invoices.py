@@ -25,14 +25,28 @@ def get_delivery_note_details(note_number, start_date, end_date):
 
     # Step 1: Fetch the Delivery Note ID (DelIndex) and Market (DelMarketId)
     cursor.execute("""
-        SELECT DelIndex, DeliClientId
-        FROM dbo.ZZDeliveryNoteHeader
-        WHERE DelNoteNo = ?
+    SELECT 
+    DelIndex, DeliClientId
+    ,ISNULL(ISNULL(ComAgentComm,AGENT.AgentComm), 0) AgentComm
+    ,ISNULL(ISNULL(ComMarketComm, AGENT.MarketComm), 0) MarketComm
+    --Select *
+    FROM dbo.ZZDeliveryNoteHeader HEA
+    OUTER APPLY (
+            Select TOP 1 DelLineStockId ,ProductIndex
+            from ZZDeliveryNoteLines LN
+            JOIN (Select * from[dbo].[ZZProductStockItem])STK on STK.ProductEvoStockLink = LN.DelLineStockId
+            where DelHeaderId = HEA.DelIndex
+            )LIN
+    Join _uvMarketAgent AGENT on AGENT.DCLink = HEA.DeliClientId
+    LEFT JOIN (
+            Select * from [dbo].[ZZAgentProductCommDisc]
+            )COM on COM.ComAgentLink = AGENT.DCLink and COM.ComProductLink =  LIN.ProductIndex
+    WHERE DelNoteNo = ?
     """, (note_number,))
     header = cursor.fetchone()
 
     if header:
-        del_index, del_client_id = header
+        del_index, del_client_id, agent_comm, market_comm = header
 
         # find agent's agentComm and MarketComm
         cursor.execute("""
@@ -60,8 +74,8 @@ def get_delivery_note_details(note_number, start_date, end_date):
         result = {
             'note_number': note_number,
             'market_id': client[1],
-            'market_comm': commissions[0],
-            'agent_comm': commissions[1],
+            'market_comm': market_comm,
+            'agent_comm': agent_comm,
             'lines': []
         }
 

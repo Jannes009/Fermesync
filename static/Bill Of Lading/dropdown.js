@@ -36,23 +36,16 @@ $(document).ready(function () {
         }
     });
 
-    $(document).on('keydown', 'input[name="ZZComments[]"]', function (e) {
-        if (e.key === 'Tab' || e.keyCode === 9) {
-            e.preventDefault();  // Prevent default tabbing behavior
+    const UnitCode = document.querySelector('select[name="ZZProductionUnitCode"]')
+    console.log(UnitCode)
+    $('select[name="ZZProductionUnitCode"]').on('change', function () {
+        const selectedValue = $(this).val();
     
-            let currentRow = $(this).closest('tr');
-            let nextInput = currentRow.next().find('input[name="ZZComments[]"]');
-    
-            if (nextInput.length === 0) {
-                let newRow = addCleanLine();  // Add new row and get reference
-                nextInput = newRow.find('input[name="ZZComments[]"]'); // Find new input
-            }
-    
-            if (nextInput.length) {
-                nextInput.focus();  // Focus the next quantity input field
-            }
-        }
+        $('select.production-unit-select').each(function () {
+            $(this).val(selectedValue).trigger('change'); // Also works for Select2
+        });
     });
+    
     
     
 });

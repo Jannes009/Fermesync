@@ -34,6 +34,9 @@ document.addEventListener("DOMContentLoaded", function () {
             <td><input type="number" class="discount-input" value="0" placeholder="Discount"></td>
             <td><input type="number" class="amount-input" placeholder="Amount"></td>
             <td>
+                <input type="checkbox" class="destroyed-checkbox" name="destroyed">
+            </td>
+            <td>
                 <button class="remove-line-btn" onclick="removeRow(this)">
                     <img src="/static/Image/recycle-bin.png" alt="Delete" class="bin-icon">
                 </button>
@@ -72,6 +75,7 @@ document.addEventListener("DOMContentLoaded", function () {
             const priceInput = row.querySelector('input[placeholder="Price"]');
             const amountInput = row.querySelector('input[placeholder="Amount"]');
             const discountInput = row.querySelector('input[placeholder="Discount"]');
+            const destroyed = row.querySelector('.destroyed-checkbox').checked;
     
             if (dateInput && quantityInput) {
                 const date = dateInput.value;
@@ -113,6 +117,7 @@ document.addEventListener("DOMContentLoaded", function () {
                     discount,
                     discountAmnt,
                     amount,
+                    destroyed
                 });
             }
         });

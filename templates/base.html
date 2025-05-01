@@ -47,6 +47,7 @@
     <script>
         const recycleBinUrl = "{{ url_for('static', filename='recycle-bin.png') }}";
         const productOptions = {{ product_options | tojson | safe }};
+        const unitOptions = {{ production_unit_codes | tojson | safe }};
     </script>   
 </body>
 </html>

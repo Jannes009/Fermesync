@@ -1,3 +1,13 @@
+// Show creating toast
+const creatingToast = Swal.mixin({
+    toast: true,
+    position: 'top-end',
+    showConfirmButton: false,
+    timerProgressBar: true,
+    background: '#3085d6',
+    color: 'white',
+    timer: 0 // Infinite timer
+});
 document.addEventListener('DOMContentLoaded', function () {
     fetch('/fetch-product-data')
         .then(response => response.json())
@@ -16,38 +26,65 @@ document.addEventListener('DOMContentLoaded', function () {
 
     const form = document.getElementById("createProductForm");
 
-    form.addEventListener("submit", function (event) {
+    form.addEventListener("submit", async function (event) {
         event.preventDefault(); // Prevent default form submission
     
         const formData = new FormData(form);
     
-        fetch(form.action, {
-            method: "POST",
-            body: formData,
-        })
-            .then(response => {
-                if (!response.ok) {
-                    throw new Error("Network response was not OK");
-                }
-                return response.json(); // Backend returns JSON
-            })
-            .then(data => {
-                if (data.error) {
-                    alert(data.error);
-                    return;
-                }
+        // Show the "Creating..." toast
+        creatingToast.fire({
+            title: 'Creating product...',
+            didOpen: () => {
+                Swal.showLoading();
+            }
+        });
     
-                // Redirect to the Bill of Lading page
-                window.location.href = '/create_entry';
-    
-                // Optionally reset the form
-                form.reset();
-            })
-            .catch(error => {
-                console.error("Error:", error);
-                alert("An error occurred while creating the product. Please try again.");
+        try {
+            const response = await fetch(form.action, {
+                method: "POST",
+                body: formData,
             });
-    });  
+    
+            const body = await response.json();
+            Swal.close(); // Close the creating toast
+    
+            if (!response.ok) {
+                // If backend returned an error
+                await Swal.fire({
+                    icon: 'error',
+                    title: 'Error',
+                    text: body.error || 'Something went wrong.',
+                });
+                return;
+            }
+    
+            // Success
+            await Swal.fire({
+                icon: 'success',
+                title: 'Product created!',
+                text: body.success || 'The product was successfully created.',
+                showConfirmButton: false,
+                timer: 2000,
+                timerProgressBar: true,
+                toast: true,
+                position: 'top-end',
+            });
+    
+            form.reset(); // Optionally reset the form
+            window.location.href = '/create_entry'; // Redirect after
+    
+        } catch (error) {
+            Swal.close(); // Make sure to close "creating..." if still open
+            console.error("Error:", error);
+            await Swal.fire({
+                icon: 'error',
+                title: 'Unexpected Error',
+                text: 'An unexpected error occurred. Please try again.',
+            });
+        }
+    });
+    
+    
     const brandCode = this.querySelector('#brandCode');
     const productDescription = this.querySelector('#productDescription');
     console.log(brandCode.value, productDescription.value)

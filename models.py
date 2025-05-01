@@ -40,6 +40,7 @@ class User(db.Model):
     role = db.Column(db.String(20), nullable=False, default="user")
     server_name = db.Column(db.String(100), nullable=False)
     database_name = db.Column(db.String(100), nullable=False)
+    db_username = db.Column(db.String(100), nullable=False)  # NEW
     db_password = db.Column(db.String(250), nullable=False)  # Encrypted
 
     def set_password(self, password):

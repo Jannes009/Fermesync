@@ -139,32 +139,12 @@ document.addEventListener("DOMContentLoaded", () => {
 
         const otherCostsIncl = totalDeducted - marketComm - agentComm;
         const otherCostsExcl = otherCostsIncl / (1 + vatMultiplier / 100);
+        console.log(totalDeducted, marketComm, agentComm, otherCostsIncl)
 
-        document.getElementById("ZZInvoiceOtherCostsIncl").value = otherCostsIncl.toFixed(2);
-        document.getElementById("ZZInvoiceOtherCostsExcl").value = otherCostsExcl.toFixed(2);
+        document.getElementById("ZZInvoiceOtherCostsIncl").textContent = otherCostsIncl.toFixed(2);
+        document.getElementById("ZZInvoiceOtherCostsExcl").textContent = otherCostsExcl.toFixed(2);
 
         calculateNetAmount();
-    }
-
-    async function updateTotalDeducted(otherCostsIncl=null){
-        const otherCostsInclValue = otherCostsIncl !== null
-        ? otherCostsIncl
-        : parseFloat(document.getElementById("ZZInvoiceOtherCostsIncl").value) || 0;
-        console.log(otherCostsInclValue, otherCostsIncl)
-        const salesAmount = parseFloat(salesAmountField.value) || 0;
-        const vatMultiplier = await getTaxRate(dateInput.value);
-        let marketCommPerc = window.marketComm / 100;
-        let agentCommPerc = window.agentComm / 100;
-
-        const marketComm = (salesAmount * marketCommPerc).toFixed(2);
-        const agentComm = (salesAmount * agentCommPerc).toFixed(2);
-        const totalDeductedIncl = (
-            parseFloat(marketComm * (1 + vatMultiplier / 100)) +
-            parseFloat(agentComm * (1 + vatMultiplier / 100)) +
-            parseFloat(otherCostsInclValue)
-        ).toFixed(2);
-        document.getElementById("ZZInvoiceTotalDeducted").value = totalDeductedIncl;
-        console.log(totalDeductedIncl)
     }
 
     salesAmountField.addEventListener("input", updateFields);
@@ -172,25 +152,22 @@ document.addEventListener("DOMContentLoaded", () => {
     document.getElementById("delivery-note-number").addEventListener("input", check_delivery_note);
     document.getElementById("ZZInvoiceNo").addEventListener("input", check_invoice_number);
 
+    // Listen for changes on *Excl* fields (excluding Other Costs, since it's static now)
     document.querySelectorAll('input[id*="Excl"]').forEach(input => {
         input.addEventListener("input", async () => {
-            const otherCostsIncl = input.id.includes("OtherCosts") ? await updateInclFields() : await updateInclFields();
-    
-            if (input.id.includes("OtherCosts")) {
-                updateTotalDeducted(otherCostsIncl);  // Pass it directly
-            }
+            await updateInclFields();
+            await updateOtherCosts()
         });
-    });   
-    
+    });
+
+    // Listen for changes on *Incl* fields (excluding Other Costs)
     document.querySelectorAll('input[id*="Incl"]').forEach(input => {
-        input.addEventListener("input", () => {
-            updateExclFields();
-    
-            if (input.id.includes("OtherCosts")) {
-                updateTotalDeducted();
-            }
+        input.addEventListener("input", async () => {
+            await updateExclFields();
+            await updateOtherCosts();
         });
-    }); 
+    });
+
 
     dateInput.addEventListener("change", () => {
         manualTaxRate = null;  // Clear manual rate on date change

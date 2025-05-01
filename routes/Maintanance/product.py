@@ -1,6 +1,7 @@
 from flask import Blueprint, render_template, request, redirect, url_for, session, jsonify
 from db import create_db_connection, close_db_connection
 import pypyodbc as odbc
+from pypyodbc import IntegrityError
 from routes.db_functions import get_products
 
 maintanance_bp = Blueprint('maintanance', __name__)
@@ -114,14 +115,21 @@ def create_product():
     values = (stock_item_code, product_code, class_code, weight_code, size_code, type_code, brand_code,
               output_tax_rate, input_tax_rate[0])
 
-    # try:
+    try:
 
-    cursor.execute(query, values)
-    conn.commit()
-    cursor.execute("EXEC [dbo].[SIGCreateEvoStockItem]")
-    conn.commit()
-    # except Exception as e:
-    #     return jsonify({"error": str(e)}), 500
+        cursor.execute(query, values)
+        conn.commit()
+        cursor.execute("EXEC [dbo].[SIGCreateEvoStockItem]")
+        conn.commit()
+    except IntegrityError as e:
+        print(e)
+        if "Violation of UNIQUE KEY constraint" in str(e):
+            return jsonify({
+                "error": f"Product with code '{stock_item_code}' already exists."
+            }), 409  # 409 Conflict
+        return jsonify({"error": str(e)}), 500
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
 
     # Retrieve updated product options
     try:

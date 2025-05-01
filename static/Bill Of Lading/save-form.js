@@ -17,10 +17,10 @@ document.addEventListener("DOMContentLoaded", () => {
                 ZZProduct: row.querySelector('[name="ZZProduct[]"]').value || '',
                 ZZEstimatedPrice: row.querySelector('[name="ZZEstimatedPrice[]"]').value || '',
                 ZZQuantityBags: row.querySelector('[name="ZZQuantityBags[]"]').value || '',
-                ZZComments: row.querySelector('[name="ZZComments[]"]').value || ''
+                ZZProductionUnitLine: row.querySelector('[name="ZZProductionUnitLine[]"]').value || ''
             }))
         };
-        console.log(formData)
+
 
         // Send data to the backend
         fetch('/api/save-form', {
@@ -95,7 +95,6 @@ document.addEventListener("DOMContentLoaded", () => {
     }
     
     
-    // Helper function to create a product row with product data
     function createProductRow(product) {
         const newRow = $(`
             <tr class="product-row">
@@ -105,8 +104,12 @@ document.addEventListener("DOMContentLoaded", () => {
                     </select>
                 </td>
                 <td><input type="number" name="ZZEstimatedPrice[]" value="${product.ZZEstimatedPrice}" placeholder="Estimated Price" step="any" required></td>
-                <td><input type="number" name="ZZQuantityBags[]" value="${product.ZZQuantityBags}" placeholder="Enter quantity" step="any" required></td>
-                <td><input type="text" name="ZZComments[]" value="${product.ZZComments}" placeholder="Enter comments"></td>
+                <td><input type="number" name="ZZQuantityBags[]" value="${product.ZZQuantityBags}" placeholder="Qty" step="any" required></td>
+                <td>
+                    <select name="ZZProductionUnitLine[]" class="searchable-dropdown production-unit-select" required>
+                        <option value="" disabled>Select a Production Unit</option>
+                    </select>
+                </td>
                 <td>
                     <button type="button" class="delete-row-btn">
                         <img src="/static/Image/recycle-bin.png" alt="Delete" class="bin-icon">
@@ -115,27 +118,32 @@ document.addEventListener("DOMContentLoaded", () => {
             </tr>
         `);
     
-        populateDropdownOptions(newRow.find("select.searchable-dropdown"), product.ZZProduct);
+        // Populate product dropdown with selected product
+        populateDropdownOptions(newRow.find("select.product-select"), product.ZZProduct, productOptions);
+    
+        // Populate production unit dropdown with selected production unit
+        populateDropdownOptions(newRow.find("select.production-unit-select"), product.ZZProductionUnitLine, unitOptions);
+    
         return newRow;
     }
     
-    function populateDropdownOptions(dropdown, selectedValue) {
-        // Clear existing options
-        dropdown.empty();
+    // Generic helper for dropdowns
+    function populateDropdownOptions(dropdown, selectedValue, optionsArray) {
+        dropdown.empty(); // Clear existing options
     
-        // Add placeholder option first
-        dropdown.append('<option value="" disabled selected>Select a Product</option>');
+        // Add default placeholder
+        dropdown.append('<option value="" disabled>Select an option</option>');
     
-        // Append product options
-        productOptions.forEach(([value, text]) => {
-            dropdown.append(new Option(text, value, false, value === selectedValue && selectedValue !== ""));
+        // Add new options
+        optionsArray.forEach(([value, text]) => {
+            dropdown.append(new Option(text, value, false, value === selectedValue));
         });
     
-        // If selectedValue is not empty, set it
         if (selectedValue) {
             dropdown.val(selectedValue);
         }
     }
+    
     
     
     // Redirect to create stock form

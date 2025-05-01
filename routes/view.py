@@ -113,6 +113,10 @@ def submit_sales_entry():
         discount = item['discount']
         discountAmnt = item['discountAmnt']
         amount = item['amount']
+        destroyed = 1 if item['destroyed'] else 0
+
+
+        print(destroyed, type(destroyed))
         stockId = get_stock_id(lineId, cursor)
 
         print(discount, item)
@@ -126,13 +130,8 @@ def submit_sales_entry():
 
         if salesId != None:
             cursor.execute("""
-            Select 
-                AGENT.AgentComm
-                ,AGENT.MarketComm
-            from ZZDeliveryNoteLines DELLIN
-            JOIN ZZDeliveryNoteHeader DELHEA on DELHEA.DelIndex = DELLIN.DelHeaderId
-            Join _uvMarketAgent AGENT on AGENT.DCLink = DELHEA.DeliClientId
-            Where DELLIN.DelLineIndex = ?
+            SELECT AgentComm, MarketComm FROM [dbo].[_uvDelLinCommission]
+            WHERE DelLineIndex = ?
             """,(lineId,))
             row = cursor.fetchone()
             agent_commission = row[0]
@@ -143,18 +142,15 @@ def submit_sales_entry():
             UPDATE ZZSalesLines
                 SET SalesDate = ?, SalesQty = ?, DiscountPercent = ?, DiscountAmnt = ?, 
                 SalesAmnt = ?, SalesStockId = ?, SalesPrice = ?, GrossSalesAmnt = ?, 
-                SalesMarketComPercent = ?, SalesAgentComPercent = ?, NettSalesAmnt = ? 
+                SalesMarketComPercent = ?, SalesAgentComPercent = ?, NettSalesAmnt = ?,
+                Destroyed = ?
                 WHERE SalesLineIndex = ?
-            """, (date, quantity, discount, discountAmnt, amount, stockId, price, gross_amount, market_commission, agent_commission, net_sales, salesId, ))
+            """, (date, quantity, discount, discountAmnt, amount, stockId, price, 
+                  gross_amount, market_commission, agent_commission, net_sales, destroyed, salesId, ))
         else:
             cursor.execute("""
-            Select 
-                AGENT.AgentComm
-                ,AGENT.MarketComm
-            from ZZDeliveryNoteLines DELLIN
-            JOIN ZZDeliveryNoteHeader DELHEA on DELHEA.DelIndex = DELLIN.DelHeaderId
-            Join _uvMarketAgent AGENT on AGENT.DCLink = DELHEA.DeliClientId
-            Where DELLIN.DelLineIndex = ?
+            SELECT AgentComm, MarketComm FROM [dbo].[_uvDelLinCommission]
+            WHERE DelLineIndex = ?
             """,(lineId,))
             row = cursor.fetchone()
             agent_commission = row[0]
@@ -166,13 +162,14 @@ def submit_sales_entry():
             SalesDelLineId, SalesDate, SalesQty, SalesAmnt,
             SalesPrice, SalesStockId, AutoSale, DiscountPercent,
             DiscountAmnt, GrossSalesAmnt,
-            SalesMarketComPercent, SalesAgentComPercent, NettSalesAmnt
+            SalesMarketComPercent, SalesAgentComPercent, NettSalesAmnt,
+            Destroyed
             )
-            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
             """, (lineId, date, quantity, amount, 
                   price, stockId, 0, discount, 
                   discountAmnt, gross_amount,
-                  market_commission, agent_commission, net_sales))
+                  market_commission, agent_commission, net_sales, destroyed,))
     conn.commit()
     conn.close()
     return jsonify({'success': True})
@@ -192,13 +189,13 @@ def get_sales_entries(lineId):
         cursor = conn.cursor()
         if(view_mode != True):
             query = """
-            SELECT SalesDate, SalesQty, SalesPrice, DiscountPercent, SalesAmnt, SalesStockId, SalesLineIndex
+            SELECT SalesDate, SalesQty, SalesPrice, DiscountPercent, SalesAmnt, SalesStockId, SalesLineIndex, Destroyed
             FROM [dbo].[_uvMarketSales]
             WHERE SalesDelLineId = ? AND Invoiced = 'FALSE'
             """
         elif(view_mode == True):
            query = """
-            SELECT SalesDate, SalesQty, SalesPrice, DiscountPercent, SalesAmnt, SalesStockId, SalesLineIndex
+            SELECT SalesDate, SalesQty, SalesPrice, DiscountPercent, SalesAmnt, SalesStockId, SalesLineIndex, Destroyed
             FROM [dbo].[ZZSalesLines]
             WHERE SalesDelLineId = ?
             """ 
@@ -222,7 +219,8 @@ def get_sales_entries(lineId):
                 'discount': row[3],
                 'amount': row[4],
                 'stockId': row[5],
-                'salesLineIndex': row[6]
+                'salesLineIndex': row[6],
+                'destroyed': row[7]
             }
             for row in rows 
         ]

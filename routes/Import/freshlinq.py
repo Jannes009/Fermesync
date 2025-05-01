@@ -5,10 +5,9 @@ import subprocess
 import pandas as pd
 from db import create_db_connection
 from playwright.sync_api import sync_playwright
-from flask_login import current_user
 from models import ConnectedService
 
-def Freshlinq(start_date):
+def Freshlinq(current_user, start_date):
     def status(message):
         yield f"data: {message}\n\n"
 
@@ -45,7 +44,7 @@ def Freshlinq(start_date):
     if not file_path:
         yield "data: ERROR: Failed to download FreshLinq report.\n\n"
         return
-    yield from process_excel(file_path, None)
+    yield from process_excel(file_path, current_user)
     # Remove the temporary file after processing
     try:
         import os
@@ -86,7 +85,7 @@ def download_freshlinq_report(username, password, report_date, status):
             yield from status("Waiting for report processing to complete...")
             error_pane = page.locator("div.trv-error-pane").first
             start_time = time.time()
-            timeout_seconds = 60
+            timeout_seconds = 500
 
             while time.time() - start_time < timeout_seconds:
                 text_content = error_pane.text_content()
@@ -141,7 +140,7 @@ def safe_value(value, default=""):
 # ---------------------------
 # Process Excel and yield status messages
 # ---------------------------
-def process_excel(file_path, output_file):
+def process_excel(file_path, current_user):
     xl = pd.ExcelFile(file_path)
     df = xl.parse(xl.sheet_names[0])
     combined_data = []
@@ -161,6 +160,8 @@ def process_excel(file_path, output_file):
             delivery_note_no = packaging = variety = created_at = None
             if idx + 1 < len(df):
                 next_row = df.iloc[idx + 1]
+                if len(next_row) < 25:
+                   return
                 delivery_note_no = safe_value(next_row.iloc[1])
                 packaging = safe_value(next_row.iloc[9])
                 variety = safe_value(next_row.iloc[18])
@@ -232,7 +233,7 @@ def process_excel(file_path, output_file):
             yield f"data:   ↳ Finished processing lot #{lot_count}.\n\n"
 
     yield "data: Inserting data into database...\n\n"
-    yield from insert_into_database(combined_data)
+    yield from insert_into_database(combined_data, current_user)
 
 def get_sales_info(df, start_line):
     sales_data = []
@@ -259,8 +260,8 @@ def get_sales_info(df, start_line):
     messages.append(f"  ↳ Found {len(sales_data)} sales records.")
     return sales_data, messages
 
-def insert_into_database(data):
-    conn = create_db_connection()
+def insert_into_database(data, current_user):
+    conn = create_db_connection(current_user)
     cursor = conn.cursor()
     cursor.execute("TRUNCATE TABLE ZZFreshLinqImport")
     yield "data:  ↳ Table ZZFreshLinqImport truncated.\n\n"

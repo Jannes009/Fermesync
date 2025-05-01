@@ -103,7 +103,9 @@ function submitSales(){
         const amount = row.querySelector('.amount-input').value || 0;
         const discount = row.querySelector('.discount-input').value || 0;
         const discountAmnt = price * quantity * (discount / 100);
+        const destroyed = row.querySelector('.destroyed-checkbox').checked;
 
+        console.log(destroyed)
         if (!date || !quantity) {
             Swal.fire({
                 icon: 'error',
@@ -133,6 +135,7 @@ function submitSales(){
             discount,
             discountAmnt,
             amount,
+            destroyed
         });
     });
 
@@ -145,19 +148,9 @@ function submitSales(){
 
             const price = row.querySelector('input[placeholder="Price"]').value || 0;
             const amount = row.querySelector('input[placeholder="Amount"]').value || 0;
-            const discount = row.querySelector('input[placeholder="Discount"]').value;
+            const discount = row.querySelector('input[placeholder="Discount"]').value || 0;
             const discountAmnt = price * amount * (discount / 100)
-
-            if (price == 0 && amount == 0) {
-                Swal.fire({
-                    icon: 'error',
-                    title: 'Invalid input',
-                    text: "Price or amount is required",
-                    timer: 3000,
-                });
-                isValid = false;
-                return; // Stop further execution if data is invalid
-            }
+            const destroyed = row.querySelector('.destroyed-checkbox').checked;
 
             salesData.push({
                 lineId: currentLineId,
@@ -168,6 +161,7 @@ function submitSales(){
                 discount,
                 discountAmnt,
                 amount,
+                destroyed
             });
         }
 
@@ -374,6 +368,9 @@ function addNewRow() {
         <td><input type="number" placeholder="Discount" class="discount-input name="discount"></td>
         <td><input type="number" placeholder="Amount" class="amount-input" name="amount"></td>
         <td>
+            <input type="checkbox" class="destroyed-checkbox" name="destroyed">
+        </td>
+        <td>
             <button class="remove-line-btn" onclick="removeRow(this)">
                 <img src="/static/Image/recycle-bin.png" alt="Delete" class="bin-icon">
             </button>
@@ -508,6 +505,9 @@ function fetchSalesEntries(lineId, viewMode=false) {
                         <td><input type="number" placeholder="price" value="${entry.price}" class="price-input" required></td>
                         <td><input type="number" placeholder="discount" value="${entry.discount}" class="discount-input" required></td>
                         <td><input type="number" placeholder="amount" value="${entry.amount}" class="amount-input" required></td>
+                        <td>
+                            <input type="checkbox" class="destroyed-checkbox" name="destroyed" ${entry.destroyed ? 'checked' : ''}>
+                        </td>
                         <td>
                             <button class="remove-line-btn" onclick="removeRow(this)" data-id="${entry.salesLineIndex}">
                                 <img src="/static/Image/recycle-bin.png" alt="Delete" class="bin-icon">

@@ -361,3 +361,13 @@ form button:hover {
     transform: scale(1.2);
     filter: brightness(1.2);
 }
+
+.form-static {
+    padding: 8px 10px;
+    border: 1px solid #ccc;
+    border-radius: 4px;
+    background-color: #e4e4e4;
+    min-height: 38px;
+    display: flex;
+    align-items: center;
+}

@@ -1,18 +1,18 @@
 <table id="product-table">
     <thead>
         <tr>
-            <th style="width: 35%;" class="resizable">Product</th>
-            <th style="width: 15%;" class="resizable">
+            <th style="width: 40%;" class="resizable">Product</th>
+            <th style="width: 14%;" class="resizable">
                 Estimated Price
                 <span class="tooltip">
                     <img src="/static/image/information.png" alt="Info" class="info-icon">
                     <span class="tooltiptext">
-                        Defaults most recent selling price for the specific product in the selected market.
+                        Defaults to most recent selling price for the specific product in the selected market.
                     </span>
                 </span>
             </th>                        
-            <th style="width: 20%;" class="resizable">Quantity</th>
-            <th style="width: 20%;" class="resizable">Comments</th>
+            <th style="width: 11%;" class="resizable">Qty</th>
+            <th style="width: 20%;" class="resizable">Production Unit</th>
             <th style="width: 5%;"></th>
         </tr>
     </thead>
@@ -37,7 +37,14 @@
                         <input type="number" name="ZZQuantityBags[]" placeholder="Enter quantity" step="any" value="{{ quantity }}" required>
                     </td>
                     <td>
-                        <input type="text" name="ZZComments[]" placeholder="Enter comments" value="{{ comment }}">
+                        <select name="ZZProductionUnitLine[]" class="searchable-dropdown production-unit-select" required>
+                            <option value="" disabled selected>Select a Production Unit</option>
+                            {% for product_option in product_options %}
+                            <option value="{{ product_option[0] }}" {% if product_option[0] == product %}selected{% endif %}>
+                                {{ product_option[1] }}
+                            </option>
+                        {% endfor %}
+                        </select>
                     </td>
                     <td>
                         <button type="button" class="delete-row-btn">

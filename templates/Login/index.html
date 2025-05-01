@@ -136,9 +136,13 @@
                 <input type="text" id="db_name" name="db_name">
             </div>
             <div class="form-group">
-                <label for="db_password">Database Password:</label>
-                <input type="password" id="db_password" name="db_password">
+                <label for="db_username">SQL Username:</label>
+                <input type="text" id="db_username" name="db_username">
             </div>
+            <div class="form-group">
+                <label for="db_password">SQL Password:</label>
+                <input type="password" id="db_password" name="db_password">
+            </div>            
         </div>
         <input type="hidden" name="next" value="{{ next or request.args.get('next') }}">
       

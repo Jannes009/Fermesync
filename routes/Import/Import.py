@@ -9,6 +9,7 @@ from routes.Import.freshlinq import Freshlinq
 from setup import download_folder
 from auth import role_required
 from routes.Import.technofresh import Technofresh
+from flask_login import current_user
 
 import_bp = Blueprint('import', __name__)
 
@@ -145,9 +146,9 @@ def auto_import():
 
         if service == "Technofresh":
             # extract_technofresh should also be updated similarly (not shown here)
-            yield from Technofresh(start_date, end_date)
+            yield from Technofresh(current_user, start_date, end_date)
         elif service == "FreshLinq":
-            yield from Freshlinq(start_date)
+            yield from Freshlinq(current_user, start_date)
 
         else:
             yield from yield_status("ERROR: Invalid service type.")

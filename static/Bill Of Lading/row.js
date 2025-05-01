@@ -331,16 +331,38 @@ function addCleanLine() {
                 </select>
             </td>
             <td><input type="number" name="ZZEstimatedPrice[]" placeholder="Estimated Price" step="any" value="0" required></td>
-            <td><input type="number" name="ZZQuantityBags[]" placeholder="Enter quantity" step="any" required></td>
-            <td><input type="text" name="ZZComments[]" placeholder="Enter comments"></td>
-            <td><button type="button" class="delete-row-btn"><img src="/static/Image/recycle-bin.png" alt="Delete" class="bin-icon"></button></td>
+            <td><input type="number" name="ZZQuantityBags[]" placeholder="Qty" step="any" required></td>
+            <td>
+                <select name="ZZProductionUnitLine[]" class="searchable-dropdown production-unit-select" required>
+                    <option value="" disabled selected>Select a Production Unit</option>
+                </select>
+            </td>
+            <td>
+                <button type="button" class="delete-row-btn">
+                    <img src="/static/Image/recycle-bin.png" alt="Delete" class="bin-icon">
+                </button>
+            </td>
         </tr>
     `);
-
-    const dropdown = newRow.find("select.searchable-dropdown");
+    
+    // Populate product dropdown
+    const productDropdown = newRow.find("select.product-select");
     productOptions.forEach(([value, text]) => {
-        dropdown.append(new Option(text, value));
+        productDropdown.append(new Option(text, value));
     });
+    
+    // Populate production unit dropdown
+    const selectedUnitCode = parseInt($('select[name="ZZProductionUnitCode"]').val());
+    console.log(selectedUnitCode)
+    const unitDropdown = newRow.find("select.production-unit-select");
+    unitOptions.forEach(([value, text]) => {
+        const option = new Option(text, value);
+        console.log(value, selectedUnitCode)
+        if (value === selectedUnitCode) {
+            option.selected = true;
+        }
+        unitDropdown.append(option);
+    });    
 
     productTableBody.append(newRow);
     initializeDropdowns();

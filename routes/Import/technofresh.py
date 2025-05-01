@@ -1,4 +1,3 @@
-from flask_login import current_user
 from models import ConnectedService
 from setup import download_folder
 from db import create_db_connection
@@ -10,17 +9,13 @@ from playwright.sync_api import sync_playwright
 from datetime import datetime
 import tempfile
 
-def Technofresh(start_date, end_date):
+def Technofresh(current_user, start_date, end_date):
     def status(message):
         yield f"data: {message}\n\n"
     with sync_playwright() as p:
         browser = p.chromium.launch(headless=True)
         context = browser.new_context(accept_downloads=True)
         page = context.new_page()
-
-        if not current_user.is_authenticated:
-            yield from status("ERROR: No user is logged in.")
-            return
 
         if not hasattr(current_user, 'id'):
             yield from status("ERROR: Current user object is missing user ID.")
@@ -76,7 +71,7 @@ def Technofresh(start_date, end_date):
 
         try:
             yield from status("Inserting data into database...")
-            docket_count = insert_data(tmp_file_path)
+            docket_count = insert_data(tmp_file_path, current_user)
             print(docket_count)
             yield from status(f"SUCCESS: {docket_count} records added!")
         except Exception as e:
@@ -88,7 +83,7 @@ def Technofresh(start_date, end_date):
                 os.remove(tmp_file_path)
 
 
-def insert_data(file):
+def insert_data(file, current_user):
     df = pd.read_excel(file, skiprows=9)
     df.columns = [
         'Market', 'Agent', 'Product', 'Variety', 'Size', 'Class', 'Container',
@@ -100,7 +95,7 @@ def insert_data(file):
     for col in ['DeliveryDate', 'DateSold', 'DatePaid']:
         df[col] = pd.to_datetime(df[col], format='%m-%d-%y', errors='coerce')
 
-    conn = create_db_connection()
+    conn = create_db_connection(current_user)
     cursor = conn.cursor()
 
     df['DocketNumber'] = df['DocketNumber'].astype(str).str.replace('*', '-', regex=False)

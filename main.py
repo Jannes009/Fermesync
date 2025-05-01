@@ -1,14 +1,17 @@
-from flask import Flask, render_template, request, redirect, session, url_for, flash, make_response
+from flask import Flask, render_template, request, redirect, session, url_for, make_response
 from datetime import timedelta
 from flask_session import Session
 from flask_login import login_user, logout_user, current_user, login_required
 import logging
 from auth import login_manager, UserLogin
+from apscheduler.schedulers.background import BackgroundScheduler
+from routes.Import.scheduler import run_all_import_jobs
 
-app = Flask(__name__)
 
 # Function to create and configure the Flask app
 def create_app():
+    app = Flask(__name__)
+
     # Basic configuration
     app.secret_key = "secret_key"
     
@@ -39,6 +42,7 @@ def create_app():
     from routes.Import.Import import import_bp
     from routes.view_account import account_bp
     from routes.Document.document import document_bp
+    from routes.report import report_bp
 
     app.register_blueprint(entry_bp)
     app.register_blueprint(view_bp)
@@ -47,6 +51,7 @@ def create_app():
     app.register_blueprint(import_bp, url_prefix='/import')
     app.register_blueprint(account_bp)
     app.register_blueprint(document_bp)
+    app.register_blueprint(report_bp)
 
     # Create all tables
     with app.app_context():
@@ -100,30 +105,32 @@ def create_app():
     def register():
         if current_user.is_authenticated:
             return redirect(url_for('dashboard'))
-            
+
         if request.method == "GET":
-            return render_template('register.html')
-            
+            return render_template('Login/index.html')
+
         username = request.form.get('username')
         password = request.form.get('password')
         role = request.form.get('role', 'user')
         server_name = request.form.get('server_name')
         db_name = request.form.get('db_name')
+        db_username = request.form.get('db_username')
         db_password = request.form.get('db_password')
 
-        if not all([username, password, server_name, db_name, db_password]):
-            flash("All fields are required", "error")
+        if not all([username, password, server_name, db_name, db_username, db_password]):
+            print("All fields are required", "error")
             return redirect(url_for('register'))
 
         if User.query.filter_by(username=username).first():
-            flash("Username already exists", "error")
+            print("Username already exists", "error")
             return redirect(url_for('register'))
 
         new_user = User(
             username=username,
             role=role,
             server_name=server_name,
-            database_name=db_name
+            database_name=db_name,
+            db_username=db_username
         )
         new_user.set_password(password)
         new_user.set_db_password(db_password)
@@ -131,15 +138,18 @@ def create_app():
         try:
             db.session.add(new_user)
             db.session.commit()
-            
+
             user_login = UserLogin(new_user.id, new_user.username, new_user.role)
+            user_login.load_user_data()
             login_user(user_login)
-            flash("Registration successful!", "success")
+
+            print("Registration successful!", "success")
             return redirect(url_for('dashboard'))
         except Exception as e:
             db.session.rollback()
-            flash("Registration failed", "error")
+            print("Registration failed", "error")
             return redirect(url_for('register'))
+
 
     @app.route("/dashboard")
     @login_required
@@ -172,7 +182,13 @@ def create_app():
 
     return app
 
+app = create_app()
+
 if __name__ == "__main__":
-    app = create_app()
+    # scheduler = BackgroundScheduler()
+    # if not app.debug or os.environ.get("WERKZEUG_RUN_MAIN") == "true":
+    #     scheduler.add_job(run_all_import_jobs, 'interval', seconds=120)
+    #     scheduler.start()
+
     app.run(host='0.0.0.0', port=5001, debug=True)
 

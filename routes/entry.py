@@ -42,7 +42,7 @@ def fetch_lines_data(request_form):
         'products': request_form.getlist('ZZProduct[]'),
         'quantities': request_form.getlist('ZZQuantityBags[]'),
         'prices': request_form.getlist('ZZEstimatedPrice[]'),
-        'comments': request_form.getlist('ZZComments[]')
+        'unit': request_form.getlist('ZZProductionUnitLine[]')
     }
 
 def store_header(cursor, form_data):
@@ -56,22 +56,22 @@ def store_header(cursor, form_data):
 def store_lines(cursor, header_id, line_data, linesId=None):
     total_quantity = 0
     count = 0
-    for product, quantity, price, comments, in zip(
-        line_data['products'], line_data['quantities'], line_data['prices'], line_data['comments']):
+    for product, quantity, price, unit, in zip(
+        line_data['products'], line_data['quantities'], line_data['prices'], line_data['unit']):
         total_quantity += float(quantity)
         if linesId == None or len(linesId) <= count:
             cursor.execute("""
                 INSERT INTO ZZDeliveryNoteLines 
-                (DelHeaderId, DelLineStockId, DelLineQuantityBags, DelLinePriceEstimate, DelLineComment)
+                (DelHeaderId, DelLineStockId, DelLineQuantityBags, DelLinePriceEstimate, DelLineFarmId)
                 VALUES (?, ?, ?, ?, ?)
-            """, (header_id, product, quantity, price, comments))
+            """, (header_id, product, quantity, price, unit))
         else:
             
             cursor.execute("""
                         UPDATE ZZDeliveryNoteLines 
-                        SET DelLineStockId = ?, DelLineQuantityBags = ?, DelLinePriceEstimate = ?, DelLineComment = ?
+                        SET DelLineStockId = ?, DelLineQuantityBags = ?, DelLinePriceEstimate = ?, DelLineFarmId = ?
                         WHERE DelLineIndex = ?
-            """, (product, quantity, price, comments, linesId[count]))
+            """, (product, quantity, price, unit, linesId[count]))
         count+=1
     cursor.connection.commit()
     return total_quantity

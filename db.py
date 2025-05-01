@@ -18,23 +18,26 @@ import tempfile, subprocess
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
-def create_db_connection():
-    """Creates a database connection using the logged-in user's credentials."""
+def create_db_connection(user=None):
+    """Creates a database connection using the logged-in user's credentials or an explicitly provided user."""
     
-    if not current_user.is_authenticated:
+    user = user or current_user
+
+    if not user.is_authenticated:
         logger.warning("No user is logged in.")
         return None
 
-    print(current_user)
+    print(user)
     # Ensure the user has the required attributes
-    if not hasattr(current_user, 'server_name') or not hasattr(current_user, 'database_name'):
-        logger.error("Current user object is missing database credentials.")
+    if not hasattr(user, 'server_name') or not hasattr(user, 'database_name'):
+        logger.error("User object is missing database credentials.")
         return None
 
     DRIVER_NAME = 'SQL SERVER'
-    SERVER_NAME = current_user.server_name
-    DATABASE_NAME = current_user.database_name
-    PWD = current_user.get_db_password()  # Ensure `get_db_password` is implemented correctly
+    SERVER_NAME = user.server_name
+    DATABASE_NAME = user.database_name
+    UID = user.db_username
+    PWD = user.get_db_password()  # Ensure `get_db_password` is implemented correctly
 
     if not PWD:
         logger.error("Database password is missing or could not be retrieved.")
@@ -45,13 +48,13 @@ def create_db_connection():
         SERVER={SERVER_NAME};
         DATABASE={DATABASE_NAME};
         Trust_Connection=no;
-        UID=sa;
+        UID={UID};
         PWD={PWD};
     """
 
     try:
         connection = odbc.connect(connection_string)
-        logger.info(f"Connected to {DATABASE_NAME} on {SERVER_NAME} as {current_user.username}")
+        logger.info(f"Connected to {DATABASE_NAME} on {SERVER_NAME} as {user.username}")
         return connection
     except odbc.DatabaseError as db_err:
         logger.error(f"Database error: {db_err}")
