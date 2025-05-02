@@ -20,7 +20,7 @@ def create_app():
         SESSION_PERMANENT=False,
         # PERMANENT_SESSION_LIFETIME=timedelta(hours=1),
         SESSION_COOKIE_HTTPONLY=True,
-        SESSION_COOKIE_SECURE=True,
+        SESSION_COOKIE_SECURE=False,
         SESSION_COOKIE_SAMESITE='Lax',
         SQLALCHEMY_DATABASE_URI="sqlite:///user.db",
         SQLALCHEMY_TRACK_MODIFICATIONS=False
