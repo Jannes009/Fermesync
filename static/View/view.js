@@ -124,10 +124,11 @@ document.getElementById('clear-filters').addEventListener('click', function() {
     form.submit();  // Submit the form
 });
 
-document.querySelectorAll('#edit-del-note').forEach(button => {
+document.querySelectorAll('.edit-sales-btn').forEach(button => {
+    console.log(button);
     button.addEventListener('click', (event) => {
         const entryId = button.getAttribute('data-id');
-        // Navigate to the edit page for this entry
+        console.log(entryId);
         window.location.href = `/edit_entry/${entryId}`;
     });
 });
