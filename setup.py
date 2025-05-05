@@ -1,1 +1,0 @@
-download_folder = r"C:\\Users\\jannesb\\Downloads"

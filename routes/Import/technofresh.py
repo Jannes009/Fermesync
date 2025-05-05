@@ -1,12 +1,8 @@
 from models import ConnectedService
-from setup import download_folder
 from db import create_db_connection
 import pandas as pd
 import os
-import time
-import asyncio
 from playwright.sync_api import sync_playwright
-from datetime import datetime
 import tempfile
 
 def Technofresh(current_user, start_date, end_date):
@@ -42,7 +38,6 @@ def Technofresh(current_user, start_date, end_date):
                 return
 
             yield from status("Login successful. Navigating to reports...")
-            existing_files = set(os.listdir(download_folder))
 
             page.goto("https://crm.technofresh.co.za/reports/view/8/xls")
 
