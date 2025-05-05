@@ -1,12 +1,9 @@
-from flask import Blueprint, render_template, request, redirect, url_for, flash, jsonify, Response, stream_with_context, session
-from db import create_db_connection, close_db_connection
-import pandas as pd
-import os, logging, time
-from routes.db_functions import get_stock_name
-from flask_login import login_required, current_user
-from models import db, User, ConnectedService  # Changed from relative import
+from flask import Blueprint, render_template, request, jsonify, Response, stream_with_context
+from db import create_db_connection
+import logging
+from flask_login import current_user
+from models import ConnectedService
 from routes.Import.freshlinq import Freshlinq
-from setup import download_folder
 from auth import role_required
 from routes.Import.technofresh import Technofresh
 from flask_login import current_user
