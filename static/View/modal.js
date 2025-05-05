@@ -228,8 +228,7 @@ function updateTotalSalesAmount() {
     let total_quantity = 0;
 
     const amountInputs = document.querySelectorAll('.amount-input');
-    const quantityInputs = document.querySelectorAll('.quantity-input');
-    // Do something with amountInputs and quantityInputs for each row
+    const quantityInputs = document.querySelectorAll('.quantity-input');    
 
     // Calculate the sum of all amounts
     amountInputs.forEach((input) => {
@@ -390,24 +389,26 @@ function createEventListener(row){
     priceInput.addEventListener('input', () => {
         const quantity = parseFloat(quantityInput.value) || 0;
         const price = parseFloat(priceInput.value) || 0;
-        const amount = parseFloat(quantityInput.value) || 0;
-        amountInput.value = (quantity * price).toFixed(2);
+        const discount = parseFloat(discountInput.value) || 0;
+        amountInput.value = (quantity * (price * (1 - discount / 100))).toFixed(2);
         updateTotalSalesAmount()
     });
 
-    // Update price when amount changes
-    amountInput.addEventListener('input', () => {
-        const quantity = parseFloat(quantityInput.value) || 0;
-        const amount = parseFloat(amountInput.value) || 0;
-        priceInput.value = quantity ? (amount / quantity).toFixed(2) : '0.00';
-        updateTotalSalesAmount()
-    });
+    // // Update price when amount changes
+    // amountInput.addEventListener('input', () => {
+    //     const quantity = parseFloat(quantityInput.value) || 0;
+    //     const amount = parseFloat(amountInput.value) || 0;
+    //     const discount = parseFloat(discountInput.value) || 0;
+    //     priceInput.value = quantity ? (amount / quantity).toFixed(2) : '0.00';
+    //     updateTotalSalesAmount()
+    // });
 
-    // Update both when quantity changes
+    // Update amount when quantity changes
     quantityInput.addEventListener('input', () => {
         const quantity = parseFloat(quantityInput.value) || 0;
         const price = parseFloat(priceInput.value) || 0;
-        amountInput.value = (quantity * price).toFixed(2);
+        const discount = parseFloat(discountInput.value) || 0;
+        amountInput.value = (quantity * (price * (1 - discount / 100))).toFixed(2);
         updateTotalSalesAmount()
     });
 
@@ -416,9 +417,7 @@ function createEventListener(row){
         const quantity = parseFloat(quantityInput.value) || 0;
         const price = parseFloat(priceInput.value) || 0;
         const discount = parseFloat(discountInput.value) || 0;  // Corrected this line
-        const discountedPrice = price * (1 - discount / 100);
-        amountInput.value = (quantity * discountedPrice).toFixed(2);
-        console.log("Updating amount with value", (quantity * discountedPrice).toFixed(2));
+        amountInput.value = (quantity * (price * (1 - discount / 100))).toFixed(2);
         updateTotalSalesAmount();
     });
 
@@ -433,8 +432,7 @@ const Toast = Swal.mixin({
     didOpen: (toast) => {
         toast.addEventListener('mouseenter', Swal.stopTimer);
         toast.addEventListener('mouseleave', Swal.resumeTimer);
-    },
-    backdrop: false,
+    }
 });
 
 
