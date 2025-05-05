@@ -72,13 +72,13 @@
                 <td>{{ entry[5] }}</td>  <!-- Qty Loaded -->
                 <td>{{ entry[6] }}</td>  <!-- Qty Sold -->
                 <td>{{ entry[7] }}</td>  <!-- Qty Invoiced -->
-                {% if entry[6] ==  0%}  <!-- Check if Qty Sold is not equal to Qty Invoiced -->
+                <!-- {% if entry[6] ==  0%}  Check if Qty Sold is not equal to Qty Invoiced -->
                     <td class="button-row">
                         <button class="edit-sales-btn" id="edit-del-note" data-id="{{entry[0]}}">
                             <img src="../static/Image/edit.png" class="action-icon">
                         </button>
                     </td>
-                {% endif %}
+                <!-- {% endif %} -->
             </tr>
             <tr class="expandable-content hidden" id="details-{{ entry[0] }}">
                 <td colspan="9">
