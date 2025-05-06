@@ -82,10 +82,6 @@ def update_header_quantity(cursor, header_id, total_quantity):
     """, (total_quantity, header_id))
     cursor.connection.commit()
 
-def fetch_entry(cursor, entry_id):
-    cursor.execute("SELECT * FROM ZZDeliveryNoteHeader WHERE DelIndex = ?", (entry_id,))
-    return cursor.fetchone()
-
 def fetch_lines(cursor, entry_id):
     cursor.execute("SELECT * FROM ZZDeliveryNoteLines WHERE DelHeaderId = ?", (entry_id,))
     return cursor.fetchall()
@@ -191,27 +187,37 @@ def edit_entry(entry_id):
             error_message = error_data["error_message"]
             form_data = error_data["form_data"]
 
-    entry_data = fetch_entry(cursor, entry_id)
+    cursor.execute("""
+                   Select DelNoteNo, DelDate, DeliClientId, DelMarketId, DelFarmId, 
+                   DelTransporter, DelPalletsIn, DelPalletsOut, DelQuantityBags 
+                   from ZZDeliveryNoteHeader
+                   WHERE DelIndex = ?""", 
+                   (entry_id,))
+    entry_data = cursor.fetchone()
     if not entry_data:
         return render_template('Transition pages/submission_success.html', message="Entry not found!")
 
     form_data = {
-        'ZZDelNoteNo': entry_data[2],
+        'ZZDelNoteNo': entry_data[0],
         'ZZDelDate': entry_data[1],
-        'ZZAgentName': agent_code_to_agent_name(entry_data[3], cursor),
-        'ZZProductionUnitCode': project_link_to_production_unit_name(entry_data[5], cursor),
-        'ZZTransporterCode': transporter_account_to_transporter_name(entry_data[6], cursor),
+        'ZZAgentName': agent_code_to_agent_name(entry_data[2], cursor),
+        'ZZMarket': market_Id_to_market_name(entry_data[3], cursor),
+        'ZZProductionUnitCode': project_link_to_production_unit_name(entry_data[4], cursor),
+        'ZZTransporterCode': transporter_account_to_transporter_name(entry_data[5], cursor),
         'ZZPalletsOut': entry_data[7],
-        'ZZPalletsBack': entry_data[8],
-        'ZZMarket': market_Id_to_market_name(entry_data[4], cursor),
-        'ZZTotalQty': entry_data[9],
+        'ZZPalletsBack': entry_data[6],
+        'ZZTotalQty': entry_data[8],
     }
 
-    rows = fetch_lines(cursor, entry_id)
-    product_quantity_pairs = [(row[2], row[5], row[6], row[7], row[0]) for row in rows]
-    print(product_quantity_pairs)
+    cursor.execute("""SELECT DelLineStockId, DelLineQuantityBags, DelLinePriceEstimate, DelLineFarmId, DelLineIndex
+                   FROM ZZDeliveryNoteLines 
+                   WHERE DelHeaderId = ?""", (entry_id,))
+    rows = cursor.fetchall()
+    product_quantity_pairs = [(row[0], row[1], row[2], row[3], row[4]) for row in rows]
 
     dropdown_options = fetch_dropdown_options(cursor)
+    print(form_data)
+    print(dropdown_options)
     close_db_connection(cursor, connection)
 
     return render_template('Bill Of Lading Page/create_entry.html',

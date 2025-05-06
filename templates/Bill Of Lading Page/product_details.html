@@ -39,9 +39,9 @@
                     <td>
                         <select name="ZZProductionUnitLine[]" class="searchable-dropdown production-unit-select" required>
                             <option value="" disabled selected>Select a Production Unit</option>
-                            {% for product_option in product_options %}
-                            <option value="{{ product_option[0] }}" {% if product_option[0] == product %}selected{% endif %}>
-                                {{ product_option[1] }}
+                            {% for production_unit_code in production_unit_codes %}
+                            <option value="{{ production_unit_code[0] }}" {% if production_unit_code[0] == comment %}selected{% endif %}>
+                                {{ production_unit_code[1] }}
                             </option>
                         {% endfor %}
                         </select>

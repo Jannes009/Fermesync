@@ -175,36 +175,36 @@ document.addEventListener("DOMContentLoaded", () => {
     calculateTotalQuantity()
 });
 
-document.addEventListener("DOMContentLoaded", function () {
-    const headers = document.querySelectorAll(".resizable");
+// document.addEventListener("DOMContentLoaded", function () {
+//     const headers = document.querySelectorAll(".resizable");
 
-    headers.forEach((header) => {
-        const resizer = document.createElement("div");
-        resizer.classList.add("resizer");
-        header.appendChild(resizer);
+//     headers.forEach((header) => {
+//         const resizer = document.createElement("div");
+//         resizer.classList.add("resizer");
+//         header.appendChild(resizer);
 
-        resizer.addEventListener("mousedown", onMouseDown);
+//         resizer.addEventListener("mousedown", onMouseDown);
 
-        function onMouseDown(event) {
+//         function onMouseDown(event) {
             
-            event.preventDefault();
+//             event.preventDefault();
 
-            const startX = event.clientX;
-            const startWidth = header.offsetWidth;
+//             const startX = event.clientX;
+//             const startWidth = header.offsetWidth;
 
-            function onMouseMove(e) {
-                const newWidth = startWidth + (e.clientX - startX);
+//             function onMouseMove(e) {
+//                 const newWidth = startWidth + (e.clientX - startX);
                 
-                header.style.width = `${newWidth}px`;
-            }
+//                 header.style.width = `${newWidth}px`;
+//             }
 
-            function onMouseUp() {
-                document.removeEventListener("mousemove", onMouseMove);
-                document.removeEventListener("mouseup", onMouseUp);
-            }
+//             function onMouseUp() {
+//                 document.removeEventListener("mousemove", onMouseMove);
+//                 document.removeEventListener("mouseup", onMouseUp);
+//             }
 
-            document.addEventListener("mousemove", onMouseMove);
-            document.addEventListener("mouseup", onMouseUp);
-        }
-    });
-});
+//             document.addEventListener("mousemove", onMouseMove);
+//             document.addEventListener("mouseup", onMouseUp);
+//         }
+//     });
+// });

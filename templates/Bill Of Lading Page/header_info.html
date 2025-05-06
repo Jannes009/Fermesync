@@ -25,7 +25,7 @@
             <select name="ZZAgentName" class="searchable-dropdown" required>
                 <option value="" disabled {% if not form_data or not form_data.get('ZZAgentName') %}selected{% endif %}>Select an Agent</option>
                 {% for agent in agent_codes %}
-                    <option value="{{ agent[0] }}" {% if form_data and form_data.get('ZZAgentName') == agent[0] %}selected{% endif %}>
+                    <option value="{{ agent[0] }}" {% if form_data and form_data.get('ZZAgentName')[0] == agent[0] %}selected{% endif %}>
                         {{ agent[1] }}
                     </option>
                 {% endfor %}
@@ -36,7 +36,7 @@
             <select name="ZZMarket" class="searchable-dropdown" required>
                 <option value="" disabled {% if not form_data or not form_data.get('ZZMarket') %}selected{% endif %}>Select Market</option>
                 {% for market in market_codes %}
-                    <option value="{{ market[0] }}" {% if form_data and form_data.get('ZZMarket') == market[0] %}selected{% endif %}>
+                    <option value="{{ market[0] }}" {% if form_data and form_data.get('ZZMarket')[0] == market[0] %}selected{% endif %}>
                         {{ market[1] }}
                     </option>
                 {% endfor %}
@@ -47,7 +47,7 @@
             <select name="ZZProductionUnitCode" class="searchable-dropdown" required>
                 <option value="" disabled {% if not form_data or not form_data.get('ZZProductionUnitCode') %}selected{% endif %}>Select a Production Unit</option>
                 {% for production_unit in production_unit_codes %}
-                    <option value="{{ production_unit[0] }}" {% if form_data and form_data.get('ZZProductionUnitCode') == production_unit[0] %}selected{% endif %}>
+                    <option value="{{ production_unit[0] }}" {% if form_data and form_data.get('ZZProductionUnitCode')[0] == production_unit[0] %}selected{% endif %}>
                         {{ production_unit[1] }}
                     </option>
                 {% endfor %}
@@ -61,7 +61,7 @@
             <select name="ZZTransporterCode" class="searchable-dropdown" required>
                 <option value="" disabled {% if not form_data or not form_data.get('ZZTransporterCode') %}selected{% endif %}>Select a Transporter</option>
                 {% for transporter in transporter_codes %}
-                    <option value="{{ transporter[0] }}" {% if form_data and form_data.get('ZZTransporterCode') == transporter[0] %}selected{% endif %}>
+                    <option value="{{ transporter[0] }}" {% if form_data and form_data.get('ZZTransporterCode')[0] == transporter[0] %}selected{% endif %}>
                         {{ transporter[1] }}
                     </option>
                 {% endfor %}
