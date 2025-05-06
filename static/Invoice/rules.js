@@ -93,7 +93,7 @@ document.addEventListener("DOMContentLoaded", () => {
 
         document.getElementById("ZZInvoiceMarketCommIncl").value = (markCommExcl * (1 + vatMultiplier / 100)).toFixed(2);
         document.getElementById("ZZInvoiceAgentCommIncl").value = (agentCommExcl * (1 + vatMultiplier / 100)).toFixed(2);
-        document.getElementById("ZZInvoiceOtherCostsIncl").value = otherCostsIncl;
+        document.getElementById("ZZInvoiceOtherCostsIncl").textContent = otherCostsIncl;
         return otherCostsIncl; 
     }
 
@@ -102,7 +102,7 @@ document.addEventListener("DOMContentLoaded", () => {
 
         const markCommInc = parseFloat(document.getElementById("ZZInvoiceMarketCommIncl").value) || 0;
         const agentCommInc = parseFloat(document.getElementById("ZZInvoiceAgentCommIncl").value) || 0;
-        const otherCostsIncl = parseFloat(document.getElementById("ZZInvoiceOtherCostsIncl").value) || 0;
+        const otherCostsIncl = parseFloat(document.getElementById("ZZInvoiceOtherCostsIncl").textContent) || 0;
 
         document.getElementById("ZZInvoiceMarketCommExcl").value = (markCommInc / (1 + vatMultiplier / 100)).toFixed(2);
         document.getElementById("ZZInvoiceAgentCommExcl").value = (agentCommInc / (1 + vatMultiplier / 100)).toFixed(2);
@@ -193,7 +193,7 @@ document.addEventListener("DOMContentLoaded", () => {
             InvoiceTotalDeducted: parseFloat(document.querySelector('input[name="ZZInvoiceTotalDeducted"]').value),
             InvoiceMarketCommIncl: parseFloat(document.querySelector('input[name="ZZInvoiceMarketCommIncl"]').value),
             InvoiceAgentCommIncl: parseFloat(document.querySelector('input[name="ZZInvoiceAgentCommIncl"]').value),
-            InvoiceOtherCostsIncl: parseFloat(document.querySelector('input[name="ZZInvoiceOtherCostsIncl"]').value) || 0,
+            InvoiceOtherCostsIncl: parseFloat(document.getElementById("ZZInvoiceOtherCostsExcl").textContent) || 0,
             TaxRate: parseFloat(document.getElementById("tax-rate-value").textContent),
             tickedLines: [],
         };
