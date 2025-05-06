@@ -88,7 +88,7 @@ document.addEventListener("DOMContentLoaded", () => {
 
         const markCommExcl = parseFloat(document.getElementById("ZZInvoiceMarketCommExcl").value) || 0;
         const agentCommExcl = parseFloat(document.getElementById("ZZInvoiceAgentCommExcl").value) || 0;
-        const otherCostsExcl = parseFloat(document.getElementById("ZZInvoiceOtherCostsExcl").value) || 0;
+        const otherCostsExcl = parseFloat(document.getElementById("ZZInvoiceOtherCostsExcl").textContent) || 0;
         const otherCostsIncl = (otherCostsExcl * (1 + vatMultiplier / 100)).toFixed(2);
 
         document.getElementById("ZZInvoiceMarketCommIncl").value = (markCommExcl * (1 + vatMultiplier / 100)).toFixed(2);
@@ -106,7 +106,7 @@ document.addEventListener("DOMContentLoaded", () => {
 
         document.getElementById("ZZInvoiceMarketCommExcl").value = (markCommInc / (1 + vatMultiplier / 100)).toFixed(2);
         document.getElementById("ZZInvoiceAgentCommExcl").value = (agentCommInc / (1 + vatMultiplier / 100)).toFixed(2);
-        document.getElementById("ZZInvoiceOtherCostsExcl").value = (otherCostsIncl / (1 + vatMultiplier / 100)).toFixed(2);
+        document.getElementById("ZZInvoiceOtherCostsExcl").textContent = (otherCostsIncl / (1 + vatMultiplier / 100)).toFixed(2);
     }
 
     async function updateFields() {
@@ -193,7 +193,7 @@ document.addEventListener("DOMContentLoaded", () => {
             InvoiceTotalDeducted: parseFloat(document.querySelector('input[name="ZZInvoiceTotalDeducted"]').value),
             InvoiceMarketCommIncl: parseFloat(document.querySelector('input[name="ZZInvoiceMarketCommIncl"]').value),
             InvoiceAgentCommIncl: parseFloat(document.querySelector('input[name="ZZInvoiceAgentCommIncl"]').value),
-            InvoiceOtherCostsIncl: parseFloat(document.getElementById("ZZInvoiceOtherCostsExcl").textContent) || 0,
+            InvoiceOtherCostsIncl: parseFloat(document.getElementById("ZZInvoiceOtherCostsIncl").textContent) || 0,
             TaxRate: parseFloat(document.getElementById("tax-rate-value").textContent),
             tickedLines: [],
         };
