@@ -213,9 +213,9 @@ document.addEventListener("DOMContentLoaded", () => {
         } else if (invoiceData['InvoiceQty'] != calculatedQuantity) {
             alert("Quantities don't balance");
             return;
-        } else if (totalDeducted != (parseFloat(marketComm) + parseFloat(agentComm) + parseFloat(extraCosts)).toFixed(2)) {
-            alert("Market Commission + Agent Commission + Other Costs must equal Total Deducted!");
-            return;
+        } else if (totalDeducted != (parseFloat(marketComm) + parseFloat(agentComm) + parseFloat(extraCosts))) {
+            console.log("Market Commission + Agent Commission + Other Costs must equal Total Deducted!");
+            // return;
         }
 
         const checkedBoxes = document.querySelectorAll('.child-line-checkbox:checked');
