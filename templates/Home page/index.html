@@ -1,18 +1,146 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Home</title>
-    <link rel="stylesheet" href="{{ url_for('static', filename='Dashboard/index.css') }}">
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Dashboard</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
 </head>
-<body>
-    <h1>Dashboard</h1>
-    <button onclick="location.href='{{ url_for('entry.create_entry') }}'" class="btn button">Create New Entry</button>
-    <button onclick="location.href='{{ url_for('view.view_entries') }}'" class="btn button">View Database</button>
-    <button onclick="location.href='/import/main'" class="btn button">Import</button>
-    <button onclick="location.href='{{ url_for('invoice.invoice_page') }}'" class="btn button">Invoice</button>
-    <!-- <a href="{{ url_for('report.generate_report', del_note_no='22137') }}" class="btn btn-primary">Download Report</a> -->
-    <button onclick="location.href='{{ url_for('entry.logout') }}'" class="btn button">Logout</button>
+<body class="bg-gray-100 text-gray-800 font-sans">
+  <div class="max-w-7xl mx-auto px-6 py-10">
+    <h1 class="text-4xl font-bold mb-8">Dashboard</h1>
+
+    <!-- Summary Cards -->
+    <div id="summary-cards" class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6 mb-10">
+      <!-- Filled by AJAX -->
+    </div>
+
+    <!-- Uninvoiced by Delivery Note -->
+    <div class="bg-white rounded-xl p-6 shadow mb-10">
+      <h2 class="text-2xl font-semibold mb-4 flex items-center gap-2">
+        <svg xmlns="http://www.w3.org/2000/svg" class="w-6 h-6 text-yellow-500" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+          <path stroke-linecap="round" stroke-linejoin="round" d="M9 12h6m-6 4h6m2 4H7a2 2 0 01-2-2V6a2 2 0 012-2h3.5l1-1h1l1 1H17a2 2 0 012 2v12a2 2 0 01-2 2z" />
+        </svg>
+        Outstanding Invoices
+      </h2>
+      <div class="overflow-x-auto">
+        <table class="w-full text-left text-sm border-separate border-spacing-y-2">
+          <thead class="text-gray-500">
+            <tr>
+              <th class="p-2">Del Note</th>
+              <th>Agent</th>
+              <th>Sent</th>
+              <th>Sold</th>
+              <th>Invoiced</th>
+            </tr>
+          </thead>
+          <tbody id="uninvoiced-notes">
+            <!-- Filled by AJAX -->
+          </tbody>
+        </table>
+      </div>
+    </div>
+
+    <!-- Recent Invoices -->
+    <div class="bg-white rounded-xl p-6 shadow mb-10">
+      <h2 class="text-2xl font-semibold mb-4 flex items-center gap-2">
+        <svg xmlns="http://www.w3.org/2000/svg" class="w-6 h-6 text-purple-500" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+          <path stroke-linecap="round" stroke-linejoin="round" d="M9 14l2-2 4 4m0 0l-6 6M5 18H3a1 1 0 01-1-1V5a1 1 0 011-1h18a1 1 0 011 1v6" />
+        </svg>
+        Recent Invoices
+      </h2>
+      <div class="overflow-x-auto">
+        <table class="w-full text-left text-sm border-separate border-spacing-y-2">
+          <thead class="text-gray-500">
+            <tr>
+              <th class="p-2">Invoice #</th>
+              <th>Delivery Note</th>
+              <th>Amount</th>
+              <th>Date</th>
+            </tr>
+          </thead>
+          <tbody id="recent-invoices">
+            <!-- Filled by AJAX -->
+          </tbody>
+        </table>
+      </div>
+    </div>
+
+    <!-- Quick Links -->
+    <div class="grid grid-cols-2 sm:grid-cols-4 gap-4">
+      <a href="/create_entry" class="bg-blue-600 hover:bg-blue-700 text-white py-3 px-4 text-center rounded-lg shadow text-sm font-medium">Create New Entry</a>
+      <a href="/view_entries" class="bg-gray-800 hover:bg-gray-900 text-white py-3 px-4 text-center rounded-lg shadow text-sm font-medium">View Database</a>
+      <a href="/import/main" class="bg-green-600 hover:bg-green-700 text-white py-3 px-4 text-center rounded-lg shadow text-sm font-medium">Import Sales</a>
+      <a href="/create_invoice" class="bg-purple-600 hover:bg-purple-700 text-white py-3 px-4 text-center rounded-lg shadow text-sm font-medium">Go to Invoice</a>
+    </div>
+  </div>
+
+  <script>
+    $(document).ready(function () {
+      $.getJSON("/dashboard/data", function (data) {
+        // Summary cards with icons
+        $('#summary-cards').html(`
+        <div class="bg-white p-6 rounded-xl shadow flex items-center gap-4">
+          <div class="bg-blue-100 text-blue-600 p-3 rounded-full">
+            📦
+          </div>
+          <div>
+            <h2 class="text-sm text-gray-500">Today's Deliveries</h2>
+            <p class="text-3xl font-bold mt-1">${data.today_deliveries}</p>
+          </div>
+        </div>
+        <div class="bg-white p-6 rounded-xl shadow flex items-center gap-4">
+          <div class="bg-green-100 text-green-600 p-3 rounded-full">
+            🚚
+          </div>
+          <div>
+            <h2 class="text-sm text-gray-500">Sent This Week</h2>
+            <p class="text-3xl font-bold mt-1">${data.total_sent}</p>
+          </div>
+        </div>
+        <div class="bg-white p-6 rounded-xl shadow flex items-center gap-4">
+          <div class="bg-yellow-100 text-yellow-600 p-3 rounded-full">
+            🛒
+          </div>
+          <div>
+            <h2 class="text-sm text-gray-500">Sold This Week</h2>
+            <p class="text-3xl font-bold mt-1">${data.total_sold}</p>
+          </div>
+        </div>
+        <div class="bg-white p-6 rounded-xl shadow flex items-center gap-4">
+          <div class="bg-purple-100 text-purple-600 p-3 rounded-full">
+            💰
+          </div>
+          <div>
+            <h2 class="text-sm text-gray-500">Invoiced This Week</h2>
+            <p class="text-3xl font-bold mt-1">${data.total_invoiced}</p>
+          </div>
+        </div>
+        `);
+
+        // Uninvoiced Notes
+        $('#uninvoiced-notes').html(data.uninvoiced_notes.map(note =>
+          `<tr class="bg-white rounded-md hover:bg-gray-50 shadow-sm transition">
+            <td class="p-2 font-medium text-gray-700">${note.note}</td>
+            <td class="text-gray-600">${note.agent}</td>
+            <td><span class="bg-blue-100 text-blue-800 text-xs font-semibold px-2 py-1 rounded-full">${note.qty_sent}</span></td>
+            <td><span class="bg-yellow-100 text-yellow-800 text-xs font-semibold px-2 py-1 rounded-full">${note.qty_sold}</span></td>
+            <td><span class="bg-green-100 text-green-800 text-xs font-semibold px-2 py-1 rounded-full">${note.qty_invoiced}</span></td>
+          </tr>`
+        ).join(''));
+
+        // Recent Invoices
+        $('#recent-invoices').html(data.recent_invoices.map(inv =>
+          `<tr class="bg-white rounded-md hover:bg-gray-50 shadow-sm transition">
+            <td class="p-2 font-medium text-gray-700">${inv.invoice_no}</td>
+            <td class="text-gray-600">${inv.delivery_note}</td>
+            <td class="text-green-700 font-semibold">R${inv.amount}</td>
+            <td class="text-gray-500">${inv.date}</td>
+          </tr>`
+        ).join(''));
+      });
+    });
+  </script>
 </body>
 </html>
