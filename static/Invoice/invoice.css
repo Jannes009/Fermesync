@@ -371,3 +371,14 @@ form button:hover {
     display: flex;
     align-items: center;
 }
+
+.delivery-note-link {
+    color: #0066cc;
+    text-decoration: none;
+    cursor: pointer;
+}
+
+.delivery-note-link:hover {
+    text-decoration: underline;
+    color: #004499;
+}

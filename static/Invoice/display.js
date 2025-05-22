@@ -37,7 +37,7 @@ function fetch_delivery_note_sales() {
                 <tbody>
                     <tr class="main-row" id="row-${data.note_number}" style="font-size: smaller;">
                         <td class="expand-icon" onclick="toggleRows('${data.note_number}')">▶</td>
-                        <td>${data.note_number}</td>
+                        <td><a href="/delivery-note/${data.note_number}" class="delivery-note-link" target="_blank">${data.note_number}</a></td>
                         <td>${data.market_id}</td>
                         <td id="quantity-${data.note_number}"></td>
                         <td id="amount-${data.note_number}"></td>

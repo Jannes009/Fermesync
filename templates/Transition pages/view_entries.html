@@ -5,87 +5,123 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Bill Of Lading</title>
     <link rel="stylesheet" href="{{ url_for('static', filename='View/view.css') }}">
-    <link rel="stylesheet" href="{{ url_for('static', filename='View/modal.css') }}">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <styles>
+        .totals-row {
+            background-color: #f8fafc;
+            border-top: 2px solid #e2e8f0;
+        }
+        
+        .totals-label {
+            font-weight: 600;
+            color: #1e293b;
+            text-align: right;
+            padding-right: 1rem;
+        }
+        
+        .totals-value {
+            font-weight: 700;
+            color: #1e293b;
+            background-color: #f8fafc;
+        }        
 </head>
 <body>
     {% include 'taskbar.html' %}
-    <h1>View Entries</h1>
-    <form method="POST" class="filter-section">
-        <h1>Filters</h1>
-        
-        <div class="filter-group">
-            <label for="ZZAgentName">Agent Name:</label>
-            <select name="ZZAgentName">
-                <option value="">All</option>
-                {% for agent in agent_codes %}
-                    <option value="{{ agent }}" {% if filters.agent_name == agent %}selected{% endif %}>{{ agent }}</option>
-                {% endfor %}
-            </select>
-        </div>
     
-        <div class="filter-group">
-            <label for="start_date">Start Date:</label>
-            <input type="date" name="start_date" value="{{ filters.start_date }}">
+    <div class="page-container">
+        <div class="page-header">
+            <h1>View Entries</h1>
         </div>
-    
-        <div class="filter-group">
-            <label for="end_date">End Date:</label>
-            <input type="date" name="end_date" value="{{ filters.end_date }}">
+
+        <div class="content-wrapper">
+            <div class="filter-card">
+                <div class="filter-header">
+                    <h2>Filters</h2>
+                </div>
+                
+                <form method="POST" class="filter-form">
+                    <div class="filter-grid">
+                        <div class="filter-group">
+                            <label for="ZZAgentName">Agent Name</label>
+                            <select name="ZZAgentName" id="ZZAgentName">
+                                <option value="">All Agents</option>
+                                {% for agent in agent_codes %}
+                                    <option value="{{ agent }}" {% if filters.agent_name == agent %}selected{% endif %}>{{ agent }}</option>
+                                {% endfor %}
+                            </select>
+                        </div>
+                    
+                        <div class="filter-group">
+                            <label for="start_date">Start Date</label>
+                            <input type="date" id="start_date" name="start_date" value="{{ filters.start_date }}">
+                        </div>
+                    
+                        <div class="filter-group">
+                            <label for="end_date">End Date</label>
+                            <input type="date" id="end_date" name="end_date" value="{{ filters.end_date }}">
+                        </div>
+                    
+                        <div class="filter-group">
+                            <label for="DeliveryNoteNo">Delivery Note No</label>
+                            <input type="text" id="DeliveryNoteNo" name="DeliveryNoteNo" placeholder="Enter note number" value="{{ filters.delivery_note_no }}">
+                        </div>
+                    </div>
+                    
+                    <div class="filter-actions">
+                        <button type="submit" class="btn btn-primary">Search</button>
+                        <button type="button" id="clear-filters" class="btn btn-secondary">Clear Filters</button>
+                    </div>
+                </form>
+            </div>
+
+            <div class="table-card">
+                <div class="table-responsive">
+                    <table>
+                        <thead>
+                            <tr>
+                                <th class="status-col"></th>
+                                <th>Date</th>
+                                <th>Delivery Note No</th>
+                                <th>Agent</th>
+                                <th>Market</th>
+                                <th class="number-col">Qty Delivered</th>
+                                <th class="number-col">Qty Sold</th>
+                                <th class="number-col">Qty Invoiced</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for entry in entries %} 
+                            {% set fully_invoiced = entry[7] == entry[5] %}
+                            {% set partially_invoiced = entry[7] > 0 and entry[7] < entry[5] %}
+                            {% set high_sales = entry[6] > entry[5] * 0.8 %}
+                            <tr class="main-row {% if fully_invoiced %}row-fully-invoiced{% elif partially_invoiced %}row-partially-invoiced{% elif high_sales %}row-high-sales{% else %}row-not-invoiced{% endif %}" 
+                                data-entry-id="{{ entry[0] }}" 
+                                onclick="window.location.href='/delivery-note/{{ entry[2] }}'">
+                                <td class="status-col">
+                                    <span class="status-indicator {% if fully_invoiced %}status-fully-invoiced{% elif partially_invoiced %}status-partially-invoiced{% elif high_sales %}status-high-sales{% else %}status-not-invoiced{% endif %}"></span>
+                                </td>
+                                <td class="date-cell">{{ entry[1] }}</td>
+                                <td class="delivery-note-cell">{{ entry[2] }}</td>
+                                <td class="agent-cell">{{ entry[3] }}</td>
+                                <td class="market-cell">{{ entry[4] }}</td>
+                                <td class="quantity-cell">{{ entry[5] }}</td>
+                                <td class="quantity-cell {% if entry[6] == entry[5] %}fully-sold{% elif entry[6] > 0 %}partially-sold{% else %}not-sold{% endif %}">{{ entry[6] }}</td>
+                                <td class="quantity-cell {% if entry[7] == entry[5] %}fully-sold{% elif entry[7] > 0 %}partially-sold{% else %}not-sold{% endif %}">{{ entry[7] }}</td>
+                            </tr>
+                            {% endfor %}
+                            <tr class="totals-row">
+                                <td colspan="5" class="totals-label">Totals:</td>
+                                <td class="quantity-cell totals-value">{{ entries|sum(attribute='5') }}</td>
+                                <td class="quantity-cell totals-value">{{ entries|sum(attribute='6') }}</td>
+                                <td class="quantity-cell totals-value">{{ entries|sum(attribute='7') }}</td>
+                            </tr>            
+                        </tbody>
+                    </table>
+                </div>
+            </div>
         </div>
-    
-        <div class="filter-group">
-            <label for="DeliveryNoteNo">Delivery Note No:</label>
-            <input type="text" name="DeliveryNoteNo" placeholder="Enter note number" value="{{ filters.delivery_note_no }}">
-        </div>
-        
-        
-    
-        <div class="button-group">
-            <button type="submit">Search</button>
-            <button type="button" id="clear-filters">Clear Filters</button>
-        </div>
-    </form>
-    
-    <table>
-        <thead>
-            <tr>
-                <th></th>
-                <th>Date</th>
-                <th>Delivery Note no</th>
-                <th>Agent</th>
-                <th>Market</th>
-                <th>Qty Delivered</th>
-                <th>Qty Sold</th>
-                <th>Qty Invoiced</th>
-            </tr>
-        </thead>
-        <tbody>
-            {% for entry in entries %} 
-            <tr class="main-row" data-entry-id="{{ entry[0] }}">
-                <td>
-                    <button class="expand-btn">▶</button>
-                </td>
-                <td>{{ entry[1] }}</td>  <!-- DelDate -->
-                <td>{{ entry[2] }}</td>  <!-- DelNoteNo -->
-                <td>{{ entry[3] }}</td>  <!-- Agent -->
-                <td>{{ entry[4] }}</td>  <!-- Market -->
-                <td>{{ entry[5] }}</td>  <!-- Qty Loaded -->
-                <td>{{ entry[6] }}</td>  <!-- Qty Sold -->
-                <td>{{ entry[7] }}</td>  <!-- Qty Invoiced -->
-                <td class="button-row">
-                    <button class="edit-sales-btn" data-id="{{ entry[0] }}">
-                        <img src="../static/Image/edit.png" class="action-icon">
-                    </button>
-                </td>
-            </tr>
-            <tr class="expandable-content hidden" id="details-{{ entry[0] }}">
-                <td colspan="9">
-                    <div>Loading...</div>
-                </td>
-            </tr>
-            {% endfor %}            
-        </tbody>
-    </table>
+    </div>
+
     {% include 'Transition pages/modal.html' %}
     {% include 'Transition pages/product-modal.html' %}
     <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
@@ -95,6 +131,5 @@
     <script src="{{ url_for('static', filename='View/view.js') }}"></script>
     <script src="{{ url_for('static', filename='View/modal.js') }}"></script>
     <script src="{{ url_for('static', filename='View/change-product.js') }}"></script>
-    
 </body>
 </html>
