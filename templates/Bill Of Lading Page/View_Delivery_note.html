@@ -295,6 +295,22 @@
     .delivery-table tr:last-child td {
       border-bottom: none;
     }
+    .delivery-line {
+      transition: background-color 0.2s;
+    }
+    
+    .delivery-line:hover {
+      background-color: #f1f5f9;
+    }
+    
+    .delivery-line.selected {
+      background-color: #e0edff;
+      border-left: 4px solid #2563eb;
+    }
+    
+    .delivery-line.selected td {
+      font-weight: 500;
+    }
   </style>
 </head>
 <body>
@@ -308,24 +324,33 @@
         <p>Date: <strong>{{ header.deldate }}</strong></p>
 
         <div class="delivery-grid">
-          <div>
+          <div onclick="editDeliveryHeader('{{ header.delnoteno }}')" style="cursor: pointer;">
             <h2>Agent</h2>
             <p>{{ header.agentname }} ({{ header.agentaccount }})</p>
           </div>
-          <div>
+          <div onclick="editDeliveryHeader('{{ header.delnoteno }}')" style="cursor: pointer;">
             <h2>Market</h2>
             <p>{{ header.marketname }} ({{ header.marketcode }})</p>
           </div>
-          <div>
+          <div onclick="editDeliveryHeader('{{ header.delnoteno }}')" style="cursor: pointer;">
             <h2>Transporter</h2>
             <p>{{ header.transportername }} ({{ header.transporteraccount }})</p>
+          </div>
+          <div onclick="editDeliveryHeader('{{ header.delnoteno }}')" style="cursor: pointer;">
+            <h2>Total Quantity</h2>
+            <p>{{ header.deltotalquantity or 0 }}</p>
           </div>
         </div>
       </div>
 
       <!-- Delivery Lines Table -->
       <div class="delivery-table">
-        <h2>Delivery Line Items</h2>
+        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem;">
+          <h2>Delivery Line Items</h2>
+          <button class="sales-btn" id="editQuantitiesBtn" onclick="toggleQuantityEdit()">
+            <i class="fas fa-edit"></i> Edit Quantities
+          </button>
+        </div>
         <div class="overflow-auto">
           <table>
             <thead>
@@ -340,18 +365,30 @@
             </thead>
             <tbody>
               {% for line in lines %}
-              <tr>
+              <tr class="delivery-line" data-line-id="{{ line.dellineindex }}" onclick="selectDeliveryLine(this, '{{ line.dellineindex }}')" style="cursor: pointer;">
                 <td>{{ line.dellineindex }}</td>
                 <td>
                   <div style="display: flex; align-items: center; gap: 8px;">
                     <span>{{ line.productdescription }}</span>
-                    <button class="icon-btn" onclick="changeProduct('{{ line.dellineindex }}', '{{ line.productdescription }}')">
+                    <button class="icon-btn" onclick="changeProduct('{{ line.dellineindex }}', '{{ line.productdescription }}'); event.stopPropagation();">
                       <img src="/static/Image/change.png" alt="Change Product">
                     </button>
                   </div>
                 </td>
                 <td>{{ line.mainprodunitname }}</td>
-                <td>{{ line.dellinequantitybags or 0 }}</td>
+                <td>
+                  <div style="display: flex; align-items: center; gap: 8px;">
+                    <span class="quantity-display">{{ line.dellinequantitybags or 0 }}</span>
+                    <input type="number" 
+                           class="form-control quantity-input" 
+                           value="{{ line.dellinequantitybags or 0 }}"
+                           min="{{ line.totalqtysold + line.totalqtyinvoiced }}"
+                           style="display: none; width: 100px;"
+                           data-line-id="{{ line.dellineindex }}"
+                           data-sold="{{ line.totalqtysold or 0 }}"
+                           data-invoiced="{{ line.totalqtyinvoiced or 0 }}">
+                  </div>
+                </td>
                 <td>{{ line.totalqtysold or 0 }}</td>
                 <td>{{ line.totalqtyinvoiced or 0 }}</td>
               </tr>
@@ -372,6 +409,9 @@
             <span class="sales-header-badge matched-badge" style="cursor:pointer;" onclick="showMatchedModal('{{ header.delnoteno }}')">
               Matched: {{ matched_count }}
             </span>
+            <button class="sales-btn" onclick="clearSalesFilter()" style="display: none;" id="clearFilterBtn">
+              <i class="fas fa-times"></i> Clear Filter
+            </button>
           </div>
           <div class="sales-header-actions">
             <button class="sales-btn" onclick="addSale('{{ header.delnoteno }}')">Add Sale</button>

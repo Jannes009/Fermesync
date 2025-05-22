@@ -28,6 +28,12 @@ def get_transporter_codes(cursor):
     transporter_codes = cursor.fetchall()
     return transporter_codes
 
+def get_market_codes(cursor):
+    query = "SELECT WhseLink, [MarketCode] + '-' + [MarketName] AS display_name FROM [dbo].[_uvMarkets]"
+    cursor.execute(query)
+    market_codes = cursor.fetchall()
+    return market_codes
+
 
 def get_production_unit_codes(cursor):
     query = "SELECT ProjectLink, [ProdUnitCode] + '-' + [ProdUnitName] AS display_name FROM [dbo].[_uvMarketProdUnit]"
@@ -35,11 +41,6 @@ def get_production_unit_codes(cursor):
     production_unit_codes = cursor.fetchall()
     return production_unit_codes
 
-def get_market_codes(cursor):
-    query = "SELECT WhseLink, [MarketCode] + '-' + [MarketName] AS display_name FROM [dbo].[_uvMarkets]"
-    cursor.execute(query)
-    market_codes = cursor.fetchall()
-    return market_codes
 
 def get_products(cursor):
     query = "SELECT StockLink, [ProductCode] + '-' + [ProductDescription] AS display_name FROM [dbo].[_uvMarketProduct]"

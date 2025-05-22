@@ -1,7 +1,7 @@
 from flask import Blueprint, render_template, request, jsonify
 from db import create_db_connection
 from datetime import datetime
-from routes.db_functions import get_stock_id, get_products
+from routes.db_functions import get_stock_id, get_products,  get_agent_codes, get_transporter_codes, get_market_codes
 view_entry_bp = Blueprint('view_entry', __name__)
 
 @view_entry_bp.route('/delivery-note/<del_note_no>')
@@ -12,6 +12,7 @@ def delivery_note(del_note_no):
     # Fetch delivery note header (distinct values for the header info)
     cursor.execute("""
         SELECT TOP 1 DelNoteNo, DelDate, AgentAccount, AgentName,
+                    DelTotalQuantity,
                       MarketCode, MarketName, TransporterAccount,
                       TransporterName
         FROM [dbo].[_uvMarketDeliveryNote]
@@ -426,3 +427,216 @@ def get_products_api():
     finally:
         cursor.close()
         conn.close()
+
+
+@view_entry_bp.route('/api/delivery-header/<delnote_no>')
+def get_delivery_header(delnote_no):
+    try:
+        conn = create_db_connection()
+        cursor = conn.cursor()
+        
+        # Get header data from the view
+        cursor.execute("""
+        SELECT DelNoteNo, DelDate, DeliClientId, DelMarketId,
+               DelTransporter, DelQuantityBags
+        From ZZDeliveryNoteHeader	
+        WHERE DelNoteNo = ?
+        """, (delnote_no,))
+        
+        header = cursor.fetchone()
+        if not header:
+            return jsonify({'error': 'Delivery note not found'}), 404
+            
+        return jsonify({
+            'delnoteno': header[0],
+            'deldate': header[1],
+            'deliclientid': header[2],
+            'delmarketid': header[3],
+            'deltransporter': header[4],
+            'delquantitybags': header[5]  # DelTotalQuantity
+        })
+        
+    except Exception as e:
+        print(f"Error in get_delivery_header: {str(e)}")  # Add logging
+        return jsonify({'error': str(e)}), 500
+    finally:
+        if 'conn' in locals():
+            conn.close()
+
+@view_entry_bp.route('/api/save-delivery-header/<delnote_no>', methods=['POST'])
+def save_delivery_header(delnote_no):
+    try:
+        data = request.get_json()
+        conn = create_db_connection()
+        cursor = conn.cursor()
+        
+        # Update header data
+        cursor.execute("""
+            UPDATE ZZDeliveryNoteHeader
+            SET DelDate = ?,
+                DeliClientId = ?,
+                DelMarketId = ?,
+                DelTransporter = ?,
+                DelQuantityBags = ?
+            WHERE DelNoteNo = ?
+        """, (
+            data['deldate'],
+            data['deliclientid'],
+            data['delmarketid'],
+            data['deltransporter'],
+            data['delquantitybags'],
+            delnote_no
+        ))
+        
+        conn.commit()
+        return jsonify({'success': True})
+        
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
+    finally:
+        if 'conn' in locals():
+            conn.close()
+
+@view_entry_bp.route('/api/agents')
+def get_agents():
+    try:
+        conn = create_db_connection()
+        cursor = conn.cursor()
+        
+        agents = get_agent_codes(cursor)
+        
+        # Convert to list of dictionaries with proper format
+        agent_list = [{
+            'DCLink': agent[0],
+            'display_name': agent[1]
+        } for agent in agents]
+        
+        return jsonify(agent_list)
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
+    finally:
+        if 'conn' in locals():
+            conn.close()
+
+@view_entry_bp.route('/api/markets')
+def get_markets():
+    try:
+        conn = create_db_connection()
+        cursor = conn.cursor()
+
+        markets = get_market_codes(cursor)
+        
+        # Convert to list of dictionaries with proper format
+        market_list = [{
+            'WhseLink': market[0],
+            'display_name': market[1]
+        } for market in markets]
+        
+        return jsonify(market_list)
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
+    finally:
+        if 'conn' in locals():
+            conn.close()
+
+@view_entry_bp.route('/api/transporters')
+def get_transporters():
+    try:
+        conn = create_db_connection()
+        cursor = conn.cursor()
+        
+        transporters = get_transporter_codes(cursor)
+        
+        # Convert to list of dictionaries with proper format
+        transporter_list = [{
+            'TransporterAccount': transporter[0],
+            'display_name': transporter[1]
+        } for transporter in transporters]
+        
+        return jsonify(transporter_list)
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
+    finally:
+        if 'conn' in locals():
+            conn.close()
+
+@view_entry_bp.route('/api/update-line-quantities', methods=['POST'])
+def update_line_quantities():
+    try:
+        data = request.get_json()
+        quantities = data.get('quantities', {})
+        
+        if not quantities:
+            return jsonify({'success': False, 'message': 'No quantities provided'}), 400
+            
+        conn = create_db_connection()
+        cursor = conn.cursor()
+        
+        # Get the header ID and total quantity from the first line
+        first_line_id = list(quantities.keys())[0]
+        cursor.execute("""
+            SELECT DelHeaderId, DelQuantityBags
+            FROM ZZDeliveryNoteLines LIN
+            JOIN ZZDeliveryNoteHeader HEA ON HEA.DelIndex = LIN.DelHeaderId
+            WHERE DelLineIndex = ?
+        """, (first_line_id,))
+        result = cursor.fetchone()
+        
+        if not result:
+            return jsonify({'success': False, 'message': 'Line not found'}), 404
+            
+        header_id, header_total = result
+        
+        # Validate total quantity matches header total
+        total_new_quantity = sum(quantities.values())
+        if total_new_quantity != header_total:
+            return jsonify({
+                'success': False, 
+                'message': f'Total quantity must equal {header_total} bags'
+            }), 400
+        
+        # Validate each line's new quantity
+        for line_id, new_qty in quantities.items():
+            # Get current sold and invoiced quantities
+            cursor.execute("""
+                SELECT TotalQtySold, TotalQtyInvoiced
+                FROM _uvMarketDeliveryNote
+                WHERE DelLineIndex = ?
+            """, (line_id,))
+            result = cursor.fetchone()
+            
+            if not result:
+                return jsonify({'success': False, 'message': f'Line {line_id} not found'}), 404
+                
+            sold_qty, invoiced_qty = result
+            min_qty = sold_qty  # Only use sold quantity as minimum since invoiced is already included in sold
+            
+            if new_qty < min_qty:
+                return jsonify({
+                    'success': False, 
+                    'message': f'Quantity for line {line_id} cannot be less than {min_qty} bags (sold quantity)'
+                }), 400
+        
+        # Update all quantities in a single transaction
+        for line_id, new_qty in quantities.items():
+            cursor.execute("""
+                UPDATE ZZDeliveryNoteLines
+                SET DelLineQuantityBags = ?
+                WHERE DelLineIndex = ?
+            """, (new_qty, line_id))
+        
+        conn.commit()
+        return jsonify({
+            'success': True,
+            'quantities': quantities,
+            'message': 'Quantities updated successfully'
+        })
+        
+    except Exception as e:
+        if 'conn' in locals():
+            conn.rollback()
+        return jsonify({'success': False, 'message': str(e)}), 500
+    finally:
+        if 'conn' in locals():
+            cursor.close()
+            conn.close() 

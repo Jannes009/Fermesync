@@ -1,8 +1,25 @@
 function refreshSalesTable(delNoteNo) {
+    // Store the currently selected line before refresh
+    const selectedLine = document.querySelector('.delivery-line.selected');
+    const selectedLineId = selectedLine ? selectedLine.dataset.lineId : null;
+
     fetch(`/api/refresh-sales/${delNoteNo}`)
         .then(response => response.text())
         .then(html => {
-            document.getElementById('salesTableContainer').innerHTML = html;
+            const container = document.getElementById('salesTableContainer');
+            if (container) {
+                container.innerHTML = html;
+                
+                // If there was a selected line, reapply the filter
+                if (selectedLineId) {
+                    const newSelectedLine = document.querySelector(`.delivery-line[data-line-id="${selectedLineId}"]`);
+                    if (newSelectedLine) {
+                        selectDeliveryLine(newSelectedLine, selectedLineId);
+                    }
+                }
+            }
+            // Update the counts after refreshing the table
+            updateCountsDisplay(delNoteNo);
         })
         .catch(error => {
             console.error('Error refreshing sales table:', error);
@@ -379,7 +396,7 @@ function updateTotals() {
     });
 
     document.getElementById('totalSalesQuantity').textContent = totalQty;
-    document.getElementById('totalSalesAmount').textContent = `R${totalAmount.toFixed(2)}`;
+    document.getElementById('totalSalesAmount').textContent = `R${totalAmount.toLocaleString('en-ZA', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
 };
 
 // Function to update the counts display
@@ -402,3 +419,454 @@ function updateCountsDisplay(delnoteNo) {
             console.error('Error updating counts:', error);
         });
 }
+
+// Function to handle delivery line selection and sales filtering
+window.selectDeliveryLine = function(row, lineId) {
+    // Remove selected class from all rows
+    document.querySelectorAll('.delivery-line').forEach(r => {
+        r.classList.remove('selected');
+    });
+    
+    // Add selected class to clicked row
+    row.classList.add('selected');
+    
+    // Show clear filter button
+    const clearFilterBtn = document.getElementById('clearFilterBtn');
+    if (clearFilterBtn) {
+        clearFilterBtn.style.display = '';
+    }
+    
+    // Filter sales table
+    const salesTable = document.querySelector('.sales-table');
+    if (!salesTable) return;
+    
+    const rows = salesTable.querySelectorAll('tbody tr');
+    let hasVisibleRows = false;
+    
+    rows.forEach(saleRow => {
+        const saleLineId = saleRow.dataset.lineId;
+        if (saleLineId === lineId) {
+            saleRow.style.display = '';
+            hasVisibleRows = true;
+        } else {
+            saleRow.style.display = 'none';
+        }
+    });
+    
+    // Show/hide totals row based on visibility
+    const totalsRow = salesTable.querySelector('tfoot tr');
+    if (totalsRow) {
+        totalsRow.style.display = hasVisibleRows ? '' : 'none';
+    }
+    
+    // Update totals for visible rows only
+    if (hasVisibleRows) {
+        updateFilteredTotals();
+    }
+};
+
+// Function to update totals for filtered rows
+function updateFilteredTotals() {
+    const salesTable = document.querySelector('.sales-table');
+    if (!salesTable) return;
+    
+    const visibleRows = Array.from(salesTable.querySelectorAll('tbody tr')).filter(row => row.style.display !== 'none');
+    
+    // Calculate totals
+    const totals = visibleRows.reduce((acc, row) => {
+        const cells = row.cells;
+        acc.qty += parseInt(cells[2].textContent.replace(/,/g, '')) || 0;
+        acc.discount += parseFloat(cells[4].textContent.replace('R', '').replace(/,/g, '')) || 0;
+        acc.gross += parseFloat(cells[5].textContent.replace('R', '').replace(/,/g, '')) || 0;
+        acc.net += parseFloat(cells[7].textContent.replace('R', '').replace(/,/g, '')) || 0;
+        return acc;
+    }, { qty: 0, discount: 0, gross: 0, net: 0 });
+    
+    // Update totals row
+    const totalsRow = salesTable.querySelector('tfoot tr');
+    if (totalsRow) {
+        totalsRow.querySelector('.total-qty').textContent = totals.qty.toLocaleString('en-ZA');
+        totalsRow.querySelector('.total-discount').textContent = `R${totals.discount.toLocaleString('en-ZA', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+        totalsRow.querySelector('.total-gross').textContent = `R${totals.gross.toLocaleString('en-ZA', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+        totalsRow.querySelector('.total-net').textContent = `R${totals.net.toLocaleString('en-ZA', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+    }
+}
+
+// Update clearSalesFilter to hide the clear filter button
+window.clearSalesFilter = function() {
+    // Remove selected class from all rows
+    document.querySelectorAll('.delivery-line').forEach(r => {
+        r.classList.remove('selected');
+    });
+    
+    // Hide clear filter button
+    const clearFilterBtn = document.getElementById('clearFilterBtn');
+    if (clearFilterBtn) {
+        clearFilterBtn.style.display = 'none';
+    }
+    
+    // Show all sales rows
+    const salesTable = document.querySelector('.sales-table');
+    if (!salesTable) return;
+    
+    const rows = salesTable.querySelectorAll('tbody tr');
+    rows.forEach(row => {
+        row.style.display = '';
+    });
+    
+    // Show totals row
+    const totalsRow = salesTable.querySelector('tfoot tr');
+    if (totalsRow) {
+        totalsRow.style.display = '';
+    }
+    
+    // Update totals for all rows
+    updateFilteredTotals();
+};
+
+// Function to handle delivery header editing
+window.editDeliveryHeader = function(delnoteNo) {
+    // Fetch current header data
+    fetch(`/api/delivery-header/${delnoteNo}`)
+        .then(response => response.json())
+        .then(header => {
+            // Fetch dropdown options
+            Promise.all([
+                fetch('/api/agents').then(r => r.json()),
+                fetch('/api/markets').then(r => r.json()),
+                fetch('/api/transporters').then(r => r.json())
+            ]).then(([agents, markets, transporters]) => {
+                // Create the modal HTML with improved styling
+                const modalHtml = `
+                    <div style="text-align: left; padding: 1rem;">
+                        <div style="margin-bottom: 1.5rem;">
+                            <label style="display: block; margin-bottom: 0.5rem; font-weight: 600; color: #334155; font-size: 0.95rem;">Delivery Date</label>
+                            <input type="date" id="deliveryDate" class="form-control" value="${header.deldate}" 
+                                   style="padding: 0.6rem; border-radius: 6px; border: 1px solid #e2e8f0; width: 100%;">
+                        </div>
+                        <div style="margin-bottom: 1.5rem;">
+                            <label style="display: block; margin-bottom: 0.5rem; font-weight: 600; color: #334155; font-size: 0.95rem;">Agent</label>
+                            <select id="agentSelect" class="form-select" style="width: 100%;">
+                                <option value="">Select an agent...</option>
+                                ${agents.map(a => `<option value="${a.DCLink}" ${a.DCLink === header.deliclientid ? 'selected' : ''}>${a.display_name}</option>`).join('')}
+                            </select>
+                        </div>
+                        <div style="margin-bottom: 1.5rem;">
+                            <label style="display: block; margin-bottom: 0.5rem; font-weight: 600; color: #334155; font-size: 0.95rem;">Market</label>
+                            <select id="marketSelect" class="form-select" style="width: 100%;">
+                                <option value="">Select a market...</option>
+                                ${markets.map(m => `<option value="${m.WhseLink}" ${m.WhseLink === header.delmarketid ? 'selected' : ''}>${m.display_name}</option>`).join('')}
+                            </select>
+                        </div>
+                        <div style="margin-bottom: 1.5rem;">
+                            <label style="display: block; margin-bottom: 0.5rem; font-weight: 600; color: #334155; font-size: 0.95rem;">Transporter</label>
+                            <select id="transporterSelect" class="form-select" style="width: 100%;">
+                                <option value="">Select a transporter...</option>
+                                ${transporters.map(t => `<option value="${t.TransporterAccount}" ${t.TransporterAccount === header.deltransporter ? 'selected' : ''}>${t.display_name}</option>`).join('')}
+                            </select>
+                        </div>
+                        <div style="margin-bottom: 1.5rem;">
+                            <label style="display: block; margin-bottom: 0.5rem; font-weight: 600; color: #334155; font-size: 0.95rem;">Total Quantity (Bags)</label>
+                            <input type="number" id="totalQuantity" class="form-control" value="${header.delquantitybags || 0}"
+                                   style="padding: 0.6rem; border-radius: 6px; border: 1px solid #e2e8f0; width: 100%;">
+                        </div>
+                    </div>
+                `;
+
+                // Show the modal with improved styling
+                Swal.fire({
+                    title: '<span style="font-size:1.3em;font-weight:700;color:#2563eb;">Edit Delivery Note Header</span>',
+                    html: modalHtml,
+                    showCancelButton: true,
+                    confirmButtonText: 'Save Changes',
+                    cancelButtonText: 'Cancel',
+                    width: 600,
+                    customClass: {
+                        container: 'delivery-header-modal',
+                        popup: 'delivery-header-modal-popup',
+                        title: 'delivery-header-modal-title',
+                        confirmButton: 'btn btn-primary',
+                        cancelButton: 'btn btn-secondary'
+                    },
+                    didOpen: () => {
+                        // Initialize Select2 for dropdowns with improved styling
+                        $('#agentSelect, #marketSelect, #transporterSelect').select2({
+                            dropdownParent: $('.swal2-container'),
+                            width: '100%',
+                            placeholder: 'Select an option...',
+                            allowClear: true,
+                            theme: 'bootstrap-5'
+                        }).on('select2:open', () => {
+                            document.querySelector('.select2-container--open').style.zIndex = 9999;
+                        });
+
+                        // Add custom styles for Select2
+                        const style = document.createElement('style');
+                        style.textContent = `
+                            .select2-container--bootstrap-5 .select2-selection {
+                                padding: 0.6rem;
+                                border-radius: 6px;
+                                border: 1px solid #e2e8f0;
+                                min-height: 42px;
+                            }
+                            .select2-container--bootstrap-5 .select2-selection--single {
+                                display: flex;
+                                align-items: center;
+                            }
+                            .select2-container--bootstrap-5 .select2-selection--single .select2-selection__rendered {
+                                padding: 0;
+                                color: #334155;
+                            }
+                            .select2-container--bootstrap-5 .select2-dropdown {
+                                border: 1px solid #e2e8f0;
+                                border-radius: 6px;
+                                box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
+                            }
+                            .select2-container--bootstrap-5 .select2-results__option {
+                                padding: 0.6rem 1rem;
+                            }
+                            .select2-container--bootstrap-5 .select2-results__option--highlighted {
+                                background-color: #e0edff;
+                                color: #2563eb;
+                            }
+                            .select2-container--bootstrap-5 .select2-results__option--selected {
+                                background-color: #2563eb;
+                                color: white;
+                            }
+                        `;
+                        document.head.appendChild(style);
+                    },
+                    preConfirm: () => {
+                        return {
+                            deldate: document.getElementById('deliveryDate').value,
+                            deliclientid: document.getElementById('agentSelect').value,
+                            delmarketid: document.getElementById('marketSelect').value,
+                            deltransporter: document.getElementById('transporterSelect').value,
+                            delquantitybags: parseInt(document.getElementById('totalQuantity').value) || 0
+                        };
+                    }
+                }).then((result) => {
+                    if (result.isConfirmed) {
+                        // Save the changes
+                        fetch(`/api/save-delivery-header/${delnoteNo}`, {
+                            method: 'POST',
+                            headers: {
+                                'Content-Type': 'application/json',
+                            },
+                            body: JSON.stringify(result.value)
+                        })
+                        .then(response => response.json())
+                        .then(data => {
+                            if (data.success) {
+                                Swal.fire({
+                                    title: 'Success!',
+                                    text: 'Delivery note header has been updated successfully.',
+                                    icon: 'success',
+                                    timer: 1500,
+                                    showConfirmButton: false
+                                }).then(() => {
+                                    // Refresh the page to show updated data
+                                    window.location.reload();
+                                });
+                            } else {
+                                throw new Error(data.message || 'Failed to update delivery note header');
+                            }
+                        })
+                        .catch(error => {
+                            Swal.fire({
+                                title: 'Error',
+                                text: error.message || 'Failed to update delivery note header',
+                                icon: 'error'
+                            });
+                        });
+                    }
+                });
+            });
+        })
+        .catch(error => {
+            console.error('Error fetching header data:', error);
+            Swal.fire({
+                title: 'Error',
+                text: 'Failed to load delivery note header data',
+                icon: 'error'
+            });
+        });
+};
+
+// Function to save quantity changes
+window.saveQuantityChanges = function() {
+    const quantities = {};
+    let total = 0;
+    let validationErrors = [];
+    
+    // Get all quantity inputs
+    document.querySelectorAll('.quantity-input').forEach(input => {
+        const lineId = input.dataset.lineId;
+        const newQty = parseInt(input.value) || 0;
+        const minQty = parseInt(input.dataset.sold);
+        const productDesc = input.closest('tr').querySelector('td:nth-child(2)').textContent.trim();
+        
+        if (newQty < minQty) {
+            validationErrors.push(`Line ${lineId} (${productDesc}): Minimum quantity is ${minQty} bags (${input.dataset.sold} sold)`);
+        }
+        
+        quantities[lineId] = newQty;
+        total += newQty;
+    });
+    
+    if (validationErrors.length > 0) {
+        Swal.fire({
+            title: 'Validation Error',
+            html: `
+                <div style="text-align: left;">
+                    <p style="margin-bottom: 1rem;">The following lines have quantities below their minimum allowed values:</p>
+                    <ul style="list-style-type: none; padding-left: 0;">
+                        ${validationErrors.map(error => `<li style="margin-bottom: 0.5rem; color: #dc2626;">• ${error}</li>`).join('')}
+                    </ul>
+                </div>
+            `,
+            icon: 'error',
+            confirmButtonText: 'OK'
+        });
+        return;
+    }
+    
+    const headerQty = parseInt(document.querySelector('.delivery-header .delivery-grid div:nth-child(4) p').textContent) || 0;
+    
+    if (total !== headerQty) {
+        Swal.fire({
+            title: 'Validation Error',
+            html: `
+                <div style="text-align: left;">
+                    <p>The total quantity of all lines (${total} bags) must equal the delivery note total (${headerQty} bags).</p>
+                    <p style="margin-top: 0.5rem;">Please adjust the quantities to match the total.</p>
+                </div>
+            `,
+            icon: 'error',
+            confirmButtonText: 'OK'
+        });
+        return;
+    }
+    
+    // Save the changes
+    fetch('/api/update-line-quantities', {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+            quantities: quantities
+        })
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.success) {
+            // Update the display values with new quantities
+            document.querySelectorAll('.quantity-input').forEach(input => {
+                const lineId = input.dataset.lineId;
+                const newQty = data.quantities[lineId];
+                const display = input.previousElementSibling;
+                display.textContent = newQty.toLocaleString('en-ZA');
+            });
+
+            // Switch back to display mode
+            const btn = document.getElementById('editQuantitiesBtn');
+            btn.innerHTML = '<i class="fas fa-edit"></i> Edit Quantities';
+            btn.classList.remove('editing');
+            document.querySelectorAll('.quantity-display').forEach(display => {
+                display.style.display = '';
+            });
+            document.querySelectorAll('.quantity-input').forEach(input => {
+                input.style.display = 'none';
+            });
+
+            // Remove the button container and restore edit button to original position
+            const buttonContainer = document.querySelector('.quantity-edit-buttons');
+            if (buttonContainer) {
+                buttonContainer.parentNode.replaceChild(btn, buttonContainer);
+            }
+        } else {
+            throw new Error(data.message || 'Failed to update line quantities');
+        }
+    })
+    .catch(error => {
+        Swal.fire({
+            title: 'Error',
+            text: error.message || 'Failed to update line quantities',
+            icon: 'error'
+        });
+    });
+};
+
+// Function to cancel quantity edits
+window.cancelQuantityEdit = function() {
+    // Restore original values and switch back to display mode
+    document.querySelectorAll('.quantity-input').forEach(input => {
+        const display = input.previousElementSibling;
+        input.value = display.textContent.replace(/,/g, '');
+    });
+
+    // Get the button container and edit button
+    const buttonContainer = document.querySelector('.quantity-edit-buttons');
+    const editBtn = document.getElementById('editQuantitiesBtn');
+    
+    // Restore edit button to original state
+    editBtn.innerHTML = '<i class="fas fa-edit"></i> Edit Quantities';
+    editBtn.classList.remove('editing');
+    
+    // Show displays and hide inputs
+    document.querySelectorAll('.quantity-display').forEach(display => {
+        display.style.display = '';
+    });
+    document.querySelectorAll('.quantity-input').forEach(input => {
+        input.style.display = 'none';
+    });
+
+    // Remove the button container and restore edit button to original position
+    if (buttonContainer) {
+        buttonContainer.parentNode.replaceChild(editBtn, buttonContainer);
+    }
+};
+
+// Update the toggleQuantityEdit function to include cancel button
+window.toggleQuantityEdit = function() {
+    const btn = document.getElementById('editQuantitiesBtn');
+    const isEditing = btn.classList.contains('editing');
+    
+    if (isEditing) {
+        saveQuantityChanges();
+    } else {
+        // Switch to edit mode
+        btn.innerHTML = '<i class="fas fa-check"></i> Save Changes';
+        btn.classList.add('editing');
+        document.querySelectorAll('.quantity-display').forEach(display => {
+            display.style.display = 'none';
+        });
+        document.querySelectorAll('.quantity-input').forEach(input => {
+            input.style.display = '';
+        });
+
+        // Create button container if it doesn't exist
+        if (!document.querySelector('.quantity-edit-buttons')) {
+            const buttonContainer = document.createElement('div');
+            buttonContainer.className = 'quantity-edit-buttons';
+            buttonContainer.style.display = 'flex';
+            buttonContainer.style.gap = '0.5rem';
+            buttonContainer.style.alignItems = 'center';
+
+            // Create cancel button
+            const cancelBtn = document.createElement('button');
+            cancelBtn.id = 'cancelQuantityEditBtn';
+            cancelBtn.className = 'sales-btn';
+            cancelBtn.style.backgroundColor = '#dc2626';
+            cancelBtn.style.color = '#fff';
+            cancelBtn.innerHTML = '<i class="fas fa-times"></i> Cancel';
+            cancelBtn.onclick = cancelQuantityEdit;
+
+            // Replace edit button with container and add both buttons
+            btn.parentNode.replaceChild(buttonContainer, btn);
+            buttonContainer.appendChild(btn);
+            buttonContainer.appendChild(cancelBtn);
+        }
+    }
+};
