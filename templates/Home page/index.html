@@ -8,6 +8,7 @@
   <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
 </head>
 <body class="bg-gray-100 text-gray-800 font-sans">
+  {% include 'taskbar.html' %}
   <div class="max-w-7xl mx-auto px-6 py-10">
     <h1 class="text-4xl font-bold mb-8">Dashboard</h1>
 
@@ -86,8 +87,8 @@
             📦
           </div>
           <div>
-            <h2 class="text-sm text-gray-500">Today's Deliveries</h2>
-            <p class="text-3xl font-bold mt-1">${data.today_deliveries}</p>
+            <h2 class="text-sm text-gray-500">This Month's Deliveries</h2>
+            <p class="text-3xl font-bold mt-1">${data.month_deliveries}</p>
           </div>
         </div>
         <div class="bg-white p-6 rounded-xl shadow flex items-center gap-4">
@@ -122,11 +123,11 @@
         // Uninvoiced Notes
         $('#uninvoiced-notes').html(data.uninvoiced_notes.map(note =>
           `<tr class="bg-white rounded-md hover:bg-gray-50 shadow-sm transition">
-            <td class="p-2 font-medium text-gray-700">${note.note}</td>
-            <td class="text-gray-600">${note.agent}</td>
-            <td><span class="bg-blue-100 text-blue-800 text-xs font-semibold px-2 py-1 rounded-full">${note.qty_sent}</span></td>
-            <td><span class="bg-yellow-100 text-yellow-800 text-xs font-semibold px-2 py-1 rounded-full">${note.qty_sold}</span></td>
-            <td><span class="bg-green-100 text-green-800 text-xs font-semibold px-2 py-1 rounded-full">${note.qty_invoiced}</span></td>
+            <td class="p-2 font-medium text-gray-700"><a href="/delivery-note/${note.note}" class="block">${note.note}</a></td>
+            <td class="text-gray-600"><a href="/delivery-note/${note.note}" class="block">${note.agent}</a></td>
+            <td><a href="/delivery-note/${note.note}" class="block"><span class="bg-blue-100 text-blue-800 text-xs font-semibold px-2 py-1 rounded-full">${note.qty_sent}</span></a></td>
+            <td><a href="/delivery-note/${note.note}" class="block"><span class="bg-yellow-100 text-yellow-800 text-xs font-semibold px-2 py-1 rounded-full">${note.qty_sold}</span></a></td>
+            <td><a href="/delivery-note/${note.note}" class="block"><span class="bg-green-100 text-green-800 text-xs font-semibold px-2 py-1 rounded-full">${note.qty_invoiced}</span></a></td>
           </tr>`
         ).join(''));
 
@@ -134,7 +135,7 @@
         $('#recent-invoices').html(data.recent_invoices.map(inv =>
           `<tr class="bg-white rounded-md hover:bg-gray-50 shadow-sm transition">
             <td class="p-2 font-medium text-gray-700">${inv.invoice_no}</td>
-            <td class="text-gray-600">${inv.delivery_note}</td>
+            <td class="text-gray-600"><a href="/delivery-note/${inv.delivery_note}" class="text-blue-600 hover:text-blue-800 hover:underline">${inv.delivery_note}</a></td>
             <td class="text-green-700 font-semibold">R${inv.amount}</td>
             <td class="text-gray-500">${inv.date}</td>
           </tr>`

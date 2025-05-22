@@ -195,5 +195,5 @@ if __name__ == "__main__":
     #     scheduler.add_job(run_all_import_jobs, 'interval', seconds=120)
     #     scheduler.start()
 
-    app.run(host='0.0.0.0', port=5001, debug=True)
+    app.run(host='0.0.0.0', port=5001, debug=False)
 

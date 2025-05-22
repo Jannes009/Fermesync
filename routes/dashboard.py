@@ -22,27 +22,21 @@ def dashboard_data():
 
     # Deliveries this month
     delivery_query = """
-    SELECT 
-        DelNoteNo, DelDate, AgentName,
-        SUM(DelLineQuantityBags) AS QtySent,
-        SUM(TotalQtySold) AS QtySold,
-        SUM(TotalQtyInvoiced) AS QtyInvoiced
-    FROM [dbo].[_uvMarketDeliveryNote]
+    Select DelNoteNo, DelDate,Agent, TotalQtyDelivered, TotalQtySold, TotalQtyInvoiced from [dbo].[_uvDelQuantitiesHeader]
     WHERE DelDate >= ?
-    GROUP BY DelNoteNo, DelDate, AgentName
     """
     cursor.execute(delivery_query, (start_of_month,))
     delivery_rows = cursor.fetchall()
 
     # Sales this week
     sales_query = """
-    SELECT SalesQty
+    SELECT SUM(SalesQty) AS TotalQty
     FROM [dbo].[_uvMarketSales]
     WHERE SalesDate >= ?
     """
     cursor.execute(sales_query, (start_of_week,))
-    sales_rows = cursor.fetchall()
-    sold_this_week = sum(row[0] for row in sales_rows)
+    sales_rows = cursor.fetchone()
+    sold_this_week = sales_rows[0]
 
     # Invoices this week
     invoice_query = """
@@ -97,7 +91,7 @@ def dashboard_data():
     conn.close()
 
     return jsonify({
-        "today_deliveries": this_month_delivery_count,
+        "month_deliveries": this_month_delivery_count,
         "total_sent": sent_this_week,
         "total_sold": sold_this_week,
         "total_invoiced": invoiced_this_week,
