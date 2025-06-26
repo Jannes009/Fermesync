@@ -46,9 +46,10 @@ def fetch_lines_data(request_form):
     }
 
 def store_header(cursor, form_data):
+    print(form_data)
     cursor.execute("""
         INSERT INTO ZZDeliveryNoteHeader 
-        (DeliClientId, DelNoteNo, DelDate, DelFarmId, DelTransporter, DelMarketId, DelTransportCostExcl)
+        (DeliClientId, DelNoteNo, DelDate, DelFarmId, DelTransporter,  DelTransportCostExcl, DelMarketId)
         VALUES (?, ?, ?, ?, ?, ?, ?)
     """, tuple(form_data.values()))
     cursor.connection.commit()
@@ -107,9 +108,9 @@ def create_entry():
             total_quantity = store_lines(cursor, header_id, lines_data)
             update_header_quantity(cursor, header_id, total_quantity)
 
-            session['last_entry_id'] = header_id
-            print(header_id, session.get('last_entry_id'))
-            return redirect(url_for('entry.create_entry'))
+            session['del_note_no'] = form_data['ZZDelNoteNo']
+            print(form_data['ZZDelNoteNo'], session.get('del_note_no'))
+            return redirect(url_for('entry.submission_success'))
 
         except odbc.IntegrityError as e:
             error_data = integrity_error(e, request.form)
@@ -128,121 +129,12 @@ def create_entry():
 
 @entry_bp.route('/submission_success')
 def submission_success():
-    last_entry_id = session.get('last_entry_id')
-    if not last_entry_id:
+    del_note_no = session.get('del_note_no')
+    if not del_note_no:
         return render_template('Transition pages/submission_success.html', message="No recent entry found.")
     return render_template('Transition pages/submission_success.html',
                            message="Entry submitted successfully!",
-                           last_entry_id=last_entry_id)
-
-@entry_bp.route('/edit_entry/<int:entry_id>', methods=['GET', 'POST'])
-def edit_entry(entry_id):
-    error_message = None
-    form_data = None
-    connection = create_db_connection()
-    cursor = connection.cursor()
-
-    # check that no sales had been made for delivery note
-    # cursor.execute("""
-    #     Select TotalQtySold from [dbo].[_uvDelQuantitiesHeader]
-    #     Where DelHeaderId = ?
-    # """, (entry_id,))
-    # salesQty = cursor.fetchone()
-    # if salesQty[0] > 0:
-    #     return render_template('Transition pages/submission_success.html',
-    #                        message="Entry already have sales. Cannot be edited",
-    #                        last_entry_id=0)
-
-    print("Entry edited")
-    if request.method == 'POST':
-        try:
-            form_data = fetch_header_data(request.form)
-            lines_data = fetch_lines_data(request.form)
-
-            cursor.execute("""
-                UPDATE ZZDeliveryNoteHeader
-                SET DeliClientId = ?, DelNoteNo = ?, DelDate = ?, DelFarmId = ?, DelTransporter = ?, 
-                    DelMarketId = ?, DelTransportCostExcl = ?
-                WHERE DelIndex = ?
-            """, (*form_data.values(), entry_id))
-            cursor.connection.commit()
-
-            cursor.execute("SELECT * FROM ZZDeliveryNoteLines WHERE DelHeaderId = ?", (entry_id,))
-            rows = cursor.fetchall()  # Fetch all rows once
-
-            if rows:  # Check if rows exist
-                lineIds = [row[0] for row in rows]  # Extract DelLineIndex from rows
-            else:
-                lineIds = None  # Assign an empty list if no rows are returned
-
-            # cursor.execute("DELETE FROM ZZDeliveryNoteLines WHERE DelHeaderId = ?", (entry_id,))  
-            total_quantity = store_lines(cursor, entry_id, lines_data, lineIds)
-            update_header_quantity(cursor, entry_id, total_quantity)
-
-            session['last_entry_id'] = entry_id
-            return redirect(url_for('entry.submission_success'))
-
-        except odbc.IntegrityError as e:
-            error_data = integrity_error(e, request.form)
-            error_message = error_data["error_message"]
-            form_data = error_data["form_data"]
-
-    cursor.execute("""
-                   Select DelNoteNo, DelDate, DeliClientId, DelMarketId, DelFarmId, 
-                   DelTransporter, DelTransportCostExcl, DelQuantityBags 
-                   from ZZDeliveryNoteHeader
-                   WHERE DelIndex = ?""", 
-                   (entry_id,))
-    entry_data = cursor.fetchone()
-    if not entry_data:
-        return render_template('Transition pages/submission_success.html', message="Entry not found!")
-
-    form_data = {
-        'ZZDelNoteNo': entry_data[0],
-        'ZZDelDate': entry_data[1],
-        'ZZAgentName': agent_code_to_agent_name(entry_data[2], cursor),
-        'ZZMarket': market_Id_to_market_name(entry_data[3], cursor),
-        'ZZProductionUnitCode': project_link_to_production_unit_name(entry_data[4], cursor),
-        'ZZTransporterCode': transporter_account_to_transporter_name(entry_data[5], cursor),
-        'ZZTransporterCost': entry_data[6],
-        'ZZTotalQty': entry_data[7],
-    }
-
-    cursor.execute("""SELECT DelLineStockId, DelLineQuantityBags, DelLinePriceEstimate, DelLineFarmId, DelLineIndex
-                   FROM ZZDeliveryNoteLines 
-                   WHERE DelHeaderId = ?""", (entry_id,))
-    rows = cursor.fetchall()
-    product_quantity_pairs = [(row[0], row[1], row[2], row[3], row[4]) for row in rows]
-
-    dropdown_options = fetch_dropdown_options(cursor)
-    print(form_data)
-    print(dropdown_options)
-    close_db_connection(cursor, connection)
-
-    return render_template('Bill Of Lading Page/create_entry.html',
-                           error_message=error_message,
-                           form_data=form_data,
-                           product_quantity_pairs=product_quantity_pairs,
-                           **dropdown_options)
-
-@entry_bp.route('/delete-row', methods=['POST'])
-def delete_row():
-    data = request.json
-    row_id = data.get('id')
-
-
-    if not row_id:
-        return "Row ID is required.", 400
-    
-    conn = create_db_connection()
-    cursor = conn.cursor()
-    cursor.execute("Delete From ZZDeliveryNoteLines Where DelLineIndex = ?", (row_id,))
-    conn.commit()
-
-    cursor.close()
-    conn.close()
-
-    return "Row deleted successfully.", 200
+                           del_note_no=del_note_no)
 
 import json
 from flask import request, jsonify
@@ -290,7 +182,7 @@ def logout():
 
 @entry_bp.route('/check_session', methods=['GET'])
 def check_session():
-    if 'username' in session:  # Replace 'user_id' with your session key for the logged-in user
+    if 'username' in session: 
         return jsonify({"session_active": True})
     return jsonify({"session_active": False})
 

@@ -178,14 +178,8 @@ document.addEventListener("DOMContentLoaded", () => {
             return response.json();
         })
         .then(data => {
-            Toast.fire({
-                title: "Entry submitted",
-                icon: "success",
-            });
-            
             isProgrammaticSubmit = true;
             $("form")[0].submit(); // Programmatically submit the form
-            
         })
         .catch(error => {
             console.error("Error:", error);

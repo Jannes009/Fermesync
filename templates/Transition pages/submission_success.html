@@ -12,8 +12,8 @@
         <h1>Entry Submitted Successfully!</h1>
         <div class="options">
             <!-- View Entry button now links to the edit_entry page -->
-             {% if last_entry_id %}
-                <button onclick="location.href='{{ url_for('entry.edit_entry', entry_id=last_entry_id) }}'">
+             {% if del_note_no %}
+                <button onclick="location.href='{{ url_for('view_entry.delivery_note', del_note_no=del_note_no) }}'">
                     View Entry
                 </button>
             {% endif %}
