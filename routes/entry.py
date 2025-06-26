@@ -34,7 +34,7 @@ def integrity_error(error, form_data):
 def fetch_header_data(request_form):
     return {key: request_form.get(key) for key in [
         'ZZAgentName', 'ZZDelNoteNo', 'ZZDelDate', 'ZZProductionUnitCode',
-        'ZZTransporterCode', 'ZZPalletsOut', 'ZZPalletsBack', 'ZZMarket'
+        'ZZTransporterCode', 'ZZTransporterCost', 'ZZMarket'
     ]}
 
 def fetch_lines_data(request_form):
@@ -48,8 +48,8 @@ def fetch_lines_data(request_form):
 def store_header(cursor, form_data):
     cursor.execute("""
         INSERT INTO ZZDeliveryNoteHeader 
-        (DeliClientId, DelNoteNo, DelDate, DelFarmId, DelTransporter, DelPalletsOut, DelPalletsIn, DelMarketId)
-        VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+        (DeliClientId, DelNoteNo, DelDate, DelFarmId, DelTransporter, DelMarketId, DelTransportCostExcl)
+        VALUES (?, ?, ?, ?, ?, ?, ?)
     """, tuple(form_data.values()))
     cursor.connection.commit()
 
@@ -162,7 +162,7 @@ def edit_entry(entry_id):
             cursor.execute("""
                 UPDATE ZZDeliveryNoteHeader
                 SET DeliClientId = ?, DelNoteNo = ?, DelDate = ?, DelFarmId = ?, DelTransporter = ?, 
-                    DelPalletsOut = ?, DelPalletsIn = ?, DelMarketId = ?
+                    DelMarketId = ?, DelTransportCostExcl = ?
                 WHERE DelIndex = ?
             """, (*form_data.values(), entry_id))
             cursor.connection.commit()
@@ -189,7 +189,7 @@ def edit_entry(entry_id):
 
     cursor.execute("""
                    Select DelNoteNo, DelDate, DeliClientId, DelMarketId, DelFarmId, 
-                   DelTransporter, DelPalletsIn, DelPalletsOut, DelQuantityBags 
+                   DelTransporter, DelTransportCostExcl, DelQuantityBags 
                    from ZZDeliveryNoteHeader
                    WHERE DelIndex = ?""", 
                    (entry_id,))
@@ -204,9 +204,8 @@ def edit_entry(entry_id):
         'ZZMarket': market_Id_to_market_name(entry_data[3], cursor),
         'ZZProductionUnitCode': project_link_to_production_unit_name(entry_data[4], cursor),
         'ZZTransporterCode': transporter_account_to_transporter_name(entry_data[5], cursor),
-        'ZZPalletsOut': entry_data[7],
-        'ZZPalletsBack': entry_data[6],
-        'ZZTotalQty': entry_data[8],
+        'ZZTransporterCost': entry_data[6],
+        'ZZTotalQty': entry_data[7],
     }
 
     cursor.execute("""SELECT DelLineStockId, DelLineQuantityBags, DelLinePriceEstimate, DelLineFarmId, DelLineIndex
