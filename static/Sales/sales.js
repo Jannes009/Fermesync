@@ -353,7 +353,7 @@ window.unlinkConsignment = function(consignmentId, delnoteNo) {
 
 
 // Function to handle product change
-window.changeProduct = function(lineId, currentProduct) {
+window.changeProduct = function(lineId, currentProduct, delNoteNo) {
   // Fetch products from the server
   fetch('/api/products')
     .then(response => response.json())
@@ -426,10 +426,8 @@ window.changeProduct = function(lineId, currentProduct) {
                 showConfirmButton: false
               }).then(() => {
                 // Refresh the sales table
-                const delnoteNo = document.querySelector('.sales-header-title').textContent.split('#')[1];
-                if (delnoteNo) {
-                  refreshSalesTable(delnoteNo);
-                }
+                load_sales_lines_table(delNoteNo)
+                load_delivery_lines_table(delNoteNo)
               });
             } else {
               throw new Error(data.error || 'Failed to update product');

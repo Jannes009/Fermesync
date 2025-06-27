@@ -24,7 +24,7 @@ function load_delivery_lines_table(delnoteno) {
                     <td>
                       <div style="display: flex; align-items: center; gap: 8px;">
                         <span>${line.productdescription}</span>
-                        <button class="icon-btn" onclick="changeProduct('${line.dellineindex}', '${line.productdescription}'); event.stopPropagation();">
+                        <button class="icon-btn" onclick="changeProduct('${line.dellineindex}', '${line.productdescription}', '${delnoteno}'); event.stopPropagation();">
                           <img src="/static/Image/change.png" alt="Change Product">
                         </button>
                       </div>
