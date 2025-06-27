@@ -32,9 +32,9 @@
             </select>
         </div>
         <div class="form-group">
-            <label for="ZZMarket">Market:</label>
+            <label for="ZZMarket">Packhouse:</label>
             <select name="ZZMarket" class="searchable-dropdown" required>
-                <option value="" disabled {% if not form_data or not form_data.get('ZZMarket') %}selected{% endif %}>Select Market</option>
+                <option value="" disabled {% if not form_data or not form_data.get('ZZMarket') %}selected{% endif %}>Select Packhouse</option>
                 {% for market in market_codes %}
                     <option value="{{ market[0] }}" {% if form_data and form_data.get('ZZMarket')[0] == market[0] %}selected{% endif %}>{{ market[1] }}</option>
                 {% endfor %}
