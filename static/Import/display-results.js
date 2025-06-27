@@ -37,6 +37,18 @@ function displayTable(data) {
     data.forEach(row => {
         let tr = document.createElement("tr");
 
+        // Make Delivery Note No clickable for matched and linked rows
+        let isMatched = row.linconsignmentidexist === 0 && row.headelnotenoexist === 1;
+        let isLinked = row.linconsignmentidexist === 1;
+        let delNoteNoCell = '-';
+        if (row.delnoteno) {
+            if (isMatched || isLinked) {
+                delNoteNoCell = `<a href="/delivery-note/${row.delnoteno}" target="_blank" style="color:#2563eb;text-decoration:underline;">${row.delnoteno}</a>`;
+            } else {
+                delNoteNoCell = `<span class="supplier-ref-text">${row.delnoteno}</span>`;
+            }
+        }
+
         let supplierRefCell = `<span class="supplier-ref-text">${row.delnoteno || "-"}</span>`;
         let detailsButton = `<td>`
 
@@ -61,7 +73,7 @@ function displayTable(data) {
         tr.innerHTML = `
             <td><button class="btn expand-btn" data-consignment="${row.consignmentid}">▶</button></td>
             <td>${row.consignmentid || '-'}</td>
-            <td>${row.delnoteno, supplierRefCell}</td>
+            <td>${delNoteNoCell}</td>
             <td>${row.product || '-'}</td>
             <td>${row.class || '-'}</td>
             <td>${row.size || '-'}</td>

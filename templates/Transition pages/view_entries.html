@@ -6,7 +6,7 @@
     <title>Bill Of Lading</title>
     <link rel="stylesheet" href="{{ url_for('static', filename='View/view.css') }}">
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
-    <styles>
+    <style>
         .totals-row {
             background-color: #f8fafc;
             border-top: 2px solid #e2e8f0;
@@ -24,6 +24,54 @@
             color: #1e293b;
             background-color: #f8fafc;
         }        
+        .switch {
+            display: inline-flex;
+            align-items: center;
+            cursor: pointer;
+            user-select: none;
+            margin-bottom: 10px;
+        }
+        
+        .switch input {
+            display: none;
+        }
+        
+        .slider {
+            position: relative;
+            width: 46px;
+            height: 24px;
+            background-color: #ccc;
+            border-radius: 24px;
+            transition: background 0.3s;
+            margin-right: 12px;
+        }
+        
+        .slider:before {
+            content: "";
+            position: absolute;
+            left: 4px;
+            top: 4px;
+            width: 16px;
+            height: 16px;
+            background: white;
+            border-radius: 50%;
+            transition: transform 0.3s;
+        }
+        
+        input:checked + .slider {
+            background-color: #4caf50;
+        }
+        
+        input:checked + .slider:before {
+            transform: translateX(22px);
+        }
+        
+        .switch-label {
+            font-size: 1rem;
+            color: #1e293b;
+            font-weight: 500;
+        }
+    </style>
 </head>
 <body>
     {% include 'taskbar.html' %}
@@ -54,6 +102,12 @@
                 </form>
             </div>
 
+            <label class="switch" style="margin-bottom: 10px;">
+                <input type="checkbox" id="toggle-completed">
+                <span class="slider"></span>
+                <span class="switch-label" id="toggle-label">Show Completed Delivery Notes</span>
+            </label>
+
             <div class="table-card">
                 <div class="table-responsive">
                     <table>
@@ -76,6 +130,7 @@
                             {% set high_sales = entry[6] > entry[5] * 0.8 %}
                             <tr class="main-row {% if fully_invoiced %}row-fully-invoiced{% elif partially_invoiced %}row-partially-invoiced{% elif high_sales %}row-high-sales{% else %}row-not-invoiced{% endif %}" 
                                 data-entry-id="{{ entry[0] }}" 
+                                data-completed="{{ '1' if fully_invoiced else '0' }}"
                                 onclick="window.location.href='/delivery-note/{{ entry[2] }}'">
                                 <td class="status-col">
                                     <span class="status-indicator {% if fully_invoiced %}status-fully-invoiced{% elif partially_invoiced %}status-partially-invoiced{% elif high_sales %}status-high-sales{% else %}status-not-invoiced{% endif %}"></span>
@@ -111,5 +166,34 @@
     <script src="{{ url_for('static', filename='View/view.js') }}"></script>
     <script src="{{ url_for('static', filename='View/modal.js') }}"></script>
     <script src="{{ url_for('static', filename='View/change-product.js') }}"></script>
+    <script>
+    document.addEventListener("DOMContentLoaded", function () {
+        const toggleSwitch = document.getElementById('toggle-completed');
+        const toggleLabel = document.getElementById('toggle-label');
+        let showCompleted = false;
+
+        function filterRows() {
+            document.querySelectorAll('tr.main-row').forEach(row => {
+                const isCompleted = row.getAttribute('data-completed') === '1';
+                if (!showCompleted && isCompleted) {
+                    row.style.display = 'none';
+                } else {
+                    row.style.display = '';
+                }
+            });
+            toggleLabel.textContent = showCompleted ? 'Hide Completed Delivery Notes' : 'Show Completed Delivery Notes';
+        }
+
+        if (toggleSwitch) {
+            toggleSwitch.addEventListener('change', function () {
+                showCompleted = toggleSwitch.checked;
+                filterRows();
+            });
+            // Initial filter on page load
+            showCompleted = toggleSwitch.checked;
+            filterRows();
+        }
+    });
+    </script>
 </body>
 </html>
