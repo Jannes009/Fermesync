@@ -341,28 +341,28 @@
   <div class="main-content">
     <div class="container-wide">
       <!-- Header -->
-      <div class="delivery-header">
+      <div class="delivery-header" onclick="editDeliveryHeader('{{ header.delnoteno }}')">
         <h1>Delivery Note #{{ header.delnoteno }}</h1>
         <p>Date: <strong>{{ header.deldate }}</strong></p>
 
         <div class="delivery-grid">
-          <div onclick="editDeliveryHeader('{{ header.delnoteno }}')" style="cursor: pointer;">
+          <div>
             <h2>Agent</h2>
             <p>{{ header.agentname }} ({{ header.agentaccount }})</p>
           </div>
-          <div onclick="editDeliveryHeader('{{ header.delnoteno }}')" style="cursor: pointer;">
+          <div>
             <h2>Packhouse</h2>
             <p>{{ header.marketname }} ({{ header.marketcode }})</p>
           </div>
-          <div onclick="editDeliveryHeader('{{ header.delnoteno }}')" style="cursor: pointer;">
+          <div>
             <h2>Transporter</h2>
             <p>{{ header.transportername }} ({{ header.transporteraccount }})</p>
           </div>
-          <div onclick="editDeliveryHeader('{{ header.delnoteno }}')" style="cursor: pointer;">
+          <div>
             <h2>Total Quantity</h2>
             <p>{{ header.deltotalquantity or 0 }}</p>
           </div>
-          <div onclick="editDeliveryHeader('{{ header.delnoteno }}')" style="cursor: pointer;">
+          <div>
             <h2>Transport Cost</h2>
             <p>{{ header.deltransportcostexcl }}</p>
           </div>
@@ -382,50 +382,8 @@
             </button>
           </div>
         </div>
-        <div class="overflow-auto">
-          <table>
-            <thead>
-              <tr>
-                <th>Line</th>
-                <th>Product</th>
-                <th>Production Unit</th>
-                <th>Qty (Bags)</th>
-                <th>Sold Qty</th>
-                <th>Invoiced Qty</th>
-              </tr>
-            </thead>
-            <tbody>
-              {% for line in lines %}
-              <tr class="delivery-line" data-line-id="{{ line.dellineindex }}" onclick="selectDeliveryLine(this, '{{ line.dellineindex }}')" style="cursor: pointer;">
-                <td>{{ line.dellineindex }}</td>
-                <td>
-                  <div style="display: flex; align-items: center; gap: 8px;">
-                    <span>{{ line.productdescription }}</span>
-                    <button class="icon-btn" onclick="changeProduct('{{ line.dellineindex }}', '{{ line.productdescription }}'); event.stopPropagation();">
-                      <img src="/static/Image/change.png" alt="Change Product">
-                    </button>
-                  </div>
-                </td>
-                <td>{{ line.mainprodunitname }}</td>
-                <td>
-                  <div style="display: flex; align-items: center; gap: 8px;">
-                    <span class="quantity-display">{{ line.dellinequantitybags or 0 }}</span>
-                    <input type="number" 
-                           class="form-control quantity-input" 
-                           value="{{ line.dellinequantitybags or 0 }}"
-                           min="{{ line.totalqtysold + line.totalqtyinvoiced }}"
-                           style="display: none; width: 100px;"
-                           data-line-id="{{ line.dellineindex }}"
-                           data-sold="{{ line.totalqtysold or 0 }}"
-                           data-invoiced="{{ line.totalqtyinvoiced or 0 }}">
-                  </div>
-                </td>
-                <td>{{ line.totalqtysold or 0 }}</td>
-                <td>{{ line.totalqtyinvoiced or 0 }}</td>
-              </tr>
-              {% endfor %}
-            </tbody>
-          </table>
+        <div class="overflow-auto" id="delivery-lines-table">
+          Loading...
         </div>
       </div>
 
@@ -437,7 +395,7 @@
             <span class="sales-header-badge" style="margin-right:0.5rem;cursor:pointer;" onclick="showLinkedModal('{{ header.delnoteno }}')">
               Linked: {{ linked_count }}
             </span>
-            <span class="sales-header-badge matched-badge" style="cursor:pointer;" onclick="showMatchedModal('{{ header.delnoteno }}')">
+            <span class="sales-header-badge matched-badge" style="cursor:pointer;">
               Matched: {{ matched_count }}
             </span>
             <button class="sales-btn" onclick="clearSalesFilter()" style="display: none;" id="clearFilterBtn">
@@ -449,7 +407,7 @@
           </div>
         </div>
         <div id="salesTableContainer">
-          {% include 'Bill Of Lading Page/sales_table.html' %}
+          Loading...
         </div>
       </div>
     </div>
@@ -461,5 +419,6 @@
   <script src="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/js/select2.min.js"></script>
   <script src="/static/Sales/sales.js"></script>
   <script src="/static/Bill Of Lading/view.js"></script>
+  <script src="/static/Bill Of Lading/load_view.js"></script>
 </body>
 </html>

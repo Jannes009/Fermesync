@@ -41,18 +41,47 @@ def delivery_note(del_note_no):
     """, (del_note_no,))
     matched_count = cursor.fetchone()[0] or 0
 
-    # Fetch line items
+
+
+
+
+    return render_template(
+        'Bill Of Lading Page/View_Delivery_note.html',
+        header=header,
+        linked_count=linked_count,
+        matched_count=matched_count
+    )
+
+@view_entry_bp.route('/api/fetch_delivery_note_lines/<del_note_no>')
+def fetch_delivery_note_lines(del_note_no):
+    conn = create_db_connection()
+    cursor = conn.cursor()
     cursor.execute("""
         SELECT DelLineIndex, ProductDescription, MainProdUnitName,
-               DelLineQuantityBags, TotalQtySold, SalesGrossAmnt,
-               TotalQtyInvoiced, InvoicedGrossAmnt
+               DelLineQuantityBags, TotalQtySold, TotalQtyInvoiced
         FROM [dbo].[_uvMarketDeliveryNote]
         WHERE DelNoteNo = ?
         ORDER BY DelLineIndex
     """, (del_note_no,))
     lines = cursor.fetchall()
+    # Convert to list of dicts for JSON
+    lines_dict = [
+        {
+            'dellineindex': row[0],
+            'productdescription': row[1],
+            'mainprodunitname': row[2],
+            'dellinequantitybags': row[3],
+            'totalqtysold': row[4],
+            'totalqtyinvoiced': row[5]
+        }
+        for row in lines
+    ]
+    return jsonify({'lines': lines_dict})
 
-    # Fetch sales data for this delivery note
+@view_entry_bp.route('/api/fetch_sales_note_lines/<del_note_no>')
+def fetch_sales_lines(del_note_no):
+    conn = create_db_connection()
+    cursor = conn.cursor()
     cursor.execute("""
         SELECT 
             SalesDate,
@@ -74,8 +103,6 @@ def delivery_note(del_note_no):
         ORDER BY AutoSale DESC, SalesDate
     """, (del_note_no,))
     sales_rows = cursor.fetchall()
-
-    # Convert sales rows to list of dictionaries
     sales = []
     for row in sales_rows:
         sales.append({
@@ -94,15 +121,9 @@ def delivery_note(del_note_no):
             'auto_sale': row[12],
             'del_line_id': row[13]
         })
-
-    return render_template(
-        'Bill Of Lading Page/View_Delivery_note.html',
-        header=header,
-        lines=lines,
-        sales=sales,
-        linked_count=linked_count,
-        matched_count=matched_count
-    )
+    cursor.close()
+    conn.close()
+    return jsonify({'lines': sales})
 
 @view_entry_bp.route('/submit_sales_entries', methods=['POST'])
 def submit_sales_entry():
@@ -226,65 +247,6 @@ def get_available_lines(del_note_no):
     conn.close()
 
     return jsonify({'lines': lines})
-
-@view_entry_bp.route('/api/refresh-sales/<del_note_no>')
-def refresh_sales(del_note_no):
-    conn = create_db_connection()
-    cursor = conn.cursor()
-
-    # Fetch sales data for this delivery note
-    cursor.execute("""
-        SELECT 
-            SalesDate,
-            Product,
-            SalesQty,
-            SalesPrice,
-            DiscountPercent,
-            DiscountAmnt,
-            GrossSalesAmnt,
-            SalesAmnt,
-            NettSalesAmnt,
-            SalesLineIndex,
-            InvStatus,
-            InvoiceNo,
-            AutoSale,
-            SalesDelLineId
-        FROM _uvMarketSales
-        WHERE DelNoteNo = ?
-        ORDER BY AutoSale DESC, SalesDate
-    """, (del_note_no,))
-    sales_rows = cursor.fetchall()
-
-
-    # Convert sales rows to list of dictionaries
-    sales = []
-    for row in sales_rows:
-        sales_line_index = row[9]
-        del_line_id = row[13]
-        
-        sale_dict = {
-            'sales_date': row[0].strftime('%Y-%m-%d') if isinstance(row[0], datetime) else row[0],
-            'product': row[1],
-            'qty': row[2],
-            'price': row[3],
-            'discount_percent': row[4],
-            'discount_amount': row[5],
-            'gross_amount': row[6],
-            'sales_amount': row[7],
-            'net_amount': row[8],
-            'sales_line_index': sales_line_index,
-            'inv_status': row[10],
-            'invoice_no': row[11],
-            'auto_sale': row[12],
-            'del_line_id': del_line_id
-        }
-        sales.append(sale_dict)
-        print(sales)
-
-    cursor.close()
-    conn.close()
-
-    return render_template('Bill Of Lading Page/sales_table.html', sales=sales, header={'delnoteno': del_note_no})
 
 @view_entry_bp.route('/delete_sales_entry/<int:sales_id>', methods=['DELETE'])
 def delete_sales_entry(sales_id):
@@ -454,39 +416,58 @@ def get_delivery_header(delnote_no):
 
 @view_entry_bp.route('/api/save-delivery-header/<delnote_no>', methods=['POST'])
 def save_delivery_header(delnote_no):
-    # try:
     data = request.get_json()
+    new_delnoteno = data['delnoteno']
     conn = create_db_connection()
     cursor = conn.cursor()
-    
-    # Update header data
-    cursor.execute("""
-        UPDATE ZZDeliveryNoteHeader
-        SET DelDate = ?,
-            DeliClientId = ?,
-            DelMarketId = ?,
-            DelTransporter = ?,
-            DelQuantityBags = ?,
-            DelTransportCostExcl = ?
-        WHERE DelNoteNo = ?
-    """, (
-        data['deldate'],
-        data['deliclientid'],
-        data['delmarketid'],
-        data['deltransporter'],
-        data['delquantitybags'],
-        data['deltransportcostexcl'],
-        delnote_no
-    ))
-    
-    conn.commit()
-    return jsonify({'success': True})
-        
-    # except Exception as e:
-    #     return jsonify({'error': str(e)}), 500
-    # finally:
-    if 'conn' in locals():
-        conn.close()
+
+    try:
+        # If the delivery note number is being changed, update it everywhere
+        if new_delnoteno != delnote_no:
+            # Check if the new DelNoteNo already exists (prevent duplicates)
+            cursor.execute("SELECT COUNT(*) FROM ZZDeliveryNoteHeader WHERE DelNoteNo = ?", (new_delnoteno,))
+            if cursor.fetchone()[0] > 0:
+                return jsonify({'success': False, 'message': 'A delivery note with this number already exists.'}), 400
+
+            # Update the header
+            cursor.execute("""
+                UPDATE ZZDeliveryNoteHeader
+                SET DelNoteNo = ?
+                WHERE DelNoteNo = ?
+            """, (new_delnoteno, delnote_no))
+
+        delnote_no = new_delnoteno  # For the next update
+
+        # Update the rest of the fields
+        cursor.execute("""
+            UPDATE ZZDeliveryNoteHeader
+            SET DelDate = ?,
+                DeliClientId = ?,
+                DelMarketId = ?,
+                DelTransporter = ?,
+                DelQuantityBags = ?,
+                DelTransportCostExcl = ?
+            WHERE DelNoteNo = ?
+        """, (
+            data['deldate'],
+            data['deliclientid'],
+            data['delmarketid'],
+            data['deltransporter'],
+            data['delquantitybags'],
+            data['deltransportcostexcl'],
+            delnote_no
+        ))
+
+        conn.commit()
+        return jsonify({'success': True})
+    except Exception as e:
+        if 'conn' in locals():
+            conn.rollback()
+        return jsonify({'success': False, 'message': str(e)}), 500
+    finally:
+        if 'conn' in locals():
+            cursor.close()
+            conn.close()
 
 @view_entry_bp.route('/api/agents')
 def get_agents():
@@ -675,3 +656,62 @@ def delete_delivery_line(line_id):
         if 'conn' in locals():
             cursor.close()
             conn.close() 
+
+@view_entry_bp.route('/api/linked_lines')
+def api_linked_lines():
+    delnote_no = request.args.get('delnote_no')
+    conn = create_db_connection()
+    cursor = conn.cursor()
+    query = '''
+    SELECT DelHeaderId, DelNoteNo, DelLineStockId, DelProductDescription, DelQtySent, TotalSalesQty, TotalInvoicedQty,
+           TrnConsignmentID, TrnDelNoteNo, TrnProduct, TrnVariety, TrnSize, TrnClass, TrnMass, TrnBrand, TrnQtySent,
+           DelLineIndex
+    FROM _uvDelNoteVSMktTrn
+    WHERE DelNoteNo = ? OR TrnDelNoteNo = ?
+    '''
+    cursor.execute(query, (delnote_no, delnote_no))
+    columns = [col[0] for col in cursor.description]
+    lines = [dict(zip(columns, row)) for row in cursor.fetchall()]
+    cursor.close()
+    conn.close()
+    return jsonify(lines)
+
+    
+@view_entry_bp.route('/api/dockets')
+def api_dockets():
+    consignment_id = request.args.get('consignment_id')
+    conn = create_db_connection()
+    cursor = conn.cursor()
+    # Replace DocketsTable and fields with your actual table/fields
+    query = '''
+    SELECT DocketNumber, QtySold, Price, SalesValue, DateSold
+    FROM ZZMarketDataTrn
+    WHERE ConsignmentID = ?
+    '''
+    cursor.execute(query, (consignment_id,))
+    columns = [col[0] for col in cursor.description]
+    dockets = [dict(zip(columns, row)) for row in cursor.fetchall()]
+    cursor.close()
+    conn.close()
+    return jsonify(dockets)
+
+
+@view_entry_bp.route('/api/delivery_note_lines')
+def api_delivery_note_lines():
+    del_line_index = request.args.get('del_line_index')
+    conn = create_db_connection()
+    cursor = conn.cursor()
+    query = '''
+    SELECT SalesQty, SalesPrice, GrossSalesAmnt, DiscountPercent, DiscountAmnt, AutoSale, SalesDate, InvoiceNo
+    FROM _uvMarketSales
+    WHERE SalesDelLineId = ?
+    ORDER BY AutoSale DESC
+    '''
+    print(del_line_index)
+    cursor.execute(query, (del_line_index,))
+    columns = [col[0] for col in cursor.description]
+    lines = [dict(zip(columns, row)) for row in cursor.fetchall()]
+    print(lines)
+    cursor.close()
+    conn.close()
+    return jsonify(lines)

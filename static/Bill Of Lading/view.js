@@ -1,79 +1,3 @@
-function refreshSalesTable(delNoteNo) {
-    // Store the currently selected line before refresh
-    const selectedLine = document.querySelector('.delivery-line.selected');
-    const selectedLineId = selectedLine ? selectedLine.dataset.lineId : null;
-
-    fetch(`/api/refresh-sales/${delNoteNo}`)
-        .then(response => response.text())
-        .then(html => {
-            const container = document.getElementById('salesTableContainer');
-            if (container) {
-                container.innerHTML = html;
-                
-                // If there was a selected line, reapply the filter
-                if (selectedLineId) {
-                    const newSelectedLine = document.querySelector(`.delivery-line[data-line-id="${selectedLineId}"]`);
-                    if (newSelectedLine) {
-                        selectDeliveryLine(newSelectedLine, selectedLineId);
-                    }
-                }
-            }
-            // Update the counts after refreshing the table
-            updateCountsDisplay(delNoteNo);
-        })
-        .catch(error => {
-            console.error('Error refreshing sales table:', error);
-        });
-}
-
-function deleteRow(delNoteNo, index, button) {
-    const row = button.closest('tr');
-    const salesId = row.dataset.salesId;
-
-    Swal.fire({
-        title: 'Delete Sale',
-        text: 'Are you sure you want to delete this sale? This action cannot be undone.',
-        icon: 'warning',
-        showCancelButton: true,
-        confirmButtonText: 'Yes, delete it',
-        cancelButtonText: 'Cancel',
-        confirmButtonColor: '#dc2626',
-        cancelButtonColor: '#6b7280'
-    }).then((result) => {
-        if (result.isConfirmed) {
-            fetch(`/delete_sales_entry/${salesId}`, {
-                method: 'DELETE'
-            })
-            .then(response => response.json())
-            .then(data => {
-                if (data.success) {
-                    Swal.fire({
-                        title: 'Deleted!',
-                        text: 'The sale has been deleted successfully.',
-                        icon: 'success',
-                        timer: 1500,
-                        showConfirmButton: false
-                    }).then(() => {
-                        refreshSalesTable(delNoteNo);
-                    });
-                } else {
-                    Swal.fire({
-                        title: 'Error',
-                        text: data.message || 'Failed to delete the sale.',
-                        icon: 'error'
-                    });
-                }
-            })
-            .catch(error => {
-                Swal.fire({
-                    title: 'Error',
-                    text: 'An error occurred while deleting the sale.',
-                    icon: 'error'
-                });
-            });
-        }
-    });
-}
 
 function addSale(delNoteNo) {
     // First modal - Select line
@@ -285,7 +209,8 @@ function showSaleDetailsModal(selectedLine, delNoteNo) {
             .then(data => {
                 if (data.success) {
                     // Refresh the sales table and counts
-                    refreshSalesTable(delNoteNo);
+                    load_delivery_lines_table(delNoteNo);
+                    load_sales_lines_table(delNoteNo)
                     updateCountsDisplay(delNoteNo);
                     const Toast = Swal.mixin({
                         toast: true,
@@ -545,6 +470,11 @@ window.editDeliveryHeader = function(delnoteNo) {
                 const modalHtml = `
                     <div style="text-align: left; padding: 1rem;">
                         <div style="margin-bottom: 1.5rem;">
+                            <label style="display: block; margin-bottom: 0.5rem; font-weight: 600; color: #334155; font-size: 0.95rem;">Delivery Note No</label>
+                            <input type="text" id="deliveryNoteNo" class="form-control" value="${header.delnoteno}" 
+                                   style="padding: 0.6rem; border-radius: 6px; border: 1px solid #e2e8f0; width: 100%;">
+                        </div>
+                        <div style="margin-bottom: 1.5rem;">
                             <label style="display: block; margin-bottom: 0.5rem; font-weight: 600; color: #334155; font-size: 0.95rem;">Delivery Date</label>
                             <input type="date" id="deliveryDate" class="form-control" value="${header.deldate}" 
                                    style="padding: 0.6rem; border-radius: 6px; border: 1px solid #e2e8f0; width: 100%;">
@@ -612,6 +542,7 @@ window.editDeliveryHeader = function(delnoteNo) {
                     },
                     preConfirm: () => {
                         return {
+                            delnoteno: document.getElementById('deliveryNoteNo').value,
                             deldate: document.getElementById('deliveryDate').value,
                             deliclientid: document.getElementById('agentSelect').value,
                             delmarketid: document.getElementById('marketSelect').value,
@@ -633,16 +564,12 @@ window.editDeliveryHeader = function(delnoteNo) {
                         .then(response => response.json())
                         .then(data => {
                             if (data.success) {
-                                Swal.fire({
-                                    title: 'Success!',
-                                    text: 'Delivery note header has been updated successfully.',
-                                    icon: 'success',
-                                    timer: 1500,
-                                    showConfirmButton: false
-                                }).then(() => {
-                                    // Refresh the page to show updated data
+                                const newDelNoteNo = result.value.delnoteno;
+                                if (newDelNoteNo && newDelNoteNo !== delnoteNo) {
+                                    window.location.href = `/delivery-note/${newDelNoteNo}`;
+                                } else {
                                     window.location.reload();
-                                });
+                                }
                             } else {
                                 throw new Error(data.message || 'Failed to update delivery note header');
                             }
@@ -803,88 +730,6 @@ window.saveQuantityChanges = function() {
     });
 };
 
-// Function to cancel quantity edits
-window.cancelQuantityEdit = function() {
-    // Restore original values and switch back to display mode
-    document.querySelectorAll('.quantity-input').forEach(input => {
-        const display = input.previousElementSibling;
-        input.value = display.textContent.replace(/,/g, '');
-    });
-
-    // Remove any new line row
-    const newLine = document.querySelector('tr[data-line-id="new"]');
-    if (newLine) newLine.remove();
-
-    // Get the button container and edit button
-    const buttonContainer = document.querySelector('.quantity-edit-buttons');
-    const editBtn = document.getElementById('editQuantitiesBtn');
-    const addLineBtn = document.getElementById('addLineBtn');
-    
-    // Restore edit button to original state
-    editBtn.innerHTML = '<i class="fas fa-edit"></i> Edit Quantities';
-    editBtn.classList.remove('editing');
-    
-    // Show displays and hide inputs
-    document.querySelectorAll('.quantity-display').forEach(display => {
-        display.style.display = '';
-    });
-    document.querySelectorAll('.quantity-input').forEach(input => {
-        input.style.display = 'none';
-    });
-
-    // Remove the button container and restore edit button to original position
-    if (buttonContainer) {
-        buttonContainer.parentNode.replaceChild(editBtn, buttonContainer);
-    }
-    // Show Add Line button again
-    if (addLineBtn) addLineBtn.style.display = '';
-};
-
-// Updated toggleQuantityEdit to hide/show Add Line button
-window.toggleQuantityEdit = function() {
-    const btn = document.getElementById('editQuantitiesBtn');
-    const addLineBtn = document.getElementById('addLineBtn');
-    const isEditing = btn.classList.contains('editing');
-    
-    if (isEditing) {
-        saveQuantityChanges();
-        if (addLineBtn) addLineBtn.style.display = '';
-    } else {
-        // Switch to edit mode
-        btn.innerHTML = '<i class="fas fa-check"></i> Save Changes';
-        btn.classList.add('editing');
-        document.querySelectorAll('.quantity-display').forEach(display => {
-            display.style.display = 'none';
-        });
-        document.querySelectorAll('.quantity-input').forEach(input => {
-            input.style.display = '';
-        });
-        if (addLineBtn) addLineBtn.style.display = 'none';
-
-        // Create button container if it doesn't exist
-        if (!document.querySelector('.quantity-edit-buttons')) {
-            const buttonContainer = document.createElement('div');
-            buttonContainer.className = 'quantity-edit-buttons';
-            buttonContainer.style.display = 'flex';
-            buttonContainer.style.gap = '0.5rem';
-            buttonContainer.style.alignItems = 'center';
-
-            // Create cancel button
-            const cancelBtn = document.createElement('button');
-            cancelBtn.id = 'cancelQuantityEditBtn';
-            cancelBtn.className = 'sales-btn';
-            cancelBtn.style.backgroundColor = '#dc2626';
-            cancelBtn.style.color = '#fff';
-            cancelBtn.innerHTML = '<i class="fas fa-times"></i> Cancel';
-            cancelBtn.onclick = cancelQuantityEdit;
-
-            // Replace edit button with container and add both buttons
-            btn.parentNode.replaceChild(buttonContainer, btn);
-            buttonContainer.appendChild(btn);
-            buttonContainer.appendChild(cancelBtn);
-        }
-    }
-};
 
 // Add Delivery Line function for adding a new delivery note line
 window.addDeliveryLine = function() {
