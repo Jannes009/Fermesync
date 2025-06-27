@@ -373,9 +373,14 @@
       <div class="delivery-table">
         <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem;">
           <h2>Delivery Line Items</h2>
-          <button class="sales-btn" id="editQuantitiesBtn" onclick="toggleQuantityEdit()">
-            <i class="fas fa-edit"></i> Edit Quantities
-          </button>
+          <div style="display: flex; gap: 0.5rem;">
+            <button class="sales-btn" id="editQuantitiesBtn" onclick="toggleQuantityEdit()">
+              <i class="fas fa-edit"></i> Edit Quantities
+            </button>
+            <button class="sales-btn" id="addLineBtn" onclick="addDeliveryLine()">
+              <i class="fas fa-plus"></i> Add Line
+            </button>
+          </div>
         </div>
         <div class="overflow-auto">
           <table>

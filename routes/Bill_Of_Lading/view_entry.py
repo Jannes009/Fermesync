@@ -1,8 +1,9 @@
 from flask import Blueprint, render_template, request, jsonify
 from db import create_db_connection
 from datetime import datetime
-from routes.db_functions import get_stock_id, get_products,  get_agent_codes, get_transporter_codes, get_market_codes
+from routes.db_functions import get_stock_id, get_products,  get_agent_codes, get_transporter_codes, get_market_codes, production_unit_name_to_production_unit_id
 view_entry_bp = Blueprint('view_entry', __name__)
+
 
 @view_entry_bp.route('/delivery-note/<del_note_no>')
 def delivery_note(del_note_no):
@@ -552,76 +553,120 @@ def get_transporters():
 
 @view_entry_bp.route('/api/update-line-quantities', methods=['POST'])
 def update_line_quantities():
-    try:
-        data = request.get_json()
-        quantities = data.get('quantities', {})
+# try:
+    data = request.get_json()
+    quantities = data.get('quantities', {})
+    new_line_info = data.get('new_line_info', {})  # Expecting: {product_id, prod_unit, quantity, del_note_no}
+    new_line_id = None
+    print(new_line_info)
+    
+    if not quantities:
+        return jsonify({'success': False, 'message': 'No quantities provided'}), 400
         
-        if not quantities:
-            return jsonify({'success': False, 'message': 'No quantities provided'}), 400
-            
-        conn = create_db_connection()
-        cursor = conn.cursor()
-        
-        # Get the header ID and total quantity from the first line
-        first_line_id = list(quantities.keys())[0]
+    conn = create_db_connection()
+    cursor = conn.cursor()
+
+    # If there is a 'new' line, insert it first
+    if 'new' in quantities and new_line_info:
+        # Insert new line
         cursor.execute("""
-            SELECT DelHeaderId, DelQuantityBags
-            FROM ZZDeliveryNoteLines LIN
-            JOIN ZZDeliveryNoteHeader HEA ON HEA.DelIndex = LIN.DelHeaderId
+            SELECT TOP 1 DelIndex FROM ZZDeliveryNoteHeader WHERE DelNoteNo = ?
+        """, (new_line_info['del_note_no'],))
+        header_row = cursor.fetchone()
+        production_unit_id = production_unit_name_to_production_unit_id(new_line_info['prod_unit'], cursor)
+        if not header_row:
+            return jsonify({'success': False, 'message': 'Delivery note not found'}), 404
+        header_id = header_row[0]
+        cursor.execute("""
+            INSERT INTO ZZDeliveryNoteLines (DelHeaderId, DelLineStockId, DelLineFarmId, DelLineQuantityBags)
+            VALUES (?, ?, ?, ?)
+        """, (header_id, new_line_info['product_id'], production_unit_id, new_line_info['quantity']))
+        conn.commit()
+        # Get the new line's ID
+        cursor.execute("""
+            SELECT TOP 1 DelLineIndex FROM ZZDeliveryNoteLines WHERE DelHeaderId = ? ORDER BY DelLineIndex DESC
+        """, (header_id,))
+        new_line_id = cursor.fetchone()[0]
+        # Replace 'new' with the real id in quantities
+        quantities[new_line_id] = quantities['new']
+        del quantities['new']
+
+    # Get the header ID and total quantity from the first line (after possible insert)
+    first_line_id = list(quantities.keys())[0]
+    cursor.execute("""
+        SELECT DelHeaderId, DelQuantityBags
+        FROM ZZDeliveryNoteLines LIN
+        JOIN ZZDeliveryNoteHeader HEA ON HEA.DelIndex = LIN.DelHeaderId
+        WHERE DelLineIndex = ?
+    """, (first_line_id,))
+    result = cursor.fetchone()
+    
+    if not result:
+        return jsonify({'success': False, 'message': 'Line not found'}), 404
+        
+    header_id, header_total = result
+    
+    # Validate total quantity matches header total
+    total_new_quantity = sum(quantities.values())
+    if total_new_quantity != header_total:
+        return jsonify({
+            'success': False, 
+            'message': f'Total quantity must equal {header_total} bags'
+        }), 400
+    
+    # Validate each line's new quantity
+    for line_id, new_qty in quantities.items():
+        cursor.execute("""
+            SELECT TotalQtySold, TotalQtyInvoiced
+            FROM _uvMarketDeliveryNote
             WHERE DelLineIndex = ?
-        """, (first_line_id,))
+        """, (line_id,))
         result = cursor.fetchone()
-        
         if not result:
-            return jsonify({'success': False, 'message': 'Line not found'}), 404
-            
-        header_id, header_total = result
-        
-        # Validate total quantity matches header total
-        total_new_quantity = sum(quantities.values())
-        if total_new_quantity != header_total:
+            return jsonify({'success': False, 'message': f'Line {line_id} not found'}), 404
+        sold_qty, invoiced_qty = result
+        min_qty = sold_qty
+        if new_qty < min_qty:
             return jsonify({
                 'success': False, 
-                'message': f'Total quantity must equal {header_total} bags'
+                'message': f'Quantity for line {line_id} cannot be less than {min_qty} bags (sold quantity)'
             }), 400
-        
-        # Validate each line's new quantity
-        for line_id, new_qty in quantities.items():
-            # Get current sold and invoiced quantities
-            cursor.execute("""
-                SELECT TotalQtySold, TotalQtyInvoiced
-                FROM _uvMarketDeliveryNote
-                WHERE DelLineIndex = ?
-            """, (line_id,))
-            result = cursor.fetchone()
-            
-            if not result:
-                return jsonify({'success': False, 'message': f'Line {line_id} not found'}), 404
-                
-            sold_qty, invoiced_qty = result
-            min_qty = sold_qty  # Only use sold quantity as minimum since invoiced is already included in sold
-            
-            if new_qty < min_qty:
-                return jsonify({
-                    'success': False, 
-                    'message': f'Quantity for line {line_id} cannot be less than {min_qty} bags (sold quantity)'
-                }), 400
-        
-        # Update all quantities in a single transaction
-        for line_id, new_qty in quantities.items():
-            cursor.execute("""
-                UPDATE ZZDeliveryNoteLines
-                SET DelLineQuantityBags = ?
-                WHERE DelLineIndex = ?
-            """, (new_qty, line_id))
-        
+    # Update all quantities in a single transaction
+    for line_id, new_qty in quantities.items():
+        cursor.execute("""
+            UPDATE ZZDeliveryNoteLines
+            SET DelLineQuantityBags = ?
+            WHERE DelLineIndex = ?
+        """, (new_qty, line_id))
+    conn.commit()
+    return jsonify({
+        'success': True,
+        'quantities': {str(k): v for k, v in quantities.items()},
+        'new_line_id': new_line_id,
+        'message': 'Quantities updated successfully'
+    })
+# except Exception as e:
+    if 'conn' in locals():
+        conn.rollback()
+    return jsonify({'success': False, 'message': str(e)}), 500
+# finally:
+    if 'conn' in locals():
+        cursor.close()
+        conn.close() 
+
+@view_entry_bp.route('/api/delete-delivery-line/<int:line_id>', methods=['DELETE'])
+def delete_delivery_line(line_id):
+    try:
+        conn = create_db_connection()
+        cursor = conn.cursor()
+        # Optionally, add safety checks here (e.g., not deleting if sold/invoiced qty > 0)
+        cursor.execute("""
+            DELETE FROM ZZDeliveryNoteLines WHERE DelLineIndex = ?
+        """, (line_id,))
         conn.commit()
-        return jsonify({
-            'success': True,
-            'quantities': quantities,
-            'message': 'Quantities updated successfully'
-        })
-        
+        if cursor.rowcount == 0:
+            return jsonify({'success': False, 'message': 'No line found to delete'}), 404
+        return jsonify({'success': True, 'message': 'Line deleted successfully'})
     except Exception as e:
         if 'conn' in locals():
             conn.rollback()

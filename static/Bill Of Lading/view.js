@@ -422,6 +422,11 @@ function updateCountsDisplay(delnoteNo) {
 
 // Function to handle delivery line selection and sales filtering
 window.selectDeliveryLine = function(row, lineId) {
+    const btn = document.getElementById('editQuantitiesBtn');
+    if (btn && btn.classList.contains('editing')) {
+        // In edit mode, do nothing
+        return;
+    }
     // Remove selected class from all rows
     document.querySelectorAll('.delivery-line').forEach(r => {
         r.classList.remove('selected');
@@ -668,7 +673,8 @@ window.saveQuantityChanges = function() {
     const quantities = {};
     let total = 0;
     let validationErrors = [];
-    
+    let new_line_info = null;
+
     // Get all quantity inputs
     document.querySelectorAll('.quantity-input').forEach(input => {
         const lineId = input.dataset.lineId;
@@ -683,6 +689,31 @@ window.saveQuantityChanges = function() {
         quantities[lineId] = newQty;
         total += newQty;
     });
+    
+    // If a new line exists, collect its info
+    const newLine = document.querySelector('tr[data-line-id="new"]');
+    if (newLine) {
+        const productSelect = newLine.querySelector('.product-select');
+        const product_id = productSelect ? productSelect.value : null;
+        const prod_unit = newLine.querySelector('td:nth-child(3)')?.textContent?.trim() || '';
+        const qtyInput = newLine.querySelector('.quantity-input');
+        const quantity = qtyInput ? parseInt(qtyInput.value) || 0 : 0;
+
+        // Get the delivery note number from the header
+        let del_note_no = null;
+        const header = document.querySelector('.delivery-header h1');
+        if (header) {
+            const match = header.textContent.match(/#(\d+)/);
+            if (match) del_note_no = match[1];
+        }
+
+        new_line_info = {
+            product_id,
+            prod_unit,
+            quantity,
+            del_note_no
+        };
+    }
     
     if (validationErrors.length > 0) {
         Swal.fire({
@@ -725,7 +756,8 @@ window.saveQuantityChanges = function() {
             'Content-Type': 'application/json',
         },
         body: JSON.stringify({
-            quantities: quantities
+            quantities: quantities,
+            new_line_info: new_line_info
         })
     })
     .then(response => response.json())
@@ -755,6 +787,9 @@ window.saveQuantityChanges = function() {
             if (buttonContainer) {
                 buttonContainer.parentNode.replaceChild(btn, buttonContainer);
             }
+            // Show Add Line button again
+            const addLineBtn = document.getElementById('addLineBtn');
+            if (addLineBtn) addLineBtn.style.display = '';
         } else {
             throw new Error(data.message || 'Failed to update line quantities');
         }
@@ -776,9 +811,14 @@ window.cancelQuantityEdit = function() {
         input.value = display.textContent.replace(/,/g, '');
     });
 
+    // Remove any new line row
+    const newLine = document.querySelector('tr[data-line-id="new"]');
+    if (newLine) newLine.remove();
+
     // Get the button container and edit button
     const buttonContainer = document.querySelector('.quantity-edit-buttons');
     const editBtn = document.getElementById('editQuantitiesBtn');
+    const addLineBtn = document.getElementById('addLineBtn');
     
     // Restore edit button to original state
     editBtn.innerHTML = '<i class="fas fa-edit"></i> Edit Quantities';
@@ -796,15 +836,19 @@ window.cancelQuantityEdit = function() {
     if (buttonContainer) {
         buttonContainer.parentNode.replaceChild(editBtn, buttonContainer);
     }
+    // Show Add Line button again
+    if (addLineBtn) addLineBtn.style.display = '';
 };
 
-// Update the toggleQuantityEdit function to include cancel button
+// Updated toggleQuantityEdit to hide/show Add Line button
 window.toggleQuantityEdit = function() {
     const btn = document.getElementById('editQuantitiesBtn');
+    const addLineBtn = document.getElementById('addLineBtn');
     const isEditing = btn.classList.contains('editing');
     
     if (isEditing) {
         saveQuantityChanges();
+        if (addLineBtn) addLineBtn.style.display = '';
     } else {
         // Switch to edit mode
         btn.innerHTML = '<i class="fas fa-check"></i> Save Changes';
@@ -815,6 +859,7 @@ window.toggleQuantityEdit = function() {
         document.querySelectorAll('.quantity-input').forEach(input => {
             input.style.display = '';
         });
+        if (addLineBtn) addLineBtn.style.display = 'none';
 
         // Create button container if it doesn't exist
         if (!document.querySelector('.quantity-edit-buttons')) {
@@ -839,4 +884,245 @@ window.toggleQuantityEdit = function() {
             buttonContainer.appendChild(cancelBtn);
         }
     }
+};
+
+// Add Delivery Line function for adding a new delivery note line
+window.addDeliveryLine = function() {
+    // Switch to edit mode if not already
+    const btn = document.getElementById('editQuantitiesBtn');
+    if (!btn.classList.contains('editing')) {
+        window.toggleQuantityEdit();
+    }
+
+    // Fetch products for dropdown
+    fetch('/api/products')
+        .then(response => response.json())
+        .then(products => {
+            // Find the delivery lines table body
+            const table = document.querySelector('.delivery-table table');
+            if (!table) return;
+            const tbody = table.querySelector('tbody');
+            if (!tbody) return;
+
+            // Get production unit from last line
+            let lastProdUnit = '';
+            const lastRow = tbody.querySelector('tr:last-child');
+            if (lastRow) {
+                lastProdUnit = lastRow.querySelector('td:nth-child(3)')?.textContent?.trim() || '';
+            }
+
+            // Create product dropdown HTML
+            const productOptions = products.map(p => `<option value="${p.StockLink}">${p.display_name}</option>`).join('');
+
+            // Create new row HTML
+            const newRow = document.createElement('tr');
+            newRow.className = 'delivery-line new-delivery-line';
+            newRow.dataset.lineId = 'new';
+            newRow.innerHTML = `
+                <td>New</td>
+                <td>
+                    <select class="form-control product-select searchable-dropdown" style="width: 180px;">
+                        <option value="">Select product...</option>
+                        ${productOptions}
+                    </select>
+                </td>
+                <td>${lastProdUnit}</td>
+                <td>
+                    <div style="display: flex; align-items: center; gap: 8px;">
+                        <span class="quantity-display" style="display:none"></span>
+                        <input type="number" class="form-control quantity-input" style="width: 100px;" min="0" value="" data-line-id="new" data-sold="0" data-invoiced="0">
+                    </div>
+                </td>
+                <td>0</td>
+                <td>0</td>
+            `;
+            tbody.appendChild(newRow);
+
+            // Initialize select2 for the new product dropdown
+            $(newRow).find('.product-select').select2({
+                width: '100%',
+                dropdownParent: $(newRow)
+            });
+        });
+};
+
+// Helper to add delete buttons in their own column in edit mode
+function addDeleteButtonsToLines() {
+    document.querySelectorAll('.delivery-line').forEach(row => {
+        if (row.dataset.lineId === 'new') return;
+        // check for sales
+        const fourthColumnValue = parseFloat(row.cells[4]?.textContent || '0');
+        console.log(fourthColumnValue);
+        if (fourthColumnValue > 0) return;
+        // Only add if not already present
+        if (!row.querySelector('.delete-line-btn')) {
+            // Create a new td for the delete button
+            const td = document.createElement('td');
+            td.className = 'delete-line-td';
+            td.style.textAlign = 'center';
+            const btn = document.createElement('button');
+            btn.className = 'delete-line-btn';
+            btn.style.background = 'none';
+            btn.style.border = 'none';
+            btn.style.cursor = 'pointer';
+            btn.title = 'Delete Line';
+            btn.innerHTML = '<img src="/static/Image/recycle-bin.png" alt="Delete" style="width:22px;">';
+            btn.onclick = function(e) {
+                e.stopPropagation();
+                const lineId = row.dataset.lineId;
+                Swal.fire({
+                    title: 'Delete Line',
+                    text: 'Are you sure you want to delete this delivery line? This action cannot be undone.',
+                    icon: 'warning',
+                    showCancelButton: true,
+                    confirmButtonText: 'Yes, delete it',
+                    cancelButtonText: 'Cancel',
+                    confirmButtonColor: '#dc2626',
+                    cancelButtonColor: '#6b7280'
+                }).then((result) => {
+                    if (result.isConfirmed) {
+                        fetch(`/api/delete-delivery-line/${lineId}`, {
+                            method: 'DELETE'
+                        })
+                        .then(response => response.json())
+                        .then(data => {
+                            if (data.success) {
+                                Swal.fire({
+                                    title: 'Deleted!',
+                                    text: 'The line has been deleted successfully.',
+                                    icon: 'success',
+                                    timer: 1200,
+                                    showConfirmButton: false
+                                });
+                                row.remove();
+                            } else {
+                                Swal.fire({
+                                    title: 'Error',
+                                    text: data.message || 'Failed to delete the line.',
+                                    icon: 'error'
+                                });
+                            }
+                        })
+                        .catch(error => {
+                            Swal.fire({
+                                title: 'Error',
+                                text: 'An error occurred while deleting the line.',
+                                icon: 'error'
+                            });
+                        });
+                    }
+                });
+            };
+            td.appendChild(btn);
+            row.appendChild(td);
+        }
+    });
+
+    // Add a header cell for the delete column if not present
+    const table = document.querySelector('.delivery-table table');
+    if (table) {
+        const ths = table.querySelectorAll('thead tr th');
+        const lastTh = ths[ths.length - 1];
+        if (!table.querySelector('th.delete-line-header')) {
+            const th = document.createElement('th');
+            th.className = 'delete-line-header';
+            th.style.textAlign = 'center';
+            th.textContent = '';
+            lastTh.parentNode.appendChild(th);
+        }
+    }
+}
+
+// Helper to remove delete buttons and their column
+function removeDeleteButtonsFromLines() {
+    // Remove the delete button column from each row
+    document.querySelectorAll('.delivery-line .delete-line-td').forEach(td => td.remove());
+    // Remove the delete column header
+    document.querySelectorAll('th.delete-line-header').forEach(th => th.remove());
+}
+
+// Update toggleQuantityEdit to add/remove delete buttons
+window.toggleQuantityEdit = function() {
+    const btn = document.getElementById('editQuantitiesBtn');
+    const addLineBtn = document.getElementById('addLineBtn');
+    const isEditing = btn.classList.contains('editing');
+    
+    if (isEditing) {
+        saveQuantityChanges();
+        if (addLineBtn) addLineBtn.style.display = '';
+        removeDeleteButtonsFromLines();
+    } else {
+        // Switch to edit mode
+        btn.innerHTML = '<i class="fas fa-check"></i> Save Changes';
+        btn.classList.add('editing');
+        document.querySelectorAll('.quantity-display').forEach(display => {
+            display.style.display = 'none';
+        });
+        document.querySelectorAll('.quantity-input').forEach(input => {
+            input.style.display = '';
+        });
+        if (addLineBtn) addLineBtn.style.display = 'none';
+        addDeleteButtonsToLines();
+
+        // Create button container if it doesn't exist
+        if (!document.querySelector('.quantity-edit-buttons')) {
+            const buttonContainer = document.createElement('div');
+            buttonContainer.className = 'quantity-edit-buttons';
+            buttonContainer.style.display = 'flex';
+            buttonContainer.style.gap = '0.5rem';
+            buttonContainer.style.alignItems = 'center';
+
+            // Create cancel button
+            const cancelBtn = document.createElement('button');
+            cancelBtn.id = 'cancelQuantityEditBtn';
+            cancelBtn.className = 'sales-btn';
+            cancelBtn.style.backgroundColor = '#dc2626';
+            cancelBtn.style.color = '#fff';
+            cancelBtn.innerHTML = '<i class="fas fa-times"></i> Cancel';
+            cancelBtn.onclick = cancelQuantityEdit;
+
+            // Replace edit button with container and add both buttons
+            btn.parentNode.replaceChild(buttonContainer, btn);
+            buttonContainer.appendChild(btn);
+            buttonContainer.appendChild(cancelBtn);
+        }
+    }
+};
+
+// Update cancelQuantityEdit to remove delete buttons
+window.cancelQuantityEdit = function() {
+    // Restore original values and switch back to display mode
+    document.querySelectorAll('.quantity-input').forEach(input => {
+        const display = input.previousElementSibling;
+        input.value = display.textContent.replace(/,/g, '');
+    });
+
+    // Remove any new line row
+    const newLine = document.querySelector('tr[data-line-id="new"]');
+    if (newLine) newLine.remove();
+
+    // Get the button container and edit button
+    const buttonContainer = document.querySelector('.quantity-edit-buttons');
+    const editBtn = document.getElementById('editQuantitiesBtn');
+    const addLineBtn = document.getElementById('addLineBtn');
+    
+    // Restore edit button to original state
+    editBtn.innerHTML = '<i class="fas fa-edit"></i> Edit Quantities';
+    editBtn.classList.remove('editing');
+    
+    // Show displays and hide inputs
+    document.querySelectorAll('.quantity-display').forEach(display => {
+        display.style.display = '';
+    });
+    document.querySelectorAll('.quantity-input').forEach(input => {
+        input.style.display = 'none';
+    });
+
+    // Remove the button container and restore edit button to original position
+    if (buttonContainer) {
+        buttonContainer.parentNode.replaceChild(editBtn, buttonContainer);
+    }
+    // Show Add Line button again
+    if (addLineBtn) addLineBtn.style.display = '';
+    removeDeleteButtonsFromLines();
 };
