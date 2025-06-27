@@ -1,5 +1,3 @@
-
-
 let consignmentMap = {};
 
 // Utility: format numbers with thousands separator
@@ -456,3 +454,67 @@ window.changeProduct = function(lineId, currentProduct) {
       });
     });
 };
+
+// Placeholder for delete (implement backend as needed)
+window.deleteRow = function(delnoteNo, idx, btn) {
+  const row = document.getElementById(`row-${delnoteNo}-${idx}`);
+  if (!row) {
+    console.error('Row not found');
+    return;
+  }
+
+  // Get the sales ID from the row data attribute
+  const salesId = row.getAttribute('data-sales-id');
+  if (!salesId) {
+    console.error('Sales ID not found');
+    return;
+  }
+
+  // Show confirmation dialog
+  Swal.fire({
+    title: 'Delete Sale',
+    text: 'Are you sure you want to delete this sale? This action cannot be undone.',
+    icon: 'warning',
+    showCancelButton: true,
+    confirmButtonText: 'Yes, delete it',
+    cancelButtonText: 'Cancel',
+    confirmButtonColor: '#dc2626',
+    cancelButtonColor: '#6b7280'
+  }).then((result) => {
+    if (result.isConfirmed) {
+      // Call the backend delete endpoint
+      fetch(`/delete_sales_entry/${salesId}`, {
+        method: 'DELETE'
+      })
+      .then(response => response.json())
+      .then(data => {
+        if (data.success) {
+          // Remove the row from the DOM
+          row.remove();
+          
+          // Show success message
+          Swal.fire({
+            title: 'Success!',
+            text: 'Sale has been deleted successfully.',
+            icon: 'success',
+            timer: 1500,
+            showConfirmButton: false
+          }).then(() => {
+            load_delivery_lines_table(delnoteNo)
+          });
+        } else {
+          throw new Error(data.message || 'Failed to delete sale');
+        }
+      })
+      .catch(error => {
+        console.error('Error deleting sale:', error);
+        Swal.fire({
+          title: 'Error',
+          text: error.message || 'An error occurred while deleting the sale.',
+          icon: 'error'
+        });
+      });
+    }
+  });
+}
+
