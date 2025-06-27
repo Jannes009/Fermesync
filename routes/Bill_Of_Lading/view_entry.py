@@ -14,7 +14,7 @@ def delivery_note(del_note_no):
         SELECT TOP 1 DelNoteNo, DelDate, AgentAccount, AgentName,
                     DelTotalQuantity,
                       MarketCode, MarketName, TransporterAccount,
-                      TransporterName
+                      TransporterName, DelTransportCostExcl
         FROM [dbo].[_uvMarketDeliveryNote]
         WHERE DelNoteNo = ?
     """, (del_note_no,))
@@ -94,26 +94,13 @@ def delivery_note(del_note_no):
             'del_line_id': row[13]
         })
 
-    # Summary calculations
-    total_qty_sold = sum([l[4] for l in lines])
-    total_sales_gross = sum([l[5] for l in lines])
-    total_qty_invoiced = sum([l[6] for l in lines])
-    total_invoiced_gross = sum([l[7] for l in lines])
-    avg_price = (total_sales_gross / total_qty_sold) if total_qty_sold else 0
-
     return render_template(
         'Bill Of Lading Page/View_Delivery_note.html',
         header=header,
         lines=lines,
         sales=sales,
         linked_count=linked_count,
-        matched_count=matched_count,
-        summary={
-            'total_qty_sold': total_qty_sold,
-            'avg_price': avg_price,
-            'total_qty_invoiced': total_qty_invoiced,
-            'total_invoiced_gross': total_invoiced_gross
-        }
+        matched_count=matched_count
     )
 
 @view_entry_bp.route('/submit_sales_entries', methods=['POST'])
@@ -438,7 +425,7 @@ def get_delivery_header(delnote_no):
         # Get header data from the view
         cursor.execute("""
         SELECT DelNoteNo, DelDate, DeliClientId, DelMarketId,
-               DelTransporter, DelQuantityBags
+               DelTransporter, DelQuantityBags, DelTransportCostExcl
         From ZZDeliveryNoteHeader	
         WHERE DelNoteNo = ?
         """, (delnote_no,))
@@ -446,14 +433,15 @@ def get_delivery_header(delnote_no):
         header = cursor.fetchone()
         if not header:
             return jsonify({'error': 'Delivery note not found'}), 404
-            
+        print(header)
         return jsonify({
             'delnoteno': header[0],
             'deldate': header[1],
             'deliclientid': header[2],
             'delmarketid': header[3],
             'deltransporter': header[4],
-            'delquantitybags': header[5]  # DelTotalQuantity
+            'delquantitybags': header[5],
+            'deltransportcostexcl': header[6]
         })
         
     except Exception as e:
@@ -465,37 +453,39 @@ def get_delivery_header(delnote_no):
 
 @view_entry_bp.route('/api/save-delivery-header/<delnote_no>', methods=['POST'])
 def save_delivery_header(delnote_no):
-    try:
-        data = request.get_json()
-        conn = create_db_connection()
-        cursor = conn.cursor()
+    # try:
+    data = request.get_json()
+    conn = create_db_connection()
+    cursor = conn.cursor()
+    
+    # Update header data
+    cursor.execute("""
+        UPDATE ZZDeliveryNoteHeader
+        SET DelDate = ?,
+            DeliClientId = ?,
+            DelMarketId = ?,
+            DelTransporter = ?,
+            DelQuantityBags = ?,
+            DelTransportCostExcl = ?
+        WHERE DelNoteNo = ?
+    """, (
+        data['deldate'],
+        data['deliclientid'],
+        data['delmarketid'],
+        data['deltransporter'],
+        data['delquantitybags'],
+        data['deltransportcostexcl'],
+        delnote_no
+    ))
+    
+    conn.commit()
+    return jsonify({'success': True})
         
-        # Update header data
-        cursor.execute("""
-            UPDATE ZZDeliveryNoteHeader
-            SET DelDate = ?,
-                DeliClientId = ?,
-                DelMarketId = ?,
-                DelTransporter = ?,
-                DelQuantityBags = ?
-            WHERE DelNoteNo = ?
-        """, (
-            data['deldate'],
-            data['deliclientid'],
-            data['delmarketid'],
-            data['deltransporter'],
-            data['delquantitybags'],
-            delnote_no
-        ))
-        
-        conn.commit()
-        return jsonify({'success': True})
-        
-    except Exception as e:
-        return jsonify({'error': str(e)}), 500
-    finally:
-        if 'conn' in locals():
-            conn.close()
+    # except Exception as e:
+    #     return jsonify({'error': str(e)}), 500
+    # finally:
+    if 'conn' in locals():
+        conn.close()
 
 @view_entry_bp.route('/api/agents')
 def get_agents():

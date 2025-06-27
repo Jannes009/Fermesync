@@ -40,27 +40,7 @@
                 </div>
                 
                 <form method="POST" class="filter-form">
-                    <div class="filter-grid">
-                        <div class="filter-group">
-                            <label for="ZZAgentName">Agent Name</label>
-                            <select name="ZZAgentName" id="ZZAgentName">
-                                <option value="">All Agents</option>
-                                {% for agent in agent_codes %}
-                                    <option value="{{ agent }}" {% if filters.agent_name == agent %}selected{% endif %}>{{ agent }}</option>
-                                {% endfor %}
-                            </select>
-                        </div>
-                    
-                        <div class="filter-group">
-                            <label for="start_date">Start Date</label>
-                            <input type="date" id="start_date" name="start_date" value="{{ filters.start_date }}">
-                        </div>
-                    
-                        <div class="filter-group">
-                            <label for="end_date">End Date</label>
-                            <input type="date" id="end_date" name="end_date" value="{{ filters.end_date }}">
-                        </div>
-                    
+                    <div class="filter-grid">                    
                         <div class="filter-group">
                             <label for="DeliveryNoteNo">Delivery Note No</label>
                             <input type="text" id="DeliveryNoteNo" name="DeliveryNoteNo" placeholder="Enter note number" value="{{ filters.delivery_note_no }}">

@@ -7,12 +7,7 @@ view_bp = Blueprint('view', __name__)
 @view_bp.route('/view_entries', methods=['GET', 'POST'])
 def view_entries():
     filters = {
-    "agent_name": request.form.get('ZZAgentName', ''),
-    "start_date": request.form.get('start_date', ''),
-    "end_date": request.form.get('end_date', ''),
     "del_note_number": request.form.get('DeliveryNoteNo', ''),
-    "Invoiced": request.form.get('Invoiced', '0'),  # Defaults to '0' if not sent
-    "Not_Invoiced": request.form.get('Not_Invoiced', '1')  # Defaults to '0' if not sent
     }
 
     # Create the base query
@@ -27,18 +22,6 @@ def view_entries():
     params = []
 
     # Add filters to the query
-    if filters["agent_name"]:
-        query += " AND Agent = ?"
-        params.append(filters["agent_name"])
-    
-    if filters["start_date"]:
-        query += " AND DelDate >= ?"
-        params.append(filters["start_date"])
-    
-    if filters["end_date"]:
-        query += " AND DelDate <= ?"
-        params.append(filters["end_date"])
-    
     if filters["del_note_number"]:
         query += " AND DelNoteNo LIKE ?"
         filters["del_note_number"] = filters["del_note_number"].replace('%', '\\%').replace('_', '\\_')

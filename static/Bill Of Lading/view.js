@@ -570,6 +570,11 @@ window.editDeliveryHeader = function(delnoteNo) {
                             <input type="number" id="totalQuantity" class="form-control" value="${header.delquantitybags || 0}"
                                    style="padding: 0.6rem; border-radius: 6px; border: 1px solid #e2e8f0; width: 100%;">
                         </div>
+                        <div style="margin-bottom: 1.5rem;">
+                            <label style="display: block; margin-bottom: 0.5rem; font-weight: 600; color: #334155; font-size: 0.95rem;">Transport Cost</label>
+                            <input type="number" id="transportCost" class="form-control" value="${header.deltransportcostexcl || 0}"
+                                   style="padding: 0.6rem; border-radius: 6px; border: 1px solid #e2e8f0; width: 100%;">
+                        </div>
                     </div>
                 `;
 
@@ -599,42 +604,6 @@ window.editDeliveryHeader = function(delnoteNo) {
                         }).on('select2:open', () => {
                             document.querySelector('.select2-container--open').style.zIndex = 9999;
                         });
-
-                        // Add custom styles for Select2
-                        const style = document.createElement('style');
-                        style.textContent = `
-                            .select2-container--bootstrap-5 .select2-selection {
-                                padding: 0.6rem;
-                                border-radius: 6px;
-                                border: 1px solid #e2e8f0;
-                                min-height: 42px;
-                            }
-                            .select2-container--bootstrap-5 .select2-selection--single {
-                                display: flex;
-                                align-items: center;
-                            }
-                            .select2-container--bootstrap-5 .select2-selection--single .select2-selection__rendered {
-                                padding: 0;
-                                color: #334155;
-                            }
-                            .select2-container--bootstrap-5 .select2-dropdown {
-                                border: 1px solid #e2e8f0;
-                                border-radius: 6px;
-                                box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
-                            }
-                            .select2-container--bootstrap-5 .select2-results__option {
-                                padding: 0.6rem 1rem;
-                            }
-                            .select2-container--bootstrap-5 .select2-results__option--highlighted {
-                                background-color: #e0edff;
-                                color: #2563eb;
-                            }
-                            .select2-container--bootstrap-5 .select2-results__option--selected {
-                                background-color: #2563eb;
-                                color: white;
-                            }
-                        `;
-                        document.head.appendChild(style);
                     },
                     preConfirm: () => {
                         return {
@@ -642,7 +611,8 @@ window.editDeliveryHeader = function(delnoteNo) {
                             deliclientid: document.getElementById('agentSelect').value,
                             delmarketid: document.getElementById('marketSelect').value,
                             deltransporter: document.getElementById('transporterSelect').value,
-                            delquantitybags: parseInt(document.getElementById('totalQuantity').value) || 0
+                            delquantitybags: parseInt(document.getElementById('totalQuantity').value) || 0,
+                            deltransportcostexcl: parseFloat(document.getElementById('transportCost').value) || 0
                         };
                     }
                 }).then((result) => {
