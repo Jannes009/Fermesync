@@ -299,6 +299,35 @@ function renderDeliveryNoteLinesTable(lines) {
     </tfoot>
   </table>`;
 }
+// Cancel edit: revert row back to display mode
+window.cancelEdit = function(delnoteNo, idx, btn) {
+  const row = document.getElementById(`row-${delnoteNo}-${idx}`);
+  if (!row) return;
+
+  // Get the original values from data attributes
+  const priceCell = row.querySelector('.price-cell');
+  const qtyCell = row.querySelector('.qty-cell');
+  const discountCell = row.querySelector('.discount-cell');
+
+  // Restore original values
+  priceCell.innerHTML = `R${formatNumber(parseFloat(priceCell.querySelector('input').value))}`;
+  qtyCell.innerHTML = formatNumber(parseFloat(qtyCell.querySelector('input').value));
+  discountCell.innerHTML = `R${formatNumber(parseFloat(discountCell.querySelector('input').value))}`;
+
+  // Restore edit and delete buttons
+  const actionsCell = row.querySelector('.sales-row-actions');
+  actionsCell.innerHTML = `
+    <button class="icon-btn" onclick="editRow('${delnoteNo}', ${idx}, this)">
+      <img src="/static/Image/edit.png" alt="Edit">
+    </button>
+    <button class="icon-btn" onclick="deleteRow('${delnoteNo}', ${idx}, this)">
+      <img src="/static/Image/recycle-bin.png" alt="Delete">
+    </button>
+  `;
+
+  // Remove editing state
+  delete row.dataset.editing;
+}
 // Add function to handle unlinking consignment
 window.unlinkConsignment = function(consignmentId, delnoteNo) {
   Swal.fire({
@@ -351,6 +380,136 @@ window.unlinkConsignment = function(consignmentId, delnoteNo) {
   });
 };
 
+// Edit row: make qty, price, discount editable, change edit to submit
+window.editRow = function(delnoteNo, idx, btn) {
+  const row = document.getElementById(`row-${delnoteNo}-${idx}`);
+  if (!row) return;
+  
+  // Get the data attributes
+  const salesId = row.dataset.salesId;
+  const lineId = row.dataset.lineId;
+  
+  if (!lineId) {
+    Swal.fire({
+      title: 'Error',
+      text: 'Could not determine the line ID for this sale. Please try refreshing the page.',
+      icon: 'error'
+    });
+    return;
+  }
+  const priceCell = row.querySelector('.price-cell');
+  const qtyCell = row.querySelector('.qty-cell');
+  const discountCell = row.querySelector('.discount-cell');
+  
+  const price = parseFloat(priceCell.innerText.replace('R', '').replace(/,/g, ''));
+  const qty = parseFloat(qtyCell.innerText.replace(/,/g, ''));
+  const discount = parseFloat(discountCell.innerText.replace('R', '').replace(/,/g, '')) / price / qty * 100;
+  
+  priceCell.innerHTML = `<input type="number" step="0.01" value="${price}" class="form-control">`;
+  qtyCell.innerHTML = `<input type="number" step="1" value="${qty}" class="form-control">`;
+  discountCell.innerHTML = `<input type="number" step="0.01" value="${discount}" class="form-control">`;
+  
+  // Replace edit button with submit button
+  const actionsCell = row.querySelector('.sales-row-actions');
+  actionsCell.innerHTML = `
+    <button class="icon-btn" onclick="submitRow('${delnoteNo}', ${idx}, this, '${salesId}', '${lineId}')">
+      <img src="/static/Image/check.png" alt="Submit">
+    </button>
+    <button class="icon-btn" onclick="cancelEdit('${delnoteNo}', ${idx}, this)">
+      <img src="/static/Image/cancel.png" alt="Cancel">
+    </button>
+  `;
+  
+  // Mark row as being edited
+  row.dataset.editing = 'true';
+}
+
+window.submitRow = function(delnoteNo, idx, btn, salesId, lineId) {
+  const row = document.getElementById(`row-${delnoteNo}-${idx}`);
+  if (!row) return;
+  
+  const priceCell = row.querySelector('.price-cell');
+  const qtyCell = row.querySelector('.qty-cell');
+  const discountCell = row.querySelector('.discount-cell');
+    
+  const price = parseFloat(priceCell.querySelector('input').value);
+  const qty = parseFloat(qtyCell.querySelector('input').value);
+  const discount = parseFloat(discountCell.querySelector('input').value);
+  
+  // Calculate amounts
+  const amount = price * qty;
+  const discountAmount = (amount * discount) / 100;
+  const grossAmount = amount;
+  
+  // Use the lineId passed as parameter, or fall back to dataset
+  const finalLineId = lineId || row.dataset.lineId;
+  
+  if (!finalLineId) {
+    Swal.fire({
+      title: 'Error',
+      text: 'Could not determine the line ID for this sale. Please try refreshing the page.',
+      icon: 'error'
+    });
+    return;
+  }
+  
+  // Prepare the sale data
+  const saleData = {
+    lineId: finalLineId,  // This matches the backend's expected field name
+    salesId: salesId,
+    date: row.querySelector('td:first-child').innerText,
+    price: price,
+    quantity: qty,
+    discount: discount,
+    discountAmnt: discountAmount,
+    amount: amount,
+    destroyed: false
+  };
+  
+  // Submit the sale
+  fetch('/submit_sales_entries', {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify({
+      salesEntries: [saleData]
+    })
+  })
+  .then(response => response.json())
+  .then(data => {
+    if (data.success) {
+      Swal.fire({
+        title: 'Success!',
+        text: 'Sale has been updated successfully.',
+        icon: 'success'
+      }).then(() => {
+        // Use the refreshSalesTable function from view.js
+        if (typeof refreshSalesTable === 'function') {
+          refreshSalesTable(delnoteNo);
+        } else {
+          console.error('refreshSalesTable function not found');
+          // Fallback to page reload if function not found
+          window.location.reload();
+        }
+      });
+    } else {
+      Swal.fire({
+        title: 'Error',
+        text: data.message || 'Failed to update sale.',
+        icon: 'error'
+      });
+    }
+  })
+  .catch(error => {
+    console.error('Error submitting sale:', error);
+    Swal.fire({
+      title: 'Error',
+      text: 'An error occurred while updating the sale.',
+      icon: 'error'
+    });
+  });
+}
 
 // Function to handle product change
 window.changeProduct = function(lineId, currentProduct, delNoteNo) {
