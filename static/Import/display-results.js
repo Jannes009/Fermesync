@@ -198,48 +198,106 @@ function showConsignmentDetails(consignmentId) {
     fetch(`/import/get_consignment_details?consignment_id=${consignmentId}`)
         .then(response => response.json())
         .then(data => {
-            if (data.error) {
-                throw new Error(data.error);
-            }
+            if (data.error) throw new Error(data.error);
 
-            let { ImportProduct, ImportVariety, ImportClass, ImportMass, ImportSize, ImportQty, ImportBrand } = data.consignment_details;
+            let {
+                ImportProduct, ImportVariety, ImportClass,
+                ImportMass, ImportSize, ImportQty, ImportBrand
+            } = data.consignment_details;
             let matches = data.matches || [];
 
-            // Function to check if values match (case-insensitive, ignores units)
-            function isMatch(value1, value2) {
-                if (value1 == null || value2 == null) return false;
+            function normalizeSize(value) {
+                if (!value) return '';
+                let v = value.toLowerCase().replace(/[-\s]/g, '');
+            
+                if (['xs', 'extrasmall'].includes(v)) return 'xs';
+                if (['s', 'small'].includes(v)) return 's';
+                if (['ms', 'mediumsmall'].includes(v)) return 'ms';
+                if (['m', 'medium'].includes(v)) return 'm';
+                if (['lm', 'largemedium', 'largemed', 'mediumlarge'].includes(v)) return 'lm';
+                if (['l', 'large'].includes(v)) return 'l';
+            
+                return v; // fallback to raw normalized string if no match
+            }
+            
 
-                // Convert to strings, trim spaces, lowercase for case-insensitivity
+            function isMatch(value1, value2, field = "") {
+                if (value1 == null || value2 == null) return false;
                 let v1 = String(value1).trim().toLowerCase();
                 let v2 = String(value2).trim().toLowerCase();
 
-                // Remove non-numeric characters for numbers (e.g., "10 kg" → "10")
-                let num1 = parseFloat(v1.replace(/[^\d.-]/g, ""));
-                let num2 = parseFloat(v2.replace(/[^\d.-]/g, ""));
-
-                // If both are numbers, compare as numbers
-                if (!isNaN(num1) && !isNaN(num2)) {
-                    return num1 === num2;
+                if (field === 'size') {
+                    return normalizeSize(v1) === normalizeSize(v2);
                 }
 
-                // Otherwise, compare as case-insensitive strings
+                let num1 = parseFloat(v1.replace(/[^\d.-]/g, ""));
+                let num2 = parseFloat(v2.replace(/[^\d.-]/g, ""));
+                if (!isNaN(num1) && !isNaN(num2)) return num1 === num2;
+
                 return v1 === v2;
             }
 
-            let matchOptions = matches.map(match => {
+            // Score and sort matches
+            let scoredMatches = matches.map(match => {
+                let fields = [
+                    ['LineProduct', ImportProduct],
+                    ['LineVariety', ImportVariety],
+                    ['LineClass', ImportClass],
+                    ['LineMass', ImportMass],
+                    ['LineSize', ImportSize, 'size'],
+                    ['LineBrand', ImportBrand],
+                    ['LineQty', ImportQty]
+                ];
+
+                let greenCount = 0;
+                for (let [key, importValue, type] of fields) {
+                    if (isMatch(match[key], importValue, type)) greenCount++;
+                }
+
+                let qtyMatches = isMatch(match.LineQty, ImportQty);
+                return { match, greenCount, qtyMatches };
+            });
+
+            // Sort: valid qty first, then highest match score
+            scoredMatches.sort((a, b) => {
+                if (a.qtyMatches !== b.qtyMatches) {
+                    return b.qtyMatches - a.qtyMatches;
+                }
+                return b.greenCount - a.greenCount;
+            });
+
+            // Build table rows
+            let rowScores = [];
+            let matchOptions = scoredMatches.map(({ match, greenCount, qtyMatches }) => {
+                rowScores.push(greenCount);
+
+                let fields = [
+                    ['LineProduct', ImportProduct],
+                    ['LineVariety', ImportVariety],
+                    ['LineClass', ImportClass],
+                    ['LineMass', ImportMass],
+                    ['LineSize', ImportSize, 'size'],
+                    ['LineBrand', ImportBrand],
+                    ['LineQty', ImportQty]
+                ];
+
+                let cells = fields.map(([key, importValue, fieldType]) => {
+                    let value = match[key];
+                    let matched = isMatch(value, importValue, fieldType);
+                    return `<td style="${matched ? 'background-color: #52eb34;' : ''}">${value}</td>`;
+                }).join('');
+
                 return `
-                    <tr>
-                        <td><input type="radio" name="match" value="${match.DelLineIndex}"></td>
-                        <td style="${isMatch(match.LineProduct, ImportProduct) ? 'background-color: #52eb34;' : ''}">${match.LineProduct}</td>
-                        <td style="${isMatch(match.LineVariety, ImportVariety) ? 'background-color: #52eb34;' : ''}">${match.LineVariety}</td>
-                        <td style="${isMatch(match.LineClass, ImportClass) ? 'background-color: #52eb34;' : ''}">${match.LineClass}</td>
-                        <td style="${isMatch(match.LineMass, ImportMass) ? 'background-color: #52eb34;' : ''}">${match.LineMass}</td>
-                        <td style="${isMatch(match.LineSize, ImportSize) ? 'background-color: #52eb34;' : ''}">${match.LineSize}</td>
-                        <td style="${isMatch(match.LineBrand, ImportBrand) ? 'background-color: #52eb34;' : ''}">${match.LineBrand}</td>
-                        <td style="${isMatch(match.LineQty, ImportQty) ? 'background-color: #52eb34;' : ''}">${match.LineQty}</td>
+                    <tr style="${!qtyMatches ? 'opacity: 0.5;' : ''}">
+                        <td>
+                            <input type="radio" name="match" value="${match.DelLineIndex}" ${!qtyMatches ? 'disabled' : ''}>
+                        </td>
+                        ${cells}
                     </tr>
                 `;
             }).join('');
+
+            let maxScore = Math.max(...rowScores);
 
             Swal.fire({
                 title: `Consignment ID: ${consignmentId}`,
@@ -250,8 +308,8 @@ function showConsignmentDetails(consignmentId) {
                     <b>Mass:</b> ${ImportMass} kg <br>
                     <b>Size:</b> ${ImportSize} <br>
                     <b>Brand:</b> ${ImportBrand} <br>
-                    <b>Quantity:</b> ${ImportQty} <br>
-                    <br>
+                    <b>Quantity:</b> ${ImportQty} <br><br>
+
                     <table class="table table-bordered">
                         <thead>
                             <tr>
@@ -273,36 +331,42 @@ function showConsignmentDetails(consignmentId) {
                 confirmButtonText: "Match",
                 cancelButtonText: "Close",
                 preConfirm: () => {
-                    let selectedMatch = document.querySelector('input[name="match"]:checked');
-                    if (!selectedMatch) {
+                    let selected = document.querySelector('input[name="match"]:checked');
+                    if (!selected) {
                         Swal.showValidationMessage("Please select a match.");
+                        return false;
                     }
-                    return selectedMatch ? selectedMatch.value : null;
+
+                    let selectedIndex = [...document.querySelectorAll('input[name="match"]')].findIndex(r => r === selected);
+                    if (rowScores[selectedIndex] < maxScore) {
+                        Swal.showValidationMessage("You did not select the best match (most green fields).");
+                        return false;
+                    }
+
+                    return selected.value;
                 }
             }).then(result => {
                 if (result.isConfirmed) {
                     let lineId = result.value;
-                    console.log(result)
                     fetch(`/import/match_consignment/${consignmentId}/${lineId}`, { method: "POST" })
-                    .then(response => response.json())
-                    .then(data => {
-                        if (data.error) {
-                            Swal.fire("Error!", data.error, "error");
-                        } else {
-                            Swal.fire({
-                                title: "Matched!",
-                                text: data.message,
-                                icon: "success",
-                                timer: 1000,
-                                showConfirmButton: false
-                            })
-                            fetchImportedData();
-                        }
-                    })
-                    .catch(error => {
-                        console.error("Match error:", error);
-                        Swal.fire("Error!", "Failed to match consignment.", "error");
-                    });
+                        .then(res => res.json())
+                        .then(data => {
+                            if (data.error) {
+                                Swal.fire("Error!", data.error, "error");
+                            } else {
+                                Swal.fire({
+                                    title: "Matched!",
+                                    text: data.message,
+                                    icon: "success",
+                                    timer: 1000,
+                                    showConfirmButton: false
+                                });
+                                fetchImportedData();
+                            }
+                        }).catch(error => {
+                            console.error("Match error:", error);
+                            Swal.fire("Error!", "Failed to match consignment.", "error");
+                        });
                 }
             });
         })
@@ -311,6 +375,8 @@ function showConsignmentDetails(consignmentId) {
             Swal.fire("Error!", error.message || "Failed to load consignment details.", "error");
         });
 }
+
+
 
 function showEditSupplierRefModal(consignmentId, currentValue) {
     Swal.fire({
