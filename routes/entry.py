@@ -222,3 +222,54 @@ def get_last_sales_price():
         return jsonify({"lastSalesPrice": result[0]})
     else:
         return jsonify({"lastSalesPrice": None})
+
+@entry_bp.route("/get-default-transport-cost", methods=["POST"])
+def get_default_transport_cost_api():
+    """
+    API endpoint to get the default transport cost based on agent, packhouse, and transporter.
+    """
+    data = request.json
+    agent_code = data.get("agentCode")
+    packhouse_code = data.get("packhouseCode") 
+    transporter_code = data.get("transporterCode")
+    print(agent_code, packhouse_code, transporter_code)
+
+    if not agent_code or not packhouse_code or not transporter_code:
+        return jsonify({"error": "Missing required parameters: agentCode, packhouseCode, transporterCode"}), 400
+
+    try:
+        conn = create_db_connection()
+        cursor = conn.cursor()
+        
+        # fetch agent destination
+        query = """
+        Select AgentDestination from _uvMarketAgent
+        Where DCLink = ?
+        """
+        cursor.execute(query, (agent_code,))
+        destination_result = cursor.fetchone()
+        print(destination_result)
+        default_cost = 0.0
+        if destination_result and destination_result[0] is not None:
+            destination = destination_result[0]
+            query = """
+            Select LastTransportCost from [dbo].[_uvLastTransportCost]
+            where TransporterAccount = ? AND PackhouseLink = ? AND AgentDestination = ? 
+            """
+            cursor.execute(query, (transporter_code, packhouse_code, destination))
+            result = cursor.fetchone()
+            print(transporter_code, packhouse_code, destination, result)
+            if result and result[0] is not None:
+                default_cost = float(result[0])
+            else:
+                default_cost = 0
+        else:
+            default_cost = 0
+        
+        close_db_connection(cursor, conn)
+        
+        return jsonify({"defaultTransportCost": default_cost})
+        
+    except Exception as e:
+        print(f"Error in get_default_transport_cost_api: {e}")
+        return jsonify({"error": "Failed to get default transport cost"}), 500

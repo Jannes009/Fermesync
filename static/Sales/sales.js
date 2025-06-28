@@ -453,7 +453,56 @@ window.submitRow = function(delnoteNo, idx, btn, salesId, lineId) {
     return;
   }
   
-  // Prepare the sale data
+  // Validate quantity before submitting
+  // Get all sales rows for this specific delivery line (excluding the current sale being edited)
+  const salesTable = document.querySelector('.sales-table');
+  if (!salesTable) {
+    Swal.fire({
+      title: 'Error',
+      text: 'Could not find sales table. Please try refreshing the page.',
+      icon: 'error'
+    });
+    return;
+  }
+  
+  const salesRows = salesTable.querySelectorAll('tbody tr');
+  let totalCurrentSales = 0;
+  
+  salesRows.forEach(saleRow => {
+    const saleLineId = saleRow.dataset.lineId;
+    const saleSalesId = saleRow.dataset.salesId;
+    
+    // Only count sales for this line, excluding the current sale being edited
+    if (saleLineId == finalLineId && saleSalesId != salesId) {
+      const saleQty = parseInt(saleRow.querySelector('.qty-cell').textContent.replace(/,/g, '')) || 0;
+      totalCurrentSales += saleQty;
+    }
+  });
+  
+  // Get the delivery line quantity from the delivery lines table
+  const deliveryLineRow = document.querySelector(`tr[data-line-id="${finalLineId}"]`);
+  if (!deliveryLineRow) {
+    Swal.fire({
+      title: 'Error',
+      text: 'Could not find delivery line information. Please try refreshing the page.',
+      icon: 'error'
+    });
+    return;
+  }
+  
+  const quantitySent = parseInt(deliveryLineRow.querySelector('td:nth-child(4) .quantity-display').textContent.replace(/,/g, ''));
+  const totalSalesAfterEdit = totalCurrentSales + qty;
+  
+  if (totalSalesAfterEdit > quantitySent) {
+    Swal.fire({
+      title: 'Validation Error',
+      text: `Total sales quantity (${totalSalesAfterEdit}) cannot exceed quantity sent (${quantitySent}). Please reduce the quantity.`,
+      icon: 'error'
+    });
+    return;
+  }
+  
+  // If validation passes, proceed with submission
   const saleData = {
     lineId: finalLineId,  // This matches the backend's expected field name
     salesId: salesId,

@@ -21,6 +21,52 @@ document.addEventListener("DOMContentLoaded", () => {
         }
     });
     
+    // Add event listeners for agent, packhouse, and transporter dropdowns
+    $(document).on('select2:select', 'select[name="ZZAgentName"], select[name="ZZMarket"], select[name="ZZTransporterCode"]', function (e) {
+        checkAndSetDefaultTransportCost();
+    });
+    
+    async function checkAndSetDefaultTransportCost() {
+        console.log("Checking")
+        const agentCode = $('select[name="ZZAgentName"]').val();
+        const packhouseCode = $('select[name="ZZMarket"]').val();
+        const transporterCode = $('select[name="ZZTransporterCode"]').val();
+        
+        // Only proceed if all three are selected
+        if (!agentCode || !packhouseCode || !transporterCode) {
+            return;
+        }
+        
+        try {
+            const response = await fetch("/get-default-transport-cost", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({
+                    agentCode: agentCode,
+                    packhouseCode: packhouseCode,
+                    transporterCode: transporterCode
+                })
+            });
+            
+            if (!response.ok) {
+                throw new Error("Failed to fetch default transport cost");
+            }
+            
+            const data = await response.json();
+            
+            if (data.defaultTransportCost !== undefined && data.defaultTransportCost > 0) {
+                const transportCostInput = document.getElementById('ZZTransporterCost');
+                if (transportCostInput) {
+                    transportCostInput.value = data.defaultTransportCost;
+                }
+            }
+            
+        } catch (error) {
+            console.error("Error fetching default transport cost:", error);
+            // Don't show error to user as this is just a default setting
+        }
+    }
+    
     async function handleProductSelection(value, selectElement) {
         const market = document.querySelector("select[name='ZZMarket']").value;
         if (!market) {
