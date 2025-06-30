@@ -10,8 +10,10 @@
         display: flex;
         justify-content: center;
         align-items: center;
-        height: 100vh;
+        min-height: 100vh;
         margin: 0;
+        padding: 20px 0; /* Add some vertical padding */
+        box-sizing: border-box;
     }
 
     /* Container styling */
@@ -23,6 +25,12 @@
         width: 100%;
         max-width: 400px;
         text-align: center;
+    }
+
+    .login-logo {
+        height: 400px;
+        width: auto;
+        margin-bottom: 10px; /* Reduced space */
     }
 
     h2 {
@@ -101,57 +109,66 @@
     .register-fields {
         display: none;
     }
+
+    .page-container {
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+    }
 </style>
 
-<div class="login-container">
-    {% if error %}
-    <p class="error">{{ error }}</p>
-    {% endif %}
-    <h2 id="form-title">Login</h2>
-    <form id="auth-form" method="POST">
-        <div class="form-group">
-            <label for="username">Username:</label>
-            <input type="text" id="username" name="username" required>
-        </div>
-        <div class="form-group">
-            <label for="password">Password:</label>
-            <input type="password" id="password" name="password" required>
-        </div>
+<div class="page-container">
+    <img src="{{ url_for('static', filename='Image/LogoAndText.svg') }}" alt="Fermesync Logo" class="login-logo">
+    <div class="login-container">
+        {% if error %}
+        <p class="error">{{ error }}</p>
+        {% endif %}
+        <h2 id="form-title">Login</h2>
+        <form id="auth-form" method="POST">
+            <div class="form-group">
+                <label for="username">Username:</label>
+                <input type="text" id="username" name="username" required>
+            </div>
+            <div class="form-group">
+                <label for="password">Password:</label>
+                <input type="password" id="password" name="password" required>
+            </div>
 
-        <!-- Register Fields, initially hidden -->
-        <div class="register-fields">
-            <div class="form-group">
-                <label for="role">Role:</label>
-                <select id="role" name="role">
-                    <option value="user">User</option>
-                    <option value="admin">Admin</option>
-                </select>
+            <!-- Register Fields, initially hidden -->
+            <div class="register-fields">
+                <div class="form-group">
+                    <label for="role">Role:</label>
+                    <select id="role" name="role">
+                        <option value="user">User</option>
+                        <option value="admin">Admin</option>
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label for="server_name">Server Name:</label>
+                    <input type="text" id="server_name" name="server_name">
+                </div>
+                <div class="form-group">
+                    <label for="db_name">Database Name:</label>
+                    <input type="text" id="db_name" name="db_name">
+                </div>
+                <div class="form-group">
+                    <label for="db_username">SQL Username:</label>
+                    <input type="text" id="db_username" name="db_username">
+                </div>
+                <div class="form-group">
+                    <label for="db_password">SQL Password:</label>
+                    <input type="password" id="db_password" name="db_password">
+                </div>            
             </div>
-            <div class="form-group">
-                <label for="server_name">Server Name:</label>
-                <input type="text" id="server_name" name="server_name">
-            </div>
-            <div class="form-group">
-                <label for="db_name">Database Name:</label>
-                <input type="text" id="db_name" name="db_name">
-            </div>
-            <div class="form-group">
-                <label for="db_username">SQL Username:</label>
-                <input type="text" id="db_username" name="db_username">
-            </div>
-            <div class="form-group">
-                <label for="db_password">SQL Password:</label>
-                <input type="password" id="db_password" name="db_password">
-            </div>            
-        </div>
-        <input type="hidden" name="next" value="{{ next or request.args.get('next') }}">
-      
-        
+            <input type="hidden" name="next" value="{{ next or request.args.get('next') }}">
+          
+            
 
-        <!-- Buttons for login and register actions -->
-        <button type="submit" id="submit-btn">Login</button>
-        <button type="button" id="toggle-btn" onclick="toggleForm()">Register</button>
-    </form>
+            <!-- Buttons for login and register actions -->
+            <button type="submit" id="submit-btn">Login</button>
+            <button type="button" id="toggle-btn" onclick="toggleForm()">Register</button>
+        </form>
+    </div>
 </div>
 <script>
     // Function to handle form submission

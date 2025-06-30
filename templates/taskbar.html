@@ -1,8 +1,13 @@
 <!-- taskbar.html -->
 <header class="taskbar">
+    <div class="logo-container">
+        <a href="/dashboard" class="logo-link">
+            <img src="{{ url_for('static', filename='Image/HorizontalLogoAndText.svg') }}" alt="Fermesync Logo" class="taskbar-logo">
+        </a>
+    </div>
     <nav>
         <ul>
-            <li><a href="/dashboard" class="taskbar-link" id="dashboard-link">Dashboard</a></li>
+            <!-- <li><a href="/dashboard" class="taskbar-link" id="dashboard-link">Dashboard</a></li> -->
             <li><a href="/create_entry" class="taskbar-link" id="create-entry-link">Create Entry</a></li>
             <li><a href="/view_entries" class="taskbar-link" id="view-database-link">View Database</a></li>
             <li><a href="/import/main" class="taskbar-link" id="import-link">Import</a></li>
@@ -33,6 +38,24 @@ body, html {
     flex-direction: column;
 }
 
+.logo-container {
+    display: flex;
+    align-items: center;
+    height: 100%;
+}
+
+.logo-link {
+    display: flex;
+    align-items: center;
+    text-decoration: none;
+}
+
+.taskbar-logo {
+    height: 240px;
+    width: auto;
+    transform: translateY(7px);
+}
+
 .taskbar {
     position: sticky;
     top: 0;
@@ -45,7 +68,7 @@ body, html {
     display: flex;
     justify-content: space-between;
     align-items: center;
-    padding: 12px 20px;
+    padding: 0 20px;
     font-family: 'Arial', sans-serif;
     height: 60px;
 }
@@ -58,7 +81,9 @@ main {
 
 /* Navigation */
 .taskbar nav {
-    flex: 1;
+    position: absolute;
+    left: 50%;
+    transform: translateX(-50%);
 }
 
 .taskbar ul {
@@ -72,6 +97,7 @@ main {
     text-decoration: none;
     color: var(--taskbar-text);
     font-size: 1rem;
+    font-family: Georgia, 'Times New Roman', Times, serif;
     padding: 12px 20px;
     display: inline-block;
     transition: background 0.3s ease, color 0.3s ease;
@@ -81,6 +107,7 @@ main {
 .taskbar-link:hover,
 .taskbar-link.active {
     background-color: var(--taskbar-hover);
+    color: #ffffff;
 }
 
 /* User Section */
