@@ -16,27 +16,39 @@ def get_lines_by_foreign_key(foreign_key, cursor):
     return products
 
 def get_agent_codes(cursor):
-    query = "SELECT DCLink, [Account] + '-' + [Name] AS display_name FROM [dbo].[_uvMarketAgent]"
+    query = """
+    SELECT DCLink, [Account] + '-' + [Name] AS display_name FROM [dbo].[_uvMarketAgent]
+    ORDER BY display_name 
+    """
     cursor.execute(query)
     agent_codes = cursor.fetchall()
     return agent_codes
 
 
 def get_transporter_codes(cursor):
-    query = "SELECT [TransporterAccount], [TransporterAccount] + '-' + [TransporterName] AS display_name FROM [_uvMarketTransporter]"
+    query = """
+    SELECT [TransporterAccount], [TransporterAccount] + '-' + [TransporterName] AS display_name FROM [_uvMarketTransporter]
+    ORDER BY display_name 
+    """
     cursor.execute(query)
     transporter_codes = cursor.fetchall()
     return transporter_codes
 
 def get_market_codes(cursor):
-    query = "SELECT WhseLink, [MarketCode] + '-' + [MarketName] AS display_name FROM [dbo].[_uvMarkets]"
+    query = """
+    SELECT WhseLink, [MarketCode] + '-' + [MarketName] AS display_name FROM [dbo].[_uvMarkets]
+    ORDER BY display_name 
+    """
     cursor.execute(query)
     market_codes = cursor.fetchall()
     return market_codes
 
 
 def get_production_unit_codes(cursor):
-    query = "SELECT ProjectLink, [ProdUnitCode] + '-' + [ProdUnitName] AS display_name FROM [dbo].[_uvMarketProdUnit]"
+    query = """
+    SELECT ProjectLink, [ProdUnitCode] + '-' + [ProdUnitName] AS display_name FROM [dbo].[_uvMarketProdUnit]
+    ORDER BY display_name 
+    """
     cursor.execute(query)
     production_unit_codes = cursor.fetchall()
     return production_unit_codes
