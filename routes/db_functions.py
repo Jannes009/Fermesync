@@ -43,7 +43,10 @@ def get_production_unit_codes(cursor):
 
 
 def get_products(cursor):
-    query = "SELECT StockLink, [ProductCode] + '-' + [ProductDescription] AS display_name FROM [dbo].[_uvMarketProduct]"
+    query = """
+    SELECT StockLink, [ProductCode] + '-' + [ProductDescription] AS display_name FROM [dbo].[_uvMarketProduct]
+    ORDER BY display_name
+    """
     cursor.execute(query)
     products = cursor.fetchall()
     return products
