@@ -3,11 +3,12 @@
 
 {% block header %}
 {% include 'taskbar.html' %}
-    <h1>Bill of Lading Form</h1>
 {% endblock %}
 
 
 {% block content %}
+<div class="with-fixed-taskbar">
+    <h1>Delivery Note</h1>
     <form method="POST">
         
         {% include 'Bill Of Lading page/header_info.html' %}
@@ -21,5 +22,6 @@
         
         <button type="submit">Submit</button>
     </form>
+</div>
 {% endblock %}
 

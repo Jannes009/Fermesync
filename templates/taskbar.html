@@ -57,20 +57,26 @@ body, html {
 }
 
 .taskbar {
-    position: sticky;
+    position: fixed;
     top: 0;
     left: 0;
     width: 100%;
     background-color: var(--taskbar-bg);
     color: var(--taskbar-text);
     z-index: 1000;
-    box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
     display: flex;
     justify-content: space-between;
     align-items: center;
     padding: 0 20px;
     font-family: 'Arial', sans-serif;
     height: 60px;
+    border-radius: 0;
+}
+
+/* Utility class for content that needs to be pushed below the fixed taskbar */
+.with-fixed-taskbar {
+    padding-top: 70px;
 }
 
 /* Ensure content starts after taskbar */

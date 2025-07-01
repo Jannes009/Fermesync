@@ -71,42 +71,79 @@
             color: #1e293b;
             font-weight: 500;
         }
+        .search-bar-card, .search-bar-inner, .search-icon, .search-input, .search-mode {
+            all: unset;
+        }
+        .search-toggle-row {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            margin-bottom: 1rem;
+            gap: 10px;
+        }
+        .search-bar-left {
+            display: flex;
+            align-items: center;
+            gap: 6px;
+        }
+        .toggle-right {
+            display: flex;
+            align-items: center;
+        }
+        #searchInput.form-control, #searchMode.form-select {
+            height: 36px;
+            font-size: 1rem;
+            border-radius: 18px;
+            padding-left: 14px;
+            padding-right: 14px;
+            box-shadow: none;
+            border: 1.2px solid #cbd5e1;
+        }
+        #searchInput.form-control {
+            width: 200px;
+            margin-right: 8px;
+        }
+        #searchMode.form-select {
+            width: 100px;
+        }
+        #searchInput.form-control:focus, #searchMode.form-select:focus {
+            border-color: #1f28f0;
+            outline: none;
+        }
+        @media (max-width: 700px) {
+            .search-toggle-row {
+                flex-direction: column;
+                align-items: stretch;
+                gap: 8px;
+            }
+            .toggle-right {
+                justify-content: flex-end;
+            }
+        }
     </style>
 </head>
 <body>
     {% include 'taskbar.html' %}
     
-    <div class="page-container">
+    <div class="page-container with-fixed-taskbar">
         <div class="page-header">
             <h1>View Entries</h1>
         </div>
 
         <div class="content-wrapper">
-            <div class="filter-card">
-                <div class="filter-header">
-                    <h2>Filters</h2>
+            <!-- Search and Toggle Row -->
+            <div class="search-toggle-row">
+                <div class="search-bar-left">
+                    <input type="text" id="searchInput" placeholder="Search Delivery Note No..." class="form-control" style="width: 200px; display: inline-block; margin-right: 8px;" />
                 </div>
-                
-                <form method="POST" class="filter-form">
-                    <div class="filter-grid">                    
-                        <div class="filter-group">
-                            <label for="DeliveryNoteNo">Delivery Note No</label>
-                            <input type="text" id="DeliveryNoteNo" name="DeliveryNoteNo" placeholder="Enter note number" value="{{ filters.delivery_note_no }}">
-                        </div>
-                    </div>
-                    
-                    <div class="filter-actions">
-                        <button type="submit" class="btn btn-primary">Search</button>
-                        <button type="button" id="clear-filters" class="btn btn-secondary">Clear Filters</button>
-                    </div>
-                </form>
+                <div class="toggle-right">
+                    <label class="switch" style="margin-bottom: 0;">
+                        <input type="checkbox" id="toggle-completed">
+                        <span class="slider"></span>
+                        <span class="switch-label" id="toggle-label">Show Completed Delivery Notes</span>
+                    </label>
+                </div>
             </div>
-
-            <label class="switch" style="margin-bottom: 10px;">
-                <input type="checkbox" id="toggle-completed">
-                <span class="slider"></span>
-                <span class="switch-label" id="toggle-label">Show Completed Delivery Notes</span>
-            </label>
 
             <div class="table-card">
                 <div class="table-responsive">
@@ -117,7 +154,7 @@
                                 <th>Date</th>
                                 <th>Delivery Note No</th>
                                 <th>Agent</th>
-                                <th>Market</th>
+                                <th>Packhouse</th>
                                 <th class="number-col">Qty Delivered</th>
                                 <th class="number-col">Qty Sold</th>
                                 <th class="number-col">Qty Invoiced</th>
@@ -168,31 +205,45 @@
     <script src="{{ url_for('static', filename='View/change-product.js') }}"></script>
     <script>
     document.addEventListener("DOMContentLoaded", function () {
+        // Search/filter logic
+        const searchInput = document.getElementById('searchInput');
         const toggleSwitch = document.getElementById('toggle-completed');
         const toggleLabel = document.getElementById('toggle-label');
-        let showCompleted = false;
+        const tableRows = document.querySelectorAll('tr.main-row');
+        let showCompleted = toggleSwitch.checked;
 
-        function filterRows() {
-            document.querySelectorAll('tr.main-row').forEach(row => {
+        function filterTable() {
+            const query = searchInput.value.trim().toLowerCase();
+            showCompleted = toggleSwitch.checked;
+            tableRows.forEach(row => {
+                const noteCell = row.querySelector('.delivery-note-cell');
+                if (!noteCell) return;
+                const noteText = noteCell.textContent.trim().toLowerCase();
                 const isCompleted = row.getAttribute('data-completed') === '1';
-                if (!showCompleted && isCompleted) {
-                    row.style.display = 'none';
+                const matchesSearch = noteText.includes(query) || query === '';
+                // If toggle is ON, only filter by search
+                // If toggle is OFF, filter by both search and completed
+                if (showCompleted) {
+                    row.style.display = matchesSearch ? '' : 'none';
                 } else {
-                    row.style.display = '';
+                    row.style.display = matchesSearch && !isCompleted ? '' : 'none';
                 }
             });
             toggleLabel.textContent = showCompleted ? 'Hide Completed Delivery Notes' : 'Show Completed Delivery Notes';
         }
 
-        if (toggleSwitch) {
-            toggleSwitch.addEventListener('change', function () {
-                showCompleted = toggleSwitch.checked;
-                filterRows();
-            });
-            // Initial filter on page load
-            showCompleted = toggleSwitch.checked;
-            filterRows();
-        }
+        searchInput.addEventListener('input', function() {
+            // When searching, always turn ON show completed
+            if (!toggleSwitch.checked) {
+                toggleSwitch.checked = true;
+            }
+            filterTable();
+        });
+        toggleSwitch.addEventListener('change', function () {
+            filterTable();
+        });
+        // Initial filter on page load
+        filterTable();
     });
     </script>
 </body>
