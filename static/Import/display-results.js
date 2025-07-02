@@ -49,7 +49,7 @@ function displayTable(data) {
             }
         }
 
-        let supplierRefCell = `<span class="supplier-ref-text">${row.delnoteno || "-"}</span>`;
+        let supplierRefCell = delNoteNoCell;
         let detailsButton = `<td>`
         // Only show the edit button in No Match mode
         if (row.linconsignmentidexist !== 1 && row.headelnotenoexist === 0) {
