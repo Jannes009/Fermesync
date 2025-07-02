@@ -22,11 +22,34 @@ def dashboard_data():
 
     # Deliveries this month
     delivery_query = """
-    Select DelNoteNo, DelDate,Agent, TotalQtyDelivered, TotalQtySold, TotalQtyInvoiced from [dbo].[_uvDelQuantitiesHeader]
+    Select DelNoteNo, DelDate,Agent, TotalQtyDelivered, TotalQtySold, AvailableQtyForSale, TotalQtyInvoiced, TotalNotInvoiced, DelIsFullyInvoiced from [dbo].[_uvDelQuantitiesHeader]
     WHERE DelDate >= ?
     """
     cursor.execute(delivery_query, (start_of_month,))
     delivery_rows = cursor.fetchall()
+
+    # Incomplete delivery notes (not fully invoiced, with agent name)
+    incomplete_query = """
+    Select DEL.DelNoteNo, AGENT.Name as AgentName, DEL.DelDate, DEL.TotalQtyDelivered, DEL.TotalQtySold, DEL.TotalQtyInvoiced, DEL.TotalNotInvoiced
+    from [dbo].[_uvDelQuantitiesHeader] DEL
+    JOIN (Select DCLink, Name from _uvMarketAgent) AGENT on AGENT.DCLink = DEL.Agent
+    where DEL.DelIsFullyInvoiced = 0
+    order by DEL.DelDate asc
+    """
+    cursor.execute(incomplete_query)
+    incomplete_rows = cursor.fetchall()
+    incomplete_delivery_notes = [
+        {
+            "note": row[0],
+            "agent_name": row[1],
+            "del_date": row[2].strftime('%Y-%m-%d') if isinstance(row[2], datetime) else str(row[2]),
+            "qty_delivered": row[3],
+            "qty_sold": row[4],
+            "qty_invoiced": row[5],
+            "qty_not_invoiced": row[6]
+        }
+        for row in incomplete_rows
+    ]
 
     # Sales this week
     sales_query = """
@@ -51,30 +74,6 @@ def dashboard_data():
 
     this_month_delivery_count = len({row[0] for row in delivery_rows})
 
-
-    # Prepare delivery data
-    del_note_numbers = set()
-    sent_this_week = 0
-    uninvoiced_by_agent = {}
-    uninvoiced_by_note = {}
-
-    for row in delivery_rows:
-        del_note_no, del_date, agent_name, qty_sent, qty_sold, qty_invoiced = row
-
-        del_note_numbers.add(del_note_no)
-
-        if parse_date(del_date) >= start_of_week:
-            sent_this_week += qty_sent
-
-        if qty_invoiced < qty_sold and qty_sold != 0:
-            uninvoiced_by_agent[agent_name] = uninvoiced_by_agent.get(agent_name, 0) + (qty_sent - qty_invoiced)
-            uninvoiced_by_note[del_note_no] = {
-                "agent": agent_name,
-                "qty_sent": qty_sent,
-                "qty_sold": qty_sold,
-                "qty_invoiced": qty_invoiced
-            }
-
     # Invoicing summary
     invoiced_this_week = sum(row[3] for row in invoice_rows)
     recent_invoices = [
@@ -87,23 +86,12 @@ def dashboard_data():
         for row in invoice_rows[:5]
     ]
 
-
     conn.close()
-
     return jsonify({
         "month_deliveries": this_month_delivery_count,
-        "total_sent": sent_this_week,
+        "total_sent": sold_this_week,
         "total_sold": sold_this_week,
         "total_invoiced": invoiced_this_week,
-        "uninvoiced_notes": [
-            {
-                "note": note,
-                "agent": info["agent"],
-                "qty_sent": info["qty_sent"],
-                "qty_sold": info["qty_sold"],
-                "qty_invoiced": info["qty_invoiced"]
-            }
-            for note, info in uninvoiced_by_note.items()
-        ],
+        "incomplete_delivery_notes": incomplete_delivery_notes,
         "recent_invoices": recent_invoices
     })

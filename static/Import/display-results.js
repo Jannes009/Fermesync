@@ -72,7 +72,7 @@ function displayTable(data) {
 
         tr.innerHTML = `
             <td><button class="btn expand-btn" data-consignment="${row.consignmentid}">▶</button></td>
-            <td>${row.consignmentid || '-'}</td>
+            <td>${row.agent || '-'}</td>
             <td>${delNoteNoCell}</td>
             <td>${row.product || '-'}</td>
             <td>${row.class || '-'}</td>
