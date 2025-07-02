@@ -51,7 +51,6 @@ function displayTable(data) {
 
         let supplierRefCell = `<span class="supplier-ref-text">${row.delnoteno || "-"}</span>`;
         let detailsButton = `<td>`
-
         // Only show the edit button in No Match mode
         if (row.linconsignmentidexist !== 1 && row.headelnotenoexist === 0) {
             supplierRefCell += `
@@ -62,7 +61,7 @@ function displayTable(data) {
                 </button>
             `;
         }
-
+        console.log(supplierRefCell)
         // Only show the edit button in No Match mode
         if (row.linconsignmentidexist !== 1 && row.headelnotenoexist === 1) {
             detailsButton += `
@@ -73,7 +72,7 @@ function displayTable(data) {
         tr.innerHTML = `
             <td><button class="btn expand-btn" data-consignment="${row.consignmentid}">▶</button></td>
             <td>${row.agent || '-'}</td>
-            <td>${delNoteNoCell}</td>
+            <td>${supplierRefCell}</td>
             <td>${row.product || '-'}</td>
             <td>${row.class || '-'}</td>
             <td>${row.size || '-'}</td>
@@ -114,9 +113,9 @@ function displayTable(data) {
 }
 
 
-function updateSupplierRef(oldDelNoteNo, newDelNoteNo) {
+function updateMarketDelNoteNo(oldDelNoteNo, newDelNoteNo) {
     console.log(oldDelNoteNo, newDelNoteNo)
-    return fetch("/import/update_supplier_ref", {
+    return fetch("/import/update_market_del_note_no", {
         method: "POST",
         headers: {
             "Content-Type": "application/json"
@@ -143,7 +142,7 @@ function updateSupplierRef(oldDelNoteNo, newDelNoteNo) {
         }
     })
     .catch(error => {
-        Swal.fire("Error", "Failed to update supplier reference.", "error");
+        Swal.fire("Error", "Failed to update market del note no.", "error");
         console.error("Update error:", error);
     });
 }
@@ -392,17 +391,17 @@ function showConsignmentDetails(consignmentId) {
 
 function showEditSupplierRefModal(consignmentId, currentValue) {
     Swal.fire({
-        title: "Edit Supplier Reference",
+        title: "Edit Market Del Note No",
         input: "text",
         inputValue: currentValue,
         showCancelButton: true,
         confirmButtonText: "Save",
         preConfirm: (newSupplierRef) => {
             if (!newSupplierRef.trim()) {
-                Swal.showValidationMessage("Supplier Reference cannot be empty");
+                Swal.showValidationMessage("Market Del Note No cannot be empty");
                 return false;
             }
-            return updateSupplierRef(currentValue, newSupplierRef);
+            return updateMarketDelNoteNo(currentValue, newSupplierRef);
         }
     });
 }

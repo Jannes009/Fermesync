@@ -65,9 +65,9 @@ def get_dockets(consignment_id):
     } for row in dockets])
 
 
-@import_bp.route("/update_supplier_ref", methods=["POST"])
+@import_bp.route("/update_market_del_note_no", methods=["POST"])
 @role_required()
-def update_supplier_ref():
+def update_market_del_note_no():
     data = request.json  # Extract JSON data from the frontend
     new_del_note_no = data.get("newDelNoteNo")  # Ensure key matches frontend
     old_del_note_no = data.get("oldDelNoteNo")  # Ensure key matches frontend
@@ -85,7 +85,7 @@ def update_supplier_ref():
         """, (new_del_note_no, old_del_note_no))
         
         conn.commit()  # Commit changes
-        return jsonify({"status": "success", "message": "Supplier Reference updated successfully"})
+        return jsonify({"status": "success", "message": "Market Del Note No updated successfully"})
 
     except Exception as e:
         return jsonify({"status": "error", "message": str(e)}), 500
