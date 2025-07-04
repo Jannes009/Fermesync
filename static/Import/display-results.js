@@ -171,7 +171,7 @@ function toggleDocketDetails(button, consignmentId) {
                 detailsCell.innerHTML = "<em>No dockets found for this consignment.</em>";
             } else {
                 let detailsTable = `
-                <h5>Dockets<h5>
+                <h5>Sales<h5>
                     <table class="table table-bordered mt-2">
                         <thead>
                             <tr>

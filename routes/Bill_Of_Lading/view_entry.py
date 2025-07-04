@@ -458,6 +458,9 @@ def save_delivery_header(delnote_no):
             delnote_no
         ))
 
+        # Edit Transport PO
+        cursor.execute("EXEC [dbo].[SIGCreateTransportPO]")
+
         conn.commit()
         return jsonify({'success': True})
     except Exception as e:

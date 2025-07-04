@@ -46,7 +46,6 @@ def fetch_lines_data(request_form):
     }
 
 def store_header(cursor, form_data):
-    print(form_data)
     cursor.execute("""
         INSERT INTO ZZDeliveryNoteHeader 
         (DeliClientId, DelNoteNo, DelDate, DelFarmId, DelTransporter,  DelTransportCostExcl, DelMarketId)
@@ -89,14 +88,12 @@ def fetch_lines(cursor, entry_id):
 
 @entry_bp.route('/create_entry', methods=['GET', 'POST'])
 def create_entry():
-    print("Entry created")
     error_message = None
     form_data = None
     connection = create_db_connection()
     cursor = connection.cursor()
 
     if request.method == 'POST':
-        print("Entry creating")
         try:
             form_data = fetch_header_data(request.form)
             lines_data = fetch_lines_data(request.form)
@@ -108,8 +105,11 @@ def create_entry():
             total_quantity = store_lines(cursor, header_id, lines_data)
             update_header_quantity(cursor, header_id, total_quantity)
 
+            # Create Transport PO
+            cursor.execute("EXEC [dbo].[SIGCreateTransportPO]")
+            cursor.connection.commit()
+
             session['del_note_no'] = form_data['ZZDelNoteNo']
-            print(form_data['ZZDelNoteNo'], session.get('del_note_no'))
             return redirect(url_for('entry.submission_success'))
 
         except odbc.IntegrityError as e:
@@ -160,16 +160,13 @@ def load_form():
 
 @entry_bp.route('/api/clear-saved-form', methods=['POST'])
 def clear_saved_form():
-    print("Attempt to clear")
     try:
         # Write an empty JSON object to ensure valid JSON structure
         with open(DATA_FILE, 'w') as file:
             json.dump({}, file)  # Use {} for an empty object or [] for an empty list
 
-        print(f"Saved data cleared at {DATA_FILE}")
         return jsonify({"message": "Saved data cleared successfully"}), 200
     except Exception as e:
-        print(f"Error clearing data: {e}")
         return jsonify({"error": str(e)}), 500
 
 
@@ -232,7 +229,6 @@ def get_default_transport_cost_api():
     agent_code = data.get("agentCode")
     packhouse_code = data.get("packhouseCode") 
     transporter_code = data.get("transporterCode")
-    print(agent_code, packhouse_code, transporter_code)
 
     if not agent_code or not packhouse_code or not transporter_code:
         return jsonify({"error": "Missing required parameters: agentCode, packhouseCode, transporterCode"}), 400
@@ -248,7 +244,6 @@ def get_default_transport_cost_api():
         """
         cursor.execute(query, (agent_code,))
         destination_result = cursor.fetchone()
-        print(destination_result)
         default_cost = 0.0
         if destination_result and destination_result[0] is not None:
             destination = destination_result[0]
@@ -258,7 +253,6 @@ def get_default_transport_cost_api():
             """
             cursor.execute(query, (transporter_code, packhouse_code, destination))
             result = cursor.fetchone()
-            print(transporter_code, packhouse_code, destination, result)
             if result and result[0] is not None:
                 default_cost = float(result[0])
             else:
@@ -271,5 +265,4 @@ def get_default_transport_cost_api():
         return jsonify({"defaultTransportCost": default_cost})
         
     except Exception as e:
-        print(f"Error in get_default_transport_cost_api: {e}")
         return jsonify({"error": "Failed to get default transport cost"}), 500
