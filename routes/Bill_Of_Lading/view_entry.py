@@ -718,3 +718,31 @@ def api_delivery_note_lines():
     cursor.close()
     conn.close()
     return jsonify(lines)
+
+@view_entry_bp.route('/api/transport-po-status/<delnote_no>')
+def get_transport_po_status(delnote_no):
+    try:
+        conn = create_db_connection()
+        cursor = conn.cursor()
+        
+        # Get Transport PO status
+        cursor.execute("""
+        SELECT Status
+        FROM _uvTransportPOStatus
+        WHERE DelNoteNo = ?
+        """, (delnote_no,))
+        
+        result = cursor.fetchone()
+        status = result[0] if result else None
+        
+        return jsonify({
+            'status': status,
+            'isProcessed': status == 'Processed'
+        })
+        
+    except Exception as e:
+        print(f"Error in get_transport_po_status: {str(e)}")
+        return jsonify({'error': str(e)}), 500
+    finally:
+        if 'conn' in locals():
+            conn.close()

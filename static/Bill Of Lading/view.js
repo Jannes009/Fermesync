@@ -456,19 +456,38 @@ window.clearSalesFilter = function() {
 
 // Function to handle delivery header editing
 window.editDeliveryHeader = function(delnoteNo) {
-    // Fetch current header data
-    fetch(`/api/delivery-header/${delnoteNo}`)
+    // First check Transport PO status
+    fetch(`/api/transport-po-status/${delnoteNo}`)
         .then(response => response.json())
-        .then(header => {
-            // Fetch dropdown options
-            Promise.all([
-                fetch('/api/agents').then(r => r.json()),
-                fetch('/api/markets').then(r => r.json()),
-                fetch('/api/transporters').then(r => r.json())
-            ]).then(([agents, markets, transporters]) => {
+        .then(poStatus => {
+            // Fetch current header data
+            fetch(`/api/delivery-header/${delnoteNo}`)
+                .then(response => response.json())
+                .then(header => {
+                    // Fetch dropdown options
+                    Promise.all([
+                        fetch('/api/agents').then(r => r.json()),
+                        fetch('/api/markets').then(r => r.json()),
+                        fetch('/api/transporters').then(r => r.json())
+                    ]).then(([agents, markets, transporters]) => {
                 // Create the modal HTML with improved styling
+                const isProcessed = poStatus.isProcessed;
+                const transportDisabled = isProcessed ? 'disabled' : '';
+                const transportStyle = isProcessed ? 'padding: 0.6rem; border-radius: 6px; border: 1px solid #e2e8f0; width: 100%; background-color: #f3f4f6; color: #6b7280;' : 'padding: 0.6rem; border-radius: 6px; border: 1px solid #e2e8f0; width: 100%;';
+                
                 const modalHtml = `
                     <div style="text-align: left; padding: 1rem;">
+                        ${isProcessed ? `
+                        <div style="margin-bottom: 1.5rem; padding: 1rem; background-color: #fef3c7; border: 1px solid #f59e0b; border-radius: 8px;">
+                            <div style="display: flex; align-items: center; gap: 0.5rem;">
+                                <span style="color: #d97706; font-size: 1.2em;">⚠️</span>
+                                <span style="color: #92400e; font-weight: 600;">Transport PO Processed</span>
+                            </div>
+                            <p style="color: #92400e; margin: 0.5rem 0 0 0; font-size: 0.9rem;">
+                                The Transport PO has been processed. Transporter and Transport Cost cannot be modified.
+                            </p>
+                        </div>
+                        ` : ''}
                         <div style="margin-bottom: 1.5rem;">
                             <label style="display: block; margin-bottom: 0.5rem; font-weight: 600; color: #334155; font-size: 0.95rem;">Delivery Note No</label>
                             <input type="text" id="deliveryNoteNo" class="form-control" value="${header.delnoteno}" 
@@ -487,17 +506,10 @@ window.editDeliveryHeader = function(delnoteNo) {
                             </select>
                         </div>
                         <div style="margin-bottom: 1.5rem;">
-                            <label style="display: block; margin-bottom: 0.5rem; font-weight: 600; color: #334155; font-size: 0.95rem;">Market</label>
+                            <label style="display: block; margin-bottom: 0.5rem; font-weight: 600; color: #334155; font-size: 0.95rem;">Packhouse</label>
                             <select id="marketSelect" class="form-select" style="width: 100%;">
-                                <option value="">Select a market...</option>
+                                <option value="">Select a packhouse...</option>
                                 ${markets.map(m => `<option value="${m.WhseLink}" ${m.WhseLink === header.delmarketid ? 'selected' : ''}>${m.display_name}</option>`).join('')}
-                            </select>
-                        </div>
-                        <div style="margin-bottom: 1.5rem;">
-                            <label style="display: block; margin-bottom: 0.5rem; font-weight: 600; color: #334155; font-size: 0.95rem;">Transporter</label>
-                            <select id="transporterSelect" class="form-select" style="width: 100%;">
-                                <option value="">Select a transporter...</option>
-                                ${transporters.map(t => `<option value="${t.TransporterAccount}" ${t.TransporterAccount === header.deltransporter ? 'selected' : ''}>${t.display_name}</option>`).join('')}
                             </select>
                         </div>
                         <div style="margin-bottom: 1.5rem;">
@@ -506,9 +518,23 @@ window.editDeliveryHeader = function(delnoteNo) {
                                    style="padding: 0.6rem; border-radius: 6px; border: 1px solid #e2e8f0; width: 100%;">
                         </div>
                         <div style="margin-bottom: 1.5rem;">
+                            <label style="display: block; margin-bottom: 0.5rem; font-weight: 600; color: #334155; font-size: 0.95rem;">Transporter</label>
+                            ${isProcessed ? `
+                                <div style="padding: 0.8em; background: #f8fafc; border-radius: 8px; color: #2563eb; border: 1px solid #e2e8f0;">
+                                    ${transporters.find(t => t.TransporterAccount === header.deltransporter)?.display_name || 'Unknown Transporter'}
+                                </div>
+                            ` : `
+                                <select id="transporterSelect" class="form-select" style="width: 100%;">
+                                    <option value="">Select a transporter...</option>
+                                    ${transporters.map(t => `<option value="${t.TransporterAccount}" ${t.TransporterAccount === header.deltransporter ? 'selected' : ''}>${t.display_name}</option>`).join('')}
+                                </select>
+                            `}
+                        </div>
+
+                        <div style="margin-bottom: 1.5rem;">
                             <label style="display: block; margin-bottom: 0.5rem; font-weight: 600; color: #334155; font-size: 0.95rem;">Transport Cost</label>
                             <input type="number" id="transportCost" class="form-control" value="${header.deltransportcostexcl || 0}"
-                                   style="padding: 0.6rem; border-radius: 6px; border: 1px solid #e2e8f0; width: 100%;">
+                                   style="${transportStyle}" ${transportDisabled}>
                         </div>
                     </div>
                 `;
@@ -530,7 +556,11 @@ window.editDeliveryHeader = function(delnoteNo) {
                     },
                     didOpen: () => {
                         // Initialize Select2 for dropdowns with improved styling
-                        $('#agentSelect, #marketSelect, #transporterSelect').select2({
+                        const selectElements = isProcessed ? 
+                            $('#agentSelect, #marketSelect') : 
+                            $('#agentSelect, #marketSelect, #transporterSelect');
+                        
+                        selectElements.select2({
                             dropdownParent: $('.swal2-container'),
                             width: '100%',
                             placeholder: 'Select an option...',
@@ -546,7 +576,7 @@ window.editDeliveryHeader = function(delnoteNo) {
                             deldate: document.getElementById('deliveryDate').value,
                             deliclientid: document.getElementById('agentSelect').value,
                             delmarketid: document.getElementById('marketSelect').value,
-                            deltransporter: document.getElementById('transporterSelect').value,
+                            deltransporter: isProcessed ? header.deltransporter : document.getElementById('transporterSelect').value,
                             delquantitybags: parseInt(document.getElementById('totalQuantity').value) || 0,
                             deltransportcostexcl: parseFloat(document.getElementById('transportCost').value) || 0
                         };
@@ -585,14 +615,23 @@ window.editDeliveryHeader = function(delnoteNo) {
                 });
             });
         })
-        .catch(error => {
-            console.error('Error fetching header data:', error);
-            Swal.fire({
-                title: 'Error',
-                text: 'Failed to load delivery note header data',
-                icon: 'error'
-            });
-        });
+                                .catch(error => {
+                            console.error('Error fetching header data:', error);
+                            Swal.fire({
+                                title: 'Error',
+                                text: 'Failed to load delivery note header data',
+                                icon: 'error'
+                            });
+                        });
+                })
+                .catch(error => {
+                    console.error('Error fetching Transport PO status:', error);
+                    Swal.fire({
+                        title: 'Error',
+                        text: 'Failed to load Transport PO status',
+                        icon: 'error'
+                    });
+                });
 };
 
 // Function to save quantity changes

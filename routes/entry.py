@@ -119,6 +119,13 @@ def create_entry():
 
     dropdown_options = fetch_dropdown_options(cursor)
 
+    # Set default date if not present in form_data (GET request)
+    if not form_data:
+        form_data = {}
+    if 'ZZDelDate' not in form_data or not form_data['ZZDelDate']:
+        import datetime
+        form_data['ZZDelDate'] = datetime.date.today().strftime('%Y-%m-%d')
+
     close_db_connection(cursor, connection)
 
     return render_template('Bill Of Lading page/create_entry.html',
