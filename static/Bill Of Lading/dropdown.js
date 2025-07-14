@@ -37,7 +37,6 @@ $(document).ready(function () {
     });
 
     const UnitCode = document.querySelector('select[name="ZZProductionUnitCode"]')
-    console.log(UnitCode)
     $('select[name="ZZProductionUnitCode"]').on('change', function () {
         const selectedValue = $(this).val();
     

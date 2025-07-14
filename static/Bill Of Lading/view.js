@@ -237,7 +237,6 @@ function showSaleDetailsModal(selectedLine, delNoteNo) {
                 }
             })
             .catch(error => {
-                console.error('Error submitting sales:', error);
                 Swal.fire({
                     title: 'Error',
                     text: 'An error occurred while submitting the sales.',
@@ -698,7 +697,7 @@ window.saveQuantityChanges = function() {
         return;
     }
     
-    const headerQty = parseInt(document.querySelector('.delivery-header .delivery-grid div:nth-child(4) p').textContent) || 0;
+    const headerQty = parseInt(document.querySelector('.delivery-header .delivery-grid div:nth-child(3) p').textContent) || 0;
     
     if (total !== headerQty) {
         Swal.fire({
@@ -729,13 +728,16 @@ window.saveQuantityChanges = function() {
     .then(response => response.json())
     .then(data => {
         if (data.success) {
-            // Update the display values with new quantities
-            document.querySelectorAll('.quantity-input').forEach(input => {
-                const lineId = input.dataset.lineId;
-                const newQty = data.quantities[lineId];
-                const display = input.previousElementSibling;
-                display.textContent = newQty.toLocaleString('en-ZA');
-            });
+            // Reload the delivery lines table to reflect new/updated lines
+            const header = document.querySelector('.delivery-header h1');
+            let delNoteNo = null;
+            if (header) {
+                const match = header.textContent.match(/#(\d+)/);
+                if (match) delNoteNo = match[1];
+            }
+            if (delNoteNo) {
+                load_delivery_lines_table(delNoteNo);
+            }
 
             // Switch back to display mode
             const btn = document.getElementById('editQuantitiesBtn');
@@ -822,13 +824,31 @@ window.addDeliveryLine = function() {
             `;
             tbody.appendChild(newRow);
 
-            // Initialize select2 for the new product dropdown
+            // Initialize select2 for the new product dropdown with custom matcher
             $(newRow).find('.product-select').select2({
                 width: '100%',
-                dropdownParent: $(newRow)
+                dropdownParent: $(newRow),
+                matcher: productMatcher
             });
         });
 };
+
+// --- Custom matcher for Select2 product dropdowns ---
+function productMatcher(params, data) {
+    if ($.trim(params.term) === '') {
+        return data;
+    }
+
+    let searchTerms = params.term.toLowerCase().split(/\s+|-/); // Split by space or dash
+    let optionText = data.text.toLowerCase();
+    let optionWords = optionText.split(/\s+|-/); // Normalize the option text
+
+    let matches = searchTerms.every(term =>
+        optionWords.some(word => word.includes(term))
+    );
+
+    return matches ? data : null;
+}
 
 // Helper to add delete buttons in their own column in edit mode
 function addDeleteButtonsToLines() {
@@ -836,7 +856,7 @@ function addDeleteButtonsToLines() {
         if (row.dataset.lineId === 'new') return;
         // check for sales
         const fourthColumnValue = parseFloat(row.cells[4]?.textContent || '0');
-        console.log(fourthColumnValue);
+
         if (fourthColumnValue > 0) return;
         // Only add if not already present
         if (!row.querySelector('.delete-line-btn')) {

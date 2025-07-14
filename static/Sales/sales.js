@@ -599,7 +599,8 @@ window.changeProduct = function(lineId, currentProduct, delNoteNo) {
             dropdownParent: $('.swal2-container'),
             width: '100%',
             placeholder: 'Search for a product...',
-            allowClear: true
+            allowClear: true,
+            matcher: productMatcher
           });
         },
         preConfirm: () => {
