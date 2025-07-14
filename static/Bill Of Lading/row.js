@@ -139,7 +139,7 @@ document.addEventListener("DOMContentLoaded", () => {
             return;
         }
     
-        // Step 1: Detect duplicate products
+        // Step 1: Detect duplicate product + production unit combinations
         const productRows = $(".product-row");
         const productMap = new Map();
     
@@ -147,27 +147,31 @@ document.addEventListener("DOMContentLoaded", () => {
             const productSelect = $(this).find(".product-select");
             const productID = productSelect.val();
             const productText = productSelect.find("option:selected").text();
+            const unitSelect = $(this).find(".production-unit-select");
+            const unitID = unitSelect.val();
+            const unitText = unitSelect.find("option:selected").text();
             const quantityInput = $(this).find("input[name='ZZQuantityBags[]']");
             const quantity = parseFloat(quantityInput.val()) || 0;
     
-            if (productID) {
-                if (productMap.has(productID)) {
-                    productMap.get(productID).quantity += quantity;
-                    productMap.get(productID).rows.push($(this));
+            if (productID && unitID) {
+                const key = `${productID}_${unitID}`;
+                if (productMap.has(key)) {
+                    productMap.get(key).quantity += quantity;
+                    productMap.get(key).rows.push($(this));
                 } else {
-                    productMap.set(productID, { name: productText, quantity, rows: [$(this)] });
+                    productMap.set(key, { name: productText, unit: unitText, quantity, rows: [$(this)] });
                 }
             }
         });
     
         // Step 2: Find duplicates and prepare a message
         let duplicatesFound = false;
-        let mergeMessage = "<b>The following products will be merged:</b><br><br>";
+        let mergeMessage = "<b>The following product + production unit combinations will be merged:</b><br><br>";
     
         productMap.forEach((productData) => {
             if (productData.rows.length > 1) {
                 duplicatesFound = true;
-                mergeMessage += `✅ <b>${productData.name}</b>: <i>${productData.quantity} bags</i><br>`;
+                mergeMessage += `✅ <b>${productData.name}</b> (<i>${productData.unit}</i>): <i>${productData.quantity} bags</i><br>`;
             }
         });
     
