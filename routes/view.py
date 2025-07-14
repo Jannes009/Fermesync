@@ -276,26 +276,6 @@ def fetch_products():
     products = get_products(cursor)
     return products
 
-@view_bp.route('/api/save_product', methods=['POST'])
-def save_product():
-    data = request.get_json()
-    line_id = data.get('line_id')
-    product_id = data.get('product_id')
-    conn = create_db_connection()
-    cursor = conn.cursor()
-
-    try:
-        query = """
-            UPDATE ZZDeliveryNoteLines
-            SET DelLineStockId = ?
-            WHERE DelLineIndex = ?
-        """
-        cursor.execute(query, (product_id, line_id))
-        conn.commit()
-        return jsonify({'message': 'Product updated successfully'})
-    except Exception as e:
-        return jsonify({'error': str(e)}), 500
-
 @view_bp.route('/get_delivery_note_id', methods=['POST'])
 def get_delivery_note_id():
     # Get the JSON data sent in the request

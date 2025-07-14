@@ -346,8 +346,11 @@ def save_product():
             UPDATE ZZDeliveryNoteLines
             SET DelLineStockId = ?
             WHERE DelLineIndex = ?
+            UPDATE ZZSalesLines
+            SET SalesStockId = ?
+            WHERE SalesDelLineId = ?
         """
-        cursor.execute(query, (product_id, line_id))
+        cursor.execute(query, (product_id, line_id, product_id, line_id))
         conn.commit()
         return jsonify({'message': 'Product updated successfully'})
     except Exception as e:
