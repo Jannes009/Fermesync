@@ -1,18 +1,3 @@
-<div id="search-container">
-    <h3>Filter Sales</h3>
-    <div id="input-group">
-        <div class="input-wrapper">
-            <label for="start-date">Start Date</label>
-            <input type="date" id="start-date" placeholder="Enter Start Date" />
-        </div>
-        <div class="input-wrapper">
-            <label for="end-date">End Date</label>
-            <input type="date" id="end-date" placeholder="Enter End Date" />
-        </div>
-    </div>
-    <button type="button" id="search-button">Filter</button>
-</div>
-
 <div id="pivot-table-container">
     <table id="pivot-table">
         <thead>
@@ -32,11 +17,15 @@
             <tr>
                 <td colspan="2" style="text-align: right;">Total Quantity:</td>
                 <td id="total-quantity">0</td>
-                <td colspan="2" style="text-align: right;">Total Amount:</td>
+                <td colspan="2" style="text-align: right;">Gross Amount:</td>
                 <td id="total-selected">R0.00</td>
             </tr>
         </tfoot>
     </table>
+</div>
+<div class="nett-invoice-amount">
+    <label>Nett Invoice Amount:</label>
+    <div class="nett-amount-value"><span class="currency">R</span><span id="net-amount">0.00</span></div>
 </div>
 <div class="form-row">
     <button type="submit" id="submit-btn" class="form-btn">Submit Invoice</button>

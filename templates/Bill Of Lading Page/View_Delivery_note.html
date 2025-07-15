@@ -333,6 +333,17 @@
         height: 100% !important;
         top: 0 !important;
     }
+    .invoice-summary-row {
+      cursor: pointer;
+      transition: background 0.15s;
+    }
+    .invoice-summary-row:hover td {
+      background: #e0edff;
+    }
+    .invoice-summary-row td a {
+      cursor: pointer;
+      background: none;
+    }
   </style>
 </head>
 <body>
@@ -410,6 +421,13 @@
           Loading...
         </div>
       </div>
+      <!-- Invoices Summary Section -->
+      <div class="sales-card" id="invoices-summary-card">
+        <div class="sales-header">
+          <span class="sales-header-title">Invoices for this Delivery Note</span>
+        </div>
+        <div id="invoices-summary-table">Loading...</div>
+      </div>
     </div>
   </div>
 
@@ -420,5 +438,118 @@
   <script src="/static/Sales/sales.js"></script>
   <script src="/static/Bill Of Lading/view.js"></script>
   <script src="/static/Bill Of Lading/load_view.js"></script>
+  <script>
+function formatCurrency(val) {
+    return 'R ' + ((parseFloat(val) || 0).toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2}));
+}
+function renderInvoicesTable(invoices) {
+    if (!invoices.length) return '<div>No invoices found for this delivery note.</div>';
+    let rows = invoices.map(inv => `
+        <tr class="invoice-summary-row" data-invoice-no="${inv.invoiceno}" style="cursor:pointer;">
+            <td><a href="/sales-order/${inv.invoiceindex}" class="text-blue-600 hover:underline" onclick="event.stopPropagation();">${inv.invoiceno}</a></td>
+            <td>${inv.invoicedate || ''}</td>
+            <td>${formatCurrency(inv.invoicegross)}</td>
+            <td>${formatCurrency(inv.invoicenett)}</td>
+            <td>${inv.status}</td>
+        </tr>
+    `).join('');
+    return `
+        <div class="overflow-auto">
+        <table class="sales-table">
+            <thead>
+                <tr>
+                    <th>Invoice No</th>
+                    <th>Date</th>
+                    <th>Gross</th>
+                    <th>Nett</th>
+                    <th>Status</th>
+                </tr>
+            </thead>
+            <tbody>${rows}</tbody>
+        </table>
+        </div>
+    `;
+}
+
+// Store all sales rows for filtering
+let allSalesRowsHtml = null;
+
+function filterSalesTableByInvoice(invoiceNo) {
+    const salesTable = document.getElementById('salesTableContainer');
+    if (!allSalesRowsHtml) {
+        // Save the original table HTML for clearing the filter
+        allSalesRowsHtml = salesTable.innerHTML;
+    }
+    // Parse the table and filter rows
+    const tempDiv = document.createElement('div');
+    tempDiv.innerHTML = allSalesRowsHtml;
+    const rows = tempDiv.querySelectorAll('tbody tr');
+    let found = false;
+    rows.forEach(row => {
+        const cell = row.querySelector('td:nth-child(9)'); // Invoice No column
+        if (cell && cell.textContent.trim() === invoiceNo) {
+            row.style.display = '';
+            found = true;
+        } else {
+            row.style.display = 'none';
+        }
+    });
+    // Show/hide totals row
+    const totalsRow = tempDiv.querySelector('tfoot tr');
+    if (totalsRow) {
+        totalsRow.style.display = found ? '' : 'none';
+    }
+    salesTable.innerHTML = tempDiv.innerHTML;
+    // Show clear filter button
+    const clearBtn = document.getElementById('clearFilterBtn');
+    if (clearBtn) {
+        clearBtn.style.display = '';
+        clearBtn.textContent = 'Clear Invoice Filter';
+        clearBtn.onclick = function() {
+            clearSalesTableFilter();
+        };
+    }
+}
+
+function clearSalesTableFilter() {
+    const salesTable = document.getElementById('salesTableContainer');
+    if (allSalesRowsHtml) {
+        salesTable.innerHTML = allSalesRowsHtml;
+    }
+    // Hide clear filter button
+    const clearBtn = document.getElementById('clearFilterBtn');
+    if (clearBtn) {
+        clearBtn.style.display = 'none';
+    }
+}
+
+document.addEventListener('DOMContentLoaded', function() {
+    const delNoteNo = '{{ header.delnoteno }}';
+    fetch(`/api/invoices-for-delivery-note/${delNoteNo}`)
+        .then(r => r.json())
+        .then(data => {
+            document.getElementById('invoices-summary-table').innerHTML = renderInvoicesTable(data);
+            // Add click handlers to invoice summary rows
+            document.querySelectorAll('.invoice-summary-row').forEach(row => {
+                row.addEventListener('click', function(e) {
+                    if (e.target.tagName.toLowerCase() === 'a') return;
+                    const invoiceNo = this.getAttribute('data-invoice-no');
+                    filterSalesTableByInvoice(invoiceNo);
+                });
+                row.addEventListener('mouseover', function(e) {
+                    if (e.target.tagName.toLowerCase() !== 'a') {
+                        this.style.background = '#e0edff';
+                    }
+                });
+                row.addEventListener('mouseout', function(e) {
+                    this.style.background = '';
+                });
+            });
+        })
+        .catch(() => {
+            document.getElementById('invoices-summary-table').innerHTML = '<div style="color:red;">Failed to load invoices.</div>';
+        });
+});
+</script>
 </body>
 </html>

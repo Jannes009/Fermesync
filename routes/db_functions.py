@@ -64,7 +64,7 @@ def get_products(cursor):
     return products
 
 def agent_code_to_agent_name(agent_code,cursor):
-    query = "SELECT DCLink, [Account] + '-' + [Name] AS display_name FROM [dbo].[_uvMarketAgent] WHERE [DCLink] = ?"
+    query = "SELECT DCLink, [Account] + '-' + [Name] AS display_name, [Name] FROM [dbo].[_uvMarketAgent] WHERE [DCLink] = ?"
     cursor.execute(query,(agent_code,))
     agent_name = cursor.fetchone()
     return agent_name

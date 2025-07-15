@@ -80,7 +80,7 @@ document.addEventListener("DOMContentLoaded", () => {
         const salesAmount = parseFloat(salesAmountField.value) || 0;
         const totalDeducted = parseFloat(totalDeductedField.value) || 0;
         const netAmount = salesAmount - totalDeducted;
-        netAmountDisplay.textContent = "R" + netAmount.toFixed(2);
+        netAmountDisplay.textContent = netAmount.toFixed(2);
     }
 
     async function updateInclFields() {
@@ -184,7 +184,7 @@ document.addEventListener("DOMContentLoaded", () => {
     submitBtn.addEventListener("click", (event) => {
         event.preventDefault();
 
-        const invoiceData = {
+        const salesOrderData = {
             InvoiceDate: document.querySelector('input[name="ZZInvoiceDate"]').value,
             InvoiceNo: document.querySelector('input[name="ZZInvoiceNo"]').value,
             InvoiceDelNoteNo: document.getElementById('delivery-note-number').value,
@@ -202,20 +202,27 @@ document.addEventListener("DOMContentLoaded", () => {
         const numericalValue = parseFloat(calculatedAmount.replace(/[^\d.-]/g, ""));
         const calculatedQuantity = document.getElementById("total-quantity").textContent;
 
-        const totalDeducted = invoiceData['InvoiceTotalDeducted'];
-        const marketComm = invoiceData['InvoiceMarketCommIncl'];
-        const agentComm = invoiceData['InvoiceAgentCommIncl'];
-        const extraCosts = invoiceData['InvoiceOtherCostsIncl'];
+        const totalDeducted = salesOrderData['InvoiceTotalDeducted'];
+        const marketComm = salesOrderData['InvoiceMarketCommIncl'];
+        const agentComm = salesOrderData['InvoiceAgentCommIncl'];
+        const extraCosts = salesOrderData['InvoiceOtherCostsIncl'];
 
-        if (invoiceData['InvoiceGross'] != numericalValue) {
+        const nett_input = parseFloat(document.querySelector('input[name="ZZInvoiceNettInputAmount"]').value)
+        const nett_display = parseFloat(document.getElementById("net-amount").textContent)
+        console.log(nett_display, nett_input)
+
+        if (salesOrderData['InvoiceGross'] != numericalValue) {
             alert("Amounts don't balance");
             return;
-        } else if (invoiceData['InvoiceQty'] != calculatedQuantity) {
+        } else if (salesOrderData['InvoiceQty'] != calculatedQuantity) {
             alert("Quantities don't balance");
             return;
         } else if (totalDeducted != (parseFloat(marketComm) + parseFloat(agentComm) + parseFloat(extraCosts))) {
             console.log("Market Commission + Agent Commission + Other Costs must equal Total Deducted!");
             // return;
+        } else if(nett_input != nett_display){
+            alert("Nett amounts don't balance");
+            return;
         }
 
         const checkedBoxes = document.querySelectorAll('.child-line-checkbox:checked');
@@ -223,7 +230,7 @@ document.addEventListener("DOMContentLoaded", () => {
             const compositeId = checkbox.getAttribute('data-id');
             if (compositeId) {
                 const [noteNumber, lineId, salesLineId] = compositeId.split('-');
-                invoiceData['tickedLines'].push({ salesLineId });
+                salesOrderData['tickedLines'].push({ salesLineId });
             }
         });
 
@@ -232,19 +239,19 @@ document.addEventListener("DOMContentLoaded", () => {
             headers: {
                 'Content-Type': 'application/json',
             },
-            body: JSON.stringify(invoiceData),
+            body: JSON.stringify(salesOrderData),
         })
         .then(response => response.json())
         .then(data => {
             if (data.success) {
-                window.location.href = '/create_invoice';
+                window.location.href = '/create_sales_order';
                 Toast.fire({
-                    title: "Invoice Created Successfully",
+                    title: "Sales Order Created Successfully",
                     icon: "success",
                 });
-                alert("Invoice created successfully!");
+                alert("Sales Order created successfully!");
             } else {
-                alert(`Failed to submit invoice: ${data.error}`);
+                alert(`Failed to submit sales order: ${data.error}`);
             }
         })
         .catch(error => console.error('Error:', error));

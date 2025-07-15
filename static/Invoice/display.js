@@ -3,14 +3,12 @@ window.agentComm = 0;
 
 function fetch_delivery_note_sales() {
     const noteNumber = document.getElementById("delivery-note-number").value;
-    const startDate = document.getElementById("start-date").value;
-    const endDate = document.getElementById("end-date").value;
     const tableContainer = document.getElementById("pivot-table-container");
 
     fetch("/get_delivery_note_lines", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ note_number: noteNumber, start_date: startDate, end_date: endDate }),
+        body: JSON.stringify({ note_number: noteNumber }),
     })
     .then(response => response.json())
     .then(data => {

@@ -144,7 +144,7 @@ document.addEventListener("DOMContentLoaded", function () {
         console.log(salesData)
     
         // Send data to the backend
-        fetch('/submit_sales_entries', {
+        fetch('/submit_invoice', {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json',
@@ -333,16 +333,16 @@ function check_invoice_number(){
     fetch('/check_invoice_no', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ invoiceNo: invoiceNo })
+        body: JSON.stringify({ salesOrderNo: invoiceNo })
     })
     .then(response => response.json())
     .then(data => {
         if (data.exists) {
             invoiceNumberIcon.src = "/static/image/incorrect.png"; 
-            invoiceStatus = "Invoice already exists!";
+            invoiceStatus = "Sales Order already exists!";
         } else {
             invoiceNumberIcon.src = "/static/image/check.png";
-            invoiceStatus = "This Invoice Number doesn't exist.";
+            invoiceStatus = "This Sales Order Number doesn't exist.";
         }
     })
     .catch(error => console.error("Error:", error));

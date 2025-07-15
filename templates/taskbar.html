@@ -7,16 +7,18 @@
     </div>
     <nav>
         <ul>
-            <!-- <li><a href="/dashboard" class="taskbar-link" id="dashboard-link">Dashboard</a></li> -->
-            <li><a href="/create_entry" class="taskbar-link" id="create-entry-link">Create Entry</a></li>
-            <li><a href="/view_entries" class="taskbar-link" id="view-database-link">View Database</a></li>
+            <li><a href="/create_entry" class="taskbar-link" id="create-entry-link">Delivery Note</a></li>
+            <li><a href="/view_entries" class="taskbar-link" id="view-database-link">View Delivery Notes</a></li>
             <li><a href="/import/main" class="taskbar-link" id="import-link">Import</a></li>
-            <li><a href="/create_invoice" class="taskbar-link" id="invoice-link">Invoice</a></li>
-            <!-- <li><a href="/sales" class="taskbar-link" id="sales-link">Sales</a></li> -->
-            <!-- <li><a href="/upload_document" class="taskbar-link" id="document-link">Document</a></li> -->
+            <li class="dropdown-parent" style="position:relative;">
+                <a href="/sales-orders" class="taskbar-link" id="sales-orders-link">Order Entry<span style="font-size:0.8em;">&#9662;</span></a>
+                <ul class="dropdown-menu">
+                    <li><a href="/sales-orders" class="dropdown-item">Sales Orders</a></li>
+                    <li><a href="/purchase-orders" class="dropdown-item">Purchase Orders</a></li>
+                </ul>
+            </li>
         </ul>
     </nav>
-
     <!-- User Section -->
     <div class="user-section">
         <div class="username" id="username">John Doe <span>&#9662;</span></div>
@@ -164,6 +166,37 @@ main {
     display: block;
 }
 
+.dropdown-parent:hover .dropdown-menu,
+.dropdown-parent:focus-within .dropdown-menu {
+    display: block;
+}
+.dropdown-menu {
+    display: none;
+    position: absolute;
+    left: 0;
+    top: 100%;
+    background: #fff;
+    min-width: 180px;
+    box-shadow: 0 4px 12px rgba(0,0,0,0.12);
+    border-radius: 0 0 8px 8px;
+    z-index: 1001;
+    padding: 0.5em 0;
+    margin: 0;
+    list-style: none;
+}
+.dropdown-item {
+    display: block;
+    padding: 0.7em 1.2em;
+    color: #22223b;
+    text-decoration: none;
+    font-size: 1em;
+    transition: background 0.18s, color 0.18s;
+}
+.dropdown-item:hover {
+    background: #e0edff;
+    color: #2563eb;
+}
+
 @media (max-width: 800px) { /* Adjust breakpoint if needed */
     .taskbar {
         padding: 8px 12px;
@@ -196,6 +229,10 @@ main {
 
 </style>
 <script>
+    document.querySelectorAll('.dropdown-menu').forEach(menu => {
+    menu.style.display = 'none';
+});
+
     document.addEventListener("DOMContentLoaded", function () {
         const path = window.location.pathname;
         document.querySelectorAll(".taskbar-link").forEach((link) => {
@@ -204,9 +241,9 @@ main {
             }
         });
 
-        // Dropdown handling
+        // Dropdown handling for user
         document.getElementById("username").addEventListener("click", function () {
-            const dropdown = document.querySelector(".dropdown");
+            const dropdown = document.querySelector(".user-section .dropdown");
             dropdown.style.display = dropdown.style.display === "block" ? "none" : "block";
         });
         fetch('/get_username')  // Create this endpoint in Flask
@@ -214,6 +251,15 @@ main {
             .then(data => {
                 document.getElementById('username').textContent = data.username + " ▼";
             });
+        // Dropdown handling for nav
+        document.querySelectorAll('.dropdown-parent').forEach(function(parent) {
+            parent.addEventListener('mouseenter', function() {
+                this.querySelector('.dropdown-menu').style.display = 'block';
+            });
+            parent.addEventListener('mouseleave', function() {
+                this.querySelector('.dropdown-menu').style.display = 'none';
+            });
+        });
     });
 
 </script>

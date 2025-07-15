@@ -6,22 +6,16 @@ from auth import role_required
 
 invoice_bp = Blueprint('invoice', __name__)
 
-@invoice_bp.route('/create_invoice')
+@invoice_bp.route('/create_sales_order')
 @role_required()
 def invoice_page():
     return render_template('Invoice page/base.html')
 
 # Function to get delivery note details, lines, and sales
-def get_delivery_note_details(note_number, start_date, end_date):
+def get_delivery_note_details(note_number):
     # Establish connection
     conn = create_db_connection()
     cursor = conn.cursor()
-
-    print(start_date, end_date)
-    if start_date == "":
-        start_date = '1000/01/01'
-    if end_date == "":
-        end_date = '3000/01/01'
 
     # Step 1: Fetch the Delivery Note ID (DelIndex) and Market (DelMarketId)
     cursor.execute("""
@@ -90,9 +84,9 @@ def get_delivery_note_details(note_number, start_date, end_date):
             cursor.execute("""
                 SELECT SalesLineIndex, SalesAmnt, SalesDate, SalesQty, SalesPrice
                 FROM [dbo].[_uvMarketSales]
-                WHERE SalesDelLineId = ? AND Invoiced = 'FALSE' AND SalesDate >= ? AND SalesDate <= ?
+                WHERE SalesDelLineId = ? AND Invoiced = 'FALSE'
                 ORDER BY SalesDate
-            """, (del_line_index, start_date, end_date,))
+            """, (del_line_index,))
             sales_lines = cursor.fetchall()
 
             # Add sales lines and amount details to the current line
@@ -118,12 +112,9 @@ def get_delivery_note_lines():
     # Get the delivery note number from the POST request
     data = request.get_json()  # For handling JSON data
     note_number = data.get('note_number')
-    start_date = data.get('start_date')
-    end_date = data.get('end_date')
 
     # Fetch delivery note details and associated lines
-    delivery_note_details = get_delivery_note_details(note_number, start_date, end_date)
-    print(delivery_note_details)
+    delivery_note_details = get_delivery_note_details(note_number)
 
     if delivery_note_details is None:
         return "No delivery header found with that number", 400
@@ -255,3 +246,89 @@ def check_delivery_note():
 
     conn.close()
     return jsonify({'exists': exists})
+
+@invoice_bp.route('/sales-order/<int:sales_order_id>')
+def sales_order_detail_page(sales_order_id):
+    return render_template('Invoice page/sales_order_detail.html')
+
+@invoice_bp.route('/api/sales-order/<int:sales_order_id>')
+def api_sales_order_detail(sales_order_id):
+    conn = create_db_connection()
+    cursor = conn.cursor()
+
+    # Fetch sales order header from _uvInvoiceSOStatus
+    cursor.execute("""
+        SELECT InvoiceIndex, InvoiceDate, InvoiceDelNoteNo, InvoiceNo, AgentName, InvoiceTaxRate, InvoiceGross, InvoiceTotalDeducted, InvoiceAgentCommIncl, InvoiceMarketCommIncl, InvoiceOtherCostsIncl, InvoiceNett, InvoiceQty, InvoiceEvoSONumber, Status
+        FROM _uvInvoiceSOStatus
+        WHERE InvoiceIndex = ?
+    """, (sales_order_id,))
+    header_row = cursor.fetchone()
+    if not header_row:
+        close_db_connection(cursor, conn)
+        return jsonify({"error": "Sales order not found"}), 404
+
+    header_columns = [desc[0] for desc in cursor.description]
+    sales_order_header = dict(zip(header_columns, header_row))
+
+    # Fetch sales order lines (keep as is)
+    cursor.execute("SELECT * FROM _uvMarketInvoiceLines WHERE InvoiceIndex = ?", (sales_order_id,))
+    line_rows = cursor.fetchall()
+    line_columns = [desc[0] for desc in cursor.description]
+    sales_order_lines = [dict(zip(line_columns, row)) for row in line_rows]
+
+    close_db_connection(cursor, conn)
+    return jsonify({"sales_order_header": sales_order_header, "sales_order_lines": sales_order_lines})
+
+@invoice_bp.route('/sales-orders')
+def sales_order_summary_page():
+    return render_template('Invoice page/sales_order_summary.html')
+
+@invoice_bp.route('/api/sales-orders')
+def api_sales_orders():
+    conn = create_db_connection()
+    cursor = conn.cursor()
+    # Fetch all sales order headers from _uvInvoiceSOStatus, now including InvoiceNo and InvoiceQty
+    cursor.execute("""
+        SELECT InvoiceIndex, InvoiceDate, InvoiceDelNoteNo, InvoiceNo, AgentName, InvoiceTaxRate, InvoiceGross, 
+        InvoiceGross, InvoiceTotalDeducted, InvoiceAgentCommIncl, InvoiceMarketCommIncl, InvoiceOtherCostsIncl, 
+        InvoiceNett, InvoiceQty, InvoiceEvoSONumber, Status
+        FROM _uvInvoiceSOStatus
+        ORDER BY InvoiceDate DESC, InvoiceIndex DESC
+    """)
+    rows = cursor.fetchall()
+    columns = [desc[0] for desc in cursor.description]
+    sales_orders = [dict(zip(columns, row)) for row in rows]
+    close_db_connection(cursor, conn)
+    return jsonify(sales_orders)
+
+@invoice_bp.route('/purchase-orders')
+def purchase_order_summary_page():
+    return render_template('Invoice page/purchase_order_summary.html')
+
+@invoice_bp.route('/api/purchase-orders')
+def api_purchase_orders():
+    conn = create_db_connection()
+    cursor = conn.cursor()
+    cursor.execute("SELECT DelIndex, DelNoteNo, DelTransporter, DelTransportCostExcl, TransportEvoPONumber, Status FROM _uvTransportPOStatus ORDER BY DelIndex DESC")
+    rows = cursor.fetchall()
+    columns = [desc[0] for desc in cursor.description]
+    purchase_orders = [dict(zip(columns, row)) for row in rows]
+    print(purchase_orders)
+    close_db_connection(cursor, conn)
+    return jsonify(purchase_orders)
+
+@invoice_bp.route('/api/invoices-for-delivery-note/<del_note_no>')
+def api_invoices_for_delivery_note(del_note_no):
+    conn = create_db_connection()
+    cursor = conn.cursor()
+    cursor.execute("""
+        SELECT InvoiceIndex, InvoiceNo, InvoiceDate, InvoiceGross, InvoiceNett, Status
+        FROM _uvInvoiceSOStatus
+        WHERE InvoiceDelNoteNo = ?
+        ORDER BY InvoiceDate DESC, InvoiceIndex DESC
+    """, (del_note_no,))
+    rows = cursor.fetchall()
+    columns = [desc[0] for desc in cursor.description]
+    invoices = [dict(zip(columns, row)) for row in rows]
+    close_db_connection(cursor, conn)
+    return jsonify(invoices)

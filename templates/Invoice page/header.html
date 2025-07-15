@@ -24,7 +24,11 @@
             </div>
         </div>
 
-        <div class="form-row">
+        <div class="form-row form-row-4">
+            <div class="form-group">
+                <label for="ZZInvoiceNettInputAmount">Nett Input Amount</label>
+                <input type="number" id="ZZInvoiceNettInputAmount" name="ZZInvoiceNettInputAmount" placeholder="Nett Input Amount" class="form-input">
+            </div>
             <div class="form-group">
                 <label for="InvoiceSalesQty">Sales Quantity</label>
                 <input type="number" id="InvoiceSalesQty" name="InvoiceSalesQty" placeholder="Sales Quantity" class="form-input" required>
@@ -69,13 +73,8 @@
             </div>
         </div>
     </div>
-
-    <div>
-        <label>Net Amount:</label>
-        <span id="net-amount">R0.00</span>
-        <div class="tax-rate-info">
-            <span id="current-tax-rate">Tax Rate: <span id="tax-rate-value">15</span>%</span>
-            <img id="change-tax-rate-icon" src="{{ url_for('static', filename='Image/edit.png') }}" alt="Change Tax Rate" class="change-tax-icon" title="Change Default Tax Rate">
-        </div>
+    <div class="tax-rate-info">
+        <span id="current-tax-rate">Tax Rate: <span id="tax-rate-value">15</span>%</span>
+        <img id="change-tax-rate-icon" src="{{ url_for('static', filename='Image/edit.png') }}" alt="Change Tax Rate" class="change-tax-icon" title="Change Default Tax Rate">
     </div>
 </div>
