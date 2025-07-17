@@ -6,7 +6,7 @@ from routes.db_functions import (
     get_market_codes, get_products, agent_code_to_agent_name,
     market_Id_to_market_name, transporter_account_to_transporter_name,
     project_link_to_production_unit_name,
-    get_stock_id
+    get_stock_id, get_destinations
 )
 
 entry_bp = Blueprint('entry', __name__)
@@ -16,6 +16,7 @@ def fetch_dropdown_options(cursor):
         'agent_codes': get_agent_codes(cursor),
         'transporter_codes': get_transporter_codes(cursor),
         'production_unit_codes': get_production_unit_codes(cursor),
+        'destinations': get_destinations(cursor),
         'market_codes': get_market_codes(cursor),
         'product_options': get_products(cursor)
     }
@@ -34,7 +35,7 @@ def integrity_error(error, form_data):
 def fetch_header_data(request_form):
     return {key: request_form.get(key) for key in [
         'ZZAgentName', 'ZZDelNoteNo', 'ZZDelDate', 'ZZProductionUnitCode',
-        'ZZTransporterCode', 'ZZTransporterCost', 'ZZMarket'
+        'ZZTransporterCode', 'ZZTransporterCost', 'ZZMarket', 'ZZDestination'
     ]}
 
 def fetch_lines_data(request_form):
@@ -48,8 +49,8 @@ def fetch_lines_data(request_form):
 def store_header(cursor, form_data):
     cursor.execute("""
         INSERT INTO ZZDeliveryNoteHeader 
-        (DeliClientId, DelNoteNo, DelDate, DelFarmId, DelTransporter,  DelTransportCostExcl, DelMarketId)
-        VALUES (?, ?, ?, ?, ?, ?, ?)
+        (DeliClientId, DelNoteNo, DelDate, DelFarmId, DelTransporter, DelTransportCostExcl, DelMarketId, DelDestinationId)
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?)
     """, tuple(form_data.values()))
     cursor.connection.commit()
 
@@ -104,10 +105,12 @@ def create_entry():
 
             total_quantity = store_lines(cursor, header_id, lines_data)
             update_header_quantity(cursor, header_id, total_quantity)
-
+            connection.commit()
             # Create Transport PO
             cursor.execute("EXEC [dbo].[SIGCreateTransportPO]")
-            cursor.connection.commit()
+
+            connection.commit()
+
 
             session['del_note_no'] = form_data['ZZDelNoteNo']
             return redirect(url_for('entry.submission_success'))

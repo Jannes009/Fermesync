@@ -44,6 +44,15 @@ def get_market_codes(cursor):
     return market_codes
 
 
+def get_destinations(cursor):
+    query = """
+    SELECT idDestination, DestinationCode FROM _uvDestination
+    ORDER BY DestinationCode
+    """
+    cursor.execute(query)
+    destinations = cursor.fetchall()
+    return destinations
+
 def get_production_unit_codes(cursor):
     query = """
     SELECT ProjectLink, [ProdUnitCode] + '-' + [ProdUnitName] AS display_name FROM [dbo].[_uvMarketProdUnit]

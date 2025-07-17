@@ -6,10 +6,6 @@ view_bp = Blueprint('view', __name__)
 
 @view_bp.route('/view_entries', methods=['GET', 'POST'])
 def view_entries():
-    filters = {
-    "del_note_number": request.form.get('DeliveryNoteNo', ''),
-    }
-
     # Create the base query
     query = """
     SELECT DelIndex, DelDate, DelNoteNo, AgentName, MarketName,
@@ -18,23 +14,16 @@ def view_entries():
            SUM(TotalQtyInvoiced) QtyInvoiced,
            DelIsFullyInvoiced
     FROM [dbo].[_uvMarketDeliveryNote] WHERE 1=1
+    GROUP BY DelIndex, DelDate, DelNoteNo, AgentName, MarketName, DelIsFullyInvoiced
     """
-    params = []
 
-    # Add filters to the query
-    if filters["del_note_number"]:
-        query += " AND DelNoteNo LIKE ?"
-        filters["del_note_number"] = filters["del_note_number"].replace('%', '\\%').replace('_', '\\_')
-        params.append(f"%{filters['del_note_number']}%")
-
-    query += " GROUP BY DelIndex, DelDate, DelNoteNo, AgentName, MarketName, DelIsFullyInvoiced"
 
     # Connect to the database
     conn = create_db_connection()
     cursor = conn.cursor()
 
     # Execute the query with the dynamic filters
-    cursor.execute(query, tuple(params))
+    cursor.execute(query,)
     entries = cursor.fetchall()
 
     # Fetch agent names for the dropdown
@@ -46,7 +35,6 @@ def view_entries():
     return render_template(
         'Transition pages/view_entries.html',
         entries=entries,
-        filters=filters,
         agent_codes=agent_codes
     )
 

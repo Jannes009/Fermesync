@@ -12,6 +12,7 @@ document.addEventListener("DOMContentLoaded", () => {
             ZZProductionUnitCode: document.querySelector('[name="ZZProductionUnitCode"]').value || '',
             ZZTransporterCode: document.querySelector('[name="ZZTransporterCode"]').value || '',
             ZZTransporterCost: document.querySelector('[name="ZZTransporterCost"]').value || '',
+            ZZDestination: document.querySelector('[name="ZZDestination"]').value || '',
             products: Array.from(document.querySelectorAll('.product-row')).map(row => ({
                 ZZProduct: row.querySelector('[name="ZZProduct[]"]').value || '',
                 ZZEstimatedPrice: row.querySelector('[name="ZZEstimatedPrice[]"]').value || '',

@@ -18,7 +18,7 @@
         .summary-table th, .summary-table td { padding: 0.7em 1em; }
         .summary-table th { background: #e0edff; color: #2563eb; font-weight: 700; }
         .summary-table tr { background: #fff; transition: background 0.18s, box-shadow 0.18s; }
-        .summary-table tr:nth-child(even) { background: #f4f8fb; }
+        .summary-table tr.striped { background: #f4f8fb; }
         .summary-table tr.clickable-row { cursor: pointer; }
         .summary-table tr.clickable-row:hover {
             background: #e0edff !important;
@@ -91,20 +91,12 @@ function formatAmount(val) {
     return 'R ' + ((parseFloat(val) || 0).toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2}));
 }
 
-function filterTable() {
-    const showAll = document.getElementById('toggle-completed').checked;
-    const rows = document.querySelectorAll('#sales-order-table-body tr');
-    const toggleLabel = document.getElementById('toggle-label');
-
-    rows.forEach(row => {
-        const status = row.dataset.status;
-        if (showAll || (status !== 'processed' && status !== 'cancelled')) {
-            row.style.display = '';
-        } else {
-            row.style.display = 'none';
-        }
+function applyRowStriping() {
+    const rows = Array.from(document.querySelectorAll('#sales-order-table-body tr'))
+        .filter(row => row.style.display !== 'none');
+    rows.forEach((row, idx) => {
+        row.classList.toggle('striped', idx % 2 === 1);
     });
-    toggleLabel.textContent = showAll ? 'Showing All Orders' : 'Hide Completed';
 }
 
 function renderTable(salesOrders) {
@@ -133,6 +125,7 @@ function renderTable(salesOrders) {
             }
         });
     });
+    applyRowStriping();
 }
 
 async function loadSalesOrders() {
@@ -154,6 +147,24 @@ async function loadSalesOrders() {
         document.getElementById('error-message').textContent = err.message || 'Failed to load sales orders.';
     }
 }
+
+function filterTable() {
+    const showAll = document.getElementById('toggle-completed').checked;
+    const rows = document.querySelectorAll('#sales-order-table-body tr');
+    const toggleLabel = document.getElementById('toggle-label');
+
+    rows.forEach(row => {
+        const status = row.dataset.status;
+        if (showAll || (status !== 'processed' && status !== 'cancelled')) {
+            row.style.display = '';
+        } else {
+            row.style.display = 'none';
+        }
+    });
+    toggleLabel.textContent = showAll ? 'Showing All Orders' : 'Hide Completed';
+    applyRowStriping(); // <-- This ensures stripes are always correct after filtering
+}
+
 window.addEventListener('DOMContentLoaded', () => {
     loadSalesOrders();
     document.getElementById('toggle-completed').addEventListener('change', filterTable);
