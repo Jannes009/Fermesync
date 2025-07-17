@@ -6,8 +6,6 @@ import logging
 from auth import login_manager, UserLogin
 from apscheduler.schedulers.background import BackgroundScheduler
 from routes.Import.scheduler import run_all_import_jobs
-import win32
-import win32com.client
 
 
 # Function to create and configure the Flask app
@@ -194,32 +192,5 @@ if __name__ == "__main__":
     # if not app.debug or os.environ.get("WERKZEUG_RUN_MAIN") == "true":
     #     scheduler.add_job(run_all_import_jobs, 'interval', seconds=120)
     #     scheduler.start()
-    try:
-        # Create the launcher
-        evo_launcher = win32com.client.Dispatch("Pastel.Evolution.Common.SdkAccessories.EvolutionLauncher")
-        # Create the login parameters object
-        login_params = win32com.client.Dispatch("Pastel.Evolution.Common.SdkAccessories.EvolutionLauncher+LoginParameters")
-
-        # Use dynamic dispatch to set properties
-        win32com.client.CastTo(login_params, 'LoginParameters')
-        login_params_properties = login_params._oleobj_
-
-        
-        login_params_properties.Invoke(login_params_properties.GetIDsOfNames("ServerName")[0], 0, 1, 8, "SIGMAFIN-RDS\\EVOLUTION")
-        login_params_properties.Invoke(login_params_properties.GetIDsOfNames("DatabaseName")[0], 0, 1, 8, "UB_UITDRAAI_BDY")
-        login_params_properties.Invoke(login_params_properties.GetIDsOfNames("Username")[0], 0, 1, 8, "sa")
-        login_params_properties.Invoke(login_params_properties.GetIDsOfNames("Password")[0], 0, 1, 8, "@Evolution")
-        
-        
-        # Login
-        evo_launcher.Login(login_params)
-        print("✅ Successfully logged into Sage Evolution.")
-        
-        # You can now safely use other objects, e.g.:
-        customer = win32com.client.Dispatch("Pastel.Evolution.Customer")
-        print("✅ Customer COM object is ready.")
-    except Exception as e:
-        print("❌ COM initialization failed.")
-        print("Error:", e)
     app.run(host='0.0.0.0', port=5001, debug=True)
 
