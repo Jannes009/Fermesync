@@ -94,7 +94,7 @@ document.addEventListener("DOMContentLoaded", () => {
         document.getElementById("ZZInvoiceMarketCommIncl").value = (markCommExcl * (1 + vatMultiplier / 100)).toFixed(2);
         document.getElementById("ZZInvoiceAgentCommIncl").value = (agentCommExcl * (1 + vatMultiplier / 100)).toFixed(2);
         document.getElementById("ZZInvoiceOtherCostsIncl").textContent = otherCostsIncl;
-        return otherCostsIncl; 
+        return otherCostsIncl;
     }
 
     async function updateExclFields() {
@@ -178,15 +178,32 @@ document.addEventListener("DOMContentLoaded", () => {
     updateFields(); // initial load
 });
 
+async function isInvoiceNumberUnique(invoiceNo) {
+    const response = await fetch('/check_invoice_no', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ salesOrderNo: invoiceNo })
+    });
+    const data = await response.json();
+    return !data.exists;
+}
+
 document.addEventListener("DOMContentLoaded", () => {
     const submitBtn = document.getElementById("submit-btn");
 
-    submitBtn.addEventListener("click", (event) => {
+    submitBtn.addEventListener("click", async (event) => {
         event.preventDefault();
+
+        const invoiceNo = document.querySelector('input[name="ZZInvoiceNo"]').value;
+        const isUnique = await isInvoiceNumberUnique(invoiceNo);
+        if (!isUnique) {
+            alert("This invoice number already exists. Please use a different number.");
+            return;
+        }
 
         const salesOrderData = {
             InvoiceDate: document.querySelector('input[name="ZZInvoiceDate"]').value,
-            InvoiceNo: document.querySelector('input[name="ZZInvoiceNo"]').value,
+            InvoiceNo: invoiceNo,
             InvoiceDelNoteNo: document.getElementById('delivery-note-number').value,
             InvoiceQty: document.querySelector('input[name="InvoiceSalesQty"]').value,
             InvoiceGross: parseFloat(document.querySelector('input[name="InvoiceSalesAmnt"]').value),

@@ -236,13 +236,14 @@ def get_tax_rate():
 @invoice_bp.route('/check_invoice_no', methods=['POST'])
 def check_delivery_note():
     data = request.json
-    invoice_number = data.get('invoiceNo')
+    invoice_number = data.get('salesOrderNo')
 
     conn = create_db_connection()
     cursor = conn.cursor()
     
     cursor.execute("SELECT COUNT(*) FROM ZZInvoiceHeader WHERE InvoiceNo = ?", (invoice_number,))
     exists = cursor.fetchone()[0] > 0
+    print(invoice_number, exists)
 
     conn.close()
     return jsonify({'exists': exists})
