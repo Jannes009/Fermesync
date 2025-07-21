@@ -8,13 +8,13 @@ view_bp = Blueprint('view', __name__)
 def view_entries():
     # Create the base query
     query = """
-    SELECT DelIndex, DelDate, DelNoteNo, AgentName, MarketName,
+    SELECT DelIndex, DelDate, DelNoteNo, AgentName, MarketName, ProdUnitName,
            SUM(DelLineQuantityBags) QtyLoaded,
            SUM(TotalQtySold) QtySold,
            SUM(TotalQtyInvoiced) QtyInvoiced,
            DelIsFullyInvoiced
     FROM [dbo].[_uvMarketDeliveryNote] WHERE 1=1
-    GROUP BY DelIndex, DelDate, DelNoteNo, AgentName, MarketName, DelIsFullyInvoiced
+    GROUP BY DelIndex, DelDate, DelNoteNo, AgentName, MarketName, ProdUnitName, DelIsFullyInvoiced
     """
 
 
