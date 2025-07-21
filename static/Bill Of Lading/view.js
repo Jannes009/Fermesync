@@ -172,15 +172,17 @@ function showSaleDetailsModal(selectedLine, delNoteNo) {
                 const cells = entry.cells;
                 const qty = parseInt(cells[1].textContent);
                 totalQty += qty;
+                const price = parseFloat(cells[2].textContent.replace('R', ''))
+                const amount = parseFloat(cells[4].textContent.replace('R', ''))
                 
                 return {
                     lineId: selectedLine.lineId,
                     date: cells[0].textContent,
                     quantity: qty,
-                    price: parseFloat(cells[2].textContent.replace('R', '')),
+                    price: price,
                     discount: parseFloat(cells[3].textContent),
-                    discountAmnt: parseFloat(cells[4].textContent.replace('R', '')) * parseFloat(cells[3].textContent) / 100,
-                    amount: parseFloat(cells[4].textContent.replace('R', '')),
+                    discountAmnt: qty * price - amount,
+                    amount: amount,
                     destroyed: cells[5].textContent === 'Yes',
                     salesId: null
                 };

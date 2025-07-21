@@ -74,10 +74,9 @@ function load_sales_lines_table(delnoteno) {
                         <th>Product</th>
                         <th>Qty</th>
                         <th>Price</th>
-                        <th>Discount</th>
-                        <th>Gross</th>
+                        <th>Discount %</th>
+                        <th>Sales Amount</th>
                         <th>Auto Sale</th>
-                        <th>Net</th>
                         <th>Invoice No</th>
                         <th></th>
                     </tr>
@@ -93,10 +92,9 @@ function load_sales_lines_table(delnoteno) {
                         <td>${sale.product || ''}</td>
                         <td class="qty-cell">${sale.qty != null ? sale.qty.toLocaleString('en-ZA') : ''}</td>
                         <td class="price-cell">R${sale.price != null ? Number(sale.price).toLocaleString('en-ZA', {minimumFractionDigits:2, maximumFractionDigits:2}) : ''}</td>
-                        <td class="discount-cell">R${sale.discount_amount != null ? Number(sale.discount_amount).toLocaleString('en-ZA', {minimumFractionDigits:2, maximumFractionDigits:2}) : ''}</td>
-                        <td>R${sale.gross_amount != null ? Number(sale.gross_amount).toLocaleString('en-ZA', {minimumFractionDigits:2, maximumFractionDigits:2}) : ''}</td>
+                        <td class="discount-cell">${sale.discount_percent != null ? Number(sale.discount_percent).toLocaleString('en-ZA', {minimumFractionDigits:2, maximumFractionDigits:2}) : '0.00'}%</td>
+                        <td class="sales-amount-cell">R${sale.sales_amount != null ? Number(sale.sales_amount).toLocaleString('en-ZA', {minimumFractionDigits:2, maximumFractionDigits:2}) : ''}</td>
                         <td>${sale.auto_sale ? 'Auto' : 'Manual'}</td>
-                        <td>R${sale.net_amount != null ? Number(sale.net_amount).toLocaleString('en-ZA', {minimumFractionDigits:2, maximumFractionDigits:2}) : ''}</td>
                         <td>${sale.invoice_no || ''}</td>
                         <td class="sales-row-actions">
                         ${!sale.invoice_no ? `

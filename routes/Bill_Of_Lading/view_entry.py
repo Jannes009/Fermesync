@@ -152,8 +152,6 @@ def submit_sales_entry():
         price = item['price']
         quantity = item['quantity']
         discount = item['discount']
-        discountAmnt = item['discountAmnt']
-        amount = item['amount']
         destroyed = 1 if item['destroyed'] else 0
 
 
@@ -162,12 +160,9 @@ def submit_sales_entry():
 
         print(discount, item)
         # workout price or amount
-        if price == 0 and amount != 0:
-            price = int(amount) / int(quantity)
-        elif amount == 0 and price != 0:
-            amount = int(price) * int(quantity)
-
         gross_amount = float(price) * float(quantity)
+        amount = gross_amount * (1 - float(discount) / 100)
+        discountAmnt = gross_amount * (float(discount) / 100)
 
         cursor.execute("""
         SELECT AgentComm, MarketComm FROM [dbo].[_uvDelLinCommission]

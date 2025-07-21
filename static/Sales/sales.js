@@ -96,7 +96,7 @@ window.showLinkedModal = function(delnoteNo) {
         if (aHasDel && aHasTrn && !(bHasDel && bHasTrn)) return -1;
         if (!(aHasDel && aHasTrn) && (bHasDel && bHasTrn)) return 1;
         // Then only Delivery Note lines
-        if (aHasDel && !aHasTrn && !(bHasDel && !bHasTrn)) return -1;
+        if (aHasDel && !aHasTrn && !(bHasDel && !aHasTrn)) return -1;
         if (!(aHasDel && !aHasTrn) && (bHasDel && !bHasTrn)) return 1;
         // Then only Trn lines
         if (!aHasDel && aHasTrn && (bHasDel || !bHasTrn)) return -1;
@@ -304,15 +304,30 @@ window.cancelEdit = function(delnoteNo, idx, btn) {
   const row = document.getElementById(`row-${delnoteNo}-${idx}`);
   if (!row) return;
 
-  // Get the original values from data attributes
+  // Restore original HTML from data attributes
   const priceCell = row.querySelector('.price-cell');
   const qtyCell = row.querySelector('.qty-cell');
   const discountCell = row.querySelector('.discount-cell');
+  const salesAmountCell = row.querySelector('.sales-amount-cell');
 
-  // Restore original values
-  priceCell.innerHTML = `R${formatNumber(parseFloat(priceCell.querySelector('input').value))}`;
-  qtyCell.innerHTML = formatNumber(parseFloat(qtyCell.querySelector('input').value));
-  discountCell.innerHTML = `R${formatNumber(parseFloat(discountCell.querySelector('input').value))}`;
+  if (row.dataset.originalPriceHtml) {
+    priceCell.innerHTML = row.dataset.originalPriceHtml;
+  }
+  if (row.dataset.originalQtyHtml) {
+    qtyCell.innerHTML = row.dataset.originalQtyHtml;
+  }
+  if (row.dataset.originalDiscountHtml) {
+    discountCell.innerHTML = row.dataset.originalDiscountHtml;
+  }
+  if (row.dataset.originalSalesAmountHtml) {
+    salesAmountCell.innerHTML = row.dataset.originalSalesAmountHtml;
+  }
+
+  // Clean up data attributes
+  delete row.dataset.originalPriceHtml;
+  delete row.dataset.originalQtyHtml;
+  delete row.dataset.originalDiscountHtml;
+  delete row.dataset.originalSalesAmountHtml;
 
   // Restore edit and delete buttons
   const actionsCell = row.querySelector('.sales-row-actions');
@@ -400,15 +415,39 @@ window.editRow = function(delnoteNo, idx, btn) {
   const priceCell = row.querySelector('.price-cell');
   const qtyCell = row.querySelector('.qty-cell');
   const discountCell = row.querySelector('.discount-cell');
+  const salesAmountCell = row.querySelector('.sales-amount-cell');
   
+  // Store original HTML to revert on cancel
+  row.dataset.originalPriceHtml = priceCell.innerHTML;
+  row.dataset.originalQtyHtml = qtyCell.innerHTML;
+  row.dataset.originalDiscountHtml = discountCell.innerHTML;
+  row.dataset.originalSalesAmountHtml = salesAmountCell.innerHTML;
+
   const price = parseFloat(priceCell.innerText.replace('R', '').replace(/,/g, ''));
   const qty = parseFloat(qtyCell.innerText.replace(/,/g, ''));
-  const discount = parseFloat(discountCell.innerText.replace('R', '').replace(/,/g, '')) / price / qty * 100;
+  const discountPercent = parseFloat(discountCell.innerText.replace('%', '').replace(/,/g, '')) || 0;
   
   priceCell.innerHTML = `<input type="number" step="0.01" value="${price}" class="form-control">`;
   qtyCell.innerHTML = `<input type="number" step="1" value="${qty}" class="form-control">`;
-  discountCell.innerHTML = `<input type="number" step="0.01" value="${discount}" class="form-control">`;
+  discountCell.innerHTML = `<div class="input-group"><input type="number" step="0.01" value="${discountPercent.toFixed(2)}" class="form-control"><span class="input-group-text">%</span></div>`;
   
+  // Add event listeners for live calculation
+  const priceInput = priceCell.querySelector('input');
+  const qtyInput = qtyCell.querySelector('input');
+  const discountInput = discountCell.querySelector('input');
+
+  function updateSalesAmount() {
+    const newPrice = parseFloat(priceInput.value) || 0;
+    const newQty = parseFloat(qtyInput.value) || 0;
+    const newDiscount = parseFloat(discountInput.value) || 0;
+    const newSalesAmount = newPrice * newQty * (1 - newDiscount / 100);
+    salesAmountCell.innerHTML = `R${formatNumber(newSalesAmount.toFixed(2))}`;
+  }
+
+  priceInput.addEventListener('input', updateSalesAmount);
+  qtyInput.addEventListener('input', updateSalesAmount);
+  discountInput.addEventListener('input', updateSalesAmount);
+
   // Replace edit button with submit button
   const actionsCell = row.querySelector('.sales-row-actions');
   actionsCell.innerHTML = `
@@ -435,11 +474,6 @@ window.submitRow = function(delnoteNo, idx, btn, salesId, lineId) {
   const price = parseFloat(priceCell.querySelector('input').value);
   const qty = parseFloat(qtyCell.querySelector('input').value);
   const discount = parseFloat(discountCell.querySelector('input').value);
-  
-  // Calculate amounts
-  const amount = price * qty;
-  const discountAmount = (amount * discount) / 100;
-  const grossAmount = amount;
   
   // Use the lineId passed as parameter, or fall back to dataset
   const finalLineId = lineId || row.dataset.lineId;
@@ -510,11 +544,9 @@ window.submitRow = function(delnoteNo, idx, btn, salesId, lineId) {
     price: price,
     quantity: qty,
     discount: discount,
-    discountAmnt: discountAmount,
-    amount: amount,
     destroyed: false
   };
-  
+  console.log(saleData)
   // Submit the sale
   fetch('/submit_sales_entries', {
     method: 'POST',
