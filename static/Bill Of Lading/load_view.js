@@ -29,7 +29,7 @@ function load_delivery_lines_table(delnoteno) {
                         </button>
                       </div>
                     </td>
-                    <td>${line.mainprodunitname}</td>
+                    <td>${line.produnitname}</td>
                     <td>
                       <div style="display: flex; align-items: center; gap: 8px;">
                         <span class="quantity-display">${line.dellinequantitybags || 0}</span>

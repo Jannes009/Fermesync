@@ -57,7 +57,7 @@ def fetch_delivery_note_lines(del_note_no):
     conn = create_db_connection()
     cursor = conn.cursor()
     cursor.execute("""
-        SELECT DelLineIndex, ProductDescription, MainProdUnitName,
+        SELECT DelLineIndex, ProductDescription,ProdUnitName,
                DelLineQuantityBags, TotalQtySold, TotalQtyInvoiced
         FROM [dbo].[_uvMarketDeliveryNote]
         WHERE DelNoteNo = ?
@@ -69,7 +69,7 @@ def fetch_delivery_note_lines(del_note_no):
         {
             'dellineindex': row[0],
             'productdescription': row[1],
-            'mainprodunitname': row[2],
+            'produnitname': row[2],
             'dellinequantitybags': row[3],
             'totalqtysold': row[4],
             'totalqtyinvoiced': row[5]
