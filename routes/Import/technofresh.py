@@ -93,30 +93,31 @@ def insert_data(file, current_user):
     conn = create_db_connection(current_user)
     cursor = conn.cursor()
 
-    df['DocketNumber'] = df['DocketNumber'].astype(str).str.replace('*', '-', regex=False)
-    df['SupplierRef'] = df['SupplierRef'].astype(str).str.replace('*', '-', regex=False)
-    df['PaymentReference'] = df['PaymentReference'].astype(str).str.replace('*', '-', regex=False)
+    try:
+        df['DocketNumber'] = df['DocketNumber'].astype(str).str.replace('*', '-', regex=False)
+        df['SupplierRef'] = df['SupplierRef'].astype(str).str.replace('*', '-', regex=False)
+        df['PaymentReference'] = df['PaymentReference'].astype(str).str.replace('*', '-', regex=False)
 
-    cursor.execute("TRUNCATE TABLE MarketData")
+        cursor.execute("TRUNCATE TABLE MarketData")
 
-    count = 0
-    for _, row in df.iterrows():
-        count += 1
-        row_data = {col: (None if pd.isna(val) else val) for col, val in row.items()}
-        cursor.execute("""
-            INSERT INTO MarketData (
-                Market, Agent, Product, Variety, Size, Class, Container, Mass_kg, Count,
-                DeliveryID, ConsignmentID, SupplierRef, QtySent, QtyAmendedTo, QtySold,
-                DeliveryDate, DateSold, DatePaid, DocketNumber, PaymentReference,
-                MarketAvg, Price, SalesValue
-            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-        """, tuple(row_data.values()))
+        count = 0
+        for _, row in df.iterrows():
+            count += 1
+            row_data = {col: (None if pd.isna(val) else val) for col, val in row.items()}
+            cursor.execute("""
+                INSERT INTO MarketData (
+                    Market, Agent, Product, Variety, Size, Class, Container, Mass_kg, Count,
+                    DeliveryID, ConsignmentID, SupplierRef, QtySent, QtyAmendedTo, QtySold,
+                    DeliveryDate, DateSold, DatePaid, DocketNumber, PaymentReference,
+                    MarketAvg, Price, SalesValue
+                ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+            """, tuple(row_data.values()))
 
-    cursor.execute("Exec [dbo].[SIGCopyImprtTrn]")
-    cursor.execute("EXEC SIGCreateSalesFromTrn")
+        cursor.execute("Exec [dbo].[SIGCopyImprtTrn]")
+        cursor.execute("EXEC SIGCreateSalesFromTrn")
 
-    conn.commit()
-    cursor.close()
-    conn.close()
-
-    return count
+        conn.commit()
+        return count
+    finally:
+        cursor.close()
+        conn.close()

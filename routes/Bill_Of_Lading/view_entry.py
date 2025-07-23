@@ -132,47 +132,38 @@ def submit_sales_entry():
     print(lines)
     conn = create_db_connection()
     cursor = conn.cursor()
-
-    total_quantity = sum(float(item['quantity']) for item in lines)
+    try:
+        total_quantity = sum(float(item['quantity']) for item in lines)
     
-    # cursor.execute("Select TotalQtyInvoiced, TotalQtyDelivered from [dbo].[_uvDelQuantities] WHERE DelLineIndex = ?",
-    # (lines[0]['lineId'],))
-    # quantities = cursor.fetchone()
-    # if(quantities[1] - quantities[0] - total_quantity < 0):
-    #     print("Not enough stock")
-    #     return jsonify({'success': False, 'message': 'Not enough stock'})
+        # cursor.execute("Select TotalQtyInvoiced, TotalQtyDelivered from [dbo].[_uvDelQuantities] WHERE DelLineIndex = ?",
+        # (lines[0]['lineId'],))
+        # quantities = cursor.fetchone()
+        # if(quantities[1] - quantities[0] - total_quantity < 0):
+        #     print("Not enough stock")
+        #     return jsonify({'success': False, 'message': 'Not enough stock'})
 
 
-    # try:
-    for item in lines:
-        print(item)
-        lineId = item['lineId']
-        salesId = item['salesId']
-        date = item['date']
-        price = item['price']
-        quantity = item['quantity']
-        discount = item['discount']
-        destroyed = 1 if item['destroyed'] else 0
+        # try:
+        for item in lines:
+            print(item)
+            lineId = item['lineId']
+            salesId = item['salesId']
+            date = item['date']
+            price = item['price']
+            quantity = item['quantity']
+            discount = item['discount']
+            destroyed = 1 if item['destroyed'] else 0
 
 
-        print(destroyed, type(destroyed))
-        stockId = get_stock_id(lineId, cursor)
+            print(destroyed, type(destroyed))
+            stockId = get_stock_id(lineId, cursor)
 
-        print(discount, item)
-        # workout price or amount
-        gross_amount = float(price) * float(quantity)
-        amount = gross_amount * (1 - float(discount) / 100)
-        discountAmnt = gross_amount * (float(discount) / 100)
+            print(discount, item)
+            # workout price or amount
+            gross_amount = float(price) * float(quantity)
+            amount = gross_amount * (1 - float(discount) / 100)
+            discountAmnt = gross_amount * (float(discount) / 100)
 
-        cursor.execute("""
-        SELECT AgentComm, MarketComm FROM [dbo].[_uvDelLinCommission]
-        WHERE DelLineIndex = ?
-        """,(lineId,))
-        row = cursor.fetchone()
-        agent_commission = row[0]
-        market_commission = row[1]
-        net_sales = float(amount) - (float(amount) * (float(agent_commission) + float(market_commission)) / 100)
-        if salesId != None:
             cursor.execute("""
             SELECT AgentComm, MarketComm FROM [dbo].[_uvDelLinCommission]
             WHERE DelLineIndex = ?
@@ -181,32 +172,43 @@ def submit_sales_entry():
             agent_commission = row[0]
             market_commission = row[1]
             net_sales = float(amount) - (float(amount) * (float(agent_commission) + float(market_commission)) / 100)
-        
-            cursor.execute("""
-            UPDATE ZZSalesLines
-                SET SalesDate = ?, SalesQty = ?, DiscountPercent = ?, DiscountAmnt = ?, 
-                SalesAmnt = ?, SalesStockId = ?, SalesPrice = ?, GrossSalesAmnt = ?, 
-                SalesMarketComPercent = ?, SalesAgentComPercent = ?, NettSalesAmnt = ?,
-                Destroyed = ?
-                WHERE SalesLineIndex = ?
-            """, (date, quantity, discount, discountAmnt, amount, stockId, price, 
-                  gross_amount, market_commission, agent_commission, net_sales, destroyed, salesId, ))
-        else:  
-            cursor.execute("""
-            INSERT INTO ZZSalesLines (
-            SalesDelLineId, SalesDate, SalesQty, SalesAmnt,
-            SalesPrice, SalesStockId, AutoSale, DiscountPercent,
-            DiscountAmnt, GrossSalesAmnt,
-            SalesMarketComPercent, SalesAgentComPercent, NettSalesAmnt,
-            Destroyed
-            )
-            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-            """, (lineId, date, quantity, amount, 
-                    price, stockId, 0, discount, 
-                    discountAmnt, gross_amount,
-                    market_commission, agent_commission, net_sales, destroyed,))
-    conn.commit()
-    conn.close()
+            if salesId != None:
+                cursor.execute("""
+                SELECT AgentComm, MarketComm FROM [dbo].[_uvDelLinCommission]
+                WHERE DelLineIndex = ?
+                """,(lineId,))
+                row = cursor.fetchone()
+                agent_commission = row[0]
+                market_commission = row[1]
+                net_sales = float(amount) - (float(amount) * (float(agent_commission) + float(market_commission)) / 100)
+            
+                cursor.execute("""
+                UPDATE ZZSalesLines
+                    SET SalesDate = ?, SalesQty = ?, DiscountPercent = ?, DiscountAmnt = ?, 
+                    SalesAmnt = ?, SalesStockId = ?, SalesPrice = ?, GrossSalesAmnt = ?, 
+                    SalesMarketComPercent = ?, SalesAgentComPercent = ?, NettSalesAmnt = ?,
+                    Destroyed = ?
+                    WHERE SalesLineIndex = ?
+                """, (date, quantity, discount, discountAmnt, amount, stockId, price, 
+                      gross_amount, market_commission, agent_commission, net_sales, destroyed, salesId, ))
+            else:  
+                cursor.execute("""
+                INSERT INTO ZZSalesLines (
+                SalesDelLineId, SalesDate, SalesQty, SalesAmnt,
+                SalesPrice, SalesStockId, AutoSale, DiscountPercent,
+                DiscountAmnt, GrossSalesAmnt,
+                SalesMarketComPercent, SalesAgentComPercent, NettSalesAmnt,
+                Destroyed
+                )
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                """, (lineId, date, quantity, amount, 
+                        price, stockId, 0, discount, 
+                        discountAmnt, gross_amount,
+                        market_commission, agent_commission, net_sales, destroyed,))
+        conn.commit()
+    finally:
+        cursor.close()
+        conn.close()
     return jsonify({'success': True})
 
 @view_entry_bp.route('/api/available-lines/<del_note_no>')

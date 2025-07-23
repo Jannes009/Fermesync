@@ -183,6 +183,10 @@ def create_app():
     def error_page():
         return render_template('error.html')
 
+    @app.teardown_appcontext
+    def shutdown_session(exception=None):
+        db.session.remove()
+
     return app
 
 app = create_app()

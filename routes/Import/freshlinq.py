@@ -263,69 +263,68 @@ def get_sales_info(df, start_line):
 def insert_into_database(data, current_user):
     conn = create_db_connection(current_user)
     cursor = conn.cursor()
-    cursor.execute("TRUNCATE TABLE ZZFreshLinqImport")
-    yield "data:  ↳ Table ZZFreshLinqImport truncated.\n\n"
-
-    sql = """
-    INSERT INTO ZZFreshLinqImport (
-        lot_no, brand, commodity, delivery_note_no, packaging, variety, created_at,
-        delivery_date, weight, size, lot_status, branch, lot_notes, quality, agent,
-        movement, weighted_average, qty_delivered, qty_sold, remaining, lot_depletions,
-        reclassifications, sale_date, quantity, price, value
-    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-    """
-
-    for i, row in enumerate(data, 1):
-        yield f"data: Inserting row {i}...\n\n"
-
-        def parse_date(date_value):
-            try:
-                return pd.to_datetime(date_value, errors='coerce').strftime('%Y-%m-%d') if pd.notna(date_value) else None
-            except (ValueError, TypeError):
-                return None
-
-        def parse_float(value):
-            try:
-                return float(value) if pd.notna(value) else None
-            except ValueError:
-                return None
-
-        def parse_int(value):
-            try:
-                return int(value) if pd.notna(value) else None
-            except ValueError:
-                return None
-
-        created_at = row["Created At"]
-        delivery_date = parse_date(row["Delivery Date"])
-        sale_date = parse_date(row["Date"])
-
-        weight = row["Weight"]
-        size = row["Size"]
-        weighted_average = parse_float(row["Weighted Average"])
-        qty_delivered = parse_int(row["Qty Delivered"])
-        qty_sold = parse_int(row["Qty Sold"])
-        remaining = parse_int(row["Remaining"])
-        lot_depletions = parse_int(row["Lot Depletions"])
-        reclassifications = parse_int(row["Reclassifications"])
-        quantity = parse_int(row["Quantity"])
-        price = parse_float(row["Price"])
-        value = parse_float(row["Value"])
-
-        cursor.execute(sql, (
-            row["Lot No."], row["Brand"], row["Commodity"], row["Delivery Note No."],
-            row["Packaging"], row["Variety"], created_at, delivery_date,
-            weight, size, row["Lot Status"], row["Branch"], row["Lot Notes"],
-            row["Quality"], row["Agent"], row["Movement"], weighted_average,
-            qty_delivered, qty_sold, remaining, lot_depletions,
+    try:
+        cursor.execute("TRUNCATE TABLE ZZFreshLinqImport")
+        yield "data:  ↳ Table ZZFreshLinqImport truncated.\n\n"
+        sql = """
+        INSERT INTO ZZFreshLinqImport (
+            lot_no, brand, commodity, delivery_note_no, packaging, variety, created_at,
+            delivery_date, weight, size, lot_status, branch, lot_notes, quality, agent,
+            movement, weighted_average, qty_delivered, qty_sold, remaining, lot_depletions,
             reclassifications, sale_date, quantity, price, value
-        ))
+        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+        """
+        for i, row in enumerate(data, 1):
+            yield f"data: Inserting row {i}...\n\n"
 
-        if i % 50 == 0:
-            yield f"data:   ↳ Inserted {i} rows...\n\n"
-            conn.commit()
+            def parse_date(date_value):
+                try:
+                    return pd.to_datetime(date_value, errors='coerce').strftime('%Y-%m-%d') if pd.notna(date_value) else None
+                except (ValueError, TypeError):
+                    return None
 
-    cursor.execute("EXEC SIGCopyImprtFreshlinqTrn")
-    conn.commit()
-    conn.close()
+            def parse_float(value):
+                try:
+                    return float(value) if pd.notna(value) else None
+                except ValueError:
+                    return None
+
+            def parse_int(value):
+                try:
+                    return int(value) if pd.notna(value) else None
+                except ValueError:
+                    return None
+
+            created_at = row["Created At"]
+            delivery_date = parse_date(row["Delivery Date"])
+            sale_date = parse_date(row["Date"])
+
+            weight = row["Weight"]
+            size = row["Size"]
+            weighted_average = parse_float(row["Weighted Average"])
+            qty_delivered = parse_int(row["Qty Delivered"])
+            qty_sold = parse_int(row["Qty Sold"])
+            remaining = parse_int(row["Remaining"])
+            lot_depletions = parse_int(row["Lot Depletions"])
+            reclassifications = parse_int(row["Reclassifications"])
+            quantity = parse_int(row["Quantity"])
+            price = parse_float(row["Price"])
+            value = parse_float(row["Value"])
+
+            cursor.execute(sql, (
+                row["Lot No."], row["Brand"], row["Commodity"], row["Delivery Note No."],
+                row["Packaging"], row["Variety"], created_at, delivery_date,
+                weight, size, row["Lot Status"], row["Branch"], row["Lot Notes"],
+                row["Quality"], row["Agent"], row["Movement"], weighted_average,
+                qty_delivered, qty_sold, remaining, lot_depletions,
+                reclassifications, sale_date, quantity, price, value
+            ))
+
+            if i % 50 == 0:
+                yield f"data:   ↳ Inserted {i} rows...\n\n"
+                conn.commit()
+        conn.commit()
+    finally:
+        cursor.close()
+        conn.close()
     yield f"data:   ↳ Finished inserting {len(data)} rows.\n\n"
