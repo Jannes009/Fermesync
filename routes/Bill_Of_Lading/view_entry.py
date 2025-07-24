@@ -437,7 +437,7 @@ def save_delivery_header(delnote_no):
             """, (new_delnoteno, delnote_no))
 
         delnote_no = new_delnoteno  # For the next update
-
+        print(data)
         # Update the rest of the fields
         cursor.execute("""
             UPDATE ZZDeliveryNoteHeader
@@ -457,6 +457,7 @@ def save_delivery_header(delnote_no):
             data['deltransportcostexcl'],
             delnote_no
         ))
+        conn.commit()
 
         # Edit Transport PO
         cursor.execute("EXEC [dbo].[SIGCreateTransportPO]")

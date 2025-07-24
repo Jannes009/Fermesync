@@ -584,6 +584,7 @@ window.editDeliveryHeader = function(delnoteNo) {
                     }
                 }).then((result) => {
                     if (result.isConfirmed) {
+                        console.log(result.value)
                         // Save the changes
                         fetch(`/api/save-delivery-header/${delnoteNo}`, {
                             method: 'POST',
