@@ -105,12 +105,61 @@ def create_entry():
 
             total_quantity = store_lines(cursor, header_id, lines_data)
             update_header_quantity(cursor, header_id, total_quantity)
-            connection.commit()
-            # Create Transport PO
-            cursor.execute("EXEC [dbo].[SIGCreateTransportPO]")
-
-            connection.commit()
-
+            cursor.connection.commit()
+            
+            # Create Transport PO with enhanced error handling
+            try:
+                # Log before execution
+                debug_query = """
+                INSERT INTO [dbo].[SIGCreateTransportPO_DebugLog] 
+                (StepName, Action, Status, Message, ExecutionParameters)
+                VALUES ('Python Call', 'Begin', 'Running', 'Starting procedure from Python', ?)
+                """
+                cursor.execute(debug_query, (str(form_data),))
+                cursor.connection.commit()
+                
+                # Execute the procedure
+                cursor.execute("EXEC [dbo].[SIGCreateTransportPO]")
+                cursor.connection.commit()
+                
+                # Log success
+                cursor.execute("""
+                INSERT INTO [dbo].[SIGCreateTransportPO_DebugLog] 
+                (StepName, Action, Status, Message)
+                VALUES ('Python Call', 'End', 'Success', 'Procedure executed successfully from Python')
+                """)
+                cursor.connection.commit()
+                
+                # Get debug info to return to user
+                cursor.execute("""
+                SELECT TOP 20 LogTime, StepName, Action, RecordsAffected, Status, Message, ErrorDetails 
+                FROM [dbo].[SIGCreateTransportPO_DebugLog] 
+                ORDER BY LogID DESC
+                """)
+                debug_info = cursor.fetchall()
+                
+                session['debug_info'] = debug_info
+                
+            except Exception as e:
+                # Log error
+                error_details = str(e)
+                cursor.execute("""
+                INSERT INTO [dbo].[SIGCreateTransportPO_DebugLog] 
+                (StepName, Action, Status, Message, ErrorDetails)
+                VALUES ('Python Call', 'Error', 'Failed', 'Procedure failed in Python', ?)
+                """, (error_details,))
+                cursor.connection.commit()
+                
+                # Get debug info including the error
+                cursor.execute("""
+                SELECT TOP 20 LogTime, StepName, Action, RecordsAffected, Status, Message, ErrorDetails 
+                FROM [dbo].[SIGCreateTransportPO_DebugLog] 
+                ORDER BY LogID DESC
+                """)
+                debug_info = cursor.fetchall()
+                
+                session['debug_info'] = debug_info
+                raise  # Re-raise the exception after logging
 
             session['del_note_no'] = form_data['ZZDelNoteNo']
             return redirect(url_for('entry.submission_success'))
@@ -119,6 +168,9 @@ def create_entry():
             error_data = integrity_error(e, request.form)
             error_message = error_data["error_message"]
             form_data = error_data["form_data"]
+        except Exception as e:
+            error_message = f"An error occurred: {str(e)}. See debug info for details."
+            # The debug info should already be in the session from the try block above
 
     dropdown_options = fetch_dropdown_options(cursor)
 
@@ -132,10 +184,10 @@ def create_entry():
     close_db_connection(cursor, connection)
 
     return render_template('Bill Of Lading page/create_entry.html',
-                           error_message=error_message,
-                           form_data=form_data,
-                           product_quantity_pairs=[],
-                           **dropdown_options)
+                       error_message=error_message,
+                       form_data=form_data,
+                       product_quantity_pairs=[],
+                       **dropdown_options)
 
 @entry_bp.route('/submission_success')
 def submission_success():

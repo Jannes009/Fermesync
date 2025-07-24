@@ -45,6 +45,7 @@ def create_app():
     from routes.report import report_bp
     from routes.dashboard import dashboard_bp
     from routes.Bill_Of_Lading.view_entry import view_entry_bp
+    from routes.BOM import bom_bp
 
     app.register_blueprint(entry_bp)
     app.register_blueprint(view_bp)
@@ -56,6 +57,7 @@ def create_app():
     app.register_blueprint(report_bp)
     app.register_blueprint(dashboard_bp)
     app.register_blueprint(view_entry_bp)
+    app.register_blueprint(bom_bp)
     # Create all tables
     with app.app_context():
         db.create_all()
