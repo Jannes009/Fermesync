@@ -118,7 +118,7 @@ def get_invoice_id(invoiceNumber, cursor):
     return int(invoice_id[0])
 
 def production_unit_name_to_production_unit_id(productionUnitName, cursor):
-    query = "Select ProjectLink from [dbo].[_uvMarketProdUnit] Where MainProdUnitName = ?"
+    query = "Select ProjectLink from [dbo].[_uvMarketProdUnit] Where ProdUnitName = ?"
     cursor.execute(query,(productionUnitName,))
     production_unit_id = cursor.fetchone()
     return int(production_unit_id[0])
