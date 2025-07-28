@@ -90,7 +90,7 @@ def insert_data(file, current_user):
     for col in ['DeliveryDate', 'DateSold', 'DatePaid']:
         df[col] = pd.to_datetime(df[col], format='%m-%d-%y', errors='coerce')
 
-    conn = create_db_connection(current_user)
+    conn = create_db_connection()
     cursor = conn.cursor()
 
     try:

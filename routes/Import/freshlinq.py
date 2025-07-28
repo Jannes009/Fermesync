@@ -261,7 +261,7 @@ def get_sales_info(df, start_line):
     return sales_data, messages
 
 def insert_into_database(data, current_user):
-    conn = create_db_connection(current_user)
+    conn = create_db_connection()
     cursor = conn.cursor()
     try:
         cursor.execute("TRUNCATE TABLE ZZFreshLinqImport")
