@@ -8,6 +8,8 @@ from routes.db_functions import (
     project_link_to_production_unit_name,
     get_stock_id, get_destinations
 )
+import threading
+from flask_login import current_user
 
 entry_bp = Blueprint('entry', __name__)
 
@@ -106,62 +108,25 @@ def create_entry():
             total_quantity = store_lines(cursor, header_id, lines_data)
             update_header_quantity(cursor, header_id, total_quantity)
             cursor.connection.commit()
-            
-            # Create Transport PO with enhanced error handling
-            try:
-                # Log before execution
-                debug_query = """
-                INSERT INTO [dbo].[SIGCreateTransportPO_DebugLog] 
-                (StepName, Action, Status, Message, ExecutionParameters)
-                VALUES ('Python Call', 'Begin', 'Running', 'Starting procedure from Python', ?)
-                """
-                cursor.execute(debug_query, (str(form_data),))
-                cursor.connection.commit()
-                
-                # Execute the procedure
-                cursor.execute("EXEC [dbo].[SIGCreateTransportPO]")
-                cursor.connection.commit()
-                
-                # Log success
-                cursor.execute("""
-                INSERT INTO [dbo].[SIGCreateTransportPO_DebugLog] 
-                (StepName, Action, Status, Message)
-                VALUES ('Python Call', 'End', 'Success', 'Procedure executed successfully from Python')
-                """)
-                cursor.connection.commit()
-                
-                # Get debug info to return to user
-                cursor.execute("""
-                SELECT TOP 20 LogTime, StepName, Action, RecordsAffected, Status, Message, ErrorDetails 
-                FROM [dbo].[SIGCreateTransportPO_DebugLog] 
-                ORDER BY LogID DESC
-                """)
-                debug_info = cursor.fetchall()
-                
-                session['debug_info'] = debug_info
-                
-            except Exception as e:
-                # Log error
-                error_details = str(e)
-                cursor.execute("""
-                INSERT INTO [dbo].[SIGCreateTransportPO_DebugLog] 
-                (StepName, Action, Status, Message, ErrorDetails)
-                VALUES ('Python Call', 'Error', 'Failed', 'Procedure failed in Python', ?)
-                """, (error_details,))
-                cursor.connection.commit()
-                
-                # Get debug info including the error
-                cursor.execute("""
-                SELECT TOP 20 LogTime, StepName, Action, RecordsAffected, Status, Message, ErrorDetails 
-                FROM [dbo].[SIGCreateTransportPO_DebugLog] 
-                ORDER BY LogID DESC
-                """)
-                debug_info = cursor.fetchall()
-                
-                session['debug_info'] = debug_info
-                raise  # Re-raise the exception after logging
 
-            session['del_note_no'] = form_data['ZZDelNoteNo']
+            # Save del_note_no for use in background
+            del_note_no = form_data['ZZDelNoteNo']
+
+            # Close main connection
+            close_db_connection(cursor, connection)
+
+            user_snapshot = {
+                "username": current_user.username,
+                "server_name": current_user.server_name,
+                "database_name": current_user.database_name,
+                "db_username": current_user.db_username,
+                "db_password": current_user.get_db_password(),
+            }
+
+            # Run stored procedures in background
+            threading.Thread(target=run_background_procedures, args=(del_note_no, user_snapshot)).start()
+
+            session['del_note_no'] = del_note_no
             return redirect(url_for('entry.submission_success'))
 
         except odbc.IntegrityError as e:
@@ -170,11 +135,9 @@ def create_entry():
             form_data = error_data["form_data"]
         except Exception as e:
             error_message = f"An error occurred: {str(e)}. See debug info for details."
-            # The debug info should already be in the session from the try block above
 
     dropdown_options = fetch_dropdown_options(cursor)
 
-    # Set default date if not present in form_data (GET request)
     if not form_data:
         form_data = {}
     if 'ZZDelDate' not in form_data or not form_data['ZZDelDate']:
@@ -184,10 +147,37 @@ def create_entry():
     close_db_connection(cursor, connection)
 
     return render_template('Bill Of Lading page/create_entry.html',
-                       error_message=error_message,
-                       form_data=form_data,
-                       product_quantity_pairs=[],
-                       **dropdown_options)
+                           error_message=error_message,
+                           form_data=form_data,
+                           product_quantity_pairs=[],
+                           **dropdown_options)
+
+
+def run_background_procedures(del_note_no, user):
+    conn = None
+    cursor = None
+    try:
+        conn = create_db_connection(user)
+        if not conn:
+            print("Failed to create DB connection in background.")
+            return
+
+        cursor = conn.cursor()
+        print(f"Running stored procedures for DelNoteNo {del_note_no}...")
+
+        cursor.execute("EXEC SIGCreateTransportPO")
+        cursor.execute("EXEC SIGUpdateDelQuantities")
+
+        conn.commit()
+        print(f"Finished background procedures for DelNoteNo {del_note_no}")
+
+    except Exception as e:
+        print(f"Background error: {e}")
+    finally:
+        if cursor and conn:
+            close_db_connection(cursor, conn)
+
+
 
 @entry_bp.route('/submission_success')
 def submission_success():
