@@ -322,7 +322,7 @@ def insert_into_database(data, current_user):
 
             if i % 50 == 0:
                 yield f"data:   ↳ Inserted {i} rows...\n\n"
-                conn.commit()
+        cursor.execute("EXEC SIGCopyImprtFreshlinqTrn")
         conn.commit()
     finally:
         cursor.close()
