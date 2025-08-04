@@ -52,3 +52,19 @@ def get_bill_of_materials(cursor):
     """
     cursor.execute(query)
     return cursor.fetchall()
+
+@bom_bp.route('/api/create_bom_masterfiles', methods=['POST'])
+def create_bom_masterfiles():
+    try:
+        conn = create_db_connection()
+        cursor = conn.cursor()
+        cursor.execute("EXEC [dbo].[SIGCreateBomMasterfiles]")
+        conn.commit()
+        return jsonify({'success': True, 'message': 'Masterfiles created successfully.'})
+    except Exception as e:
+        return jsonify({'success': False, 'message': str(e)}), 500
+    finally:
+        if 'cursor' in locals():
+            cursor.close()
+        if 'conn' in locals():
+            conn.close()

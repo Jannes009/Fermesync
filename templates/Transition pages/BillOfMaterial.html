@@ -53,7 +53,16 @@
         
         <div class="bom-table-container">
             <h2 class="mb-4" style="text-align:center;font-size:2.2rem;font-weight:700;color:#2563eb;letter-spacing:0.5px;margin-bottom:2.2rem;margin-top:0.5rem;">Bill Of Material</h2>
-            <button class="btn btn-primary manufacture-btn-top" id="manufacture-all-btn"><i class="fa fa-industry"></i> Manufacture</button>
+            <!-- Aligned button group -->
+            <div class="flex items-center gap-4 mb-4">
+                <button class="btn btn-primary flex items-center gap-2 font-semibold text-[1.08em] h-[38px]" id="manufacture-all-btn">
+                    <i class="fa fa-industry"></i> Manufacture
+                </button>
+                <button class="btn btn-outline-primary flex items-center gap-2 font-semibold text-[1.08em] h-[38px]" id="create-masterfiles-btn">
+                    <i class="fa fa-tools"></i> Create Masterfiles
+                </button>
+                <div id="bom-summary-card" class="ml-auto"></div>
+            </div>
             <table id="bom-table" class="sales-table">
                 <thead>
                     <tr>
@@ -63,7 +72,7 @@
                         <th>Qty To Manufacture</th>
                         <th>Qty On BOM</th>
                         <th>Qty On Hand</th>
-                        <th>BOM Created</th>
+                        <th>Masterfile Created</th>
                     </tr>
                 </thead>
                 <tbody>

@@ -58,4 +58,26 @@ document.addEventListener('DOMContentLoaded', function() {
                 btn.innerHTML = '<i class="fa fa-industry"></i> Manufacture';
             });
     });
+    const createBtn = document.getElementById('create-masterfiles-btn');
+    createBtn.addEventListener('click', function() {
+        createBtn.disabled = true;
+        createBtn.innerHTML = '<span class="spinner-border spinner-border-sm"></span> Creating...';
+        fetch('/api/create_bom_masterfiles', { method: 'POST' })
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    Swal.fire('Success', data.message, 'success');
+                    loadTable();
+                } else {
+                    Swal.fire('Error', data.message || 'Failed to create masterfiles', 'error');
+                }
+            })
+            .catch(err => {
+                Swal.fire('Error', err.message || 'Failed to create masterfiles', 'error');
+            })
+            .finally(() => {
+                createBtn.disabled = false;
+                createBtn.innerHTML = '<i class="fa fa-tools"></i>Create Masterfiles';
+            });
+    });
 }); 
