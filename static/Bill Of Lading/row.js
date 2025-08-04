@@ -112,7 +112,7 @@ document.addEventListener("DOMContentLoaded", () => {
     const openStockFormBtn = document.getElementById("openStockFormBtn");
 
     openStockFormBtn.addEventListener("click", () => {
-        window.location.href = "/create-product";
+        window.location.href = "/maintanance/create-product";
     });
 
 

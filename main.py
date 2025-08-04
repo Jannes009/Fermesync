@@ -38,7 +38,7 @@ def create_app():
     from routes.entry import entry_bp
     from routes.view import view_bp
     from routes.Invoices.invoices import invoice_bp
-    from routes.Maintanance.product import maintanance_bp
+    from routes.Maintanance.maintanance import maintanance_bp
     from routes.Import.Import import import_bp
     from routes.view_account import account_bp
     from routes.Document.document import document_bp

@@ -1,10 +1,14 @@
-from flask import Blueprint, render_template, request, redirect, url_for, session, jsonify
+from flask import Blueprint, jsonify, request, render_template
+from flask_login import login_required
 from db import create_db_connection, close_db_connection
-import pypyodbc as odbc
+from routes.db_functions import (
+    get_production_unit_codes, get_market_codes,
+    get_transporter_codes
+)
 from pypyodbc import IntegrityError
 from routes.db_functions import get_products
 
-maintanance_bp = Blueprint('maintanance', __name__)
+maintanance_bp = Blueprint('maintanance', __name__, url_prefix='/maintanance')
 
 def fetch_data(cursor):
     # Execute multiple queries in one go
@@ -197,3 +201,104 @@ def add_item():
     except Exception as e:
         print(f"Error: {e}")
         return jsonify({'success': False, 'error': str(e)})
+
+@maintanance_bp.route('/update_tax_rate', methods=['POST'])
+@login_required
+def update_tax_rate():
+    data = request.get_json()
+    tax_rate = data.get('taxRate')
+    return jsonify(success=True, message="Tax rate updated successfully")
+
+@maintanance_bp.route('/', methods=['GET'])
+@login_required
+def maintanance_page():
+    return render_template('Maintanance/maintanance.html')
+
+@maintanance_bp.route('/get_agents_full', methods=['GET'])
+@login_required
+def get_agents_full():
+    conn = create_db_connection()
+    cursor = conn.cursor()
+    cursor.execute("""
+        SELECT 
+            DCLink, Account, Name, GroupCode, MarketComm, AgentComm, 
+            DiscountPercent 
+        FROM 
+            _uvMarketAgent
+    """)
+    agents = cursor.fetchall()
+    close_db_connection(cursor, conn)
+    result = [
+        {
+            "DCLink": row[0],
+            "Account": row[1],
+            "Name": row[2],
+            "GroupCode": row[3],
+            "MarketComm": row[4],
+            "AgentComm": row[5],
+            "DiscountPercent": row[6]
+        }
+        for row in agents
+    ]
+    return jsonify(result)
+
+@maintanance_bp.route('/get_production_units', methods=['GET'])
+@login_required
+def get_production_units():
+    conn = create_db_connection()
+    cursor = conn.cursor()
+    units = get_production_unit_codes(cursor)
+    close_db_connection(cursor, conn)
+    result = [
+        {"Code": row[0], "Name": row[1]} for row in units
+    ]
+    return jsonify(result)
+
+@maintanance_bp.route('/get_packhouses', methods=['GET'])
+@login_required
+def get_packhouses():
+    conn = create_db_connection()
+    cursor = conn.cursor()
+    packhouses = get_market_codes(cursor)
+    close_db_connection(cursor, conn)
+    result = [
+        {"Code": row[0], "Name": row[1]} for row in packhouses
+    ]
+    return jsonify(result)
+
+@maintanance_bp.route('/get_transporters', methods=['GET'])
+@login_required
+def get_transporters():
+    conn = create_db_connection()
+    cursor = conn.cursor()
+    cursor.execute("""
+                   SELECT [TransporterAccount], [TransporterName], GroupCode
+                   FROM [_uvMarketTransporter]
+                    ORDER BY [TransporterName]
+                   """)
+    transporters = cursor.fetchall()
+    close_db_connection(cursor, conn)
+    result = [
+        {"Code": row[0], "Name": row[1], "Group": row[2]} for row in transporters
+    ]
+    return jsonify(result)
+
+@maintanance_bp.route('/update_agent', methods=['POST'])
+@login_required
+def update_agent():
+    data = request.get_json()
+    dclink = data.get('DCLink')
+    agent_comm = data.get('AgentComm')
+    market_comm = data.get('MarketComm')
+    discount = data.get('DiscountPercent')
+    try:
+        conn = create_db_connection()
+        cursor = conn.cursor()
+        cursor.execute("EXEC SIGUpdateClient @DCLink = ?, @AgentComm = ?, @MarketComm = ?, @DiscountPercent = ?", (dclink, agent_comm, market_comm, discount))
+        conn.commit()
+        close_db_connection(cursor, conn)
+        return jsonify(success=True, message="Agent updated successfully")
+    except Exception as e:
+        if 'conn' in locals():
+            close_db_connection(cursor, conn)
+        return jsonify(success=False, error=str(e)), 500

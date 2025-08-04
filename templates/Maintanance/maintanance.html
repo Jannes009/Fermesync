@@ -1,0 +1,346 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Maintanance</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="{{ url_for('static', filename='colour-template.css') }}">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css">
+    <style>
+        body {
+            background: #f8fafc;
+            padding: 0;
+            margin: 0;
+            font-size: 0.95rem;
+            min-height: 100vh;
+        }
+        .main-content {
+            padding: 2rem 0;
+        }
+        .container-wide {
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 0 1.2rem;
+        }
+        .account-card, .section-card {
+            background: #fff;
+            border-radius: 12px;
+            box-shadow: 0 4px 24px 0 rgba(44, 62, 80, 0.08);
+            margin-bottom: 2rem;
+            padding: 1.2rem 1.2rem 1.2rem 1.2rem;
+            transition: box-shadow 0.2s;
+        }
+        .account-card:hover, .section-card:hover {
+            box-shadow: 0 8px 32px 0 rgba(44, 62, 80, 0.16);
+        }
+        .section-title {
+            font-size: 1.2rem;
+            font-weight: 700;
+            color: #2563eb;
+            margin-bottom: 1rem;
+        }
+        .table-box {
+            background: #fff;
+            border-radius: 12px;
+            box-shadow: 0 4px 24px 0 rgba(44, 62, 80, 0.08);
+            padding: 1.2rem;
+            margin-bottom: 1.5rem;
+        }
+        .styled-table {
+            width: 100%;
+            border-collapse: separate;
+            border-spacing: 0;
+            font-size: 0.95rem;
+            background: #fff;
+            border-radius: 8px;
+            overflow: hidden;
+        }
+        .styled-table th {
+            background: #e0edff;
+            color: #2563eb;
+            font-weight: 700;
+            border: none;
+            padding: 0.6em 0.8em;
+            text-align: left;
+            white-space: nowrap;
+        }
+        .styled-table td {
+            border: none;
+            padding: 0.6em 0.8em;
+            color: #22223b;
+            background: #fff;
+            vertical-align: middle;
+        }
+        .styled-table tr:not(:last-child) td {
+            border-bottom: 1px solid #f0f4f8;
+        }
+        .list-group-item.active {
+            background: #e0edff;
+            color: #2563eb;
+            border: none;
+        }
+        .list-group-item {
+            border: none;
+            font-weight: 500;
+            color: #475569;
+        }
+        .list-group-item:hover {
+            background: #e0edff;
+            color: #2563eb;
+        }
+    </style>
+    {% include 'taskbar.html' %}
+</head>
+<body>
+    <div class="main-content with-fixed-taskbar">
+        <div class="container-wide">
+            <div class="row">
+                <!-- Sidebar -->
+                <div class="col-md-3">
+                    <div class="account-card">
+                        <div class="list-group" id="maintanance-sidebar" role="tablist">
+                            <a class="list-group-item list-group-item-action active" data-bs-toggle="list" href="#production-units" role="tab">Production Units</a>
+                            <a class="list-group-item list-group-item-action" data-bs-toggle="list" href="#packhouses" role="tab">Packhouses</a>
+                            <a class="list-group-item list-group-item-action" data-bs-toggle="list" href="#agents" role="tab">Agents</a>
+                            <a class="list-group-item list-group-item-action" data-bs-toggle="list" href="#transporters" role="tab">Transporters</a>
+                        </div>
+                    </div>
+                </div>
+                <!-- Main Content -->
+                <div class="col-md-9">
+                    <div class="tab-content">
+                        <!-- Production Units -->
+                        <div class="tab-pane fade show active" id="production-units" role="tabpanel">
+                            <div class="section-card">
+                                <div class="section-title"><i class="fas fa-industry"></i> Production Units</div>
+                                <div class="table-box" id="production-units-container">
+                                    <div class="text-center my-4">
+                                        <div class="spinner-border text-primary" role="status"></div>
+                                        <div>Loading production units...</div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        <!-- Packhouses -->
+                        <div class="tab-pane fade" id="packhouses" role="tabpanel">
+                            <div class="section-card">
+                                <div class="section-title"><i class="fas fa-warehouse"></i> Packhouses</div>
+                                <div class="table-box" id="packhouses-container">
+                                    <div class="text-center my-4">
+                                        <div class="spinner-border text-primary" role="status"></div>
+                                        <div>Loading packhouses...</div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        <!-- Agents -->
+                        <div class="tab-pane fade" id="agents" role="tabpanel">
+                            <div class="section-card">
+                                <div class="section-title"><i class="fas fa-user-tie"></i> Agents</div>
+                                <div class="table-box" id="agents-table-container">
+                                    <div class="text-center my-4">
+                                        <div class="spinner-border text-primary" role="status"></div>
+                                        <div>Loading agents...</div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        <!-- Transporters -->
+                        <div class="tab-pane fade" id="transporters" role="tabpanel">
+                            <div class="section-card">
+                                <div class="section-title"><i class="fas fa-truck"></i> Transporters</div>
+                                <div class="table-box" id="transporters-container">
+                                    <div class="text-center my-4">
+                                        <div class="spinner-border text-primary" role="status"></div>
+                                        <div>Loading transporters...</div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/js/all.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+    <script>
+        // ...JS for loading and rendering tables, similar to account.html...
+        // Change fetch URLs to /maintanance/...
+        function renderSimpleList(items) {
+            if (!items || items.length === 0) {
+                return '<div class="alert alert-info">No data found.</div>';
+            }
+            let html = '<ul style="padding-left:1.2em;">';
+            for (const item of items) {
+                html += `<li style="margin-bottom:0.5em;">${item.Name}</li>`;
+            }
+            html += '</ul>';
+            return html;
+        }
+        function renderAgentsTable(agents) {
+            let html = `<div class="table-responsive"><table class="styled-table"><thead><tr><th>Account</th><th>Name</th><th>Market Comm (%)</th><th>Agent Comm (%)</th><th>Discount (%)</th><th>Actions</th></tr></thead><tbody>`;
+            for (const agent of agents) {
+                html += `<tr data-agent-index="${agent.DCLink}" data-original-market-comm="${agent.MarketComm}" data-original-agent-comm="${agent.AgentComm}" data-original-discount="${agent.DiscountPercent}">
+                    <td>${agent.Account}</td>
+                    <td>${agent.Name}</td>
+                    <td class="market-comm">${agent.MarketComm}</td>
+                    <td class="agent-comm">${agent.AgentComm}</td>
+                    <td class="discount">${agent.DiscountPercent}</td>
+                    <td class="actions"><button class="btn btn-sm btn-primary edit-agent-btn"><i class="fas fa-edit"></i> Edit</button></td>
+                </tr>`;
+            }
+            html += `</tbody></table></div>`;
+            return html;
+        }
+        function setAgentRowEditMode(row) {
+            // Save original values for cancel
+            const marketComm = row.querySelector('.market-comm').textContent;
+            const agentComm = row.querySelector('.agent-comm').textContent;
+            const discount = row.querySelector('.discount').textContent;
+            row.dataset.originalMarketComm = marketComm;
+            row.dataset.originalAgentComm = agentComm;
+            row.dataset.originalDiscount = discount;
+            // Replace cells with input boxes
+            row.querySelector('.market-comm').innerHTML = `<input type="number" class="form-control form-control-sm" value="${marketComm}" step="0.01">`;
+            row.querySelector('.agent-comm').innerHTML = `<input type="number" class="form-control form-control-sm" value="${agentComm}" step="0.01">`;
+            row.querySelector('.discount').innerHTML = `<input type="number" class="form-control form-control-sm" value="${discount}" step="0.01">`;
+            // Change actions to confirm/cancel
+            row.querySelector('.actions').innerHTML = `
+                <button class="btn btn-sm btn-success submit-agent-btn"><i class="fas fa-check"></i> Submit</button>
+                <button class="btn btn-sm btn-secondary cancel-agent-btn"><i class="fas fa-times"></i> Cancel</button>
+            `;
+        }
+
+        function resetAgentRow(row) {
+            row.querySelector('.market-comm').textContent = row.dataset.originalMarketComm;
+            row.querySelector('.agent-comm').textContent = row.dataset.originalAgentComm;
+            row.querySelector('.discount').textContent = row.dataset.originalDiscount;
+            row.querySelector('.actions').innerHTML = `<button class="btn btn-sm btn-primary edit-agent-btn"><i class="fas fa-edit"></i> Edit</button>`;
+        }
+
+        function getAgentDataFromRow(row) {
+            return {
+                DCLink: row.getAttribute('data-agent-index'),
+                MarketComm: row.querySelector('.market-comm input').value,
+                AgentComm: row.querySelector('.agent-comm input').value,
+                DiscountPercent: row.querySelector('.discount input').value
+            };
+        }
+
+        function attachAgentTableEvents(agents) {
+            const table = document.querySelector('#agents-table-container table');
+            if (!table) return;
+            table.querySelectorAll('tr[data-agent-index]').forEach((row, idx) => {
+                row.querySelector('.edit-agent-btn').addEventListener('click', function() {
+                    setAgentRowEditMode(row);
+                    // Attach submit/cancel events
+                    row.querySelector('.submit-agent-btn').addEventListener('click', function() {
+                        const updated = getAgentDataFromRow(row);
+                        fetch('/maintanance/update_agent', {
+                            method: 'POST',
+                            headers: { 'Content-Type': 'application/json' },
+                            body: JSON.stringify(updated)
+                        })
+                        .then(r => r.json())
+                        .then(resp => {
+                            if (resp.success) {
+                                row.querySelector('.market-comm').textContent = updated.MarketComm;
+                                row.querySelector('.agent-comm').textContent = updated.AgentComm;
+                                row.querySelector('.discount').textContent = updated.DiscountPercent;
+                                row.querySelector('.actions').innerHTML = `<button class="btn btn-sm btn-primary edit-agent-btn"><i class="fas fa-edit"></i> Edit</button>`;
+                                attachAgentTableEvents(agents); // Re-attach events
+                                Swal.fire({
+                                    toast: true,
+                                    position: 'top-end',
+                                    icon: 'success',
+                                    title: 'Agent updated successfully',
+                                    showConfirmButton: false,
+                                    timer: 2000,
+                                    timerProgressBar: true
+                                });
+                            } else {
+                                alert('Failed to update agent: ' + (resp.error || 'Unknown error'));
+                            }
+                        })
+                        .catch(() => {
+                            alert('Failed to update agent.');
+                        });
+                    });
+                    row.querySelector('.cancel-agent-btn').addEventListener('click', function() {
+                        resetAgentRow(row);
+                        attachAgentTableEvents(agents); // Re-attach events
+                    });
+                });
+            });
+        }
+        function renderTransportersTable(transporters) {
+            if (!transporters || transporters.length === 0) {
+                return '<div class="alert alert-info">No transporters found.</div>';
+            }
+            let html = `<div class="table-responsive"><table class="styled-table"><thead><tr><th>Account</th><th>Name</th><th>Group</th></tr></thead><tbody>`;
+            for (const t of transporters) {
+                html += `<tr><td>${t.Code}</td><td>${t.Name}</td><td>${t.Group || ''}</td></tr>`;
+            }
+            html += `</tbody></table></div>`;
+            return html;
+        }
+        function loadProductionUnits() {
+            const container = document.getElementById('production-units-container');
+            container.innerHTML = `<div class="text-center my-4"><div class="spinner-border text-primary" role="status"></div><div>Loading production units...</div></div>`;
+            fetch('/maintanance/get_production_units')
+                .then(r => r.json())
+                .then(data => { container.innerHTML = renderSimpleList(data); })
+                .catch(() => { container.innerHTML = '<div class="alert alert-danger">Failed to load production units.</div>'; });
+        }
+        function loadPackhouses() {
+            const container = document.getElementById('packhouses-container');
+            container.innerHTML = `<div class="text-center my-4"><div class="spinner-border text-primary" role="status"></div><div>Loading packhouses...</div></div>`;
+            fetch('/maintanance/get_packhouses')
+                .then(r => r.json())
+                .then(data => { container.innerHTML = renderSimpleList(data); })
+                .catch(() => { container.innerHTML = '<div class="alert alert-danger">Failed to load packhouses.</div>'; });
+        }
+        function loadAgentsTable() {
+            const container = document.getElementById('agents-table-container');
+            container.innerHTML = `<div class="text-center my-4"><div class="spinner-border text-primary" role="status"></div><div>Loading agents...</div></div>`;
+            fetch('/maintanance/get_agents_full')
+                .then((r) => r.json())
+                .then((data) => {
+                    container.innerHTML = renderAgentsTable(data);
+                    attachAgentTableEvents(data);
+                })
+                .catch(() => {
+                    container.innerHTML = '<div class="alert alert-danger">Failed to load agents.</div>';
+                });
+        }
+        function loadTransporters() {
+            const container = document.getElementById('transporters-container');
+            container.innerHTML = `<div class="text-center my-4"><div class="spinner-border text-primary" role="status"></div><div>Loading transporters...</div></div>`;
+            fetch('/maintanance/get_transporters')
+                .then(r => r.json())
+                .then(data => { container.innerHTML = renderTransportersTable(data); })
+                .catch(() => { container.innerHTML = '<div class="alert alert-danger">Failed to load transporters.</div>'; });
+        }
+        document.addEventListener('DOMContentLoaded', function() {
+            // Bootstrap tab event listeners for lazy loading
+            document.querySelector('a[href="#production-units"]').addEventListener('shown.bs.tab', function() {
+                loadProductionUnits();
+            }, { once: true });
+            document.querySelector('a[href="#packhouses"]').addEventListener('shown.bs.tab', function() {
+                loadPackhouses();
+            }, { once: true });
+            document.querySelector('a[href="#agents"]').addEventListener('shown.bs.tab', function() {
+                loadAgentsTable();
+            }, { once: true });
+            document.querySelector('a[href="#transporters"]').addEventListener('shown.bs.tab', function() {
+                loadTransporters();
+            }, { once: true });
+            // Load the first tab by default
+            loadProductionUnits();
+        });
+    </script>
+</body>
+</html>

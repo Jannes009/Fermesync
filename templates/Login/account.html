@@ -5,166 +5,463 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Account Settings</title>
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
-    <link rel="stylesheet" href="{{ url_for('static', filename='colour-template.css') }}">  <!-- Link to color template CSS -->
+    <link rel="stylesheet" href="{{ url_for('static', filename='colour-template.css') }}">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css">
     <style>
         body {
-            padding: 20px;
-            background-color: var(--primary-bg);  /* Use primary background color */
+            background: #f8fafc;
+            padding: 0;
+            margin: 0;
+            font-size: 0.95rem;
+            min-height: 100vh;
         }
-        .account-card {
-            max-width: 800px;
+        .main-content {
+            padding: 2rem 0;
+        }
+        .container-wide {
+            max-width: 1200px;
             margin: 0 auto;
-            box-shadow: 0 0 10px rgba(0,0,0,0.1);
-            background-color: var(--container-bg);  /* Container background */
+            padding: 0 1.2rem;
         }
-        .card-header {
-            background-color: var(--primary-bg);  /* Use primary background color for card header */
-            color: var(--primary-text);  /* Use primary text color */
+        .account-card, .section-card {
+            background: #fff;
+            border-radius: 12px;
+            box-shadow: 0 4px 24px 0 rgba(44, 62, 80, 0.08);
+            margin-bottom: 2rem;
+            padding: 1.2rem 1.2rem 1.2rem 1.2rem;
+            transition: box-shadow 0.2s;
+        }
+        .account-card:hover, .section-card:hover {
+            box-shadow: 0 8px 32px 0 rgba(44, 62, 80, 0.16);
+        }
+        .section-title {
+            font-size: 1.2rem;
+            font-weight: 700;
+            color: #2563eb;
+            margin-bottom: 1rem;
+        }
+        .table-box {
+            background: #fff;
+            border-radius: 12px;
+            box-shadow: 0 4px 24px 0 rgba(44, 62, 80, 0.08);
+            padding: 1.2rem;
+            margin-bottom: 1.5rem;
+        }
+        .styled-table {
+            width: 100%;
+            border-collapse: separate;
+            border-spacing: 0;
+            font-size: 0.95rem;
+            background: #fff;
+            border-radius: 8px;
+            overflow: hidden;
+        }
+        .styled-table th {
+            background: #e0edff;
+            color: #2563eb;
+            font-weight: 700;
+            border: none;
+            padding: 0.6em 0.8em;
+            text-align: left;
+            white-space: nowrap;
+        }
+        .styled-table td {
+            border: none;
+            padding: 0.6em 0.8em;
+            color: #22223b;
+            background: #fff;
+            vertical-align: middle;
+        }
+        .styled-table tr:not(:last-child) td {
+            border-bottom: 1px solid #f0f4f8;
+        }
+        .list-group-item.active {
+            background: #e0edff;
+            color: #2563eb;
+            border: none;
+        }
+        .list-group-item {
+            border: none;
+            font-weight: 500;
+            color: #475569;
+        }
+        .list-group-item:hover {
+            background: #e0edff;
+            color: #2563eb;
         }
         .service-badge {
             font-size: 0.9rem;
             margin-right: 5px;
+            border-radius: 8px;
+            padding: 0.2em 0.7em;
         }
         .technofresh-badge {
             background-color: #6f42c1;
+            color: #fff;
         }
         .freshlinq-badge {
             background-color: #20c997;
+            color: #fff;
         }
-        .table-striped tbody tr:nth-child(odd) {
-            background-color: var(--table-row-even);  /* Use even row color for table */
-        }
-        .table thead {
-            background-color: var(--table-header-bg);  /* Table header background */
-            color: var(--table-header-text);  /* Table header text color */
+        .bg-info {
+            background-color: #e0edff;
+            color: #2563eb;
         }
         .btn-primary {
-            background-color: var(--button-bg);  /* Use button background */
-            border-color: var(--button-bg);  /* Border color matches button background */
+            background-color: #2563eb;
+            border-color: #2563eb;
         }
         .btn-primary:hover {
-            background-color: var(--button-hover);  /* Button hover effect */
-            border-color: var(--button-hover);  /* Border color on hover */
+            background-color: #1d4ed8;
+            border-color: #1d4ed8;
         }
         .form-control:focus {
-            border-color: var(--input-focus);  /* Input focus border color */
-            box-shadow: 0 0 0 0.25rem var(--input-shadow);  /* Input focus shadow */
+            border-color: #2563eb;
+            box-shadow: 0 0 0 0.25rem #e0edff;
         }
     </style>
     {% include 'taskbar.html' %}
 </head>
 <body>
-    <div class="container with-fixed-taskbar">
-        <div class="card account-card mb-4">
-            <div class="card-header">
-                <h3 class="mb-0">Account Information</h3>
-            </div>
-            <div class="card-body">
-                {% with messages = get_flashed_messages(with_categories=true) %}
-                    {% if messages %}
-                        {% for category, message in messages %}
-                            <div class="alert alert-{{ category }} alert-dismissible fade show" role="alert">
-                                {{ message }}
-                                <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
-                            </div>
-                        {% endfor %}
-                    {% endif %}
-                {% endwith %}
-
-                <div class="mb-4">
-                    <h5>Basic Information</h5>
-                    <div class="row">
-                        <div class="col-md-6">
-                            <p><strong>Username:</strong> {{ user.username }}</p>
-                        </div>
-                        <div class="col-md-6">
-                            <p><strong>Role:</strong> <span class="badge bg-secondary">{{ user.role }}</span></p>
-                        </div>
-                    </div>
-                    <div class="row">
-                        <div class="col-md-6">
-                            <p><strong>Server:</strong> {{ user.server_name }}</p>
-                        </div>
-                        <div class="col-md-6">
-                            <p><strong>Database:</strong> {{ user.database_name }}</p>
+    <div class="main-content with-fixed-taskbar">
+        <div class="container-wide">
+            <div class="row">
+                <!-- Sidebar -->
+                <div class="col-md-3">
+                    <div class="account-card">
+                        <div class="list-group" id="account-sidebar" role="tablist">
+                            <a class="list-group-item list-group-item-action active" data-bs-toggle="list" href="#account-info" role="tab">Account</a>
+                            <a class="list-group-item list-group-item-action" data-bs-toggle="list" href="#services" role="tab">Services</a>
                         </div>
                     </div>
                 </div>
-
-                <hr>
-
-                <div class="mb-4">
-                    <h5>Connected Services</h5>
-                    {% if user.connected_services %}
-                        <div class="table-responsive">
-                            <table class="table table-striped">
-                                <thead>
-                                    <tr>
-                                        <th>Service</th>
-                                        <th>Username</th>
-                                        <th>Actions</th>
-                                    </tr>
-                                </thead>
-                                <tbody>
-                                    {% for service in user.connected_services %}
-                                        <tr>
-                                            <td>
-                                                <span class="badge service-badge 
-                                                    {% if service.service_type == 'Technofresh' %}technofresh-badge
-                                                    {% elif service.service_type == 'FreshLinq' %}freshlinq-badge
-                                                    {% else %}bg-info{% endif %}">
-                                                    {{ service.service_type }}
-                                                </span>
-                                            </td>
-                                            <td>{{ service.username or 'N/A' }}</td>
-                                            <td>
-                                                <form method="POST" action="{{ url_for('account.remove_service', service_id=service.id) }}" class="d-inline">
-                                                    <button type="submit" class="btn btn-sm btn-danger">Remove</button>
-                                                </form>
-                                            </td>
-                                        </tr>
-                                    {% endfor %}
-                                </tbody>
-                            </table>
+                <!-- Main Content -->
+                <div class="col-md-9">
+                    <div class="tab-content">
+                        <!-- Account Info -->
+                        <div class="tab-pane fade show active" id="account-info" role="tabpanel">
+                            <div class="section-card">
+                                <div class="section-title"><i class="fas fa-user"></i> Basic Information</div>
+                                <table class="styled-table">
+                                    <tbody>
+                                        <tr><th>Username</th><td>{{ user.username }}</td></tr>
+                                        <tr><th>Role</th><td>{{ user.role }}</td></tr>
+                                        <tr><th>Server</th><td>{{ user.server_name }}</td></tr>
+                                        <tr><th>Database</th><td>{{ user.database_name }}</td></tr>
+                                    </tbody>
+                                </table>
+                            </div>
                         </div>
-                    {% else %}
-                        <div class="alert alert-info">No connected services yet.</div>
-                    {% endif %}
-
-                    <div class="card mt-3">
-                        <div class="card-header">Add New Service</div>
-                        <div class="card-body">
-                            <form method="POST" action="{{ url_for('account.add_service') }}">
-                                <div class="mb-3">
-                                    <label for="service_type" class="form-label">Service Type</label>
-                                    <select class="form-select" id="service_type" name="service_type" required>
-                                        <option value="" selected disabled>Select a service</option>
-                                        <option value="Technofresh">Technofresh</option>
-                                        <option value="FreshLinq">FreshLinq</option>
-                                    </select>
+                        <!-- Services -->
+                        <div class="tab-pane fade" id="services" role="tabpanel">
+                            <div class="section-card">
+                                <div class="section-title"><i class="fas fa-plug"></i> Connected Services</div>
+                                {% if user.connected_services %}
+                                    <div class="table-box">
+                                        <table class="styled-table">
+                                            <thead>
+                                                <tr>
+                                                    <th>Service</th>
+                                                    <th>Username</th>
+                                                    <th>Actions</th>
+                                                </tr>
+                                            </thead>
+                                            <tbody>
+                                                {% for service in user.connected_services %}
+                                                    <tr>
+                                                        <td>
+                                                            <span class="badge service-badge 
+                                                                {% if service.service_type == 'Technofresh' %}technofresh-badge
+                                                                {% elif service.service_type == 'FreshLinq' %}freshlinq-badge
+                                                                {% else %}bg-info{% endif %}">
+                                                                {{ service.service_type }}
+                                                            </span>
+                                                        </td>
+                                                        <td>{{ service.username }}</td>
+                                                        <td>
+                                                            <form method="POST" action="{{ url_for('account.remove_service', service_id=service.id) }}" class="d-inline">
+                                                                <button type="submit" class="btn btn-sm btn-danger">Remove</button>
+                                                            </form>
+                                                        </td>
+                                                    </tr>
+                                                {% endfor %}
+                                            </tbody>
+                                        </table>
+                                    </div>
+                                {% else %}
+                                    <div class="alert alert-info">No connected services yet.</div>
+                                {% endif %}
+                                <div class="table-box mt-3">
+                                    <div class="section-title" style="font-size:1rem;"><i class="fas fa-plus"></i> Add New Service</div>
+                                    <form method="POST" action="{{ url_for('account.add_service') }}">
+                                        <div class="mb-3">
+                                            <label for="service_type" class="form-label">Service Type</label>
+                                            <select class="form-select" id="service_type" name="service_type" required>
+                                                <option value="" selected disabled>Select a service</option>
+                                                <option value="Technofresh">Technofresh</option>
+                                                <option value="FreshLinq">FreshLinq</option>
+                                            </select>
+                                        </div>
+                                        <div class="mb-3">
+                                            <label for="service_username" class="form-label">Username</label>
+                                            <input type="text" class="form-control" id="service_username" name="service_username">
+                                        </div>
+                                        <div class="mb-3">
+                                            <label for="service_password" class="form-label">Password</label>
+                                            <input type="password" class="form-control" id="service_password" name="service_password" required>
+                                        </div>
+                                        <div class="mb-3">
+                                            <label for="account_password" class="form-label">Your Account Password</label>
+                                            <input type="password" class="form-control" id="account_password" name="account_password" required>
+                                            <div class="form-text">For security verification</div>
+                                        </div>
+                                        <button type="submit" class="btn btn-primary"><i class="fas fa-plus"></i> Add Service</button>
+                                    </form>
                                 </div>
-                                <div class="mb-3">
-                                    <label for="service_username" class="form-label">Username</label>
-                                    <input type="text" class="form-control" id="service_username" name="service_username">
-                                </div>
-                                <div class="mb-3">
-                                    <label for="service_password" class="form-label">Password</label>
-                                    <input type="password" class="form-control" id="service_password" name="service_password" required>
-                                </div>
-                                <div class="mb-3">
-                                    <label for="account_password" class="form-label">Your Account Password</label>
-                                    <input type="password" class="form-control" id="account_password" name="account_password" required>
-                                    <div class="form-text">For security verification</div>
-                                </div>
-                                <button type="submit" class="btn btn-primary">Add Service</button>
-                            </form>
+                            </div>
                         </div>
                     </div>
                 </div>
             </div>
         </div>
     </div>
-
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/js/all.min.js"></script>
+    <script>
+function renderAgentsTable(agents) {
+    let html = `
+    <div class="table-responsive">
+      <table class="styled-table">
+        <thead>
+          <tr>
+            <th>Account</th>
+            <th>Name</th>
+            <th>Market Comm (%)</th>
+            <th>Agent Comm (%)</th>
+            <th>Discount (%)</th>
+            <th>Actions</th>
+          </tr>
+        </thead>
+        <tbody>
+    `;
+    for (const agent of agents) {
+        html += `
+          <tr data-agent-index="${agent.DCLink}">
+            <td>${agent.Account}</td>
+            <td>${agent.Name}</td>
+            <td class="market-comm">${agent.MarketComm}</td>
+            <td class="agent-comm">${agent.AgentComm}</td>
+            <td class="discount">${agent.DiscountPercent}</td>
+            <td class="actions">
+              <button class="btn btn-sm btn-primary edit-agent-btn"><i class="fas fa-edit"></i> Edit</button>
+            </td>
+          </tr>
+        `;
+    }
+    html += `</tbody></table></div>`;
+    return html;
+}
+
+function setAgentRowEditMode(row, agent) {
+    // Save original values for cancel
+    row.dataset.originalMarketComm = agent.MarketComm;
+    row.dataset.originalAgentComm = agent.AgentComm;
+    row.dataset.originalDiscount = agent.DiscountPercent;
+    // Replace cells with input boxes
+    row.querySelector('.market-comm').innerHTML = `<input type="number" class="form-control form-control-sm" value="${agent.MarketComm}" step="0.01">`;
+    row.querySelector('.agent-comm').innerHTML = `<input type="number" class="form-control form-control-sm" value="${agent.AgentComm}" step="0.01">`;
+    row.querySelector('.discount').innerHTML = `<input type="number" class="form-control form-control-sm" value="${agent.DiscountPercent}" step="0.01">`;
+    // Change actions to confirm/cancel
+    row.querySelector('.actions').innerHTML = `
+      <button class="btn btn-sm btn-success confirm-agent-btn"><i class="fas fa-check"></i> Confirm</button>
+      <button class="btn btn-sm btn-secondary cancel-agent-btn"><i class="fas fa-times"></i> Cancel</button>
+    `;
+}
+
+function resetAgentRow(row, agent) {
+    row.querySelector('.market-comm').textContent = row.dataset.originalMarketComm;
+    row.querySelector('.agent-comm').textContent = row.dataset.originalAgentComm;
+    row.querySelector('.discount').textContent = row.dataset.originalDiscount;
+    row.querySelector('.actions').innerHTML = `<button class="btn btn-sm btn-primary edit-agent-btn"><i class="fas fa-edit"></i> Edit</button>`;
+}
+
+function getAgentDataFromRow(row) {
+    return {
+        DCLink: row.getAttribute('data-agent-index'),
+        MarketComm: row.querySelector('.market-comm input').value,
+        AgentComm: row.querySelector('.agent-comm input').value,
+        DiscountPercent: row.querySelector('.discount input').value
+    };
+}
+
+function attachAgentTableEvents(agents) {
+    const table = document.querySelector('#agents-table-container table');
+    if (!table) return;
+    table.querySelectorAll('tr[data-agent-index]').forEach((row, idx) => {
+        const agent = agents[idx];
+        row.querySelector('.edit-agent-btn').addEventListener('click', function() {
+            setAgentRowEditMode(row, agent);
+            // Attach confirm/cancel events
+            row.querySelector('.confirm-agent-btn').addEventListener('click', function() {
+                const updated = getAgentDataFromRow(row);
+                fetch('/account/update_agent', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(updated)
+                })
+                .then(r => r.json())
+                .then(resp => {
+                    if (resp.success) {
+                        // Update row with new values
+                        row.querySelector('.market-comm').textContent = updated.MarketComm;
+                        row.querySelector('.agent-comm').textContent = updated.AgentComm;
+                        row.querySelector('.discount').textContent = updated.DiscountPercent;
+                        row.querySelector('.actions').innerHTML = `<button class="btn btn-sm btn-primary edit-agent-btn"><i class="fas fa-edit"></i> Edit</button>`;
+                        attachAgentTableEvents(agents); // Re-attach events
+                    } else {
+                        alert('Failed to update agent: ' + (resp.error || 'Unknown error'));
+                    }
+                })
+                .catch(() => {
+                    alert('Failed to update agent.');
+                });
+            });
+            row.querySelector('.cancel-agent-btn').addEventListener('click', function() {
+                resetAgentRow(row, agent);
+                attachAgentTableEvents(agents); // Re-attach events
+            });
+        });
+    });
+}
+
+function loadAgentsTable() {
+    const container = document.getElementById('agents-table-container');
+    container.innerHTML = `
+      <div class="text-center my-4">
+        <div class="spinner-border text-primary" role="status"></div>
+        <div>Loading agents...</div>
+      </div>
+    `;
+    fetch('/account/get_agents_full')
+        .then((r) => r.json())
+        .then((data) => {
+            container.innerHTML = renderAgentsTable(data);
+            attachAgentTableEvents(data);
+        })
+        .catch(() => {
+            container.innerHTML = '<div class="alert alert-danger">Failed to load agents.</div>';
+        });
+}
+
+function renderSimpleList(items) {
+    if (!items || items.length === 0) {
+        return '<div class="alert alert-info">No data found.</div>';
+    }
+    let html = '<ul style="padding-left:1.2em;">';
+    for (const item of items) {
+        html += `<li style="margin-bottom:0.5em;">${item.Name}</li>`;
+    }
+    html += '</ul>';
+    return html;
+}
+
+function loadProductionUnits() {
+    const container = document.getElementById('production-units-container');
+    container.innerHTML = `
+      <div class="text-center my-4">
+        <div class="spinner-border text-primary" role="status"></div>
+        <div>Loading production units...</div>
+      </div>
+    `;
+    fetch('/account/get_production_units')
+        .then(r => r.json())
+        .then(data => {
+            container.innerHTML = renderSimpleList(data);
+        })
+        .catch(() => {
+            container.innerHTML = '<div class="alert alert-danger">Failed to load production units.</div>';
+        });
+}
+
+function loadPackhouses() {
+    const container = document.getElementById('packhouses-container');
+    container.innerHTML = `
+      <div class="text-center my-4">
+        <div class="spinner-border text-primary" role="status"></div>
+        <div>Loading packhouses...</div>
+      </div>
+    `;
+    fetch('/account/get_packhouses')
+        .then(r => r.json())
+        .then(data => {
+            container.innerHTML = renderSimpleList(data);
+        })
+        .catch(() => {
+            container.innerHTML = '<div class="alert alert-danger">Failed to load packhouses.</div>';
+        });
+}
+
+function renderTransportersTable(transporters) {
+    if (!transporters || transporters.length === 0) {
+        return '<div class="alert alert-info">No transporters found.</div>';
+    }
+    let html = `
+    <div class="table-responsive">
+      <table class="styled-table">
+        <thead>
+          <tr>
+            <th>Account</th>
+            <th>Name</th>
+            <th>Group</th>
+          </tr>
+        </thead>
+        <tbody>
+    `;
+    for (const t of transporters) {
+        html += `
+          <tr>
+            <td>${t.Code}</td>
+            <td>${t.Name}</td>
+            <td>${t.Group || ''}</td>
+          </tr>
+        `;
+    }
+    html += `</tbody></table></div>`;
+    return html;
+}
+
+function loadTransporters() {
+    const container = document.getElementById('transporters-container');
+    container.innerHTML = `
+      <div class="text-center my-4">
+        <div class="spinner-border text-primary" role="status"></div>
+        <div>Loading transporters...</div>
+      </div>
+    `;
+    fetch('/account/get_transporters')
+        .then(r => r.json())
+        .then(data => {
+            container.innerHTML = renderTransportersTable(data);
+        })
+        .catch(() => {
+            container.innerHTML = '<div class="alert alert-danger">Failed to load transporters.</div>';
+        });
+}
+
+document.addEventListener('DOMContentLoaded', function() {
+    document.querySelector('a[href="#agents"]').addEventListener('shown.bs.tab', function() {
+        loadAgentsTable();
+    }, { once: true });
+    document.querySelector('a[href="#production-units"]').addEventListener('shown.bs.tab', function() {
+        loadProductionUnits();
+    }, { once: true });
+    document.querySelector('a[href="#packhouses"]').addEventListener('shown.bs.tab', function() {
+        loadPackhouses();
+    }, { once: true });
+    document.querySelector('a[href="#transporters"]').addEventListener('shown.bs.tab', function() {
+        loadTransporters();
+    }, { once: true });
+});
+    </script>
 </body>
 </html>
