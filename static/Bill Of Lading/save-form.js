@@ -144,13 +144,6 @@ document.addEventListener("DOMContentLoaded", () => {
         }
     }
     
-    
-    
-    // Redirect to create stock form
-    document.getElementById("openStockFormBtn").addEventListener("click", () => {
-        saveFormData();
-        window.location.href = "/create-product";
-    });
 
     // When clearing form data, set the flag to prevent saving
     document.querySelector("form").addEventListener("submit", (e) => {

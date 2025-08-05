@@ -9,7 +9,7 @@ const creatingToast = Swal.mixin({
     timer: 0 // Infinite timer
 });
 document.addEventListener('DOMContentLoaded', function () {
-    fetch('/fetch-product-data')
+    fetch('/maintanance/fetch-product-data')
         .then(response => response.json())
         .then(data => {
             populateDropdown('productCode', data.products, 'productDescription');
