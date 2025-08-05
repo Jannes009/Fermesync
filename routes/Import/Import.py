@@ -259,3 +259,25 @@ def match_consignment(consignment_id, line_id):
     finally:
         cursor.close()
         conn.close()
+
+@import_bp.route("/discard_consignment/<consignment_id>", methods=["POST"])
+@role_required()
+def discard_consignment(consignment_id):
+    try:
+        conn = create_db_connection()
+        cursor = conn.cursor()
+        cursor.execute("""
+            UPDATE ZZMarketDataTrn
+            SET Deleted = 1
+            WHERE ConsignmentID = ?
+        """, (consignment_id,))
+        conn.commit()
+        affected = cursor.rowcount
+        if affected == 0:
+            return jsonify({"status": "error", "message": "No consignment found to discard."}), 404
+        return jsonify({"status": "success", "message": "Consignment discarded successfully."})
+    except Exception as e:
+        return jsonify({"status": "error", "message": str(e)}), 500
+    finally:
+        cursor.close()
+        conn.close()
