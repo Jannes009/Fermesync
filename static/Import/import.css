@@ -1,3 +1,28 @@
+/* Action Button Group Styling */
+.action-btn-group {
+    display: flex;
+    flex-direction: row;
+    gap: 0.5rem;
+    justify-content: center;
+    align-items: center;
+}
+.action-btn {
+    min-width: 90px;
+    max-width: 120px;
+    padding: 6px 0;
+    font-size: 0.95rem;
+    text-align: center;
+    white-space: nowrap;
+    flex: 1 1 0;
+}
+
+@media (max-width: 1000px) {
+    .action-btn {
+        min-width: 70px;
+        font-size: 0.85rem;
+        padding: 5px 0;
+    }
+}
 /* Import Page Styling */
 @import url('../color-template.css');
 

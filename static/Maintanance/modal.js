@@ -164,7 +164,7 @@ document.addEventListener('DOMContentLoaded', function () {
         };
         console.log(data)
         // Send data to the backend using fetch
-        fetch('/add-item', {
+        fetch('/maintanance/add-item', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify(data),

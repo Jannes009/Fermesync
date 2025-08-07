@@ -50,8 +50,9 @@ function displayTable(data) {
         }
 
         let supplierRefCell = delNoteNoCell;
-        let detailsButton = `<td>`
-        // Only show the edit button in No Match mode
+        let detailsButton = ``
+        let deleteButton = ``
+        // Only show the edit button in No Match mode, show delete button in no match mode
         if (row.linconsignmentidexist !== 1 && row.headelnotenoexist === 0) {
             supplierRefCell += `
                 <button class="btn btn-sm btn-warning edit-supplier-ref" 
@@ -60,12 +61,28 @@ function displayTable(data) {
                     Edit
                 </button>
             `;
+            deleteButton += `
+            <td>
+                <button class="btn btn-sm discard-consignment-btn" data-consignment="${row.consignmentid}" title="Discard">
+                    <img src="/static/Image/recycle-bin.png" alt="Discard" style="width:18px;height:18px;vertical-align:middle;" />
+                </button>
+            <td>
+            `;
         }
-        console.log(supplierRefCell)
-        // Only show the edit button in No Match mode
+
+        // Only show the confirm button in Matched mode, show delete button in matched mode
         if (row.linconsignmentidexist !== 1 && row.headelnotenoexist === 1) {
             detailsButton += `
-                <button class="btn btn-sm btn-primary view-details-btn" data-consignment="${row.consignmentid}">Confirm Match</button>
+            <td>
+                <button class="btn btn-sm btn-primary view-details-btn" data-consignment="${row.consignmentid}">Confirm</button>
+            <td>
+            `;
+            deleteButton += `
+            <td>
+                <button class="btn btn-sm discard-consignment-btn" data-consignment="${row.consignmentid}" title="Discard">
+                    <img src="/static/Image/recycle-bin.png" alt="Discard" style="width:18px;height:18px;vertical-align:middle;" />
+                </button>
+            </td>
             `;
         }
 
@@ -80,7 +97,8 @@ function displayTable(data) {
             <td>${row.brand || '-'}</td>
             <td>${row.qtysent || '-'}</td>
             <td>${row.averageprice}</td>
-            ${detailsButton}</td>
+            ${detailsButton}
+            ${deleteButton}
         `;
         tbody.appendChild(tr);
 
@@ -91,6 +109,25 @@ function displayTable(data) {
                 let consignmentId = this.getAttribute("data-consignment");
                 let currentValue = this.getAttribute("data-supplier-ref");
                 showEditSupplierRefModal(consignmentId, currentValue);
+            });
+        }
+
+        let discardButton = tr.querySelector(".discard-consignment-btn");
+        if (discardButton) {
+            discardButton.addEventListener("click", function () {
+                let consignmentId = this.getAttribute("data-consignment");
+                Swal.fire({
+                    title: "Are you sure?",
+                    text: "This will discard the consignment (mark as deleted).",
+                    icon: "warning",
+                    showCancelButton: true,
+                    confirmButtonText: "Yes, discard it!",
+                    cancelButtonText: "Cancel"
+                }).then(result => {
+                    if (result.isConfirmed) {
+                        discardConsignment(consignmentId);
+                    }
+                });
             });
         }
 
@@ -110,6 +147,31 @@ function displayTable(data) {
             });
         }
     });
+// Discard consignment (mark as deleted)
+function discardConsignment(consignmentId) {
+    fetch(`/import/discard_consignment/${consignmentId}`, {
+        method: "POST"
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.status === "success") {
+            Swal.fire({
+                title: "Discarded!",
+                text: data.message,
+                icon: "success",
+                timer: 1000,
+                showConfirmButton: false
+            });
+            fetchImportedData();
+        } else {
+            Swal.fire("Error", data.message || "Failed to discard consignment.", "error");
+        }
+    })
+    .catch(error => {
+        Swal.fire("Error", "Failed to discard consignment.", "error");
+        console.error("Discard error:", error);
+    });
+}
 }
 
 
