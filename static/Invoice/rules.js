@@ -197,7 +197,11 @@ document.addEventListener("DOMContentLoaded", () => {
         const invoiceNo = document.querySelector('input[name="ZZInvoiceNo"]').value;
         const isUnique = await isInvoiceNumberUnique(invoiceNo);
         if (!isUnique) {
-            alert("This invoice number already exists. Please use a different number.");
+            Swal.fire({
+                title: 'Invoice Number Exists',
+                text: 'This invoice number already exists. Please use a different number.',
+                icon: 'error'
+            });
             return;
         }
 
@@ -229,16 +233,28 @@ document.addEventListener("DOMContentLoaded", () => {
         console.log(nett_display, nett_input)
 
         if (salesOrderData['InvoiceGross'] != numericalValue) {
-            alert("Amounts don't balance");
+            Swal.fire({
+                title: "Amounts Don't Balance",
+                text: "Amounts don't balance.",
+                icon: "error"
+            });
             return;
         } else if (salesOrderData['InvoiceQty'] != calculatedQuantity) {
-            alert("Quantities don't balance");
+            Swal.fire({
+                title: "Quantities Don't Balance",
+                text: "Quantities don't balance.",
+                icon: "error"
+            });
             return;
         } else if (totalDeducted != (parseFloat(marketComm) + parseFloat(agentComm) + parseFloat(extraCosts))) {
             console.log("Market Commission + Agent Commission + Other Costs must equal Total Deducted!");
             // return;
         } else if(nett_input != nett_display){
-            alert("Nett amounts don't balance");
+            Swal.fire({
+                title: "Nett Amounts Don't Balance",
+                text: "Nett amounts don't balance.",
+                icon: "error"
+            });
             return;
         }
 
@@ -250,6 +266,22 @@ document.addEventListener("DOMContentLoaded", () => {
                 salesOrderData['tickedLines'].push({ salesLineId });
             }
         });
+        Swal.fire({
+            title: 'Creating Invoice',
+            html: '<p style="margin-top: 10px; font-size: 1.1rem; color: #555;">Please wait while we process your request...</p>',
+            icon: 'info',
+            allowOutsideClick: false,
+            allowEscapeKey: false,
+            showConfirmButton: false,
+            didOpen: () => {
+                Swal.showLoading();
+            },
+            customClass: {
+                title: 'swal-title',
+                htmlContainer: 'swal-text'
+            }
+        });
+
 
         fetch('/submit_invoice', {
             method: 'POST',
@@ -261,16 +293,29 @@ document.addEventListener("DOMContentLoaded", () => {
         .then(response => response.json())
         .then(data => {
             if (data.success) {
-                window.location.href = '/create_sales_order';
-                Toast.fire({
-                    title: "Sales Order Created Successfully",
-                    icon: "success",
+                Swal.fire({
+                    title: 'Sales Order Created Successfully',
+                    icon: 'success',
+                    timer: 1800,
+                    showConfirmButton: false
+                }).then(() => {
+                    window.location.href = '/create_sales_order';
                 });
-                alert("Sales Order created successfully!");
             } else {
-                alert(`Failed to submit sales order: ${data.error}`);
+                Swal.fire({
+                    title: 'Failed to Submit Sales Order',
+                    text: data.error || 'Unknown error.',
+                    icon: 'error'
+                });
             }
         })
-        .catch(error => console.error('Error:', error));
+        .catch(error => {
+            Swal.fire({
+                title: 'Error',
+                text: 'Error submitting sales order.',
+                icon: 'error'
+            });
+            console.error('Error:', error);
+        });
     });
 });

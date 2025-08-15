@@ -144,7 +144,7 @@ def submit_invoice():
         InvoiceOtherCostsIncl = data.get('InvoiceOtherCostsIncl')
         SalesLines = data.get('tickedLines')
         TaxRate = data.get('TaxRate')
-
+        print(InvoiceDate, InvoiceNo, InvoiceDelNoteNo, InvoiceQty, InvoiceGross, InvoiceTotalDeducted, InvoiceMarketCommIncl, InvoiceAgentCommIncl, InvoiceOtherCostsIncl, SalesLines, TaxRate)
         # Insert into database
         conn = create_db_connection()
         cursor = conn.cursor()
@@ -187,7 +187,7 @@ def submit_invoice():
             cursor.execute(query, (
                 headerId, line['salesLineId'],
             ))
-
+        conn.commit()
         # create invoice
         cursor.execute("EXEC [dbo].[SIGCreateSalesOrder]")
 
