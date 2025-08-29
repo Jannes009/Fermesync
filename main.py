@@ -15,16 +15,18 @@ def create_app():
     # Basic configuration
     app.secret_key = "secret_key"
     
-    # Enhanced session configuration
+    from sqlalchemy.pool import NullPool  # add this import at the top of main.py
+
     app.config.update(
         SESSION_PERMANENT=False,
-        # PERMANENT_SESSION_LIFETIME=timedelta(hours=1),
         SESSION_COOKIE_HTTPONLY=True,
         SESSION_COOKIE_SECURE=False,
         SESSION_COOKIE_SAMESITE='Lax',
         SQLALCHEMY_DATABASE_URI="sqlite:///user.db",
-        SQLALCHEMY_TRACK_MODIFICATIONS=False
+        SQLALCHEMY_TRACK_MODIFICATIONS=False,
+        SQLALCHEMY_ENGINE_OPTIONS={"poolclass": NullPool}  # 👈 new line
     )
+
 
     # Initialize Flask-Login first
     login_manager.init_app(app)
