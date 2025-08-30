@@ -327,6 +327,16 @@ form input {
     padding: 0 10px; /* Ensure consistent padding */
 }
 
+/* Default hover background */
+.select2-container--default .select2-results__option--highlighted.select2-results__option {
+    background-color: var(--table-row-hover) !important; /* your hover color */
+}
+
+/* Optional: normal state */
+.select2-container--default .select2-results__option {
+    background-color: var(--tabll-row-even); /* normal background */
+}
+
 .select2-container--default .select2-selection--single .select2-selection__arrow {
     height: 40px !important; /* Match the fixed height */
     line-height: 40px !important; /* Vertically align arrow */

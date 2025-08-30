@@ -13,26 +13,6 @@ function escapeHtml(text) {
   });
 }
 
-window.toggleDockets = function(delnoteNo, consignmentId, btn, idx) {
-  const docketsRow = document.getElementById(`dockets-${delnoteNo}-${consignmentId}`);
-  const tr = btn.closest('tr').nextElementSibling;
-  if (tr.style.display === 'none') {
-    // Fetch dockets if not already loaded
-    if (!docketsRow.innerHTML) {
-      fetch(`/api/dockets?consignment_id=${encodeURIComponent(consignmentId)}`)
-        .then(res => res.json())
-        .then(dockets => {
-          docketsRow.innerHTML = renderDocketsTable(dockets);
-        });
-    }
-    tr.style.display = '';
-    btn.textContent = '−';
-  } else {
-    tr.style.display = 'none';
-    btn.textContent = '+';
-  }
-};
-
 function renderDocketsTable(dockets) {
   if (!dockets.length) return '<em>No import sales</em>';
   
@@ -43,8 +23,9 @@ function renderDocketsTable(dockets) {
     return acc;
   }, { qtySold: 0, salesValue: 0 });
 
-  return `<table class="sales-table" style="margin:0;">
-    <thead>
+  return `<table class="fs-table" style="margin:0;">
+    <thead style="filter:brightness(0.93);">
+    <th colspan="6" style="background:var(--table-header-bg);text-align:center;">Imported Sales Lines</th>
       <tr>
         <th>Docket Number</th>
         <th>Date Sold</th>
@@ -65,11 +46,11 @@ function renderDocketsTable(dockets) {
       `).join('')}
     </tbody>
     <tfoot>
-      <tr style="background-color: #e0edff; border-top: 2px solid #b6c6e6;">
-        <td colspan="2" style="text-align: right; font-weight: 600; color: #1e40af; padding: 12px 16px;">Totals:</td>
-        <td style="font-weight: 700; color: #1e40af; padding: 12px 16px;">${formatNumber(totals.qtySold)}</td>
+      <tr style="background-color: var(--table-totals-row-bg); border-top: 2px solid var(--table-border);">
+        <td colspan="2" style="text-align: right; font-weight: 600; color: var(-table-totals-row-text); padding: 12px 16px;">Totals:</td>
+        <td style="font-weight: 700; color: var(-table-totals-row-text); padding: 12px 16px;">${formatNumber(totals.qtySold)}</td>
         <td></td>
-        <td style="font-weight: 700; color: #1e40af; padding: 12px 16px;">R${formatNumber(totals.salesValue)}</td>
+        <td style="font-weight: 700; color: var(-table-totals-row-text); padding: 12px 16px;">R${formatNumber(totals.salesValue)}</td>
       </tr>
     </tfoot>
   </table>`;
@@ -106,13 +87,13 @@ window.showLinkedModal = function(delnoteNo) {
 
       let html = `
         <div class="table-responsive">
-          <table class="sales-table" style="margin-bottom:0;">
+          <table class="fs-table" style="margin-bottom:0;">
             <thead>
               <tr>
-                <th colspan="6" style="background:#e0edff;text-align:center;border-right:2px solid #b6c6e6;">Delivery Note</th>
-                <th style="background:#fff;"></th>
-                <th colspan="9" style="background:#e0edff;text-align:center;border-right:2px solid #b6c6e6;">Imported</th>
-                <th style="background:#fff;"></th>
+                <th colspan="6" style="background:var(--table-header-bg);text-align:center;">Delivery Note</th>
+                <th></th>
+                <th colspan="9" style="background:var(--table-header-bg);text-align:center;">Imported</th>
+                <th></th>
               </tr>
               <tr>
                 <th></th>
@@ -121,7 +102,7 @@ window.showLinkedModal = function(delnoteNo) {
                 <th>Qty Sent</th>
                 <th>Sales Qty</th>
                 <th>Invoiced Qty</th>
-                <th style="background:#fff;"></th>
+                <th></th>
                 <th>ConsignmentID</th>
                 <th>DelNoteNo</th>
                 <th>Product</th>
@@ -131,7 +112,7 @@ window.showLinkedModal = function(delnoteNo) {
                 <th>Variety</th>
                 <th>Brand</th>
                 <th>Qty Sent</th>
-                <th style="background:#fff;"></th>
+                <th></th>
               </tr>
             </thead>
             <tbody>
@@ -141,27 +122,27 @@ window.showLinkedModal = function(delnoteNo) {
                 const canUnlink = hasDel && hasTrn && (!line.totalinvoicedqty || line.totalinvoicedqty === 0);
                 return `
                   <tr>
-                    <td style="background:#fafdff;border-right:2px solid #b6c6e6;">
+                    <td style="background:var(--container-bg);border-right:2px solid var(--table-border);">
                       ${hasDel || hasTrn ? `<button class="icon-btn" onclick="toggleExpandedData('${line.dellineindex}', '${line.trnconsignmentid}', this); event.stopPropagation();">+</button>` : ''}
                     </td>
-                    <td style="background:#fafdff;border-right:2px solid #b6c6e6;">${escapeHtml(line.delnoteno)}</td>
-                    <td style="background:#fafdff;border-right:2px solid #b6c6e6;">${escapeHtml(line.delproductdescription)}</td>
-                    <td style="background:#fafdff;border-right:2px solid #b6c6e6;">${escapeHtml(line.delqtysent)}</td>
-                    <td style="background:#fafdff;border-right:2px solid #b6c6e6;">${escapeHtml(line.totalsalesqty)}</td>
-                    <td style="background:#fafdff;border-right:2px solid #b6c6e6;">${escapeHtml(line.totalinvoicedqty)}</td>
-                    <td style="background:#fff;text-align:center;">
+                    <td style="background:var(--table-row-even);border-right:2px solid var(--table-border);">${escapeHtml(line.delnoteno)}</td>
+                    <td style="background:var(--table-row-even);border-right:2px solid var(--table-border);">${escapeHtml(line.delproductdescription)}</td>
+                    <td style="background:var(--table-row-even);border-right:2px solid var(--table-border);">${escapeHtml(line.delqtysent)}</td>
+                    <td style="background:var(--table-row-even);border-right:2px solid var(--table-border);">${escapeHtml(line.totalsalesqty)}</td>
+                    <td style="background:var(--table-row-even);border-right:2px solid var(--table-border);">${escapeHtml(line.totalinvoicedqty)}</td>
+                    <td style="background:var(--table-row-even);text-align:center;">
                       ${hasDel && hasTrn ? linkedImg : ''}
                     </td>
-                    <td style="background:#f0f7ff;border-right:2px solid #b6c6e6;">${escapeHtml(line.trnconsignmentid)}</td>
-                    <td style="background:#f0f7ff;border-right:2px solid #b6c6e6;">${escapeHtml(line.trndelnoteno)}</td>
-                    <td style="background:#f0f7ff;border-right:2px solid #b6c6e6;">${escapeHtml(line.trnproduct)}</td>
-                    <td style="background:#f0f7ff;border-right:2px solid #b6c6e6;">${escapeHtml(line.trnmass)}</td>
-                    <td style="background:#f0f7ff;border-right:2px solid #b6c6e6;">${escapeHtml(line.trnclass)}</td>
-                    <td style="background:#f0f7ff;border-right:2px solid #b6c6e6;">${escapeHtml(line.trnsize)}</td>
-                    <td style="background:#f0f7ff;border-right:2px solid #b6c6e6;">${escapeHtml(line.trnvariety)}</td>
-                    <td style="background:#f0f7ff;border-right:2px solid #b6c6e6;">${escapeHtml(line.trnbrand)}</td>
-                    <td style="background:#f0f7ff;border-right:2px solid #b6c6e6;">${escapeHtml(line.trnqtysent)}</td>
-                    <td style="background:#fff;text-align:center;">
+                    <td style="background:var(--table-row-even);filter:brightness(0.93);border-right:2px solid var(--table-border);">${escapeHtml(line.trnconsignmentid)}</td>
+                    <td style="background:var(--table-row-even);filter:brightness(0.93);border-right:2px solid var(--table-border);">${escapeHtml(line.trndelnoteno)}</td>
+                    <td style="background:var(--table-row-even);filter:brightness(0.93);border-right:2px solid var(--table-border);">${escapeHtml(line.trnproduct)}</td>
+                    <td style="background:var(--table-row-even);filter:brightness(0.93);border-right:2px solid var(--table-border);">${escapeHtml(line.trnmass)}</td>
+                    <td style="background:var(--table-row-even);filter:brightness(0.93);border-right:2px solid var(--table-border);">${escapeHtml(line.trnclass)}</td>
+                    <td style="background:var(--table-row-even);filter:brightness(0.93);border-right:2px solid var(--table-border);">${escapeHtml(line.trnsize)}</td>
+                    <td style="background:var(--table-row-even);filter:brightness(0.93);border-right:2px solid var(--table-border);">${escapeHtml(line.trnvariety)}</td>
+                    <td style="background:var(--table-row-even);filter:brightness(0.93);border-right:2px solid var(--table-border);">${escapeHtml(line.trnbrand)}</td>
+                    <td style="background:var(--table-row-even);filter:brightness(0.93);border-right:2px solid var(--table-border);">${escapeHtml(line.trnqtysent)}</td>
+                    <td style="background:var(--table-row-even);text-align:center;">
                       ${canUnlink ? `
                         <button class="icon-btn" onclick="unlinkConsignment('${line.trnconsignmentid}', '${delnoteNo}')" title="Remove Match">
                           <img src="/static/Image/unlink.png" alt="Remove Match">
@@ -179,7 +160,7 @@ window.showLinkedModal = function(delnoteNo) {
       Swal.fire({
         title: `Linked Lines for Delivery Note #${delnoteNo}`,
         html: html,
-        width: 2000,
+        width: '85%',
         showConfirmButton: false,
         showCancelButton: true,
         cancelButtonText: '<i class="fa fa-times"></i>',
@@ -235,11 +216,9 @@ window.toggleExpandedData = function(delLineIndex, trnConsignmentId, btn) {
         expandedDataContainer.innerHTML = `
           <div style="display: flex; gap: 20px;">
             <div style="flex: 1;">
-              <h4>Sales Lines</h4>
               ${renderDeliveryNoteLinesTable(deliveryLines)}
             </div>
             <div style="flex: 1;">
-              <h4>Imported Sales</h4>
               ${renderDocketsTable(dockets)}
             </div>
           </div>
@@ -265,8 +244,9 @@ function renderDeliveryNoteLinesTable(lines) {
     return acc;
   }, { qty: 0, amount: 0 });
 
-  return `<table class="sales-table" style="margin:0;">
+  return `<table class="fs-table" style="margin:0;">
     <thead>
+    <th colspan="6" style="background:var(--table-header-bg);text-align:center;">Actual Sales Lines</th>
       <tr>
         <th>Date</th>
         <th>Qty</th>
@@ -289,11 +269,11 @@ function renderDeliveryNoteLinesTable(lines) {
       `).join('')}
     </tbody>
     <tfoot>
-      <tr class="totals-row">
-        <td class="totals-label">Totals:</td>
-        <td class="totals-value">${formatNumber(totals.qty)}</td>
+      <tr style="background-color: var(--table-totals-row-bg); border-top: 2px solid var(--table-border);">
+        <td colspan="2" style="text-align: right; font-weight: 600; color: var(-table-totals-row-text); padding: 12px 16px;">Totals:</td>
+        <td style="font-weight: 700; color: var(-table-totals-row-text); padding: 12px 16px;">${formatNumber(totals.qty)}</td>
         <td></td>
-        <td class="totals-value">R${formatNumber(totals.amount)}</td>
+        <td style="font-weight: 700; color: var(-table-totals-row-text); padding: 12px 16px;">R${formatNumber(totals.amount)}</td>
         <td colspan="2"></td>
       </tr>
     </tfoot>

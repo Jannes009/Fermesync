@@ -17,10 +17,10 @@
 
 /* Modal Content */
 .modal-content {
-    background-color: #fefefe;
+    background-color: var(--container-bg);
     margin: auto;
     padding: 20px;
-    border: 1px solid #888;
+    border: 1px solid var(--input-border);
     width: 90%; /* Default to 90% width */
     max-width: 500px; /* Maximum width for larger screens */
     border-radius: 8px; /* Rounded corners */
@@ -30,7 +30,7 @@
 
 /* Close Button */
 .close {
-    color: #aaa;
+    color: var(--secondary-text);
     float: right;
     font-size: 28px;
     font-weight: bold;
@@ -41,7 +41,7 @@
 /* Close Button Hover Effect */
 .close:hover,
 .close:focus {
-    color: black;
+    color: var(--primary-text);
     text-decoration: none;
     cursor: pointer;
 }
@@ -55,30 +55,41 @@
     display: block;
     font-weight: bold;
     margin-bottom: 5px;
+    color: var(--primary-text);
 }
 
 .modal-content input {
     width: 100%;
     padding: 10px;
-    border: 1px solid #ccc;
+    border: 1px solid var(--input-border);
     border-radius: 4px;
     font-size: 14px;
+    background-color: var(--container-bg);
+    color: var(--primary-text);
+}
+
+.modal-content input:focus {
+    outline: none;
+    border-color: var(--input-focus);
+    box-shadow: 0 0 0 0.2rem var(--input-shadow);
 }
 
 /* Submit Button */
 .modal-content button {
-    background-color: #4CAF50;
-    color: white;
+    background-color: var(--button-bg);
+    color: var(--button-text);
     padding: 10px 20px;
-    border: none;
+    border: 1px solid var(--button-bg);
     border-radius: 4px;
     cursor: pointer;
     font-size: 16px;
     margin-top: 10px;
+    transition: all 0.2s ease;
 }
 
 .modal-content button:hover {
-    background-color: #45a049;
+    background-color: var(--button-hover);
+    border-color: var(--button-hover);
 }
 
 /* Fade-in Animation */

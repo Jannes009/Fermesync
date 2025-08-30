@@ -266,6 +266,7 @@ def discard_consignment(consignment_id):
     try:
         conn = create_db_connection()
         cursor = conn.cursor()
+        print(consignment_id)
         cursor.execute("""
             UPDATE ZZMarketDataTrn
             SET Deleted = 1

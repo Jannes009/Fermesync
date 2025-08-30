@@ -4,16 +4,16 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Maintanance</title>
-    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
-    <link rel="stylesheet" href="{{ url_for('static', filename='colour-template.css') }}">
+    <link rel="stylesheet" href="{{ url_for('static', filename='color-template.css') }}">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css">
     <style>
         body {
-            background: #f8fafc;
+            background: var(--primary-bg);
             padding: 0;
             margin: 0;
             font-size: 0.95rem;
             min-height: 100vh;
+            color: var(--primary-text);
         }
         .main-content {
             padding: 2rem 0;
@@ -24,7 +24,7 @@
             padding: 0 1.2rem;
         }
         .account-card, .section-card {
-            background: #fff;
+            background: var(--container-bg);
             border-radius: 12px;
             box-shadow: 0 4px 24px 0 rgba(44, 62, 80, 0.08);
             margin-bottom: 2rem;
@@ -37,11 +37,11 @@
         .section-title {
             font-size: 1.2rem;
             font-weight: 700;
-            color: #2563eb;
+            color: var(--logo-color);
             margin-bottom: 1rem;
         }
         .table-box {
-            background: #fff;
+            background: var(--container-bg);
             border-radius: 12px;
             box-shadow: 0 4px 24px 0 rgba(44, 62, 80, 0.08);
             padding: 1.2rem;
@@ -52,13 +52,13 @@
             border-collapse: separate;
             border-spacing: 0;
             font-size: 0.95rem;
-            background: #fff;
+            background: var(--container-bg);
             border-radius: 8px;
             overflow: hidden;
         }
         .styled-table th {
-            background: #e0edff;
-            color: #2563eb;
+            background: var(--table-header-bg);
+            color: var(--table-header-text);
             font-weight: 700;
             border: none;
             padding: 0.6em 0.8em;
@@ -68,43 +68,209 @@
         .styled-table td {
             border: none;
             padding: 0.6em 0.8em;
-            color: #22223b;
-            background: #fff;
+            color: var(--primary-text);
+            background: var(--table-row-uneven);
             vertical-align: middle;
         }
+        .styled-table tbody tr:nth-child(even) td {
+            background: var(--table-row-even);
+        }
         .styled-table tr:not(:last-child) td {
-            border-bottom: 1px solid #f0f4f8;
+            border-bottom: 1px solid var(--table-border);
         }
-        .list-group-item.active {
-            background: #e0edff;
-            color: #2563eb;
-            border: none;
+        
+        /* Custom sidebar styling using color template */
+        .sidebar-nav {
+            list-style: none;
+            padding: 0;
+            margin: 0;
         }
-        .list-group-item {
-            border: none;
+        .sidebar-nav .nav-item {
+            margin-bottom: 0.5rem;
+        }
+        .sidebar-nav .nav-link {
+            display: block;
+            padding: 0.75rem 1rem;
+            color: var(--secondary-text);
+            text-decoration: none;
+            border-radius: 8px;
             font-weight: 500;
-            color: #475569;
+            transition: all 0.2s ease;
+            border: 2px solid transparent;
         }
-        .list-group-item:hover {
-            background: #e0edff;
-            color: #2563eb;
+        .sidebar-nav .nav-link:hover {
+            background: var(--muted-bg);
+            color: var(--logo-color);
+            border-color: var(--input-border);
+        }
+        .sidebar-nav .nav-link.active {
+            background: var(--button-bg);
+            color: var(--button-text);
+            border-color: var(--button-bg);
+        }
+        
+        /* Custom button styling */
+        .btn {
+            display: inline-block;
+            padding: 0.375rem 0.75rem;
+            font-size: 0.875rem;
+            font-weight: 600;
+            line-height: 1.5;
+            text-align: center;
+            text-decoration: none;
+            border: 2px solid transparent;
+            border-radius: 6px;
+            cursor: pointer;
+            transition: all 0.2s ease;
+            font-family: inherit;
+        }
+        .btn-sm {
+            padding: 0.25rem 0.5rem;
+            font-size: 0.8rem;
+        }
+        .btn-primary {
+            background-color: var(--button-bg);
+            border-color: var(--button-bg);
+            color: var(--button-text);
+        }
+        .btn-primary:hover {
+            background-color: var(--button-hover);
+            border-color: var(--button-hover);
+            color: var(--primary-text);
+        }
+        .btn-success {
+            background-color: #059669;
+            border-color: #059669;
+            color: white;
+        }
+        .btn-success:hover {
+            background-color: #047857;
+            border-color: #047857;
+        }
+        .btn-secondary {
+            background-color: var(--secondary-text);
+            border-color: var(--secondary-text);
+            color: var(--container-bg);
+        }
+        .btn-secondary:hover {
+            background-color: var(--primary-text);
+            border-color: var(--primary-text);
+        }
+        
+        /* Custom form controls */
+        .form-control {
+            display: block;
+            width: 100%;
+            padding: 0.375rem 0.75rem;
+            font-size: 0.875rem;
+            line-height: 1.5;
+            color: var(--primary-text);
+            background-color: var(--container-bg);
+            border: 1px solid var(--input-border);
+            border-radius: 6px;
+            transition: border-color 0.15s ease-in-out, box-shadow 0.15s ease-in-out;
+        }
+        .form-control:focus {
+            border-color: var(--input-focus);
+            outline: 0;
+            box-shadow: 0 0 0 0.2rem var(--input-shadow);
+        }
+        .form-control-sm {
+            padding: 0.25rem 0.5rem;
+            font-size: 0.8rem;
+        }
+        
+        /* Custom alerts */
+        .alert {
+            padding: 0.75rem 1.25rem;
+            margin-bottom: 1rem;
+            border: 1px solid transparent;
+            border-radius: 6px;
+        }
+        .alert-info {
+            background-color: var(--muted-bg);
+            border-color: var(--input-border);
+            color: var(--logo-color);
+        }
+        .alert-danger {
+            background-color: #fee2e2;
+            border-color: #fecaca;
+            color: #dc2626;
+        }
+        
+        /* Custom spinner */
+        .spinner {
+            display: inline-block;
+            width: 1rem;
+            height: 1rem;
+            border: 2px solid currentColor;
+            border-radius: 50%;
+            border-top-color: transparent;
+            animation: spin 1s linear infinite;
+        }
+        @keyframes spin {
+            to { transform: rotate(360deg); }
+        }
+        
+        /* Grid layout */
+        .row {
+            display: flex;
+            flex-wrap: nowrap;
+            margin: 0;
+            gap: 2rem;
+        }
+        .col-md-3 {
+            flex: 0 0 300px;
+            min-width: 300px;
+        }
+        .col-md-9 {
+            flex: 1;
+            min-width: 0;
+        }
+        
+        /* Tab content */
+        .tab-content > .tab-pane {
+            display: none;
+        }
+        .tab-content > .active {
+            display: block;
+        }
+        
+        /* Loading states */
+        .text-center {
+            text-align: center;
+        }
+        .my-4 {
+            margin-top: 1.5rem;
+            margin-bottom: 1.5rem;
+        }
+        .table-responsive {
+            overflow-x: auto;
         }
     </style>
-    {% include 'taskbar.html' %}
 </head>
 <body>
+    {% include 'taskbar.html' %}
     <div class="main-content with-fixed-taskbar">
         <div class="container-wide">
             <div class="row">
                 <!-- Sidebar -->
                 <div class="col-md-3">
                     <div class="account-card">
-                        <div class="list-group" id="maintanance-sidebar" role="tablist">
-                            <a class="list-group-item list-group-item-action active" data-bs-toggle="list" href="#production-units" role="tab">Production Units</a>
-                            <a class="list-group-item list-group-item-action" data-bs-toggle="list" href="#packhouses" role="tab">Packhouses</a>
-                            <a class="list-group-item list-group-item-action" data-bs-toggle="list" href="#agents" role="tab">Agents</a>
-                            <a class="list-group-item list-group-item-action" data-bs-toggle="list" href="#transporters" role="tab">Transporters</a>
-                        </div>
+                        <ul class="sidebar-nav" id="maintanance-sidebar" role="tablist">
+                            <li class="nav-item">
+                                <a class="nav-link active" data-tab="production-units" href="#production-units" role="tab">Production Units</a>
+                            </li>
+                            <li class="nav-item">
+                                <a class="nav-link" data-tab="packhouses" href="#packhouses" role="tab">Packhouses</a>
+                            </li>
+                            <li class="nav-item">
+                                <a class="nav-link" data-tab="agents" href="#agents" role="tab">Agents</a>
+                            </li>
+                            <li class="nav-item">
+                                <a class="nav-link" data-tab="transporters" href="#transporters" role="tab">Transporters</a>
+                            </li>
+                        </ul>
                     </div>
                 </div>
                 <!-- Main Content -->
@@ -116,7 +282,7 @@
                                 <div class="section-title"><i class="fas fa-industry"></i> Production Units</div>
                                 <div class="table-box" id="production-units-container">
                                     <div class="text-center my-4">
-                                        <div class="spinner-border text-primary" role="status"></div>
+                                        <div class="spinner" style="color: var(--logo-color);"></div>
                                         <div>Loading production units...</div>
                                     </div>
                                 </div>
@@ -128,7 +294,7 @@
                                 <div class="section-title"><i class="fas fa-warehouse"></i> Packhouses</div>
                                 <div class="table-box" id="packhouses-container">
                                     <div class="text-center my-4">
-                                        <div class="spinner-border text-primary" role="status"></div>
+                                        <div class="spinner" style="color: var(--logo-color);"></div>
                                         <div>Loading packhouses...</div>
                                     </div>
                                 </div>
@@ -140,7 +306,7 @@
                                 <div class="section-title"><i class="fas fa-user-tie"></i> Agents</div>
                                 <div class="table-box" id="agents-table-container">
                                     <div class="text-center my-4">
-                                        <div class="spinner-border text-primary" role="status"></div>
+                                        <div class="spinner" style="color: var(--logo-color);"></div>
                                         <div>Loading agents...</div>
                                     </div>
                                 </div>
@@ -152,7 +318,7 @@
                                 <div class="section-title"><i class="fas fa-truck"></i> Transporters</div>
                                 <div class="table-box" id="transporters-container">
                                     <div class="text-center my-4">
-                                        <div class="spinner-border text-primary" role="status"></div>
+                                        <div class="spinner" style="color: var(--logo-color);"></div>
                                         <div>Loading transporters...</div>
                                     </div>
                                 </div>
@@ -163,10 +329,33 @@
             </div>
         </div>
     </div>
-    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/js/all.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
     <script>
+        // Custom tab functionality
+        function initTabs() {
+            const tabLinks = document.querySelectorAll('.nav-link');
+            const tabPanes = document.querySelectorAll('.tab-pane');
+            
+            tabLinks.forEach(link => {
+                link.addEventListener('click', function(e) {
+                    e.preventDefault();
+                    
+                    // Remove active class from all tabs
+                    tabLinks.forEach(l => l.classList.remove('active'));
+                    tabPanes.forEach(p => p.classList.remove('show', 'active'));
+                    
+                    // Add active class to clicked tab
+                    this.classList.add('active');
+                    const targetId = this.getAttribute('href').substring(1);
+                    const targetPane = document.getElementById(targetId);
+                    if (targetPane) {
+                        targetPane.classList.add('show', 'active');
+                    }
+                });
+            });
+        }
+        
         // ...JS for loading and rendering tables, similar to account.html...
         // Change fetch URLs to /maintanance/...
         function renderSimpleList(items) {
@@ -289,7 +478,7 @@
         }
         function loadProductionUnits() {
             const container = document.getElementById('production-units-container');
-            container.innerHTML = `<div class="text-center my-4"><div class="spinner-border text-primary" role="status"></div><div>Loading production units...</div></div>`;
+            container.innerHTML = `<div class="text-center my-4"><div class="spinner" style="color: var(--logo-color);"></div><div>Loading production units...</div></div>`;
             fetch('/maintanance/get_production_units')
                 .then(r => r.json())
                 .then(data => { container.innerHTML = renderSimpleList(data); })
@@ -297,7 +486,7 @@
         }
         function loadPackhouses() {
             const container = document.getElementById('packhouses-container');
-            container.innerHTML = `<div class="text-center my-4"><div class="spinner-border text-primary" role="status"></div><div>Loading packhouses...</div></div>`;
+            container.innerHTML = `<div class="text-center my-4"><div class="spinner" style="color: var(--logo-color);"></div><div>Loading packhouses...</div></div>`;
             fetch('/maintanance/get_packhouses')
                 .then(r => r.json())
                 .then(data => { container.innerHTML = renderSimpleList(data); })
@@ -305,7 +494,7 @@
         }
         function loadAgentsTable() {
             const container = document.getElementById('agents-table-container');
-            container.innerHTML = `<div class="text-center my-4"><div class="spinner-border text-primary" role="status"></div><div>Loading agents...</div></div>`;
+            container.innerHTML = `<div class="text-center my-4"><div class="spinner" style="color: var(--logo-color);"></div><div>Loading agents...</div></div>`;
             fetch('/maintanance/get_agents_full')
                 .then((r) => r.json())
                 .then((data) => {
@@ -318,24 +507,26 @@
         }
         function loadTransporters() {
             const container = document.getElementById('transporters-container');
-            container.innerHTML = `<div class="text-center my-4"><div class="spinner-border text-primary" role="status"></div><div>Loading transporters...</div></div>`;
+            container.innerHTML = `<div class="text-center my-4"><div class="spinner" style="color: var(--logo-color);"></div><div>Loading transporters...</div></div>`;
             fetch('/maintanance/get_transporters')
                 .then(r => r.json())
                 .then(data => { container.innerHTML = renderTransportersTable(data); })
                 .catch(() => { container.innerHTML = '<div class="alert alert-danger">Failed to load transporters.</div>'; });
         }
         document.addEventListener('DOMContentLoaded', function() {
-            // Bootstrap tab event listeners for lazy loading
-            document.querySelector('a[href="#production-units"]').addEventListener('shown.bs.tab', function() {
+            initTabs();
+            
+            // Custom tab event listeners for lazy loading
+            document.querySelector('a[data-tab="production-units"]').addEventListener('click', function() {
                 loadProductionUnits();
             }, { once: true });
-            document.querySelector('a[href="#packhouses"]').addEventListener('shown.bs.tab', function() {
+            document.querySelector('a[data-tab="packhouses"]').addEventListener('click', function() {
                 loadPackhouses();
             }, { once: true });
-            document.querySelector('a[href="#agents"]').addEventListener('shown.bs.tab', function() {
+            document.querySelector('a[data-tab="agents"]').addEventListener('click', function() {
                 loadAgentsTable();
             }, { once: true });
-            document.querySelector('a[href="#transporters"]').addEventListener('shown.bs.tab', function() {
+            document.querySelector('a[data-tab="transporters"]').addEventListener('click', function() {
                 loadTransporters();
             }, { once: true });
             // Load the first tab by default

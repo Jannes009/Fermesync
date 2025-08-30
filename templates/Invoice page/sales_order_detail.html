@@ -4,16 +4,17 @@
     <meta charset="UTF-8">
     <title>Sales Order Details</title>
     <script src="https://cdn.tailwindcss.com"></script>
-    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css">
+    <link rel="stylesheet" href="{{ url_for('static', filename='color-template.css') }}">
     <style>
         body {
-            background: #f8fafc;
+            background: var(--primary-bg);
             font-size: 0.95rem;
             min-height: 100vh;
+            color: var(--primary-text);
         }
         .sales-order-header-card {
-            background: #fff;
+            background: var(--container-bg);
             border-radius: 12px;
             box-shadow: 0 4px 24px 0 rgba(44, 62, 80, 0.08);
             padding: 1.5rem 2rem 1.2rem 2rem;
@@ -22,7 +23,7 @@
         .sales-order-header-title {
             font-size: 1.5rem;
             font-weight: 700;
-            color: #2563eb;
+            color: var(--logo-color);
             margin-bottom: 0.4rem;
         }
         .sales-order-header-grid {
@@ -34,15 +35,15 @@
         .sales-order-header-grid h2 {
             font-size: 0.95rem;
             font-weight: 600;
-            color: #475569;
+            color: var(--secondary-text);
             margin-bottom: 0.2rem;
         }
         .sales-order-header-grid p {
             font-size: 0.95rem;
-            color: #334155;
+            color: var(--primary-text);
         }
         .sales-order-table-card {
-            background: #fff;
+            background: var(--container-bg);
             border-radius: 12px;
             box-shadow: 0 4px 24px 0 rgba(44, 62, 80, 0.08);
             padding: 1.5rem 2rem 1.2rem 2rem;
@@ -51,20 +52,20 @@
         .sales-order-table-card h2 {
             font-size: 1.2rem;
             font-weight: 700;
-            color: #334155;
+            color: var(--primary-text);
             margin-bottom: 0.8rem;
         }
         .sales-order-lines-table {
             width: 100%;
             border-collapse: separate;
             border-spacing: 0;
-            background: #fff;
+            background: var(--container-bg);
             border-radius: 8px;
             overflow: hidden;
         }
         .sales-order-lines-table th {
-            background: #e0edff;
-            color: #2563eb;
+            background: var(--table-header-bg);
+            color: var(--table-header-text);
             font-weight: 700;
             border: none;
             padding: 0.6em 0.8em;
@@ -74,20 +75,83 @@
         .sales-order-lines-table td {
             border: none;
             padding: 0.6em 0.8em;
-            color: #22223b;
-            background: #fff;
+            color: var(--primary-text);
+            background: var(--table-row-uneven);
             vertical-align: middle;
         }
+        .sales-order-lines-table tbody tr:nth-child(even) td {
+            background: var(--table-row-even);
+        }
         .sales-order-lines-table tr:not(:last-child) td {
-            border-bottom: 1px solid #f0f4f8;
+            border-bottom: 1px solid var(--table-border);
         }
         .sales-order-lines-table tfoot .totals-row td {
-            background: #e2e8f0; /* A neutral, darker gray */
-            color: #1e293b;   /* A dark slate color for text */
+            background: var(--table-totals-row-bg);
+            color: var(--table-totals-row-text);
             font-weight: 700;
         }
-        .loading { text-align: center; font-size: 1.2em; color: #888; }
-        .error { color: red; text-align: center; }
+        .loading { text-align: center; font-size: 1.2em; color: var(--secondary-text); }
+        .error { color: #dc2626; text-align: center; }
+        
+        /* Status badge styling */
+        .status-badge {
+            display: inline-block;
+            padding: 0.5rem 1rem;
+            border-radius: 999px;
+            font-weight: 600;
+            font-size: 0.875rem;
+            border: 1px solid;
+        }
+        .status-unprocessed {
+            background: var(--muted-bg);
+            color: var(--logo-color);
+            border-color: var(--input-border);
+        }
+        .status-processed {
+            background: #d1fae5;
+            color: #059669;
+            border-color: #6ee7b7;
+        }
+        .status-cancelled {
+            background: #fee2e2;
+            color: #dc2626;
+            border-color: #fecaca;
+        }
+        
+        /* Link styling */
+        .detail-link {
+            color: var(--button-bg);
+            text-decoration: none;
+        }
+        .detail-link:hover {
+            text-decoration: underline;
+        }
+        
+        /* Totals table styling */
+        .totals-table {
+            width: 100%;
+            border-collapse: collapse;
+            font-size: 1rem;
+        }
+        .totals-table td {
+            padding: 0.25rem 0;
+            vertical-align: top;
+        }
+        .totals-table .border-top {
+            border-top: 1px solid var(--table-border);
+            padding-top: 0.5rem;
+        }
+        .totals-table .border-top-thick {
+            border-top: 2px solid var(--primary-text);
+            padding-top: 0.5rem;
+        }
+        .totals-table .nett-amount {
+            font-size: 1.4em;
+            font-weight: 700;
+            color: #059669;
+            text-shadow: 0 1px 2px rgba(0, 0, 0, 0.1);
+            letter-spacing: 0.5px;
+        }
     </style>
 </head>
 <body>
@@ -99,7 +163,7 @@
             <!-- Sales Order Header Card -->
             <div class="sales-order-header-card mb-6" style="position: relative;">
                 <div style="position: absolute; top: 1.5rem; right: 2rem;">
-                    <span id="sales-order-status-badge" class="inline-block px-3 py-1 rounded-full font-semibold text-sm"></span>
+                    <span id="sales-order-status-badge" class="status-badge"></span>
                 </div>
                 <div class="sales-order-header-title" id="sales-order-title"></div>
                 <div class="sales-order-header-grid" id="sales-order-header-details"></div>
@@ -128,7 +192,7 @@ function renderHeader(header) {
         </div>
         <div>
             <h2>Delivery Note No</h2>
-            <p><a href="/delivery-note/${header.invoicedelnoteno || ''}" class="text-blue-600 hover:underline">${header.invoicedelnoteno || ''}</a></p>
+            <p><a href="/delivery-note/${header.invoicedelnoteno || ''}" class="detail-link">${header.invoicedelnoteno || ''}</a></p>
         </div>
         <div>
             <h2>Agent</h2>
@@ -212,19 +276,19 @@ function renderLines(lines) {
 }
 
 function renderStatusBadge(status) {
-    let color = 'bg-blue-100 text-blue-800 border-blue-300';
+    let statusClass = 'status-unprocessed';
     let text = 'Unprocessed';
     if (status) {
         const s = status.toLowerCase();
         if (s === 'processed') {
-            color = 'bg-green-100 text-green-800 border-green-300';
+            statusClass = 'status-processed';
             text = 'Processed';
         } else if (s === 'cancelled') {
-            color = 'bg-red-100 text-red-800 border-red-300';
+            statusClass = 'status-cancelled';
             text = 'Cancelled';
         }
     }
-    return `<span class="${color} border px-3 py-1 rounded-full font-semibold text-sm">${text}</span>`;
+    return `<span class="status-badge ${statusClass}">${text}</span>`;
 }
 
 function renderHeaderTotals(header, totalAmount) {
@@ -239,29 +303,29 @@ function renderHeaderTotals(header, totalAmount) {
     }
     return `
     <div class="sales-order-table-card" style="margin-top:2em;">
-      <table style="width:100%; border-collapse: collapse; font-size: 1rem;">
+      <table class="totals-table">
         <tr>
           <td style="width: 50%; vertical-align: top; padding-right: 2em;">
             <strong>Deductions Breakdown</strong><br><br>
-            <table style="width:100%; border-collapse: collapse;">
+            <table class="totals-table">
               <tr><td>Market Commission:</td><td style="text-align:right;">${fmt(marketComm)}</td></tr>
               <tr><td>Agent Commission:</td><td style="text-align:right;">${fmt(agentComm)}</td></tr>
               <tr><td>Other Costs:</td><td style="text-align:right;">${fmt(otherCosts)}</td></tr>
-              <tr style="border-top: 1px solid #ccc;">
+              <tr class="border-top">
                 <td><strong>Total Deducted:</strong></td>
                 <td style="text-align:right;"><strong>${fmt(totalDeducted)}</strong></td>
               </tr>
             </table>
           </td>
           <td style="width: 50%; vertical-align: top; padding-left: 2em;">
-            <table style="width:100%; border-collapse: collapse;">
+            <table class="totals-table">
               <tr><td style="padding-bottom: 0.5em;">&nbsp;</td></tr>
               <tr><td style="font-weight: bold;">Gross Amount:</td><td style="text-align:right;">${fmt(gross)}</td></tr>
               <tr><td style="font-weight: bold;">Less Deductions:</td><td style="text-align:right;">${fmt(totalDeducted)}</td></tr>
-              <tr style="border-top: 2px solid #000;">
-                <td style="font-weight: bold; font-size: 1.2em;">Nett Sales Order Amount:</td>
-                <td style="text-align:right; font-size: 1.2em; font-weight: bold; color: green;">${fmt(nett)}</td>
-              </tr>
+                               <tr class="border-top-thick">
+                     <td style="font-weight: bold; font-size: 1.2em;">Nett Sales Order Amount:</td>
+                     <td style="text-align:right;" class="nett-amount">${fmt(nett)}</td>
+                 </tr>
             </table>
           </td>
         </tr>

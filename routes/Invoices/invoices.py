@@ -322,6 +322,7 @@ def api_purchase_orders():
 def api_invoices_for_delivery_note(del_note_no):
     conn = create_db_connection()
     cursor = conn.cursor()
+    print(del_note_no)
     cursor.execute("""
         SELECT InvoiceIndex, InvoiceNo, InvoiceDate, InvoiceGross, InvoiceNett, Status
         FROM _uvInvoiceSOStatus
@@ -331,5 +332,6 @@ def api_invoices_for_delivery_note(del_note_no):
     rows = cursor.fetchall()
     columns = [desc[0] for desc in cursor.description]
     invoices = [dict(zip(columns, row)) for row in rows]
+    print(invoices)
     close_db_connection(cursor, conn)
     return jsonify(invoices)

@@ -1,6 +1,26 @@
 let currentSearchValue = "";
-let currentSearchMode = "contains"; // or "exact"
-let currentFilterType = "matched"; // or default to "all" if needed
+let currentFilterType = "all"; // or default to "all" if needed
+
+// Function to format amounts with South African Rand
+function formatCurrency(amount) {
+    if (amount === null || amount === undefined || amount === '') {
+        return '-';
+    }
+    
+    // Convert to number and check if it's valid
+    const num = parseFloat(amount);
+    if (isNaN(num)) {
+        return '-';
+    }
+    
+    // Format as South African Rand with 2 decimal places
+    return new Intl.NumberFormat('en-ZA', {
+        style: 'currency',
+        currency: 'ZAR',
+        minimumFractionDigits: 2,
+        maximumFractionDigits: 2
+    }).format(num);
+}
 
 function fetchImportedData() {
     let table = document.getElementById("resultsTable");
@@ -48,13 +68,12 @@ function displayTable(data) {
                 delNoteNoCell = `<span class="supplier-ref-text">${row.delnoteno}</span>`;
             }
         }
-
-        let supplierRefCell = delNoteNoCell;
+;
         let detailsButton = ``
         let deleteButton = ``
         // Only show the edit button in No Match mode, show delete button in no match mode
         if (row.linconsignmentidexist !== 1 && row.headelnotenoexist === 0) {
-            supplierRefCell += `
+            delNoteNoCell += `
                 <button class="btn btn-sm btn-warning edit-supplier-ref" 
                     data-consignment="${row.consignmentid}" 
                     data-supplier-ref="${row.delnoteno || ""}">
@@ -89,17 +108,18 @@ function displayTable(data) {
         tr.innerHTML = `
             <td><button class="btn expand-btn" data-consignment="${row.consignmentid}">▶</button></td>
             <td>${row.agent || '-'}</td>
-            <td>${supplierRefCell}</td>
+            <td>${delNoteNoCell}</td>
             <td>${row.product || '-'}</td>
             <td>${row.class || '-'}</td>
             <td>${row.size || '-'}</td>
             <td>${row.variety || '-'}</td>
             <td>${row.brand || '-'}</td>
             <td>${row.qtysent || '-'}</td>
-            <td>${row.averageprice}</td>
+            <td>${formatCurrency(row.averageprice)}</td>
             ${detailsButton}
             ${deleteButton}
         `;
+        console.log(tr.innerHTML)
         tbody.appendChild(tr);
 
         // Add event listeners for buttons within this row
@@ -248,8 +268,8 @@ function toggleDocketDetails(button, consignmentId) {
                                 <tr>
                                     <td>${docket.Date}</td>
                                     <td>${docket.QtySold}</td>
-                                    <td>${docket.Price}</td>
-                                    <td>${docket.SalesValue}</td>
+                                    <td>${formatCurrency(docket.Price)}</td>
+                                    <td>${formatCurrency(docket.SalesValue)}</td>
                                 </tr>
                             `).join('')}
                         </tbody>
@@ -486,7 +506,7 @@ function filterTable(type) {
         const search = currentSearchValue.toLowerCase();
         filteredData = filteredData.filter(row => {
             const ref = (row.delnoteno || "").toString().toLowerCase();
-            return currentSearchMode === "exact" ? ref === search : ref.includes(search);
+            return ref.includes(search);
         });
     }
 
@@ -502,7 +522,7 @@ function updateFilterButtonCounts() {
         const search = currentSearchValue.toLowerCase();
         filtered = importedData.filter(row => {
             const ref = (row.delnoteno || "").toString().toLowerCase();
-            return currentSearchMode === "exact" ? ref === search : ref.includes(search);
+            return ref.includes(search);
         });
     }
 
@@ -518,9 +538,4 @@ function updateFilterButtonCounts() {
 document.getElementById("searchInput").addEventListener("input", function () {
     currentSearchValue = this.value.trim();
     filterTable(currentFilterType); // or call with default filter like "all"
-});
-
-document.getElementById("searchMode").addEventListener("change", function () {
-    currentSearchMode = this.value;
-    filterTable(currentFilterType);
 });

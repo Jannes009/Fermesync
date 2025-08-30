@@ -158,7 +158,7 @@ table {
     border-spacing: 0;
 }
 
-th {
+/* th {
     background-color: #f8fafc;
     padding: 1rem;
     text-align: left;
@@ -169,18 +169,21 @@ th {
     letter-spacing: 0.05em;
     border-bottom: 1px solid #e2e8f0;
     white-space: nowrap;
-}
+} */
 
-td {
+/* td {
     padding: 1rem;
     border-bottom: 1px solid #e2e8f0;
     font-size: 0.875rem;
     color: #1e293b;
 }
 
-tr:last-child td {
-    border-bottom: none;
-}
+/* Center align the content inside the table cell */
+/* td {
+    text-align: center;
+    vertical-align: middle; /* Optional: vertically center the content if needed */
+/* } */
+
 
 /* Column Types */
 .status-col {
@@ -196,86 +199,33 @@ tr:last-child td {
 /* Status Indicators */
 .status-indicator {
     display: inline-block;
-    width: 8px;
-    height: 8px;
+    width: 10px;
+    height: 10px;
     border-radius: 50%;
+    margin: 0 auto;
 }
-
 .status-fully-invoiced {
-    background-color: #22c55e;
+    background-color: var(--status-fully-invoiced, #22c55e);
 }
-
 .status-partially-invoiced {
-    background-color: #eab308;
+    background-color: var(--status-partially-invoiced, #eab308);
 }
-
 .status-not-invoiced {
-    background-color: #ef4444;
+    background-color: var(--status-not-invoiced, #ef4444);
 }
-
 .status-high-sales {
-    background-color: #3b82f6;
-}
-
-/* Row States */
-.row-fully-invoiced {
-    background-color: #f0fdf4;
-}
-
-.row-partially-invoiced {
-    background-color: #fefce8;
-}
-
-.row-not-invoiced {
-    background-color: #fef2f2;
-}
-
-.row-high-sales {
-    background-color: #eff6ff;
-}
-
-/* Cell Types */
-.quantity-cell {
-    font-weight: 600;
-}
-
-.quantity-cell.fully-sold {
-    color: #22c55e;
-}
-
-.quantity-cell.partially-sold {
-    color: #eab308;
-}
-
-.quantity-cell.not-sold {
-    color: #ef4444;
-}
-
-.delivery-note-cell {
-    font-weight: 600;
-    color: #2563eb;
-}
-
-.date-cell {
-    color: #64748b;
-}
-
-.agent-cell {
-    font-weight: 500;
-}
-
-.market-cell {
-    color: #475569;
+    background-color: var(--status-high-sales, #2563eb);
 }
 
 /* Row Interactions */
 .main-row {
     transition: all 0.2s ease;
     cursor: pointer;
+    background: var(--container-bg);
 }
 
 .main-row:hover {
-    background-color: #f8fafc;
+    background-color: var(--table-row-even);
     transform: translateY(-1px);
     box-shadow: 0 4px 6px -1px rgb(0 0 0 / 0.1);
 }
@@ -301,34 +251,4 @@ tr:last-child td {
     th, td {
         padding: 0.75rem;
     }
-}
-
-/* Center align the content inside the table cell */
-td {
-    text-align: center;
-    vertical-align: middle; /* Optional: vertically center the content if needed */
-}
-
-/* Center align the container within the table cell */
-.description-container {
-    display: inline-flex; /* Inline to respect the text alignment of the cell */
-    align-items: center; /* Vertically center the button and text */
-    gap: 5px; /* Adjust spacing between the text and the button */
-}
-
-/* Style for the button */
-.change-product-btn {
-    background: none; /* Remove button background */
-    border: none; /* Remove border */
-    padding: 0; /* Remove padding */
-    cursor: pointer; /* Add pointer cursor */
-    display: flex;
-    align-items: center; /* Center icon within button */
-}
-
-/* Style for the icon inside the button */
-.change-product-btn .action-icon {
-    width: 16px; /* Set icon size */
-    height: 16px;
-    display: block; /* Ensure proper alignment */
 }

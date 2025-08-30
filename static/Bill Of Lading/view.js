@@ -18,18 +18,18 @@ function addSale(delNoteNo) {
             <div class="line-option" data-line-id="${line.dellineindex}" 
                  data-product="${line.productdescription}"
                  data-available="${line.available_qty}"
-                 style="padding: 12px; margin: 8px 0; border: 1.5px solid #e0e8f0; border-radius: 8px; cursor: pointer; transition: background 0.2s;">
-                <div style="font-weight: 600; color: #2563eb; font-size: 1.1em;">${line.productdescription}</div>
-                <div style="color: #64748b; font-size: 0.95em;">
+                 style="padding: 12px; margin: 8px 0; border: 1.5px solid var(--table-border); border-radius: 8px; cursor: pointer; transition: background 0.2s; background: var(--container-bg);">
+                <div style="font-weight: 600; color: var(--logo-color); font-size: 1.1em;">${line.productdescription}</div>
+                <div style="color: var(--secondary-text); font-size: 0.95em;">
                     Available: <span style="font-weight:600">${line.available_qty}</span> bags
                 </div>
             </div>
         `).join('');
 
         Swal.fire({
-            title: '<span style="font-size:1.3em;font-weight:700;color:#2563eb;">Select Product Line</span>',
+            title: '<span style="font-size:1.3em;font-weight:700;color:var(--logo-color);">Select Product Line</span>',
             html: `
-                <div style="text-align: left;">
+                <div style="text-align: left; background: var(--container-bg); color: var(--primary-text); border-radius: 12px;"> 
                     <div class="line-selection" style="max-height: 400px; overflow-y: auto; margin-top: 1rem;">
                         ${linesHtml}
                     </div>
@@ -45,11 +45,7 @@ function addSale(delNoteNo) {
                 document.querySelectorAll('.line-option').forEach(line => {
                     line.addEventListener('click', () => {
                         document.querySelectorAll('.line-option').forEach(opt => {
-                            opt.style.background = '#fff';
-                            opt.style.borderColor = '#e0e8f0';
                         });
-                        line.style.background = '#e0edff';
-                        line.style.borderColor = '#2563eb';
                         window.selectedLine = {
                             lineId: line.dataset.lineId,
                             product: line.dataset.product,
@@ -75,23 +71,23 @@ function addSale(delNoteNo) {
 
 function showSaleDetailsModal(selectedLine, delNoteNo) {
     Swal.fire({
-        title: '<span style="font-size:1.3em;font-weight:700;color:#2563eb;">Enter Sale Details</span>',
+        title: '<span style="font-size:1.3em;font-weight:700;color:var(--logo-color);">Enter Sale Details</span>',
         html: `
-            <div style="text-align: left;">
+            <div style="text-align: left; background: var(--container-bg); color: var(--primary-text); border-radius: 12px;">
                 <div style="margin-bottom: 1.5rem;">
-                    <div style="font-weight: 600; color: #334155; margin-bottom: 0.5em;">Product</div>
-                    <div style="padding: 0.8em; background: #f8fafc; border-radius: 8px; color: #2563eb;">
+                    <div style="font-weight: 600; color: var(--primary-text); margin-bottom: 0.5em;">Product</div>
+                    <div style="padding: 0.8em; background: var(--table-row-even); border-radius: 8px; color: var(--logo-color);">
                         ${selectedLine.product}
                     </div>
                 </div>
                 <div style="margin-bottom: 1.5rem;">
-                    <div style="font-weight: 600; color: #334155; margin-bottom: 0.5em;">Available Quantity</div>
-                    <div style="padding: 0.8em; background: #f8fafc; border-radius: 8px; color: #2563eb;">
+                    <div style="font-weight: 600; color: var(--primary-text); margin-bottom: 0.5em;">Available Quantity</div>
+                    <div style="padding: 0.8em; background: var(--table-row-even); border-radius: 8px; color: var(--logo-color);">
                         ${selectedLine.available} bags
                     </div>
                 </div>
                 <div class="table-container" style="margin-bottom: 1rem;">
-                    <table class="sales-table" style="width: 100%; border-radius: 8px; overflow: hidden; background: #f8fafc;">
+                    <table class="sales-table" style="width: 100%; border-radius: 8px; overflow: hidden; background: var(--container-bg);">
                         <thead>
                             <tr>
                                 <th>Date</th>
@@ -103,10 +99,10 @@ function showSaleDetailsModal(selectedLine, delNoteNo) {
                                 <th></th>
                             </tr>
                         </thead>
-                        <tbody class="sales-entries-list" style="background: #fff;">
+                        <tbody class="sales-entries-list" style="background: var(--container-bg);">
                             <!-- Sales entries will be added here -->
                         </tbody>
-                        <tbody class="new-entry-row" style="background: #fff;">
+                        <tbody class="new-entry-row" style="background: var(--container-bg);">
                             <tr>
                                 <td><input type="date" class="form-control" id="saleDate" required></td>
                                 <td><input type="number" class="form-control" id="saleQty" min="1" required></td>
@@ -119,9 +115,9 @@ function showSaleDetailsModal(selectedLine, delNoteNo) {
                         </tbody>
                     </table>
                 </div>
-                <div style="display: flex; justify-content: space-between; padding: 1rem 0; border-top: 1px solid #e2e8f0;">
-                    <span style="font-weight: 600; color: #334155;">Total Quantity: <span id="totalSalesQuantity" style="color: #2563eb;">0</span></span>
-                    <span style="font-weight: 600; color: #334155;">Total Amount: <span id="totalSalesAmount" style="color: #2563eb;">R0.00</span></span>
+                <div style="display: flex; justify-content: space-between; padding: 1rem 0; border-top: 1px solid var(--table-border);">
+                    <span style="font-weight: 600; color: var(--primary-text);">Total Quantity: <span id="totalSalesQuantity" style="color: var(--logo-color);">0</span></span>
+                    <span style="font-weight: 600; color: var(--primary-text);">Total Amount: <span id="totalSalesAmount" style="color: var(--logo-color);">R0.00</span></span>
                 </div>
             </div>
         `,
@@ -348,10 +344,16 @@ function updateCountsDisplay(delnoteNo) {
 
 // Function to handle delivery line selection and sales filtering
 window.selectDeliveryLine = function(row, lineId) {
+    console.log('Selected line ID:', lineId);
     const btn = document.getElementById('editQuantitiesBtn');
     if (btn && btn.classList.contains('editing')) {
         // In edit mode, do nothing
         return;
+    }
+    if (!allSalesRowsHtml) {
+        // Save the original table HTML for clearing the filter
+        const salesTable = document.getElementById('salesTableContainer');
+        allSalesRowsHtml = salesTable.innerHTML;
     }
     // Remove selected class from all rows
     document.querySelectorAll('.delivery-line').forEach(r => {
@@ -368,22 +370,38 @@ window.selectDeliveryLine = function(row, lineId) {
     }
     
     // Filter sales table
-    const salesTable = document.querySelector('.sales-table');
+    const salesTable = document.getElementById('salesTableContainer');
     if (!salesTable) return;
-    
-    const rows = salesTable.querySelectorAll('tbody tr');
+
     let hasVisibleRows = false;
-    
+    // Parse the table and filter rows
+    const tempDiv = document.createElement('div');
+    tempDiv.innerHTML = allSalesRowsHtml;
+    const rows = tempDiv.querySelectorAll('tbody tr');
+
+    let visibleRowCount = 0;
     rows.forEach(saleRow => {
         const saleLineId = saleRow.dataset.lineId;
-        if (saleLineId === lineId) {
+        console.log('Sale row line ID:', saleLineId, 'Comparing to:', lineId);
+        if (String(saleLineId) === String(lineId)) {
             saleRow.style.display = '';
             hasVisibleRows = true;
+            console.log("add")
+            
+            // Apply alternating colors to visible rows
+            visibleRowCount++;
+            saleRow.classList.remove('row-even', 'row-odd');
+            if (visibleRowCount % 2 === 0) {
+                saleRow.classList.add('row-even');
+            } else {
+                saleRow.classList.add('row-odd');
+            }
         } else {
+            console.log("Remove")
             saleRow.style.display = 'none';
         }
     });
-    
+    salesTable.innerHTML = tempDiv.innerHTML;
     // Show/hide totals row based on visibility
     const totalsRow = salesTable.querySelector('tfoot tr');
     if (totalsRow) {
@@ -430,6 +448,12 @@ window.clearSalesFilter = function() {
         r.classList.remove('selected');
     });
     
+
+        // Remove selected class from all rows
+    document.querySelectorAll('.invoice-line').forEach(r => {
+        r.classList.remove('selected');
+    });
+
     // Hide clear filter button
     const clearFilterBtn = document.getElementById('clearFilterBtn');
     if (clearFilterBtn) {
@@ -437,19 +461,29 @@ window.clearSalesFilter = function() {
     }
     
     // Show all sales rows
-    const salesTable = document.querySelector('.sales-table');
-    if (!salesTable) return;
-    
-    const rows = salesTable.querySelectorAll('tbody tr');
-    rows.forEach(row => {
-        row.style.display = '';
-    });
+    const salesTable = document.getElementById('salesTableContainer');
+    if (allSalesRowsHtml) {
+        salesTable.innerHTML = allSalesRowsHtml;
+    }
     
     // Show totals row
     const totalsRow = salesTable.querySelector('tfoot tr');
     if (totalsRow) {
         totalsRow.style.display = '';
     }
+    
+    // Reapply alternating row colors after restoring the table
+    const salesRows = salesTable.querySelectorAll('tbody tr:not(.totals-row)');
+    salesRows.forEach((row, index) => {
+        // Remove existing color classes
+        row.classList.remove('row-even', 'row-odd');
+        // Add new color class based on position
+        if ((index + 1) % 2 === 0) {
+            row.classList.add('row-even');
+        } else {
+            row.classList.add('row-odd');
+        }
+    });
     
     // Update totals for all rows
     updateFilteredTotals();
@@ -474,58 +508,58 @@ window.editDeliveryHeader = function(delnoteNo) {
                 // Create the modal HTML with improved styling
                 const isProcessed = poStatus.isProcessed;
                 const transportDisabled = isProcessed ? 'disabled' : '';
-                const transportStyle = isProcessed ? 'padding: 0.6rem; border-radius: 6px; border: 1px solid #e2e8f0; width: 100%; background-color: #f3f4f6; color: #6b7280;' : 'padding: 0.6rem; border-radius: 6px; border: 1px solid #e2e8f0; width: 100%;';
+                const transportStyle = isProcessed ? 'padding: 0.6rem; border-radius: 6px; border: 1px solid var(--input-border); width: 100%; background-color: var(--table-row-even); color: var(--secondary-text);' : 'padding: 0.6rem; border-radius: 6px; border: 1px solid var(--input-border); width: 100%; background: var(--container-bg); color: var(--primary-text);';
                 
                 const modalHtml = `
-                    <div style="text-align: left; padding: 1rem;">
+                    <div style="text-align: left; padding: 1rem; background: var(--container-bg); color: var(--primary-text); border-radius: 12px;">
                         ${isProcessed ? `
-                        <div style="margin-bottom: 1.5rem; padding: 1rem; background-color: #fef3c7; border: 1px solid #f59e0b; border-radius: 8px;">
+                        <div style="margin-bottom: 1.5rem; padding: 1rem; background-color: var(--muted-bg); border: 1px solid var(--table-border); border-radius: 8px;">
                             <div style="display: flex; align-items: center; gap: 0.5rem;">
-                                <span style="color: #d97706; font-size: 1.2em;">⚠️</span>
-                                <span style="color: #92400e; font-weight: 600;">Transport PO Processed</span>
+                                <span style="color: var(--logo-color); font-size: 1.2em;">⚠️</span>
+                                <span style="color: var(--logo-color); font-weight: 600;">Transport PO Processed</span>
                             </div>
-                            <p style="color: #92400e; margin: 0.5rem 0 0 0; font-size: 0.9rem;">
+                            <p style="color: var(--logo-color); margin: 0.5rem 0 0 0; font-size: 0.9rem;">
                                 The Transport PO has been processed. Transporter and Transport Cost cannot be modified.
                             </p>
                         </div>
                         ` : ''}
                         <div style="margin-bottom: 1.5rem;">
-                            <label style="display: block; margin-bottom: 0.5rem; font-weight: 600; color: #334155; font-size: 0.95rem;">Delivery Note No</label>
+                            <label style="display: block; margin-bottom: 0.5rem; font-weight: 600; color: var(--primary-text); font-size: 0.95rem;">Delivery Note No</label>
                             <input type="text" id="deliveryNoteNo" class="form-control" value="${header.delnoteno}" 
-                                   style="padding: 0.6rem; border-radius: 6px; border: 1px solid #e2e8f0; width: 100%;">
+                                   style="padding: 0.6rem; border-radius: 6px; border: 1px solid var(--input-border); width: 100%; background: var(--container-bg); color: var(--primary-text);">
                         </div>
                         <div style="margin-bottom: 1.5rem;">
-                            <label style="display: block; margin-bottom: 0.5rem; font-weight: 600; color: #334155; font-size: 0.95rem;">Delivery Date</label>
+                            <label style="display: block; margin-bottom: 0.5rem; font-weight: 600; color: var(--primary-text); font-size: 0.95rem;">Delivery Date</label>
                             <input type="date" id="deliveryDate" class="form-control" value="${header.deldate}" 
-                                   style="padding: 0.6rem; border-radius: 6px; border: 1px solid #e2e8f0; width: 100%;">
+                                   style="padding: 0.6rem; border-radius: 6px; border: 1px solid var(--input-border); width: 100%; background: var(--container-bg); color: var(--primary-text);">
                         </div>
                         <div style="margin-bottom: 1.5rem;">
-                            <label style="display: block; margin-bottom: 0.5rem; font-weight: 600; color: #334155; font-size: 0.95rem;">Agent</label>
-                            <select id="agentSelect" class="form-select" style="width: 100%;">
+                            <label style="display: block; margin-bottom: 0.5rem; font-weight: 600; color: var(--primary-text); font-size: 0.95rem;">Agent</label>
+                            <select id="agentSelect" class="form-select" style="width: 100%; background: var(--container-bg); color: var(--primary-text); border: 1px solid var(--input-border);">
                                 <option value="">Select an agent...</option>
                                 ${agents.map(a => `<option value="${a.DCLink}" ${a.DCLink === header.deliclientid ? 'selected' : ''}>${a.display_name}</option>`).join('')}
                             </select>
                         </div>
                         <div style="margin-bottom: 1.5rem;">
-                            <label style="display: block; margin-bottom: 0.5rem; font-weight: 600; color: #334155; font-size: 0.95rem;">Packhouse</label>
-                            <select id="marketSelect" class="form-select" style="width: 100%;">
+                            <label style="display: block; margin-bottom: 0.5rem; font-weight: 600; color: var(--primary-text); font-size: 0.95rem;">Packhouse</label>
+                            <select id="marketSelect" class="form-select" style="width: 100%; background: var(--container-bg); color: var(--primary-text); border: 1px solid var(--input-border);">
                                 <option value="">Select a packhouse...</option>
                                 ${markets.map(m => `<option value="${m.WhseLink}" ${m.WhseLink === header.delmarketid ? 'selected' : ''}>${m.display_name}</option>`).join('')}
                             </select>
                         </div>
                         <div style="margin-bottom: 1.5rem;">
-                            <label style="display: block; margin-bottom: 0.5rem; font-weight: 600; color: #334155; font-size: 0.95rem;">Total Quantity (Bags)</label>
+                            <label style="display: block; margin-bottom: 0.5rem; font-weight: 600; color: var(--primary-text); font-size: 0.95rem;">Total Quantity (Bags)</label>
                             <input type="number" id="totalQuantity" class="form-control" value="${header.delquantitybags || 0}"
-                                   style="padding: 0.6rem; border-radius: 6px; border: 1px solid #e2e8f0; width: 100%;">
+                                   style="padding: 0.6rem; border-radius: 6px; border: 1px solid var(--input-border); width: 100%; background: var(--container-bg); color: var(--primary-text);">
                         </div>
                         <div style="margin-bottom: 1.5rem;">
-                            <label style="display: block; margin-bottom: 0.5rem; font-weight: 600; color: #334155; font-size: 0.95rem;">Transporter</label>
+                            <label style="display: block; margin-bottom: 0.5rem; font-weight: 600; color: var(--primary-text); font-size: 0.95rem;">Transporter</label>
                             ${isProcessed ? `
-                                <div style="padding: 0.8em; background: #f8fafc; border-radius: 8px; color: #2563eb; border: 1px solid #e2e8f0;">
+                                <div style="padding: 0.8em; background: var(--table-row-even); border-radius: 8px; color: var(--logo-color); border: 1px solid var(--input-border);">
                                     ${transporters.find(t => t.TransporterAccount === header.deltransporter)?.display_name || 'Unknown Transporter'}
                                 </div>
                             ` : `
-                                <select id="transporterSelect" class="form-select" style="width: 100%;">
+                                <select id="transporterSelect" class="form-select" style="width: 100%; background: var(--container-bg); color: var(--primary-text); border: 1px solid var(--input-border);">
                                     <option value="">Select a transporter...</option>
                                     ${transporters.map(t => `<option value="${t.TransporterAccount}" ${t.TransporterAccount === header.deltransporter ? 'selected' : ''}>${t.display_name}</option>`).join('')}
                                 </select>
@@ -533,7 +567,7 @@ window.editDeliveryHeader = function(delnoteNo) {
                         </div>
 
                         <div style="margin-bottom: 1.5rem;">
-                            <label style="display: block; margin-bottom: 0.5rem; font-weight: 600; color: #334155; font-size: 0.95rem;">Transport Cost</label>
+                            <label style="display: block; margin-bottom: 0.5rem; font-weight: 600; color: var(--primary-text); font-size: 0.95rem;">Transport Cost</label>
                             <input type="number" id="transportCost" class="form-control" value="${header.deltransportcostexcl || 0}"
                                    style="${transportStyle}" ${transportDisabled}>
                         </div>
@@ -542,7 +576,7 @@ window.editDeliveryHeader = function(delnoteNo) {
 
                 // Show the modal with improved styling
                 Swal.fire({
-                    title: '<span style="font-size:1.3em;font-weight:700;color:#2563eb;">Edit Delivery Note Header</span>',
+                    title: '<span style="font-size:1.3em;font-weight:700;color:var(--primary-text);">Edit Delivery Note Header</span>',
                     html: modalHtml,
                     showCancelButton: true,
                     confirmButtonText: 'Save Changes',

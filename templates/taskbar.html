@@ -122,7 +122,7 @@ main {
 .taskbar-link:hover,
 .taskbar-link.active {
     background-color: var(--taskbar-hover);
-    color: #ffffff;
+    color: var(--container-bg);
 }
 
 /* User Section */
@@ -139,6 +139,7 @@ main {
     background-color: var(--taskbar-user-bg);
     border-radius: 4px;
     transition: background 0.3s ease;
+    color: var(--taskbar-text);
 }
 
 .username:hover {
@@ -163,6 +164,7 @@ main {
     padding: 10px 20px;
     display: block;
     text-decoration: none;
+    transition: background 0.2s ease;
 }
 
 .dropdown a:hover {
@@ -175,14 +177,35 @@ main {
 
 .dropdown-parent:hover .dropdown-menu,
 .dropdown-parent:focus-within .dropdown-menu {
-    display: block;
+    display: block !important;
 }
-.dropdown-menu {
+
+/* CSS Reset for taskbar elements to prevent page style interference */
+.taskbar *,
+.taskbar *::before,
+.taskbar *::after {
+    box-sizing: border-box;
+}
+
+.taskbar ul,
+.taskbar li {
+    margin: 0;
+    padding: 0;
+    list-style: none;
+}
+
+.taskbar a {
+    text-decoration: none;
+    color: inherit;
+}
+
+/* Taskbar-specific dropdown styles - isolated from page styles */
+.taskbar .dropdown-menu {
     display: none;
     position: absolute;
     left: 0;
     top: 100%;
-    background: #fff;
+    background: var(--container-bg);
     min-width: 180px;
     box-shadow: 0 4px 12px rgba(0,0,0,0.12);
     border-radius: 0 0 8px 8px;
@@ -190,19 +213,25 @@ main {
     padding: 0.5em 0;
     margin: 0;
     list-style: none;
+    border: 1px solid var(--table-border);
 }
-.dropdown-item {
+
+.taskbar .dropdown-item {
     display: block;
     padding: 0.7em 1.2em;
-    color: #22223b;
+    color: var(--primary-text);
     text-decoration: none;
     font-size: 1em;
     transition: background 0.18s, color 0.18s;
+    background: transparent;
 }
-.dropdown-item:hover {
-    background: #e0edff;
-    color: #2563eb;
+
+.taskbar .dropdown-item:hover {
+    background: var(--table-row-hover);
+    color: var(--logo-color);
 }
+
+/* Remove duplicate styles - only keep the scoped ones above */
 
 @media (max-width: 800px) { /* Adjust breakpoint if needed */
     .taskbar {
@@ -230,9 +259,6 @@ main {
         padding: 8px 10px;
     }
 }
-
-
-
 
 </style>
 <script>
@@ -268,5 +294,4 @@ main {
             });
         });
     });
-
 </script>

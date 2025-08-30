@@ -1,32 +1,154 @@
 :root {
     /* Primary Colors */
-    --primary-bg: #f4f6f9; /* Light background for a clean, professional look */
-    --primary-text: #333333; /* Darker, more readable text color */
-    --container-bg: #ffffff; /* Classic white background for containers */
+    --primary-bg: #f4f6f9;       /* Light background for a clean, professional look */
+    --primary-text: #333333;     /* Darker, more readable text color */
+    --container-bg: #ffffff;     /* Classic white background for containers */
+
+    /* Secondary / Neutral */
+    --secondary-text: #4a5568;   /* Muted gray text */
+    --muted-bg: #edf2f7;         /* Subtle highlight background */
 
     /* Form & Input Styles */
-    --form-bg: #f9fbfd; /* Light, subtle form background */
-    --input-border: #ced4da; /* Soft gray border for inputs */
-    --input-focus: #0061f2; /* Brighter blue focus color for inputs */
+    --form-bg: #f9fbfd;          /* Light, subtle form background */
+    --input-border: #ced4da;     /* Soft gray border for inputs */
+    --input-focus: #0061f2;      /* Brighter blue focus color for inputs */
     --input-shadow: rgba(0, 97, 242, 0.2); /* Light shadow for focus effect */
 
     /* Button Styles */
-    --button-bg: #4c7cff; /* Softer blue for buttons */
-    --button-hover: #3b6ad8; /* Slightly darker blue on hover */
-    --button-text: #ffffff; /* White text for visibility */
+    --button-bg: #4c7cff;        /* Softer blue for buttons */
+    --button-hover: #3b6ad8;     /* Slightly darker blue on hover */
+    --button-text: #ffffff;      /* White text for visibility */
 
     /* Table Styles */
-    --table-border: #e2e8f0; /* Soft gray border for table elements */
-    --table-header-bg: #e9eff7; /* Soft blue background for headers */
-    --table-header-text: #2b3e51; /* Slightly darker text for table headers */
-    --table-row-even: #f5f7fa; /* Light gray for alternating table rows */
+    --table-border: #e2e8f0;         /* Soft gray border for table elements */
+    --table-header-bg: #e9eff7;      /* Soft blue background for headers */
+    --table-header-text: #2b3e51;    /* Slightly darker text for table headers */
+    --table-row-even: #f5f7fa;       /* Light gray for alternating table rows */
+    --table-row-uneven: #ffffff;     /* White for contrast */
+    --table-row-hover: #e2e8f0;      /* Subtle hover highlight */
+    --table-row-focus: #c3dafe;      /* Focused row highlight */
+    --table-totals-row-bg: #2b6cb0;  /* Stronger blue for totals row */
+    --table-totals-row-text: #ffffff;/* White text for contrast */
 
     /* Taskbar Styles */
-    --taskbar-bg: #1A202C; /* Dark blue, derived from logo */
-    --taskbar-text: #CBD5E0; /* Softened off-white text for less contrast */
-    --taskbar-hover: #2A4365; /* Slightly lighter blue on hover */
-    --taskbar-user-bg: #2C3E50; /* Subtle darker user background */
-    --taskbar-user-hover: #0061f2; /* Blue hover effect for user section */
-    --taskbar-dropdown-bg: #2a2d3f; /* Dark dropdown background */
-    --taskbar-dropdown-hover: #3a3e5a; /* Hover effect for dropdown items */
+    --taskbar-bg: #1A202C;        /* Dark slate/blue for taskbar */
+    --taskbar-text: #CBD5E0;      /* Softened off-white text */
+    --taskbar-hover: #2A4365;     /* Slightly lighter blue on hover */
+    --taskbar-user-bg: #2C3E50;   /* Subtle darker user background */
+    --taskbar-user-hover: #0061f2;/* Bright hover effect for user section */
+    --taskbar-dropdown-bg: #2a2d3f;   /* Dark dropdown background */
+    --taskbar-dropdown-hover: #3a3e5a;/* Hover effect for dropdown items */
+
+    /* Logo */
+    --logo-color: #2b6cb0;       /* Blue accent for branding */
 }
+
+
+
+
+/* Unified table styles for delivery, sales, and invoice tables */
+.fs-table {
+    width: 100%;
+    border-collapse: separate;
+    border-spacing: 0;
+    font-size: 0.9rem;
+    background: var(--container-bg);
+    border-radius: 8px;
+    overflow: hidden;
+}
+.fs-table th {
+    background: var(--table-header-bg);
+    color: var(--table-header-text);
+    font-weight: 700;
+    border: none;
+    padding: 0.6em 0.8em;
+    text-align: left;
+    white-space: nowrap;
+}
+.fs-table td {
+    border: none;
+    padding: 0.6em 0.8em;
+    color: var(--primary-text);
+    background: var(--table-row-uneven);
+    vertical-align: middle;
+}
+.fs-table tbody tr:nth-child(even) td {
+    background-color: var(--table-row-even);
+}
+
+/* Dynamic row color classes for filtered tables */
+.row-even td {
+    background-color: var(--table-row-even) !important;
+}
+
+.row-odd td {
+    background-color: var(--table-row-uneven) !important;
+}
+.fs-table tr:not(:last-child) td {
+    border-bottom: 1px solid var(--table-border);
+}
+/* Only delivery and invoice tables get row hover effect */
+.fs-table.fs-hover tbody tr:hover td {
+    background: var(--table-row-hover);
+    transition: background 0.15s;
+}
+.fs-table tr.selected td {
+    background-color: var(--table-row-focus) !important;
+    font-weight: 500;
+}
+
+body {
+    background: var(--primary-bg);
+    color: var(--primary-text);
+    font-size: 0.85rem;
+    min-height: 100vh;
+    display: flex;
+    flex-direction: column;
+    padding: 0;
+    margin: 0;
+}
+
+    .select2-container {
+        width: 100% !important;
+    }
+    .select2-selection--single {
+        height: 40px !important;
+        padding: 6px 12px !important;
+        font-size: 1rem !important;
+        border-radius: 6px !important;
+        border: 1px solid var(--input-border) !important;
+        background-color: var(--container-bg) !important;
+        display: flex !important;
+        align-items: center !important;
+    }
+    .select2-selection__rendered {
+        line-height: 1.5 !important;
+        padding-left: 0 !important;
+        margin-top: 0 !important;
+    }
+    .select2-selection__arrow {
+        height: 100% !important;
+        top: 0 !important;
+    }
+    /* Default hover background */
+    .select2-container--default .select2-results__option--highlighted.select2-results__option {
+        background-color: var(--table-row-hover) !important; /* your hover color */
+    }
+
+    /* Optional: normal state */
+    .select2-container--default .select2-results__option {
+        background-color: var(--tabll-row-even); /* normal background */
+    }
+
+    .container-card {
+      background: var(--container-bg);
+      border-radius: 12px;
+      box-shadow: 0 4px 24px 0 rgba(44, 62, 80, 0.08);
+      margin-bottom: 2rem;
+      padding: 1.2rem 1.2rem 0.8rem 1.2rem;
+      transition: box-shadow 0.2s;
+      /* width:65% */
+    }
+    .container-card:hover {
+      box-shadow: 0 8px 32px 0 rgba(44, 62, 80, 0.16);
+    }

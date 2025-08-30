@@ -5,6 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Bill Of Lading</title>
     <link rel="stylesheet" href="{{ url_for('static', filename='View/view.css') }}">
+    <link rel="stylesheet" href="{{ url_for('static', filename='color-template.css') }}">
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
     <style>
         .totals-row {
@@ -71,6 +72,15 @@
             color: #1e293b;
             font-weight: 500;
         }
+        
+        /* Row color classes for filtered table */
+        .row-even td {
+            background-color: var(--table-row-even) !important;
+        }
+        
+        .row-odd td {
+            background-color: var(--table-row-uneven) !important;
+        }
         .search-bar-card, .search-bar-inner, .search-icon, .search-input, .search-mode {
             all: unset;
         }
@@ -110,27 +120,17 @@
             border-color: #1f28f0;
             outline: none;
         }
-        @media (max-width: 700px) {
-            .search-toggle-row {
-                flex-direction: column;
-                align-items: stretch;
-                gap: 8px;
-            }
-            .toggle-right {
-                justify-content: flex-end;
-            }
-        }
     </style>
 </head>
 <body>
     {% include 'taskbar.html' %}
     
     <div class="page-container with-fixed-taskbar">
-        <div class="page-header">
-            <h1>View Entries</h1>
+        
+        <div class="content-wrapper container-card">
+            <div class="page-header">
+            <h1 style="color:var(--primary-text)">View Entries</h1>
         </div>
-
-        <div class="content-wrapper">
             <!-- Search and Toggle Row -->
             <div class="search-toggle-row">
                 <div class="search-bar-left">
@@ -147,7 +147,7 @@
 
             <div class="table-card">
                 <div class="table-responsive">
-                    <table>
+                    <table class="fs-table fs-hover">
                         <thead>
                             <tr>
                                 <th class="status-col"></th>
@@ -217,6 +217,8 @@
         function filterTable() {
             const query = searchInput.value.trim().toLowerCase();
             showCompleted = toggleSwitch.checked;
+            let visibleRowCount = 0;
+            
             tableRows.forEach(row => {
                 const noteCell = row.querySelector('.delivery-note-cell');
                 if (!noteCell) return;
@@ -230,7 +232,21 @@
                 } else {
                     row.style.display = matchesSearch && !isCompleted ? '' : 'none';
                 }
+                
+                // If row is visible, apply alternating colors
+                if (row.style.display !== 'none') {
+                    visibleRowCount++;
+                    // Remove existing color classes
+                    row.classList.remove('row-even', 'row-odd');
+                    // Add new color class based on visible position
+                    if (visibleRowCount % 2 === 0) {
+                        row.classList.add('row-even');
+                    } else {
+                        row.classList.add('row-odd');
+                    }
+                }
             });
+            
             toggleLabel.textContent = showCompleted ? 'Hide Completed Delivery Notes' : 'Show Completed Delivery Notes';
         }
 

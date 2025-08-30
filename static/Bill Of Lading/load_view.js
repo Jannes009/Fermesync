@@ -4,7 +4,7 @@ function load_delivery_lines_table(delnoteno) {
         .then(data => {
             const lines = data.lines;
             let tableHtml = `
-                <table>
+                <table class="fs-table fs-hover">
                 <thead>
                     <tr>
                     <th>Line</th>
@@ -67,7 +67,7 @@ function load_sales_lines_table(delnoteno) {
             const lines = data.lines;
             let tableHtml = `
                 <div class="table-responsive">
-                <table class="sales-table">
+                <table class="fs-table">
                     <thead>
                     <tr>
                         <th>Date</th>
@@ -141,3 +141,33 @@ document.addEventListener('DOMContentLoaded', function() {
         }
     }
 });
+
+
+function renderInvoicesTable(invoices) {
+    if (!invoices.length) return '<div style="background: var(--container-bg); color: var(--primary-text); padding: 1em; border-radius: 8px;">No invoices found for this delivery note.</div>';
+    let rows = invoices.map(inv => `
+        <tr class="invoice-summary-row invoice-line" data-invoice-no="${inv.invoiceno}" style="cursor:pointer;">
+            <td><a href="/sales-order/${inv.invoiceindex}" class="invoice-link" onclick="event.stopPropagation();">${inv.invoiceno}</a></td>
+            <td class="invoice-date">${inv.invoicedate || ''}</td>
+            <td class="invoice-gross">${formatCurrency(inv.invoicegross)}</td>
+            <td class="invoice-nett">${formatCurrency(inv.invoicenett)}</td>
+            <td class="invoice-status">${inv.status}</td>
+        </tr>
+    `).join('');
+    return `
+        <div class="overflow-auto">
+        <table class="fs-table fs-hover">
+            <thead>
+                <tr>
+                    <th>Invoice No</th>
+                    <th>Date</th>
+                    <th>Gross</th>
+                    <th>Nett</th>
+                    <th>Status</th>
+                </tr>
+            </thead>
+            <tbody>${rows}</tbody>
+        </table>
+        </div>
+    `;
+}

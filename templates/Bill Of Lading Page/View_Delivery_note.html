@@ -7,100 +7,20 @@
   <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css">
   <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+  <link rel="stylesheet" href="/static/color-template.css">
   <style>
-    body { 
-      background: #f8fafc; 
-      padding: 0;
-      margin: 0;
-      font-size: 0.85rem;
-      min-height: 100vh;
-      display: flex;
-      flex-direction: column;
-    }
-    .taskbar {
-      background: #fff;
-      box-shadow: 0 2px 12px 0 rgba(44, 62, 80, 0.08);
-      padding: 0.6rem 1.2rem;
-      position: sticky;
-      top: 0;
-      z-index: 100;
-      display: flex;
-      align-items: center;
-      justify-content: space-between;
-    }
-    .taskbar-left {
-      display: flex;
-      align-items: center;
-      gap: 1.2rem;
-    }
-    .taskbar-right {
-      display: flex;
-      align-items: center;
-      gap: 0.8rem;
-    }
-    .taskbar-logo {
-      font-size: 1.2rem;
-      font-weight: 700;
-      color: #2563eb;
-      text-decoration: none;
-    }
-    .taskbar-nav {
-      display: flex;
-      gap: 0.8rem;
-    }
-    .taskbar-link {
-      color: #475569;
-      text-decoration: none;
-      padding: 0.3rem 0.6rem;
-      border-radius: 6px;
-      transition: all 0.2s;
-      font-weight: 500;
-    }
-    .taskbar-link:hover {
-      color: #2563eb;
-      background: #e0edff;
-    }
-    .taskbar-link.active {
-      color: #2563eb;
-      background: #e0edff;
-    }
-    .taskbar-btn {
-      display: inline-flex;
-      align-items: center;
-      gap: 0.4em;
-      padding: 0.4em 1em;
-      border-radius: 6px;
-      font-weight: 600;
-      transition: all 0.2s;
-      text-decoration: none;
-    }
-    .taskbar-btn-primary {
-      background: #2563eb;
-      color: #fff;
-    }
-    .taskbar-btn-primary:hover {
-      background: #1d4ed8;
-      transform: translateY(-1px);
-    }
-    .taskbar-btn-secondary {
-      background: #e0edff;
-      color: #2563eb;
-    }
-    .taskbar-btn-secondary:hover {
-      background: #dbeafe;
-      transform: translateY(-1px);
-    }
+
     .main-content {
       padding: 1.5rem;
       flex-grow: 1;
     }
     .container-wide {
-      max-width: 1800px;
+      max-width: 65%;
       margin: 0 auto;
       padding: 0 0.8rem;
     }
     .sales-card {
-      background: #fff;
+      background: var(--container-bg);
       border-radius: 12px;
       box-shadow: 0 4px 24px 0 rgba(44, 62, 80, 0.08);
       margin-bottom: 2rem;
@@ -110,37 +30,15 @@
     .sales-card:hover {
       box-shadow: 0 8px 32px 0 rgba(44, 62, 80, 0.16);
     }
-    .sales-header {
-      display: flex;
-      flex-wrap: wrap;
-      align-items: center;
-      justify-content: space-between;
-      margin-bottom: 0.8rem;
-    }
     .sales-header-title {
       font-size: 1.2rem;
       font-weight: 700;
-      color: #2563eb;
+      color: var(--logo-color);
       margin-right: 1rem;
-    }
-    .sales-header-meta {
-      color: #34495e;
-      font-size: 0.95rem;
-      margin-right: 1rem;
-    }
-    .sales-header-meta strong {
-      font-weight: 700;
-      color: #22223b;
-    }
-    .sales-header-actions {
-      display: flex;
-      align-items: center;
-      gap: 0.5rem;
-      flex-wrap: wrap;
     }
     .sales-header-badge {
-      background: #e0edff;
-      color: #2563eb;
+      background: var(--muted-bg);
+      color: var(--logo-color);
       font-weight: 600;
       border-radius: 10px;
       padding: 0.2em 0.8em;
@@ -153,8 +51,8 @@
       align-items: center;
       gap: 0.3em;
       border: none;
-      background: #e0edff;
-      color: #2563eb;
+      background: var(--button-bg);
+      color: var(--button-text);
       font-weight: 600;
       border-radius: 6px;
       padding: 0.3em 1em;
@@ -164,41 +62,14 @@
       box-shadow: none;
     }
     .sales-btn:hover, .sales-btn:focus {
-      background: #2563eb;
+      background: var(--button-hover);
       color: #fff;
       box-shadow: 0 2px 8px 0 #dbeafe44;
-      transform: translateY(-1px) scale(1.07);
+      transform: scale(1.12);
       outline: none;
     }
-    .sales-table {
-      width: 100%;
-      border-collapse: separate;
-      border-spacing: 0;
-      margin-bottom: 0;
-      font-size: 0.9rem;
-      background: #fff;
-      border-radius: 8px;
-      overflow: hidden;
-    }
-    .sales-table th {
-      background: #e0edff;
-      color: #2563eb;
-      font-weight: 700;
-      border: none;
-      padding: 0.6em 0.8em;
-      text-align: left;
-      white-space: nowrap;
-    }
-    .sales-table td {
-      border: none;
-      padding: 0.6em 0.8em;
-      color: #22223b;
-      background: #fff;
-      vertical-align: middle;
-    }
-    .sales-table tr:not(:last-child) td {
-      border-bottom: 1px solid #f0f4f8;
-    }
+
+    /* Sales table disables hover effect by not using .fs-hover */
     .sales-row-actions {
       display: flex;
       gap: 0.5em;
@@ -221,13 +92,13 @@
       filter: drop-shadow(0 1px 2px #ccc);
     }
     .icon-btn:hover, .icon-btn:focus {
-      background: #e0edff;
+      background: var(--muted-bg);
       box-shadow: 0 2px 8px 0 #dbeafe44;
       transform: scale(1.12);
       outline: none;
     }
     .delivery-header {
-      background: #fff;
+      background: var(--container-bg);
       border-radius: 12px;
       box-shadow: 0 4px 24px 0 rgba(44, 62, 80, 0.08);
       padding: 1.2rem;
@@ -236,15 +107,15 @@
     .delivery-header h1 {
       font-size: 1.5rem;
       font-weight: 700;
-      color: #2563eb;
+      color: var(--logo-color);
       margin-bottom: 0.4rem;
     }
     .delivery-header p {
       font-size: 0.95rem;
-      color: #64748b;
+      color: var(--secondary-text);
     }
     .delivery-header strong {
-      color: #334155;
+      color: var(--primary-text);
     }
     .delivery-grid {
       display: grid;
@@ -255,15 +126,15 @@
     .delivery-grid h2 {
       font-size: 0.95rem;
       font-weight: 600;
-      color: #475569;
+      color: var(--secondary-text);
       margin-bottom: 0.2rem;
     }
     .delivery-grid p {
       font-size: 0.95rem;
-      color: #334155;
+      color: var(--primary-text);
     }
     .delivery-table {
-      background: #fff;
+      background: var(--container-bg);
       border-radius: 12px;
       box-shadow: 0 4px 24px 0 rgba(44, 62, 80, 0.08);
       padding: 1.2rem;
@@ -272,78 +143,28 @@
     .delivery-table h2 {
       font-size: 1.2rem;
       font-weight: 700;
-      color: #334155;
+      color: var(--primary-text);
       margin-bottom: 0.8rem;
-    }
-    .delivery-table table {
-      width: 100%;
-      border-collapse: separate;
-      border-spacing: 0;
-    }
-    .delivery-table th {
-      background: #e0edff;
-      color: #2563eb;
-      font-weight: 700;
-      padding: 0.6em 0.8em;
-      text-align: left;
-      white-space: nowrap;
-    }
-    .delivery-table td {
-      padding: 0.6em 0.8em;
-      border-bottom: 1px solid #f0f4f8;
-    }
-    .delivery-table tr:last-child td {
-      border-bottom: none;
     }
     .delivery-line {
       transition: background-color 0.2s;
-    }
-    
-    .delivery-line:hover {
-      background-color: #f1f5f9;
-    }
-    
-    .delivery-line.selected {
-      background-color: #e0edff;
-      border-left: 4px solid #2563eb;
-    }
-    
-    .delivery-line.selected td {
-      font-weight: 500;
-    }
-    .select2-container {
-        width: 100% !important;
-    }
-    .select2-selection--single {
-        height: 40px !important;
-        padding: 6px 12px !important;
-        font-size: 1rem !important;
-        border-radius: 6px !important;
-        border: 1px solid #ced4da !important;
-        background-color: #fff !important;
-        display: flex !important;
-        align-items: center !important;
-    }
-    .select2-selection__rendered {
-        line-height: 1.5 !important;
-        padding-left: 0 !important;
-        margin-top: 0 !important;
-    }
-    .select2-selection__arrow {
-        height: 100% !important;
-        top: 0 !important;
     }
     .invoice-summary-row {
       cursor: pointer;
       transition: background 0.15s;
     }
     .invoice-summary-row:hover td {
-      background: #e0edff;
+      background: var(--muted-bg);
     }
     .invoice-summary-row td a {
       cursor: pointer;
       background: none;
     }
+    .linked.sales-header-badge:hover {
+  background-color: var(--button-hover); /* example hover effect */
+  transition: background-color 0.3s ease;
+
+}
   </style>
 </head>
 <body>
@@ -400,10 +221,10 @@
 
       <!-- Sales Section -->
       <div class="sales-card">
-        <div class="sales-header">
-          <div style="display:flex;align-items:center;flex-wrap:wrap;gap:0.7em;">
+        <div class="sales-header" style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; margin-bottom: 0.8rem;">
+          <div style="display: flex; align-items: center; flex-wrap: wrap; gap: 0.7em;">
             <span class="sales-header-title">Sales</span>
-            <span class="sales-header-badge" style="margin-right:0.5rem;cursor:pointer;" onclick="showLinkedModal('{{ header.delnoteno }}')">
+            <span class="sales-header-badge linked" style="margin-right:0.5rem;cursor:pointer;" onclick="showLinkedModal('{{ header.delnoteno }}')">
               Linked: {{ linked_count }}
             </span>
             <span class="sales-header-badge matched-badge" style="cursor:pointer;">
@@ -413,8 +234,10 @@
               <i class="fas fa-times"></i> Clear Filter
             </button>
           </div>
-          <div class="sales-header-actions">
-            <button class="sales-btn" onclick="addSale('{{ header.delnoteno }}')">Add Sale</button>
+          <div style="display: flex; gap: 0.5rem;">
+            <button class="sales-btn" onclick="addSale('{{ header.delnoteno }}')">
+              <i class="fas fa-plus"></i> Add Sale
+            </button>
           </div>
         </div>
         <div id="salesTableContainer">
@@ -435,46 +258,28 @@
   <script src="https://code.jquery.com/jquery-3.7.1.min.js"></script>
   <link href="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/css/select2.min.css" rel="stylesheet" />
   <script src="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/js/select2.min.js"></script>
-  <script src="/static/Sales/sales.js"></script>
-  <script src="/static/Bill Of Lading/view.js"></script>
-  <script src="/static/Bill Of Lading/load_view.js"></script>
   <script>
 function formatCurrency(val) {
     return 'R ' + ((parseFloat(val) || 0).toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2}));
 }
-function renderInvoicesTable(invoices) {
-    if (!invoices.length) return '<div>No invoices found for this delivery note.</div>';
-    let rows = invoices.map(inv => `
-        <tr class="invoice-summary-row" data-invoice-no="${inv.invoiceno}" style="cursor:pointer;">
-            <td><a href="/sales-order/${inv.invoiceindex}" class="text-blue-600 hover:underline" onclick="event.stopPropagation();">${inv.invoiceno}</a></td>
-            <td>${inv.invoicedate || ''}</td>
-            <td>${formatCurrency(inv.invoicegross)}</td>
-            <td>${formatCurrency(inv.invoicenett)}</td>
-            <td>${inv.status}</td>
-        </tr>
-    `).join('');
-    return `
-        <div class="overflow-auto">
-        <table class="sales-table">
-            <thead>
-                <tr>
-                    <th>Invoice No</th>
-                    <th>Date</th>
-                    <th>Gross</th>
-                    <th>Nett</th>
-                    <th>Status</th>
-                </tr>
-            </thead>
-            <tbody>${rows}</tbody>
-        </table>
-        </div>
-    `;
-}
+
 
 // Store all sales rows for filtering
 let allSalesRowsHtml = null;
 
-function filterSalesTableByInvoice(invoiceNo) {
+function filterSalesTableByInvoice(row, invoiceNo) {
+    const btn = document.getElementById('editQuantitiesBtn');
+    if (btn && btn.classList.contains('editing')) {
+        // In edit mode, do nothing
+        return;
+    }
+    // Remove selected class from all rows
+    document.querySelectorAll('.invoice-line').forEach(r => {
+        r.classList.remove('selected');
+    });
+    
+    // Add selected class to clicked row
+    row.classList.add('selected');
     const salesTable = document.getElementById('salesTableContainer');
     if (!allSalesRowsHtml) {
         // Save the original table HTML for clearing the filter
@@ -486,7 +291,7 @@ function filterSalesTableByInvoice(invoiceNo) {
     const rows = tempDiv.querySelectorAll('tbody tr');
     let found = false;
     rows.forEach(row => {
-        const cell = row.querySelector('td:nth-child(9)'); // Invoice No column
+        const cell = row.querySelector('td:nth-child(8)'); // Invoice No column
         if (cell && cell.textContent.trim() === invoiceNo) {
             row.style.display = '';
             found = true;
@@ -504,37 +309,23 @@ function filterSalesTableByInvoice(invoiceNo) {
     const clearBtn = document.getElementById('clearFilterBtn');
     if (clearBtn) {
         clearBtn.style.display = '';
-        clearBtn.textContent = 'Clear Invoice Filter';
-        clearBtn.onclick = function() {
-            clearSalesTableFilter();
-        };
     }
 }
 
-function clearSalesTableFilter() {
-    const salesTable = document.getElementById('salesTableContainer');
-    if (allSalesRowsHtml) {
-        salesTable.innerHTML = allSalesRowsHtml;
-    }
-    // Hide clear filter button
-    const clearBtn = document.getElementById('clearFilterBtn');
-    if (clearBtn) {
-        clearBtn.style.display = 'none';
-    }
-}
 
 document.addEventListener('DOMContentLoaded', function() {
     const delNoteNo = '{{ header.delnoteno }}';
     fetch(`/api/invoices-for-delivery-note/${delNoteNo}`)
         .then(r => r.json())
         .then(data => {
+            console.log(data);
             document.getElementById('invoices-summary-table').innerHTML = renderInvoicesTable(data);
             // Add click handlers to invoice summary rows
             document.querySelectorAll('.invoice-summary-row').forEach(row => {
                 row.addEventListener('click', function(e) {
                     if (e.target.tagName.toLowerCase() === 'a') return;
                     const invoiceNo = this.getAttribute('data-invoice-no');
-                    filterSalesTableByInvoice(invoiceNo);
+                    filterSalesTableByInvoice(this, invoiceNo);
                 });
                 row.addEventListener('mouseover', function(e) {
                     if (e.target.tagName.toLowerCase() !== 'a') {
@@ -550,6 +341,10 @@ document.addEventListener('DOMContentLoaded', function() {
             document.getElementById('invoices-summary-table').innerHTML = '<div style="color:red;">Failed to load invoices.</div>';
         });
 });
+
 </script>
+  <script src="/static/Bill Of Lading/load_view.js"></script>
+    <script src="/static/Sales/sales.js"></script>
+  <script src="/static/Bill Of Lading/view.js"></script>
 </body>
 </html>

@@ -4,16 +4,16 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Account Settings</title>
-    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
-    <link rel="stylesheet" href="{{ url_for('static', filename='colour-template.css') }}">
+    <link rel="stylesheet" href="{{ url_for('static', filename='color-template.css') }}">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css">
     <style>
         body {
-            background: #f8fafc;
+            background: var(--primary-bg);
             padding: 0;
             margin: 0;
             font-size: 0.95rem;
             min-height: 100vh;
+            color: var(--primary-text);
         }
         .main-content {
             padding: 2rem 0;
@@ -24,7 +24,7 @@
             padding: 0 1.2rem;
         }
         .account-card, .section-card {
-            background: #fff;
+            background: var(--container-bg);
             border-radius: 12px;
             box-shadow: 0 4px 24px 0 rgba(44, 62, 80, 0.08);
             margin-bottom: 2rem;
@@ -37,11 +37,11 @@
         .section-title {
             font-size: 1.2rem;
             font-weight: 700;
-            color: #2563eb;
+            color: var(--logo-color);
             margin-bottom: 1rem;
         }
         .table-box {
-            background: #fff;
+            background: var(--container-bg);
             border-radius: 12px;
             box-shadow: 0 4px 24px 0 rgba(44, 62, 80, 0.08);
             padding: 1.2rem;
@@ -52,13 +52,13 @@
             border-collapse: separate;
             border-spacing: 0;
             font-size: 0.95rem;
-            background: #fff;
+            background: var(--container-bg);
             border-radius: 8px;
             overflow: hidden;
         }
         .styled-table th {
-            background: #e0edff;
-            color: #2563eb;
+            background: var(--table-header-bg);
+            color: var(--table-header-text);
             font-weight: 700;
             border: none;
             padding: 0.6em 0.8em;
@@ -68,27 +68,46 @@
         .styled-table td {
             border: none;
             padding: 0.6em 0.8em;
-            color: #22223b;
-            background: #fff;
+            color: var(--primary-text);
+            background: var(--table-row-uneven);
             vertical-align: middle;
         }
+        .styled-table tr:nth-child(even) td {
+            background: var(--table-row-even);
+        }
         .styled-table tr:not(:last-child) td {
-            border-bottom: 1px solid #f0f4f8;
+            border-bottom: 1px solid var(--table-border);
         }
-        .list-group-item.active {
-            background: #e0edff;
-            color: #2563eb;
-            border: none;
+        
+        /* Custom sidebar navigation */
+        .sidebar-nav {
+            list-style: none;
+            padding: 0;
+            margin: 0;
         }
-        .list-group-item {
+        .sidebar-nav .nav-item {
             border: none;
             font-weight: 500;
-            color: #475569;
+            color: var(--secondary-text);
+            background: transparent;
+            padding: 0.8em 1.2em;
+            margin-bottom: 0.5em;
+            border-radius: 8px;
+            cursor: pointer;
+            transition: all 0.2s ease;
+            text-decoration: none;
+            display: block;
         }
-        .list-group-item:hover {
-            background: #e0edff;
-            color: #2563eb;
+        .sidebar-nav .nav-item:hover {
+            background: var(--table-row-hover);
+            color: var(--logo-color);
         }
+        .sidebar-nav .nav-item.active {
+            background: var(--table-header-bg);
+            color: var(--logo-color);
+            font-weight: 600;
+        }
+        
         .service-badge {
             font-size: 0.9rem;
             margin-right: 5px;
@@ -104,20 +123,216 @@
             color: #fff;
         }
         .bg-info {
-            background-color: #e0edff;
-            color: #2563eb;
+            background-color: var(--muted-bg);
+            color: var(--logo-color);
         }
-        .btn-primary {
-            background-color: #2563eb;
-            border-color: #2563eb;
+        
+        /* Custom button styles */
+        .custom-btn {
+            background-color: var(--button-bg);
+            border: 1px solid var(--button-bg);
+            color: var(--button-text);
+            padding: 0.5em 1em;
+            border-radius: 6px;
+            font-size: 0.9rem;
+            cursor: pointer;
+            transition: all 0.2s ease;
+            text-decoration: none;
+            display: inline-block;
         }
-        .btn-primary:hover {
-            background-color: #1d4ed8;
-            border-color: #1d4ed8;
+        .custom-btn:hover {
+            background-color: var(--button-hover);
+            border-color: var(--button-hover);
+            color: var(--button-text);
         }
-        .form-control:focus {
-            border-color: #2563eb;
-            box-shadow: 0 0 0 0.25rem #e0edff;
+        .custom-btn.btn-primary {
+            background-color: var(--button-bg);
+            border-color: var(--button-bg);
+        }
+        .custom-btn.btn-primary:hover {
+            background-color: var(--button-hover);
+            border-color: var(--button-hover);
+        }
+        .custom-btn.btn-success {
+            background-color: #059669;
+            border-color: #059669;
+        }
+        .custom-btn.btn-success:hover {
+            background-color: #047857;
+            border-color: #047857;
+        }
+        .custom-btn.btn-secondary {
+            background-color: var(--secondary-text);
+            border-color: var(--secondary-text);
+        }
+        .custom-btn.btn-secondary:hover {
+            background-color: var(--primary-text);
+            border-color: var(--primary-text);
+        }
+        .custom-btn.btn-danger {
+            background-color: #dc2626;
+            border-color: #dc2626;
+        }
+        .custom-btn.btn-danger:hover {
+            background-color: #b91c1c;
+            border-color: #b91c1c;
+        }
+        .custom-btn.btn-sm {
+            padding: 0.3em 0.7em;
+            font-size: 0.8rem;
+        }
+        
+        /* Custom form styles */
+        .form-label {
+            display: block;
+            margin-bottom: 0.5em;
+            font-weight: 600;
+            color: var(--primary-text);
+        }
+        .form-control, .form-select {
+            width: 100%;
+            padding: 0.6em 0.8em;
+            border: 1px solid var(--input-border);
+            border-radius: 6px;
+            background-color: var(--container-bg);
+            color: var(--primary-text);
+            font-size: 0.9rem;
+            transition: border-color 0.2s ease, box-shadow 0.2s ease;
+        }
+        .form-control:focus, .form-select:focus {
+            outline: none;
+            border-color: var(--input-focus);
+            box-shadow: 0 0 0 0.2rem var(--input-shadow);
+        }
+        .form-text {
+            font-size: 0.8rem;
+            color: var(--secondary-text);
+            margin-top: 0.3em;
+        }
+        
+        /* Custom alert styles */
+        .alert {
+            padding: 1em;
+            border-radius: 8px;
+            margin-bottom: 1rem;
+            border: 1px solid transparent;
+        }
+        .alert-info {
+            background-color: var(--muted-bg);
+            color: var(--logo-color);
+            border-color: var(--input-border);
+        }
+        .alert-danger {
+            background-color: #fee2e2;
+            color: #dc2626;
+            border-color: #fecaca;
+        }
+        
+        /* Custom spinner */
+        .spinner {
+            display: inline-block;
+            width: 1rem;
+            height: 1rem;
+            border: 2px solid var(--input-border);
+            border-radius: 50%;
+            border-top-color: var(--button-bg);
+            animation: spin 1s ease-in-out infinite;
+        }
+        @keyframes spin {
+            to { transform: rotate(360deg); }
+        }
+        
+        /* Layout classes */
+        .row {
+            display: flex;
+            flex-wrap: nowrap;
+            margin: 0 -0.6rem;
+            gap: 1.5rem;
+        }
+        .col-md-3 {
+            flex: 0 0 300px;
+            min-width: 300px;
+            padding: 0;
+        }
+        .col-md-9 {
+            flex: 1;
+            padding: 0;
+        }
+        .mb-3 {
+            margin-bottom: 1rem;
+        }
+        .mt-3 {
+            margin-top: 1rem;
+        }
+        .d-inline {
+            display: inline;
+        }
+        .text-center {
+            text-align: center;
+        }
+        .my-4 {
+            margin-top: 1.5rem;
+            margin-bottom: 1.5rem;
+        }
+        
+        /* Tab content */
+        .tab-content {
+            width: 100%;
+        }
+        .tab-pane {
+            display: none;
+        }
+        .tab-pane.show {
+            display: block;
+        }
+        .tab-pane.active {
+            display: block;
+        }
+        
+        /* Improved basic information table */
+        .info-table {
+            width: 100%;
+            border-collapse: separate;
+            border-spacing: 0;
+            font-size: 0.95rem;
+            background: var(--container-bg);
+            border-radius: 8px;
+            overflow: hidden;
+            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+        }
+        .info-table th {
+            background: var(--table-header-bg);
+            color: var(--table-header-text);
+            font-weight: 600;
+            border: none;
+            padding: 1em 1.2em;
+            text-align: left;
+            width: 35%;
+            vertical-align: top;
+        }
+        .info-table td {
+            border: none;
+            padding: 1em 1.2em;
+            color: var(--primary-text);
+            background: var(--table-row-uneven);
+            vertical-align: top;
+            border-left: 1px solid var(--table-border);
+        }
+        .info-table tr:not(:last-child) td,
+        .info-table tr:not(:last-child) th {
+            border-bottom: 1px solid var(--table-border);
+        }
+
+        
+        @media (max-width: 768px) {
+            .row {
+                flex-direction: column;
+                gap: 1rem;
+            }
+            .col-md-3, .col-md-9 {
+                flex: 0 0 100%;
+                min-width: 100%;
+            }
         }
     </style>
     {% include 'taskbar.html' %}
@@ -129,9 +344,9 @@
                 <!-- Sidebar -->
                 <div class="col-md-3">
                     <div class="account-card">
-                        <div class="list-group" id="account-sidebar" role="tablist">
-                            <a class="list-group-item list-group-item-action active" data-bs-toggle="list" href="#account-info" role="tab">Account</a>
-                            <a class="list-group-item list-group-item-action" data-bs-toggle="list" href="#services" role="tab">Services</a>
+                        <div class="sidebar-nav" id="account-sidebar" role="tablist">
+                            <a class="nav-item active" data-tab="account-info" role="tab">Account</a>
+                            <a class="nav-item" data-tab="services" role="tab">Services</a>
                         </div>
                     </div>
                 </div>
@@ -139,10 +354,10 @@
                 <div class="col-md-9">
                     <div class="tab-content">
                         <!-- Account Info -->
-                        <div class="tab-pane fade show active" id="account-info" role="tabpanel">
+                        <div class="tab-pane show active" id="account-info" role="tabpanel">
                             <div class="section-card">
                                 <div class="section-title"><i class="fas fa-user"></i> Basic Information</div>
-                                <table class="styled-table">
+                                <table class="info-table">
                                     <tbody>
                                         <tr><th>Username</th><td>{{ user.username }}</td></tr>
                                         <tr><th>Role</th><td>{{ user.role }}</td></tr>
@@ -153,7 +368,7 @@
                             </div>
                         </div>
                         <!-- Services -->
-                        <div class="tab-pane fade" id="services" role="tabpanel">
+                        <div class="tab-pane" id="services" role="tabpanel">
                             <div class="section-card">
                                 <div class="section-title"><i class="fas fa-plug"></i> Connected Services</div>
                                 {% if user.connected_services %}
@@ -180,7 +395,7 @@
                                                         <td>{{ service.username }}</td>
                                                         <td>
                                                             <form method="POST" action="{{ url_for('account.remove_service', service_id=service.id) }}" class="d-inline">
-                                                                <button type="submit" class="btn btn-sm btn-danger">Remove</button>
+                                                                <button type="submit" class="custom-btn btn-danger">Remove</button>
                                                             </form>
                                                         </td>
                                                     </tr>
@@ -215,7 +430,7 @@
                                             <input type="password" class="form-control" id="account_password" name="account_password" required>
                                             <div class="form-text">For security verification</div>
                                         </div>
-                                        <button type="submit" class="btn btn-primary"><i class="fas fa-plus"></i> Add Service</button>
+                                        <button type="submit" class="custom-btn btn-primary"><i class="fas fa-plus"></i> Add Service</button>
                                     </form>
                                 </div>
                             </div>
@@ -225,243 +440,279 @@
             </div>
         </div>
     </div>
-    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/js/all.min.js"></script>
     <script>
-function renderAgentsTable(agents) {
-    let html = `
-    <div class="table-responsive">
-      <table class="styled-table">
-        <thead>
-          <tr>
-            <th>Account</th>
-            <th>Name</th>
-            <th>Market Comm (%)</th>
-            <th>Agent Comm (%)</th>
-            <th>Discount (%)</th>
-            <th>Actions</th>
-          </tr>
-        </thead>
-        <tbody>
-    `;
-    for (const agent of agents) {
-        html += `
-          <tr data-agent-index="${agent.DCLink}">
-            <td>${agent.Account}</td>
-            <td>${agent.Name}</td>
-            <td class="market-comm">${agent.MarketComm}</td>
-            <td class="agent-comm">${agent.AgentComm}</td>
-            <td class="discount">${agent.DiscountPercent}</td>
-            <td class="actions">
-              <button class="btn btn-sm btn-primary edit-agent-btn"><i class="fas fa-edit"></i> Edit</button>
-            </td>
-          </tr>
-        `;
-    }
-    html += `</tbody></table></div>`;
-    return html;
-}
-
-function setAgentRowEditMode(row, agent) {
-    // Save original values for cancel
-    row.dataset.originalMarketComm = agent.MarketComm;
-    row.dataset.originalAgentComm = agent.AgentComm;
-    row.dataset.originalDiscount = agent.DiscountPercent;
-    // Replace cells with input boxes
-    row.querySelector('.market-comm').innerHTML = `<input type="number" class="form-control form-control-sm" value="${agent.MarketComm}" step="0.01">`;
-    row.querySelector('.agent-comm').innerHTML = `<input type="number" class="form-control form-control-sm" value="${agent.AgentComm}" step="0.01">`;
-    row.querySelector('.discount').innerHTML = `<input type="number" class="form-control form-control-sm" value="${agent.DiscountPercent}" step="0.01">`;
-    // Change actions to confirm/cancel
-    row.querySelector('.actions').innerHTML = `
-      <button class="btn btn-sm btn-success confirm-agent-btn"><i class="fas fa-check"></i> Confirm</button>
-      <button class="btn btn-sm btn-secondary cancel-agent-btn"><i class="fas fa-times"></i> Cancel</button>
-    `;
-}
-
-function resetAgentRow(row, agent) {
-    row.querySelector('.market-comm').textContent = row.dataset.originalMarketComm;
-    row.querySelector('.agent-comm').textContent = row.dataset.originalAgentComm;
-    row.querySelector('.discount').textContent = row.dataset.originalDiscount;
-    row.querySelector('.actions').innerHTML = `<button class="btn btn-sm btn-primary edit-agent-btn"><i class="fas fa-edit"></i> Edit</button>`;
-}
-
-function getAgentDataFromRow(row) {
-    return {
-        DCLink: row.getAttribute('data-agent-index'),
-        MarketComm: row.querySelector('.market-comm input').value,
-        AgentComm: row.querySelector('.agent-comm input').value,
-        DiscountPercent: row.querySelector('.discount input').value
-    };
-}
-
-function attachAgentTableEvents(agents) {
-    const table = document.querySelector('#agents-table-container table');
-    if (!table) return;
-    table.querySelectorAll('tr[data-agent-index]').forEach((row, idx) => {
-        const agent = agents[idx];
-        row.querySelector('.edit-agent-btn').addEventListener('click', function() {
-            setAgentRowEditMode(row, agent);
-            // Attach confirm/cancel events
-            row.querySelector('.confirm-agent-btn').addEventListener('click', function() {
-                const updated = getAgentDataFromRow(row);
-                fetch('/account/update_agent', {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify(updated)
-                })
-                .then(r => r.json())
-                .then(resp => {
-                    if (resp.success) {
-                        // Update row with new values
-                        row.querySelector('.market-comm').textContent = updated.MarketComm;
-                        row.querySelector('.agent-comm').textContent = updated.AgentComm;
-                        row.querySelector('.discount').textContent = updated.DiscountPercent;
-                        row.querySelector('.actions').innerHTML = `<button class="btn btn-sm btn-primary edit-agent-btn"><i class="fas fa-edit"></i> Edit</button>`;
-                        attachAgentTableEvents(agents); // Re-attach events
-                    } else {
-                        alert('Failed to update agent: ' + (resp.error || 'Unknown error'));
+        // Custom tab functionality
+        function initTabs() {
+            const tabItems = document.querySelectorAll('.nav-item');
+            const tabPanes = document.querySelectorAll('.tab-pane');
+            
+            tabItems.forEach(item => {
+                item.addEventListener('click', function() {
+                    const targetTab = this.getAttribute('data-tab');
+                    
+                    // Remove active class from all tabs and panes
+                    tabItems.forEach(tab => tab.classList.remove('active'));
+                    tabPanes.forEach(pane => {
+                        pane.classList.remove('show', 'active');
+                    });
+                    
+                    // Add active class to clicked tab and corresponding pane
+                    this.classList.add('active');
+                    const targetPane = document.getElementById(targetTab);
+                    if (targetPane) {
+                        targetPane.classList.add('show', 'active');
                     }
-                })
-                .catch(() => {
-                    alert('Failed to update agent.');
                 });
             });
-            row.querySelector('.cancel-agent-btn').addEventListener('click', function() {
-                resetAgentRow(row, agent);
-                attachAgentTableEvents(agents); // Re-attach events
+        }
+
+        function renderAgentsTable(agents) {
+            let html = `
+            <div class="table-responsive">
+              <table class="styled-table">
+                <thead>
+                  <tr>
+                    <th>Account</th>
+                    <th>Name</th>
+                    <th>Market Comm (%)</th>
+                    <th>Agent Comm (%)</th>
+                    <th>Discount (%)</th>
+                    <th>Actions</th>
+                  </tr>
+                </thead>
+                <tbody>
+            `;
+            for (const agent of agents) {
+                html += `
+                  <tr data-agent-index="${agent.DCLink}">
+                    <td>${agent.Account}</td>
+                    <td>${agent.Name}</td>
+                    <td class="market-comm">${agent.MarketComm}</td>
+                    <td class="agent-comm">${agent.AgentComm}</td>
+                    <td class="discount">${agent.DiscountPercent}</td>
+                    <td class="actions">
+                      <button class="custom-btn btn-primary btn-sm edit-agent-btn"><i class="fas fa-edit"></i> Edit</button>
+                    </td>
+                  </tr>
+                `;
+            }
+            html += `</tbody></table></div>`;
+            return html;
+        }
+
+        function setAgentRowEditMode(row, agent) {
+            // Save original values for cancel
+            row.dataset.originalMarketComm = agent.MarketComm;
+            row.dataset.originalAgentComm = agent.AgentComm;
+            row.dataset.originalDiscount = agent.DiscountPercent;
+            // Replace cells with input boxes
+            row.querySelector('.market-comm').innerHTML = `<input type="number" class="form-control" value="${agent.MarketComm}" step="0.01">`;
+            row.querySelector('.agent-comm').innerHTML = `<input type="number" class="form-control" value="${agent.AgentComm}" step="0.01">`;
+            row.querySelector('.discount').innerHTML = `<input type="number" class="form-control" value="${agent.DiscountPercent}" step="0.01">`;
+            // Change actions to confirm/cancel
+            row.querySelector('.actions').innerHTML = `
+              <button class="custom-btn btn-success btn-sm confirm-agent-btn"><i class="fas fa-check"></i> Confirm</button>
+              <button class="custom-btn btn-secondary btn-sm cancel-agent-btn"><i class="fas fa-times"></i> Cancel</button>
+            `;
+        }
+
+        function resetAgentRow(row, agent) {
+            row.querySelector('.market-comm').textContent = row.dataset.originalMarketComm;
+            row.querySelector('.agent-comm').textContent = row.dataset.originalAgentComm;
+            row.querySelector('.discount').textContent = row.dataset.originalDiscount;
+            row.querySelector('.actions').innerHTML = `<button class="custom-btn btn-primary btn-sm edit-agent-btn"><i class="fas fa-edit"></i> Edit</button>`;
+        }
+
+        function getAgentDataFromRow(row) {
+            return {
+                DCLink: row.getAttribute('data-agent-index'),
+                MarketComm: row.querySelector('.market-comm input').value,
+                AgentComm: row.querySelector('.agent-comm input').value,
+                DiscountPercent: row.querySelector('.discount input').value
+            };
+        }
+
+        function attachAgentTableEvents(agents) {
+            const table = document.querySelector('#agents-table-container table');
+            if (!table) return;
+            table.querySelectorAll('tr[data-agent-index]').forEach((row, idx) => {
+                const agent = agents[idx];
+                row.querySelector('.edit-agent-btn').addEventListener('click', function() {
+                    setAgentRowEditMode(row, agent);
+                    // Attach confirm/cancel events
+                    row.querySelector('.confirm-agent-btn').addEventListener('click', function() {
+                        const updated = getAgentDataFromRow(row);
+                        fetch('/account/update_agent', {
+                            method: 'POST',
+                            headers: { 'Content-Type': 'application/json' },
+                            body: JSON.stringify(updated)
+                        })
+                        .then(r => r.json())
+                        .then(resp => {
+                            if (resp.success) {
+                                // Update row with new values
+                                row.querySelector('.market-comm').textContent = updated.MarketComm;
+                                row.querySelector('.agent-comm').textContent = updated.AgentComm;
+                                row.querySelector('.discount').textContent = updated.DiscountPercent;
+                                row.querySelector('.actions').innerHTML = `<button class="custom-btn btn-primary btn-sm edit-agent-btn"><i class="fas fa-edit"></i> Edit</button>`;
+                                attachAgentTableEvents(agents); // Re-attach events
+                            } else {
+                                alert('Failed to update agent: ' + (resp.error || 'Unknown error'));
+                            }
+                        })
+                        .catch(() => {
+                            alert('Failed to update agent.');
+                        });
+                    });
+                    row.querySelector('.cancel-agent-btn').addEventListener('click', function() {
+                        resetAgentRow(row, agent);
+                        attachAgentTableEvents(agents); // Re-attach events
+                    });
+                });
             });
+        }
+
+        function loadAgentsTable() {
+            const container = document.getElementById('agents-table-container');
+            container.innerHTML = `
+              <div class="text-center my-4">
+                <div class="spinner" role="status"></div>
+                <div>Loading agents...</div>
+              </div>
+            `;
+            fetch('/account/get_agents_full')
+                .then((r) => r.json())
+                .then((data) => {
+                    container.innerHTML = renderAgentsTable(data);
+                    attachAgentTableEvents(data);
+                })
+                .catch(() => {
+                    container.innerHTML = '<div class="alert alert-danger">Failed to load agents.</div>';
+                });
+        }
+
+        function renderSimpleList(items) {
+            if (!items || items.length === 0) {
+                return '<div class="alert alert-info">No data found.</div>';
+            }
+            let html = '<ul style="padding-left:1.2em;">';
+            for (const item of items) {
+                html += `<li style="margin-bottom:0.5em;">${item.Name}</li>`;
+            }
+            html += '</ul>';
+            return html;
+        }
+
+        function loadProductionUnits() {
+            const container = document.getElementById('production-units-container');
+            container.innerHTML = `
+              <div class="text-center my-4">
+                <div class="spinner" role="status"></div>
+                <div>Loading production units...</div>
+              </div>
+            `;
+            fetch('/account/get_production_units')
+                .then(r => r.json())
+                .then(data => {
+                    container.innerHTML = renderSimpleList(data);
+                })
+                .catch(() => {
+                    container.innerHTML = '<div class="alert alert-danger">Failed to load production units.</div>';
+                });
+        }
+
+        function loadPackhouses() {
+            const container = document.getElementById('packhouses-container');
+            container.innerHTML = `
+              <div class="text-center my-4">
+                <div class="spinner" role="status"></div>
+                <div>Loading packhouses...</div>
+              </div>
+            `;
+            fetch('/account/get_packhouses')
+                .then(r => r.json())
+                .then(data => {
+                    container.innerHTML = renderSimpleList(data);
+                })
+                .catch(() => {
+                    container.innerHTML = '<div class="alert alert-danger">Failed to load packhouses.</div>';
+                });
+        }
+
+        function renderTransportersTable(transporters) {
+            if (!transporters || transporters.length === 0) {
+                return '<div class="alert alert-info">No transporters found.</div>';
+            }
+            let html = `
+            <div class="table-responsive">
+              <table class="styled-table">
+                <thead>
+                  <tr>
+                    <th>Account</th>
+                    <th>Name</th>
+                    <th>Group</th>
+                  </tr>
+                </thead>
+                <tbody>
+            `;
+            for (const t of transporters) {
+                html += `
+                  <tr>
+                    <td>${t.Code}</td>
+                    <td>${t.Name}</td>
+                    <td>${t.Group || ''}</td>
+                  </tr>
+                `;
+            }
+            html += `</tbody></table></div>`;
+            return html;
+        }
+
+        function loadTransporters() {
+            const container = document.getElementById('transporters-container');
+            container.innerHTML = `
+              <div class="text-center my-4">
+                <div class="spinner" role="status"></div>
+                <div>Loading transporters...</div>
+              </div>
+            `;
+            fetch('/account/get_transporters')
+                .then(r => r.json())
+                .then(data => {
+                    container.innerHTML = renderTransportersTable(data);
+                })
+                .catch(() => {
+                    container.innerHTML = '<div class="alert alert-danger">Failed to load transporters.</div>';
+                });
+        }
+
+        document.addEventListener('DOMContentLoaded', function() {
+            // Initialize custom tabs
+            initTabs();
+            
+            // Load data when tabs are shown (if they exist)
+            if (document.querySelector('a[href="#agents"]')) {
+                document.querySelector('a[href="#agents"]').addEventListener('shown.bs.tab', function() {
+                    loadAgentsTable();
+                }, { once: true });
+            }
+            if (document.querySelector('a[href="#production-units"]')) {
+                document.querySelector('a[href="#production-units"]').addEventListener('shown.bs.tab', function() {
+                    loadProductionUnits();
+                }, { once: true });
+            }
+            if (document.querySelector('a[href="#packhouses"]')) {
+                document.querySelector('a[href="#packhouses"]').addEventListener('shown.bs.tab', function() {
+                    loadPackhouses();
+                }, { once: true });
+            }
+            if (document.querySelector('a[href="#transporters"]')) {
+                document.querySelector('a[href="#transporters"]').addEventListener('shown.bs.tab', function() {
+                    loadTransporters();
+                }, { once: true });
+            }
         });
-    });
-}
-
-function loadAgentsTable() {
-    const container = document.getElementById('agents-table-container');
-    container.innerHTML = `
-      <div class="text-center my-4">
-        <div class="spinner-border text-primary" role="status"></div>
-        <div>Loading agents...</div>
-      </div>
-    `;
-    fetch('/account/get_agents_full')
-        .then((r) => r.json())
-        .then((data) => {
-            container.innerHTML = renderAgentsTable(data);
-            attachAgentTableEvents(data);
-        })
-        .catch(() => {
-            container.innerHTML = '<div class="alert alert-danger">Failed to load agents.</div>';
-        });
-}
-
-function renderSimpleList(items) {
-    if (!items || items.length === 0) {
-        return '<div class="alert alert-info">No data found.</div>';
-    }
-    let html = '<ul style="padding-left:1.2em;">';
-    for (const item of items) {
-        html += `<li style="margin-bottom:0.5em;">${item.Name}</li>`;
-    }
-    html += '</ul>';
-    return html;
-}
-
-function loadProductionUnits() {
-    const container = document.getElementById('production-units-container');
-    container.innerHTML = `
-      <div class="text-center my-4">
-        <div class="spinner-border text-primary" role="status"></div>
-        <div>Loading production units...</div>
-      </div>
-    `;
-    fetch('/account/get_production_units')
-        .then(r => r.json())
-        .then(data => {
-            container.innerHTML = renderSimpleList(data);
-        })
-        .catch(() => {
-            container.innerHTML = '<div class="alert alert-danger">Failed to load production units.</div>';
-        });
-}
-
-function loadPackhouses() {
-    const container = document.getElementById('packhouses-container');
-    container.innerHTML = `
-      <div class="text-center my-4">
-        <div class="spinner-border text-primary" role="status"></div>
-        <div>Loading packhouses...</div>
-      </div>
-    `;
-    fetch('/account/get_packhouses')
-        .then(r => r.json())
-        .then(data => {
-            container.innerHTML = renderSimpleList(data);
-        })
-        .catch(() => {
-            container.innerHTML = '<div class="alert alert-danger">Failed to load packhouses.</div>';
-        });
-}
-
-function renderTransportersTable(transporters) {
-    if (!transporters || transporters.length === 0) {
-        return '<div class="alert alert-info">No transporters found.</div>';
-    }
-    let html = `
-    <div class="table-responsive">
-      <table class="styled-table">
-        <thead>
-          <tr>
-            <th>Account</th>
-            <th>Name</th>
-            <th>Group</th>
-          </tr>
-        </thead>
-        <tbody>
-    `;
-    for (const t of transporters) {
-        html += `
-          <tr>
-            <td>${t.Code}</td>
-            <td>${t.Name}</td>
-            <td>${t.Group || ''}</td>
-          </tr>
-        `;
-    }
-    html += `</tbody></table></div>`;
-    return html;
-}
-
-function loadTransporters() {
-    const container = document.getElementById('transporters-container');
-    container.innerHTML = `
-      <div class="text-center my-4">
-        <div class="spinner-border text-primary" role="status"></div>
-        <div>Loading transporters...</div>
-      </div>
-    `;
-    fetch('/account/get_transporters')
-        .then(r => r.json())
-        .then(data => {
-            container.innerHTML = renderTransportersTable(data);
-        })
-        .catch(() => {
-            container.innerHTML = '<div class="alert alert-danger">Failed to load transporters.</div>';
-        });
-}
-
-document.addEventListener('DOMContentLoaded', function() {
-    document.querySelector('a[href="#agents"]').addEventListener('shown.bs.tab', function() {
-        loadAgentsTable();
-    }, { once: true });
-    document.querySelector('a[href="#production-units"]').addEventListener('shown.bs.tab', function() {
-        loadProductionUnits();
-    }, { once: true });
-    document.querySelector('a[href="#packhouses"]').addEventListener('shown.bs.tab', function() {
-        loadPackhouses();
-    }, { once: true });
-    document.querySelector('a[href="#transporters"]').addEventListener('shown.bs.tab', function() {
-        loadTransporters();
-    }, { once: true });
-});
     </script>
 </body>
 </html>
