@@ -13,69 +13,54 @@ def parse_date(value):
     return value  # already a date
 
 
-@dashboard_bp.route('/dashboard/data')
-def dashboard_data():
+@dashboard_bp.route('/dashboard/summary')
+def dashboard_summary():
     conn = create_db_connection()
     cursor = conn.cursor()
+    cursor.execute("EXEC SIGGetDashboardSummary")
+    row = cursor.fetchone()
+    conn.close()
 
-    today = datetime.today().date()
-    start_of_week = today - timedelta(days=today.weekday())
-    start_of_month = today.replace(day=1)
+    return jsonify({
+        "month_deliveries": row[0],
+        "total_unsold_qty": row[1],
+        "total_sold_this_week": row[2],
+        "total_uninvoiced_qty": row[3],
+    })
 
-    print(start_of_month)
 
-    # Deliveries this month
-    delivery_query = """
-        SELECT COUNT(DelIndex)
-        FROM ZZDeliveryNoteHeader
-        WHERE DelDate >= ?
-    """
-    cursor.execute(delivery_query, (start_of_month,))
-    delivery_count = cursor.fetchone()
-
-    # Incomplete delivery notes (not fully invoiced, with agent name)
-    incomplete_query = """
+@dashboard_bp.route('/dashboard/incomplete')
+def dashboard_incomplete():
+    conn = create_db_connection()
+    cursor = conn.cursor()
+    query = """
         SELECT TOP 5 DelNoteNo, AgentName, DelDate, QtyLoaded, QtySold, QtyInvoiced
         FROM [dbo].[_uvViewEntriesPage]
         WHERE QtyInvoiced < QtyLoaded
         ORDER BY DelDate ASC
     """
-    cursor.execute(incomplete_query)
-    incomplete_rows = cursor.fetchall()
+    cursor.execute(query)
+    rows = cursor.fetchall()
+    conn.close()
 
-    incomplete_delivery_notes = [
+    return jsonify([
         {
-            "note": row[0],
-            "agent_name": row[1],
-            "del_date": row[2].strftime('%Y-%m-%d') if isinstance(row[2], datetime) else str(row[2]),
-            "qty_delivered": row[3],
-            "qty_sold": row[4],
-            "qty_invoiced": row[5]
+            "note": r[0],
+            "agent_name": r[1],
+            "del_date": r[2],
+            "qty_delivered": r[3],
+            "qty_sold": r[4],
+            "qty_invoiced": r[5],
         }
-        for row in incomplete_rows
-    ]
+        for r in rows
+    ])
 
-    quantities_query = """
-        SELECT SUM(QtyLoaded) TotalQtyDelivered,
-               SUM(QtySold) TotalQtySold,
-               SUM(QtyInvoiced) TotalQtyInvoiced
-        FROM [dbo].[_uvViewEntriesPage]
-    """
-    cursor.execute(quantities_query)
-    quantities = cursor.fetchone()
 
-    # Sales this week
-    sales_query = """
-        SELECT SUM(SalesQty) AS TotalQty
-        FROM ZZSalesLines
-        WHERE SalesDate >= ?
-    """
-    cursor.execute(sales_query, (start_of_week,))
-    sales_rows = cursor.fetchone()
-    sold_this_week = sales_rows[0] or 0
-
-    # Invoices this week (top 5 most recent)
-    invoice_query = """
+@dashboard_bp.route('/dashboard/invoices')
+def dashboard_invoices():
+    conn = create_db_connection()
+    cursor = conn.cursor()
+    query = """
         SELECT TOP 5 InvoiceDate, InvoiceNo, DelNoteNo,
                       SUM(SalesQty) AS TotalQty,
                       SUM(SalesAmnt) AS TotalAmount
@@ -83,26 +68,16 @@ def dashboard_data():
         GROUP BY InvoiceDate, InvoiceNo, DelNoteNo
         ORDER BY InvoiceDate DESC;
     """
-    cursor.execute(invoice_query)
-    invoice_rows = cursor.fetchall()
-
-    recent_invoices = [
-        {
-            "invoice_no": row[1],
-            "delivery_note": row[2],
-            "amount": float(row[4]),
-            "date": row[0].strftime('%Y-%m-%d') if isinstance(row[0], datetime) else str(row[0])
-        }
-        for row in invoice_rows
-    ]
-
+    cursor.execute(query)
+    rows = cursor.fetchall()
     conn.close()
 
-    return jsonify({
-        "month_deliveries": delivery_count[0],
-        "total_unsold_qty": quantities[0] - quantities[1],
-        "total_sold_this_week": sold_this_week,
-        "total_uninvoiced_qty": quantities[1] - quantities[2],
-        "incomplete_delivery_notes": incomplete_delivery_notes,
-        "recent_invoices": recent_invoices
-    })
+    return jsonify([
+        {
+            "invoice_no": r[1],
+            "delivery_note": r[2],
+            "amount": float(r[4]),
+            "date": r[0],
+        }
+        for r in rows
+    ])
