@@ -72,14 +72,6 @@
         </table>
       </div>
     </div>
-
-    <!-- Quick Links -->
-    <div class="grid grid-cols-2 sm:grid-cols-4 gap-4">
-      <a href="/create_entry" class="bg-blue-600 hover:bg-blue-700 text-white py-3 px-4 text-center rounded-lg shadow text-sm font-medium">Create New Entry</a>
-      <a href="/view_entries" class="bg-gray-800 hover:bg-gray-900 text-white py-3 px-4 text-center rounded-lg shadow text-sm font-medium">View Database</a>
-      <a href="/import/main" class="bg-green-600 hover:bg-green-700 text-white py-3 px-4 text-center rounded-lg shadow text-sm font-medium">Import Sales</a>
-      <a href="/create_invoice" class="bg-purple-600 hover:bg-purple-700 text-white py-3 px-4 text-center rounded-lg shadow text-sm font-medium">Go to Invoice</a>
-    </div>
   </div>
 
   <script>
@@ -101,8 +93,8 @@
             🚚
           </div>
           <div>
-            <h2 class="text-sm text-gray-500">Sent This Week</h2>
-            <p class="text-3xl font-bold mt-1">${data.total_sent}</p>
+            <h2 class="text-sm text-gray-500">Total Unsold Qty</h2>
+            <p class="text-3xl font-bold mt-1">${data.total_unsold_qty}</p>
           </div>
         </div>
         <div class="bg-white p-6 rounded-xl shadow flex items-center gap-4">
@@ -111,7 +103,7 @@
           </div>
           <div>
             <h2 class="text-sm text-gray-500">Sold This Week</h2>
-            <p class="text-3xl font-bold mt-1">${data.total_sold}</p>
+            <p class="text-3xl font-bold mt-1">${data.total_sold_this_week}</p>
           </div>
         </div>
         <div class="bg-white p-6 rounded-xl shadow flex items-center gap-4">
@@ -119,8 +111,8 @@
             💰
           </div>
           <div>
-            <h2 class="text-sm text-gray-500">Invoiced This Week</h2>
-            <p class="text-3xl font-bold mt-1">${data.total_invoiced}</p>
+            <h2 class="text-sm text-gray-500">Total Uninvoiced Qty</h2>
+            <p class="text-3xl font-bold mt-1">${data.total_uninvoiced_qty}</p>
           </div>
         </div>
         `);
@@ -142,7 +134,7 @@
         );
 
         // Filter recent invoices for this week
-        const recentInvoicesThisWeek = data.recent_invoices.filter(inv => isThisWeek(inv.date));
+        const recentInvoicesThisWeek = data.recent_invoices;
         $('#recent-invoices').html(
           recentInvoicesThisWeek.length
             ? recentInvoicesThisWeek.map(inv =>

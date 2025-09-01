@@ -137,7 +137,7 @@ body {
 
     /* Optional: normal state */
     .select2-container--default .select2-results__option {
-        background-color: var(--tabll-row-even); /* normal background */
+        background-color: var(--table-row-even); /* normal background */
     }
 
     .container-card {

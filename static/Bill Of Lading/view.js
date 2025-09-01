@@ -359,6 +359,10 @@ window.selectDeliveryLine = function(row, lineId) {
     document.querySelectorAll('.delivery-line').forEach(r => {
         r.classList.remove('selected');
     });
+
+    document.querySelectorAll('.invoice-line').forEach(r => {
+        r.classList.remove('selected');
+    });
     
     // Add selected class to clicked row
     row.classList.add('selected');
@@ -502,9 +506,10 @@ window.editDeliveryHeader = function(delnoteNo) {
                     // Fetch dropdown options
                     Promise.all([
                         fetch('/api/agents').then(r => r.json()),
-                        fetch('/api/markets').then(r => r.json()),
-                        fetch('/api/transporters').then(r => r.json())
-                    ]).then(([agents, markets, transporters]) => {
+                        fetch('/api/packhouses').then(r => r.json()),
+                        fetch('/api/transporters').then(r => r.json()),
+                        fetch('/api/destinations').then(r => r.json())
+                    ]).then(([agents, packhouses, transporters, destinations]) => {
                 // Create the modal HTML with improved styling
                 const isProcessed = poStatus.isProcessed;
                 const transportDisabled = isProcessed ? 'disabled' : '';
@@ -544,7 +549,14 @@ window.editDeliveryHeader = function(delnoteNo) {
                             <label style="display: block; margin-bottom: 0.5rem; font-weight: 600; color: var(--primary-text); font-size: 0.95rem;">Packhouse</label>
                             <select id="marketSelect" class="form-select" style="width: 100%; background: var(--container-bg); color: var(--primary-text); border: 1px solid var(--input-border);">
                                 <option value="">Select a packhouse...</option>
-                                ${markets.map(m => `<option value="${m.WhseLink}" ${m.WhseLink === header.delmarketid ? 'selected' : ''}>${m.display_name}</option>`).join('')}
+                                ${packhouses.map(m => `<option value="${m.WhseLink}" ${m.WhseLink === header.delmarketid ? 'selected' : ''}>${m.display_name}</option>`).join('')}
+                            </select>
+                        </div>
+                        <div style="margin-bottom: 1.5rem;">
+                            <label style="display: block; margin-bottom: 0.5rem; font-weight: 600; color: var(--primary-text); font-size: 0.95rem;">Destination</label>
+                            <select id="destinationSelect" class="form-select" style="width: 100%; background: var(--container-bg); color: var(--primary-text); border: 1px solid var(--input-border);">
+                                <option value="">Select a packhouse...</option>
+                                ${destinations.map(d => `<option value="${d.DestinationId}" ${d.DestinationId === header.destinationid ? 'selected' : ''}>${d.display_name}</option>`).join('')}
                             </select>
                         </div>
                         <div style="margin-bottom: 1.5rem;">
@@ -593,7 +605,7 @@ window.editDeliveryHeader = function(delnoteNo) {
                         // Initialize Select2 for dropdowns with improved styling
                         const selectElements = isProcessed ? 
                             $('#agentSelect, #marketSelect') : 
-                            $('#agentSelect, #marketSelect, #transporterSelect');
+                            $('#agentSelect, #marketSelect, #transporterSelect, #destinationSelect');
                         
                         selectElements.select2({
                             dropdownParent: $('.swal2-container'),
@@ -611,6 +623,7 @@ window.editDeliveryHeader = function(delnoteNo) {
                             deldate: document.getElementById('deliveryDate').value,
                             deliclientid: document.getElementById('agentSelect').value,
                             delmarketid: document.getElementById('marketSelect').value,
+                            destinationid: document.getElementById('destinationSelect').value,
                             deltransporter: isProcessed ? header.deltransporter : document.getElementById('transporterSelect').value,
                             delquantitybags: parseInt(document.getElementById('totalQuantity').value) || 0,
                             deltransportcostexcl: parseFloat(document.getElementById('transportCost').value) || 0

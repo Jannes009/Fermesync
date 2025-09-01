@@ -1,7 +1,7 @@
 from flask import Blueprint, render_template, request, jsonify
 from db import create_db_connection
 from datetime import datetime
-from routes.db_functions import get_stock_id, get_products,  get_agent_codes, get_transporter_codes, get_market_codes, production_unit_name_to_production_unit_id
+from routes.db_functions import get_stock_id, get_products,  get_agent_codes, get_transporter_codes, get_market_codes, production_unit_name_to_production_unit_id, get_destinations
 view_entry_bp = Blueprint('view_entry', __name__)
 
 
@@ -12,12 +12,14 @@ def delivery_note(del_note_no):
 
     # Fetch delivery note header (distinct values for the header info)
     cursor.execute("""
-        SELECT TOP 1 DelNoteNo, DelDate, AgentAccount, AgentName,
-                    DelTotalQuantity,
-                      MarketCode, MarketName, TransporterAccount,
-                      TransporterName, DelTransportCostExcl
-        FROM [dbo].[_uvMarketDeliveryNote]
-        WHERE DelNoteNo = ?
+    SELECT DelNoteNo, DelDate, 
+        AgentAccount, AgentName, 
+        DelTotalQuantity
+        ,PackhouseCode, PackhouseName,
+        TransporterAccount, TransporterName, 
+        DelTransportCostExcl, DestinationId, DestinationDescription
+    FROM _uvDeliveryNoteHeader
+    WHERE DelNoteNo = ?
     """, (del_note_no,))
     header = cursor.fetchone()
 
@@ -40,10 +42,6 @@ def delivery_note(del_note_no):
         WHERE TrnDelNoteNo = ? AND DelNoteNo IS NULL
     """, (del_note_no,))
     matched_count = cursor.fetchone()[0] or 0
-
-
-
-
 
     return render_template(
         'Bill Of Lading Page/View_Delivery_note.html',
@@ -388,7 +386,7 @@ def get_delivery_header(delnote_no):
         # Get header data from the view
         cursor.execute("""
         SELECT DelNoteNo, DelDate, DeliClientId, DelMarketId,
-               DelTransporter, DelQuantityBags, DelTransportCostExcl
+               DelTransporter, DelQuantityBags, DelTransportCostExcl, DelDestinationId
         From ZZDeliveryNoteHeader	
         WHERE DelNoteNo = ?
         """, (delnote_no,))
@@ -404,7 +402,8 @@ def get_delivery_header(delnote_no):
             'delmarketid': header[3],
             'deltransporter': header[4],
             'delquantitybags': header[5],
-            'deltransportcostexcl': header[6]
+            'deltransportcostexcl': header[6],
+            'destinationid': header[7]
         })
         
     except Exception as e:
@@ -446,8 +445,9 @@ def save_delivery_header(delnote_no):
                 DelMarketId = ?,
                 DelTransporter = ?,
                 DelQuantityBags = ?,
-                DelTransportCostExcl = ?
-            WHERE DelNoteNo = ?
+                DelTransportCostExcl = ?,
+                DelDestinationId = ?
+            WHERE DelNoteNo = ? 
         """, (
             data['deldate'],
             data['deliclientid'],
@@ -455,6 +455,7 @@ def save_delivery_header(delnote_no):
             data['deltransporter'],
             data['delquantitybags'],
             data['deltransportcostexcl'],
+            data['destinationid'],
             delnote_no
         ))
         conn.commit()
@@ -494,8 +495,8 @@ def get_agents():
         if 'conn' in locals():
             conn.close()
 
-@view_entry_bp.route('/api/markets')
-def get_markets():
+@view_entry_bp.route('/api/packhouses')
+def get_packhouses():
     try:
         conn = create_db_connection()
         cursor = conn.cursor()
@@ -535,6 +536,27 @@ def get_transporters():
     finally:
         if 'conn' in locals():
             conn.close()
+
+@view_entry_bp.route('/api/destinations')
+def get_destination_api():
+    
+    conn = create_db_connection()
+    cursor = conn.cursor()
+    
+    destinations = get_destinations(cursor)
+    
+    # Convert to list of dictionaries with proper format
+    destination_list = [{
+        'DestinationId': destination[0],
+        'display_name': destination[1]
+    } for destination in destinations]
+    
+    return jsonify(destination_list)
+  
+    #     return jsonify({'error': str(e)}), 500
+    # finally:
+    #     if 'conn' in locals():
+    #         conn.close()
 
 @view_entry_bp.route('/api/update-line-quantities', methods=['POST'])
 def update_line_quantities():

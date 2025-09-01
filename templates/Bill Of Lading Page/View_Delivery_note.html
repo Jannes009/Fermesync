@@ -114,6 +114,10 @@
       font-size: 0.95rem;
       color: var(--secondary-text);
     }
+    .delivery-header:hover {
+      background: var(--table-row-hover);
+      cursor: pointer;
+    }
     .delivery-header strong {
       color: var(--primary-text);
     }
@@ -184,11 +188,15 @@
           </div>
           <div>
             <h2>Packhouse</h2>
-            <p>{{ header.marketname }} ({{ header.marketcode }})</p>
+            <p>{{ header.packhousename }} ({{ header.packhousecode }})</p>
           </div>
           <div>
             <h2>Total Quantity</h2>
             <p>{{ header.deltotalquantity or 0 }}</p>
+          </div>
+          <div>
+            <h2>Destination</h2>
+            <p>{{ header.destinationdescription }}</p>
           </div>
           <div>
             <h2>Transporter</h2>
@@ -204,7 +212,7 @@
       <!-- Delivery Lines Table -->
       <div class="delivery-table">
         <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem;">
-          <h2>Delivery Line Items</h2>
+          <span class="sales-header-title">Delivery Line Items</span>
           <div style="display: flex; gap: 0.5rem;">
             <button class="sales-btn" id="editQuantitiesBtn" onclick="toggleQuantityEdit()">
               <i class="fas fa-edit"></i> Edit Quantities
@@ -273,6 +281,10 @@ function filterSalesTableByInvoice(row, invoiceNo) {
         // In edit mode, do nothing
         return;
     }
+        // Remove selected class from all rows
+    document.querySelectorAll('.delivery-line').forEach(r => {
+        r.classList.remove('selected');
+    });
     // Remove selected class from all rows
     document.querySelectorAll('.invoice-line').forEach(r => {
         r.classList.remove('selected');
