@@ -9,7 +9,7 @@ view_entry_bp = Blueprint('view_entry', __name__)
 def delivery_note(del_note_no):
     conn = create_db_connection()
     cursor = conn.cursor()
-
+    
     # Fetch delivery note header (distinct values for the header info)
     cursor.execute("""
     SELECT DelNoteNo, DelDate, 
@@ -127,7 +127,7 @@ def fetch_sales_lines(del_note_no):
 def submit_sales_entry():
     data = request.get_json()
     lines = data.get('salesEntries')
-    print(lines)
+
     conn = create_db_connection()
     cursor = conn.cursor()
     try:
@@ -143,7 +143,6 @@ def submit_sales_entry():
 
         # try:
         for item in lines:
-            print(item)
             lineId = item['lineId']
             salesId = item['salesId']
             date = item['date']
@@ -152,11 +151,8 @@ def submit_sales_entry():
             discount = item['discount']
             destroyed = 1 if item['destroyed'] else 0
 
-
-            print(destroyed, type(destroyed))
             stockId = get_stock_id(lineId, cursor)
 
-            print(discount, item)
             # workout price or amount
             gross_amount = float(price) * float(quantity)
             amount = gross_amount * (1 - float(discount) / 100)
@@ -394,7 +390,6 @@ def get_delivery_header(delnote_no):
         header = cursor.fetchone()
         if not header:
             return jsonify({'error': 'Delivery note not found'}), 404
-        print(header)
         return jsonify({
             'delnoteno': header[0],
             'deldate': header[1],
@@ -436,7 +431,6 @@ def save_delivery_header(delnote_no):
             """, (new_delnoteno, delnote_no))
 
         delnote_no = new_delnoteno  # For the next update
-        print(data)
         # Update the rest of the fields
         cursor.execute("""
             UPDATE ZZDeliveryNoteHeader
@@ -565,7 +559,6 @@ def update_line_quantities():
     quantities = data.get('quantities', {})
     new_line_info = data.get('new_line_info', {})  # Expecting: {product_id, prod_unit, quantity, del_note_no}
     new_line_id = None
-    print(new_line_info)
     
     if not quantities:
         return jsonify({'success': False, 'message': 'No quantities provided'}), 400
@@ -733,11 +726,9 @@ def api_delivery_note_lines():
     WHERE SalesDelLineId = ?
     ORDER BY AutoSale DESC
     '''
-    print(del_line_index)
     cursor.execute(query, (del_line_index,))
     columns = [col[0] for col in cursor.description]
     lines = [dict(zip(columns, row)) for row in cursor.fetchall()]
-    print(lines)
     cursor.close()
     conn.close()
     return jsonify(lines)

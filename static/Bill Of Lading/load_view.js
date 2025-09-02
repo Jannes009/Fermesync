@@ -1,4 +1,5 @@
 function load_delivery_lines_table(delnoteno) {
+    console.log(delnoteno)
     fetch(`/api/fetch_delivery_note_lines/${delnoteno}`)
         .then(response => response.json())
         .then(data => {
@@ -133,7 +134,7 @@ document.addEventListener('DOMContentLoaded', function() {
     // Try to get the delivery note number from the header
     const header = document.querySelector('.delivery-header h1');
     if (header) {
-        const match = header.textContent.match(/#(\w+)/);
+        const match = header.textContent.match(/#([\w ]+)/);
         if (match) {
             const delnoteno = match[1];
             load_delivery_lines_table(delnoteno);
