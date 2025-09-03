@@ -167,31 +167,36 @@ function displayTable(data) {
             });
         }
     });
-// Discard consignment (mark as deleted)
-function discardConsignment(consignmentId) {
-    fetch(`/import/discard_consignment/${consignmentId}`, {
-        method: "POST"
-    })
-    .then(response => response.json())
-    .then(data => {
-        if (data.status === "success") {
-            Swal.fire({
-                title: "Discarded!",
-                text: data.message,
-                icon: "success",
-                timer: 1000,
-                showConfirmButton: false
-            });
-            fetchImportedData();
-        } else {
-            Swal.fire("Error", data.message || "Failed to discard consignment.", "error");
-        }
-    })
-    .catch(error => {
-        Swal.fire("Error", "Failed to discard consignment.", "error");
-        console.error("Discard error:", error);
-    });
-}
+    function discardConsignment(consignmentId) {
+        fetch('/import/discard_consignment', {
+            method: "POST",
+            headers: {
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({
+                consignment_id: consignmentId
+            })
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.status === "success") {
+                Swal.fire({
+                    title: "Discarded!",
+                    text: data.message,
+                    icon: "success",
+                    timer: 1000,
+                    showConfirmButton: false
+                });
+                fetchImportedData();
+            } else {
+                Swal.fire("Error", data.message || "Failed to discard consignment.", "error");
+            }
+        })
+        .catch(error => {
+            Swal.fire("Error", "Failed to discard consignment.", "error");
+            console.error("Discard error:", error);
+        });
+    }
 }
 
 
@@ -440,25 +445,34 @@ function showConsignmentDetails(consignmentId) {
             }).then(result => {
                 if (result.isConfirmed) {
                     let lineId = result.value;
-                    fetch(`/import/match_consignment/${consignmentId}/${lineId}`, { method: "POST" })
-                        .then(res => res.json())
-                        .then(data => {
-                            if (data.error) {
-                                Swal.fire("Error!", data.error, "error");
-                            } else {
-                                Swal.fire({
-                                    title: "Matched!",
-                                    text: data.message,
-                                    icon: "success",
-                                    timer: 1000,
-                                    showConfirmButton: false
-                                });
-                                fetchImportedData();
-                            }
-                        }).catch(error => {
-                            console.error("Match error:", error);
-                            Swal.fire("Error!", "Failed to match consignment.", "error");
-                        });
+                    fetch('/import/match_consignment', { 
+                        method: "POST",
+                        headers: {
+                            'Content-Type': 'application/json',
+                        },
+                        body: JSON.stringify({
+                            consignment_id: consignmentId,
+                            line_id: lineId
+                        })
+                    })
+                    .then(res => res.json())
+                    .then(data => {
+                        if (data.error) {
+                            Swal.fire("Error!", data.error, "error");
+                        } else {
+                            Swal.fire({
+                                title: "Matched!",
+                                text: data.message,
+                                icon: "success",
+                                timer: 1000,
+                                showConfirmButton: false
+                            });
+                            fetchImportedData();
+                        }
+                    }).catch(error => {
+                        console.error("Match error:", error);
+                        Swal.fire("Error!", "Failed to match consignment.", "error");
+                    });
                 }
             });
         })

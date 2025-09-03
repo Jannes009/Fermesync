@@ -229,9 +229,13 @@ def fetch_consignment_details():
 
     return get_consignment_details(consignment_id)
 
-@import_bp.route("/match_consignment/<consignment_id>/<int:line_id>", methods=["POST"])
+@import_bp.route("/match_consignment", methods=["POST"])
 @role_required()
-def match_consignment(consignment_id, line_id):
+def match_consignment():
+    data = request.get_json()
+    
+    consignment_id = data.get('consignment_id')
+    line_id = data.get('line_id')
     query = """
     UPDATE ZZDeliveryNoteLines
     SET ConsignmentID = ?
@@ -262,9 +266,13 @@ def match_consignment(consignment_id, line_id):
         cursor.close()
         conn.close()
 
-@import_bp.route("/discard_consignment/<consignment_id>", methods=["POST"])
+@import_bp.route("/discard_consignment", methods=["POST"])
 @role_required()
-def discard_consignment(consignment_id):
+def discard_consignment(consignment_id=None):
+    # Try to get from JSON body first
+    data = request.get_json()
+    if data:
+        consignment_id = data.get('consignment_id')
     try:
         conn = create_db_connection()
         cursor = conn.cursor()
