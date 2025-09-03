@@ -431,10 +431,10 @@ window.editRow = function(delnoteNo, idx, btn) {
   // Replace edit button with submit button
   const actionsCell = row.querySelector('.sales-row-actions');
   actionsCell.innerHTML = `
-    <button class="icon-btn" onclick="submitRow('${delnoteNo}', ${idx}, this, '${salesId}', '${lineId}')">
+    <button class="icon-btn icon-btn-edit" onclick="submitRow('${delnoteNo}', ${idx}, this, '${salesId}', '${lineId}')">
       <img src="/static/Image/check.png" alt="Submit">
     </button>
-    <button class="icon-btn" onclick="cancelEdit('${delnoteNo}', ${idx}, this)">
+    <button class="icon-btn icon-btn-edit" onclick="cancelEdit('${delnoteNo}', ${idx}, this)">
       <img src="/static/Image/cancel.png" alt="Cancel">
     </button>
   `;

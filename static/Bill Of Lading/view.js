@@ -800,6 +800,9 @@ window.saveQuantityChanges = function() {
                 input.style.display = 'none';
             });
 
+            // add hover to Delivery lines table
+            document.getElementById("delivery-lines-table-table").classList.add("fs-hover");
+
             // Remove the button container and restore edit button to original position
             const buttonContainer = document.querySelector('.quantity-edit-buttons');
             if (buttonContainer) {
@@ -1018,6 +1021,9 @@ window.toggleQuantityEdit = function() {
         if (addLineBtn) addLineBtn.style.display = 'none';
         addDeleteButtonsToLines();
 
+        // remove hover from Delivery lines table
+        document.getElementById("delivery-lines-table-table").classList.remove("fs-hover");        
+
         // Create button container if it doesn't exist
         if (!document.querySelector('.quantity-edit-buttons')) {
             const buttonContainer = document.createElement('div');
@@ -1063,7 +1069,11 @@ window.cancelQuantityEdit = function() {
     // Restore edit button to original state
     editBtn.innerHTML = '<i class="fas fa-edit"></i> Edit Quantities';
     editBtn.classList.remove('editing');
+
     
+    // add hover to Delivery lines table
+    document.getElementById("delivery-lines-table-table").classList.add("fs-hover");
+
     // Show displays and hide inputs
     document.querySelectorAll('.quantity-display').forEach(display => {
         display.style.display = '';

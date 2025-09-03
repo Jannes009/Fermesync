@@ -5,7 +5,7 @@ function load_delivery_lines_table(delnoteno) {
         .then(data => {
             const lines = data.lines;
             let tableHtml = `
-                <table class="fs-table fs-hover">
+                <table id="delivery-lines-table-table" class="fs-table fs-hover">
                 <thead>
                     <tr>
                     <th>Line</th>
@@ -68,7 +68,7 @@ function load_sales_lines_table(delnoteno) {
             const lines = data.lines;
             let tableHtml = `
                 <div class="table-responsive">
-                <table class="fs-table">
+                <table class="fs-table sales-table">
                     <thead>
                     <tr>
                         <th>Date</th>
