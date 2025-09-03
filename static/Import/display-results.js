@@ -239,8 +239,8 @@ function toggleDocketDetails(button, consignmentId) {
         button.innerText = "▶";
         return;
     }
-
-    fetch(`/import/get_dockets/${consignmentId}`)
+    console.log(consignmentId)
+    fetch(`/import/get_dockets?consignment_id=${encodeURIComponent(consignmentId)}`)
         .then(response => response.json())
         .then(dockets => {
             let detailsRow = document.createElement("tr");
@@ -253,7 +253,6 @@ function toggleDocketDetails(button, consignmentId) {
                 detailsCell.innerHTML = "<em>No dockets found for this consignment.</em>";
             } else {
                 let detailsTable = `
-                <h5>Sales<h5>
                     <table class="table table-bordered mt-2">
                         <thead>
                             <tr>

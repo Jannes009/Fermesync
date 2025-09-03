@@ -41,12 +41,14 @@ def get_import_results():
     return jsonify(results)
 
 
-@import_bp.route('/get_dockets/<consignment_id>', methods=['GET'])
+@import_bp.route('/get_dockets', methods=['GET'])
 @role_required()
-def get_dockets(consignment_id):
+def get_dockets():
+    consignment_id = request.args.get('consignment_id')
+    print(f"Received consignment_id: {consignment_id}")
     conn = create_db_connection()
     cursor = conn.cursor()
-
+    print(consignment_id)
     cursor.execute("""
         SELECT DocketNumber, QtySold, Price, SalesValue, DateSold
         FROM ZZMarketDataTrn
