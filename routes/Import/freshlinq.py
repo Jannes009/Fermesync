@@ -6,6 +6,7 @@ import pandas as pd
 from db import create_db_connection
 from playwright.sync_api import sync_playwright
 from models import ConnectedService
+import re
 
 def Freshlinq(current_user, start_date):
     def status(message):
@@ -133,9 +134,25 @@ def ensure_playwright_browsers_installed():
 # ---------------------------
 # Helper function for safe value extraction
 # ---------------------------
-def safe_value(value, default=""):
-    """Return a valid value if it's not NaN; otherwise, return the default."""
-    return default if pd.isna(value) else value
+def safe_value(value, default="", clean_special_characters=False):
+    """
+    Return a valid value if it's not NaN; otherwise, return the default.
+    Disabled - If clean_special_characters=True, only allow letters, numbers, and dash in the value.
+    """
+    if pd.isna(value):
+        return default
+
+    value_str = str(value).strip()
+
+    if clean_special_characters:
+        # Keep only A-Z, a-z, 0-9, and dash
+        value_str = re.sub(r'[^A-Za-z0-9\-]', '', value_str)
+        return value_str if value_str else default
+
+    return value_str
+
+
+
 
 # ---------------------------
 # Process Excel and yield status messages
@@ -153,7 +170,7 @@ def process_excel(file_path, current_user):
             yield f"data: Processing row #{lot_count}...\n\n"
 
             # Extract parent lot data
-            lot_no = safe_value(row.iloc[1])
+            lot_no = safe_value(row.iloc[1], clean_special_characters=True)
             brand = safe_value(row.iloc[9])
             commodity = safe_value(row.iloc[18])
 
@@ -311,14 +328,18 @@ def insert_into_database(data, current_user):
             price = parse_float(row["Price"])
             value = parse_float(row["Value"])
 
-            cursor.execute(sql, (
-                row["Lot No."], row["Brand"], row["Commodity"], row["Delivery Note No."],
-                row["Packaging"], row["Variety"], created_at, delivery_date,
-                weight, size, row["Lot Status"], row["Branch"], row["Lot Notes"],
-                row["Quality"], row["Agent"], row["Movement"], weighted_average,
-                qty_delivered, qty_sold, remaining, lot_depletions,
-                reclassifications, sale_date, quantity, price, value
-            ))
+            try:
+                cursor.execute(sql, (
+                    row["Lot No."], row["Brand"], row["Commodity"], row["Delivery Note No."],
+                    row["Packaging"], row["Variety"], created_at, delivery_date,
+                    weight, size, row["Lot Status"], row["Branch"], row["Lot Notes"],
+                    row["Quality"], row["Agent"], row["Movement"], weighted_average,
+                    qty_delivered, qty_sold, remaining, lot_depletions,
+                    reclassifications, sale_date, quantity, price, value
+                ))
+            except Exception as e:
+                print(f"Error inserting row {i}: {row}")
+                raise
 
             if i % 50 == 0:
                 yield f"data:   ↳ Inserted {i} rows...\n\n"
