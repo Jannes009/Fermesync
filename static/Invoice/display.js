@@ -152,7 +152,7 @@ function fetch_delivery_note_sales() {
                         <td>${grandchild.date}</td>
                         <td>${grandchild.quantity}</td>
                         <td>${grandchild.price}</td>
-                        <td>${grandchild.discount || "0%"}</td>
+                        <td>${(grandchild.discount || 0) + "%"}</td>
                         <td>${grandchild.amount}</td>
                         <td><input type="checkbox" class="child-line-checkbox" data-id="${data.note_number}-${line.line_id}-${grandchild.sales_line_id}" /></td>
                     `;

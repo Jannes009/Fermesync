@@ -16,34 +16,40 @@ def get_delivery_note_details(note_number):
     cursor = conn.cursor()
 
     cursor.execute("""
-        SELECT 
-            HEA.DelNoteNo,
-            AGENT.AgentName,
-            PROD.ProductDescription,
-            PRODUN.ProdUnitName,
-            SALLIN.SalesQty,
-            SALLIN.SalesPrice,
-            SALLIN.DiscountAmnt,
-            SALLIN.SalesAmnt,
-            LIN.DelLineIndex,
-            LIN.DelLineStockId,
-            HEA.DeliClientId,
-            SALLIN.SalesLineIndex,
-            SALLIN.SalesDate
-        FROM ZZDeliveryNoteHeader HEA
-        JOIN (SELECT DCLink, Name AgentName, MarketComm, AgentComm FROM _uvMarketAgent) AGENT 
-            ON AGENT.DCLink = HEA.DeliClientId
-        JOIN (SELECT DelHeaderId, DelLineIndex, DelLineFarmId, DelLineStockId 
-              FROM ZZDeliveryNoteLines) LIN 
-            ON LIN.DelHeaderId = HEA.DelIndex
-        JOIN (SELECT StockLink, ProductDescription FROM _uvMarketProduct) PROD 
-            ON PROD.StockLink = LIN.DelLineStockId
-        JOIN (SELECT ProjectLink, ProdUnitName FROM _uvMarketProdUnit) PRODUN 
-            ON PRODUN.ProjectLink = LIN.DelLineFarmId
-        LEFT JOIN (SELECT SalesDelLineId, SalesQty, SalesPrice, DiscountAmnt, SalesAmnt, SalesLineIndex, SalesDate 
-                   FROM ZZSalesLines) SALLIN 
-            ON SALLIN.SalesDelLineId = LIN.DelLineIndex
-        WHERE HEA.DelNoteNo = ?
+    SELECT 
+        HEA.DelNoteNo,
+        AGENT.AgentName,
+        PROD.ProductDescription,
+        PRODUN.ProdUnitName,
+        SALLIN.SalesQty,
+        SALLIN.SalesPrice,
+        SALLIN.DiscountPercent,
+        SALLIN.SalesAmnt,
+        LIN.DelLineIndex,
+        LIN.DelLineStockId,
+        HEA.DeliClientId,
+        SALLIN.SalesLineIndex,
+        SALLIN.SalesDate--,
+        --CASE 
+            --WHEN INVLIN.InvoiceSaleLineIndex IS NOT NULL THEN 1
+            ---ELSE 0
+        --END AS HasInvoice
+    FROM ZZDeliveryNoteHeader HEA
+    JOIN (SELECT DCLink, Name AgentName, MarketComm, AgentComm FROM _uvMarketAgent) AGENT 
+        ON AGENT.DCLink = HEA.DeliClientId
+    JOIN (SELECT DelHeaderId, DelLineIndex, DelLineFarmId, DelLineStockId 
+        FROM ZZDeliveryNoteLines) LIN 
+        ON LIN.DelHeaderId = HEA.DelIndex
+    JOIN (SELECT StockLink, ProductDescription FROM _uvMarketProduct) PROD 
+        ON PROD.StockLink = LIN.DelLineStockId
+    JOIN (SELECT ProjectLink, ProdUnitName FROM _uvMarketProdUnit) PRODUN 
+        ON PRODUN.ProjectLink = LIN.DelLineFarmId
+    LEFT JOIN (SELECT SalesDelLineId, SalesQty, SalesPrice, DiscountPercent, SalesAmnt, SalesLineIndex, SalesDate 
+            FROM ZZSalesLines) SALLIN 
+        ON SALLIN.SalesDelLineId = LIN.DelLineIndex
+    LEFT JOIN (SELECT InvoiceSaleLineIndex FROM ZZInvoiceLines) INVLIN 
+        ON INVLIN.InvoiceSaleLineIndex = SALLIN.SalesLineIndex
+    WHERE InvoiceSaleLineIndex IS NULL and HEA.DelNoteNo = ?
     """, (note_number,))
     rows = cursor.fetchall()
 
