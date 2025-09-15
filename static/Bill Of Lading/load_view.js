@@ -19,18 +19,37 @@ function load_delivery_lines_table(delnoteno) {
                 <tbody>
             `;
             lines.forEach(line => {
+                const invoicedQty = line.totalqtyinvoiced || 0;
+
+                // Product edit button only if invoiced == 0
+                const productEditIcon = invoicedQty === 0 ? `
+                    <button class="icon-btn" onclick="changeProduct('${line.dellineindex}', '${line.productdescription}', '${delnoteno}'); event.stopPropagation();">
+                        <img src="/static/Image/change.png" alt="Change Product">
+                    </button>
+                ` : ``;
+
+                // Production Unit edit button only if invoiced == 0
+                const prodUnitEditIcon = invoicedQty === 0 ? `
+                    <button class="icon-btn" onclick="changeProductionUnit('${line.dellineindex}', '${line.produnitname}', '${delnoteno}'); event.stopPropagation();">
+                        <img src="/static/Image/change.png" alt="Change Production Unit">
+                    </button>
+                ` : ``;
+
                 tableHtml += `
                   <tr class="delivery-line" data-line-id="${line.dellineindex}" onclick="selectDeliveryLine(this, '${line.dellineindex}')" style="cursor: pointer;">
                     <td>${line.dellineindex}</td>
                     <td>
                       <div style="display: flex; align-items: center; gap: 8px;">
                         <span>${line.productdescription}</span>
-                        <button class="icon-btn" onclick="changeProduct('${line.dellineindex}', '${line.productdescription}', '${delnoteno}'); event.stopPropagation();">
-                          <img src="/static/Image/change.png" alt="Change Product">
-                        </button>
+                        ${productEditIcon}
                       </div>
                     </td>
-                    <td>${line.produnitname}</td>
+                    <td>
+                      <div style="display: flex; align-items: center; gap: 8px;">
+                        <span>${line.produnitname}</span>
+                        ${prodUnitEditIcon}
+                      </div>
+                    </td>
                     <td>
                       <div style="display: flex; align-items: center; gap: 8px;">
                         <span class="quantity-display">${line.dellinequantitybags || 0}</span>
@@ -45,7 +64,7 @@ function load_delivery_lines_table(delnoteno) {
                       </div>
                     </td>
                     <td>${line.totalqtysold || 0}</td>
-                    <td>${line.totalqtyinvoiced || 0}</td>
+                    <td>${invoicedQty}</td>
                   </tr>
                 `;
             });

@@ -1,7 +1,7 @@
 from flask import Blueprint, render_template, request, jsonify
 from db import create_db_connection
 from datetime import datetime
-from routes.db_functions import get_stock_id, get_products,  get_agent_codes, get_transporter_codes, get_market_codes, production_unit_name_to_production_unit_id, get_destinations
+from routes.db_functions import get_stock_id, get_products,  get_agent_codes, get_transporter_codes, get_market_codes, production_unit_name_to_production_unit_id, get_destinations, get_production_unit_codes
 view_entry_bp = Blueprint('view_entry', __name__)
 
 
@@ -350,6 +350,29 @@ def save_product():
         cursor.close()
         conn.close()
 
+@view_entry_bp.route('/api/save_production_unit', methods=['POST'])
+def save_productuction_unit():
+    data = request.get_json()
+    line_id = data.get('line_id')
+    production_unit_id = data.get('unit_id')
+    conn = create_db_connection()
+    cursor = conn.cursor()
+
+    try:
+        query = """
+            UPDATE ZZDeliveryNoteLines
+            SET DelLineFarmId = ?
+            WHERE DelLineIndex = ?
+        """
+        cursor.execute(query, (production_unit_id, line_id))
+        conn.commit()
+        return jsonify({'message': 'Production unit updated successfully'})
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
+    finally:
+        cursor.close()
+        conn.close()
+
 @view_entry_bp.route('/api/products')
 def get_products_api():
     try:
@@ -366,6 +389,28 @@ def get_products_api():
         } for p in products]
         
         return jsonify(product_list)
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
+    finally:
+        cursor.close()
+        conn.close()
+
+@view_entry_bp.route('/api/production_units')
+def get_producttion_units_api():
+    try:
+        conn = create_db_connection()
+        cursor = conn.cursor()
+        
+        # Get products using the existing function
+        products = get_production_unit_codes(cursor)
+        
+        # Convert to list of dictionaries
+        production_unit_list = [{
+            'UnitId': p[0],
+            'UnitName': p[1]
+        } for p in products]
+        
+        return jsonify(production_unit_list)
     except Exception as e:
         return jsonify({'error': str(e)}), 500
     finally:
@@ -733,30 +778,39 @@ def api_delivery_note_lines():
     conn.close()
     return jsonify(lines)
 
-@view_entry_bp.route('/api/transport-po-status/<delnote_no>')
-def get_transport_po_status(delnote_no):
+@view_entry_bp.route('/api/order-status/<delnote_no>')
+def get_order_status(delnote_no):
     try:
         conn = create_db_connection()
         cursor = conn.cursor()
-        
-        # Get Transport PO status
+
+        # Transport PO Status
         cursor.execute("""
-        SELECT Status
-        FROM _uvTransportPOStatus
-        WHERE DelNoteNo = ?
+            SELECT TOP 1 Status
+            FROM _uvTransportPOStatus
+            WHERE DelNoteNo = ?
         """, (delnote_no,))
-        
         result = cursor.fetchone()
         status = result[0] if result else None
-        
+
+        # Invoice existence
+        cursor.execute("""
+            SELECT COUNT(*) 
+            FROM ZZInvoiceHeader
+            WHERE InvoiceDelNoteNo = ?
+        """, (delnote_no,))
+        invoice_count = cursor.fetchone()[0]
+
         return jsonify({
             'status': status,
-            'isProcessed': status == 'Processed'
+            'isProcessed': status == 'Processed',
+            'hasInvoice': invoice_count > 0
         })
-        
+
     except Exception as e:
-        print(f"Error in get_transport_po_status: {str(e)}")
+        print(f"Error in get_order_status: {str(e)}")
         return jsonify({'error': str(e)}), 500
     finally:
         if 'conn' in locals():
             conn.close()
+

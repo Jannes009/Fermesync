@@ -233,52 +233,6 @@ window.toggleExpandedData = function(delLineIndex, trnConsignmentId, btn) {
   }
 };
 
-// Update renderDeliveryNoteLinesTable to only show Date, Qty, Price, Amount, and AutoSale
-function renderDeliveryNoteLinesTable(lines) {
-  if (!lines.length) return '<em>No delivery note lines found.</em>';
-  
-  // Calculate totals
-  const totals = lines.reduce((acc, line) => {
-    acc.qty += parseFloat(line.salesqty) || 0;
-    acc.amount += parseFloat(line.grosssalesamnt) || 0;
-    return acc;
-  }, { qty: 0, amount: 0 });
-
-  return `<table class="fs-table" style="margin:0;">
-    <thead>
-    <th colspan="6" style="background:var(--table-header-bg);text-align:center;">Actual Sales Lines</th>
-      <tr>
-        <th>Date</th>
-        <th>Qty</th>
-        <th>Price</th>
-        <th>Amount</th>
-        <th>AutoSale</th>
-        <th>Invoice No</th>
-      </tr>
-    </thead>
-    <tbody>
-      ${lines.map(line => `
-        <tr>
-          <td>${escapeHtml(line.salesdate)}</td>
-          <td>${formatNumber(line.salesqty)}</td>
-          <td>R${formatNumber(line.salesprice)}</td>
-          <td>R${formatNumber(line.grosssalesamnt)}</td>
-          <td>${line.autosale ? 'Auto' : 'Manual'}</td>
-          <td>${escapeHtml(line.invoiceno)}</td>
-        </tr>
-      `).join('')}
-    </tbody>
-    <tfoot>
-      <tr style="background-color: var(--table-totals-row-bg); border-top: 2px solid var(--table-border);">
-        <td colspan="2" style="text-align: right; font-weight: 600; color: var(-table-totals-row-text); padding: 12px 16px;">Totals:</td>
-        <td style="font-weight: 700; color: var(-table-totals-row-text); padding: 12px 16px;">${formatNumber(totals.qty)}</td>
-        <td></td>
-        <td style="font-weight: 700; color: var(-table-totals-row-text); padding: 12px 16px;">R${formatNumber(totals.amount)}</td>
-        <td colspan="2"></td>
-      </tr>
-    </tfoot>
-  </table>`;
-}
 // Cancel edit: revert row back to display mode
 window.cancelEdit = function(delnoteNo, idx, btn) {
   const row = document.getElementById(`row-${delnoteNo}-${idx}`);
@@ -673,6 +627,107 @@ window.changeProduct = function(lineId, currentProduct, delNoteNo) {
       });
     });
 };
+
+// Function to handle Production Unit change
+window.changeProductionUnit = function(lineId, currentProdUnit, delNoteNo) {
+  // Fetch production units from the server
+  fetch('/api/production_units')
+    .then(response => response.json())
+    .then(units => {
+      // Create the modal HTML with searchable dropdown
+      const modalHtml = `
+        <div style="text-align: left;">
+          <div style="margin-bottom: 1rem;">
+            <label style="display: block; margin-bottom: 0.5rem; font-weight: 600; color: #334155;">Current Production Unit</label>
+            <div style="padding: 0.8em; background: #f8fafc; border-radius: 8px; color: #64748b;">
+              ${currentProdUnit}
+            </div>
+          </div>
+          <div style="margin-bottom: 1rem;">
+            <label style="display: block; margin-bottom: 0.5rem; font-weight: 600; color: #334155;">New Production Unit</label>
+            <select id="prodUnitSelect" class="form-select" style="width: 100%;">
+              <option value="">Select a production unit...</option>
+              ${units.map(u => `<option value="${u.UnitId}">${u.UnitName}</option>`).join('')}
+            </select>
+          </div>
+        </div>
+      `;
+
+      // Initialize Select2 on the dropdown
+      Swal.fire({
+        title: 'Change Production Unit',
+        html: modalHtml,
+        showCancelButton: true,
+        confirmButtonText: 'Save',
+        cancelButtonText: 'Cancel',
+        width: 600,
+        didOpen: () => {
+          // Initialize Select2
+          $('#prodUnitSelect').select2({
+            dropdownParent: $('.swal2-container'),
+            width: '100%',
+            placeholder: 'Search for a production unit...',
+            allowClear: true
+          });
+        },
+        preConfirm: () => {
+          const selectedUnit = document.getElementById('prodUnitSelect').value;
+          if (!selectedUnit) {
+            Swal.showValidationMessage('Please select a production unit');
+            return false;
+          }
+          return selectedUnit;
+        }
+      }).then((result) => {
+        if (result.isConfirmed) {
+          // Save the new production unit
+          fetch('/api/save_production_unit', {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({
+              line_id: lineId,
+              unit_id: result.value
+            })
+          })
+          .then(response => response.json())
+          .then(data => {
+            if (data.message) {
+              Swal.fire({
+                title: 'Success!',
+                text: 'Production unit has been updated successfully.',
+                icon: 'success',
+                timer: 1500,
+                showConfirmButton: false
+              }).then(() => {
+                // Refresh the delivery table
+                load_delivery_lines_table(delNoteNo)
+              });
+            } else {
+              throw new Error(data.error || 'Failed to update production unit');
+            }
+          })
+          .catch(error => {
+            Swal.fire({
+              title: 'Error',
+              text: error.message || 'Failed to update production unit',
+              icon: 'error'
+            });
+          });
+        }
+      });
+    })
+    .catch(error => {
+      console.error('Error fetching production units:', error);
+      Swal.fire({
+        title: 'Error',
+        text: 'Failed to load production units',
+        icon: 'error'
+      });
+    });
+};
+
 
 // Placeholder for delete (implement backend as needed)
 window.deleteRow = function(delnoteNo, idx, btn) {

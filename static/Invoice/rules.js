@@ -195,6 +195,7 @@ document.addEventListener("DOMContentLoaded", () => {
         event.preventDefault();
 
         const invoiceNo = document.querySelector('input[name="ZZInvoiceNo"]').value;
+        console.log(invoiceNo)
         const isUnique = await isInvoiceNumberUnique(invoiceNo);
         if (!isUnique) {
             Swal.fire({
@@ -256,6 +257,25 @@ document.addEventListener("DOMContentLoaded", () => {
                 icon: "error"
             });
             return;
+        } else if(nett_display <= 0){
+            Swal.fire({
+                title: "Nett Amount Must Be Greater Than Zero",
+                text: "Nett amount must be greater than zero.",
+                icon: "error"
+            });
+            return;
+        }
+        const agentCheckbox = document.getElementById(`confirm-agent`);
+        const unitCheckbox = document.getElementById(`confirm-units`);
+        console.log(agentCheckbox?.checked, unitCheckbox?.checked )
+        // New check: Both Agent and Production Unit must be ticked
+        if (!agentCheckbox?.checked || !unitCheckbox?.checked) {
+            Swal.fire({
+                title: "Confirmation Required",
+                text: "Please confirm both the Market Agent and Production Unit before submitting.",
+                icon: "warning"
+            });
+            return; // stop submission
         }
 
         const checkedBoxes = document.querySelectorAll('.child-line-checkbox:checked');

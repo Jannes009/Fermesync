@@ -307,12 +307,13 @@ function check_delivery_note(){
     .then(response => response.json())
     .then(data => {
         if (data.exists) {
-            noteNumberIcon.src = "/static/image/check.png"; // Red cross
+            noteNumberIcon.src = "/static/image/check.png";
             deliveryNoteStatus = "Delivery Note already exists!";
             fetch_delivery_note_sales()
         } else {
-            noteNumberIcon.src = "/static/image/incorrect.png"; // Green check
+            noteNumberIcon.src = "/static/image/incorrect.png"; 
             deliveryNoteStatus = "Delivery Note is available!";
+            document.getElementById("pivot-table-container").innerHTML = '';
         }
     })
     .catch(error => console.error("Error:", error));

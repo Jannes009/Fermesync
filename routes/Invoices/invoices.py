@@ -11,100 +11,107 @@ invoice_bp = Blueprint('invoice', __name__)
 def invoice_page():
     return render_template('Invoice page/base.html')
 
-# Function to get delivery note details, lines, and sales
 def get_delivery_note_details(note_number):
-    # Establish connection
     conn = create_db_connection()
     cursor = conn.cursor()
 
-    # Step 1: Fetch the Delivery Note ID (DelIndex) and Market (DelMarketId)
     cursor.execute("""
-    SELECT 
-    DelIndex, DeliClientId
-    ,ISNULL(ISNULL(ComAgentComm,AGENT.AgentComm), 0) AgentComm
-    ,ISNULL(ISNULL(ComMarketComm, AGENT.MarketComm), 0) MarketComm
-    --Select *
-    FROM dbo.ZZDeliveryNoteHeader HEA
-    OUTER APPLY (
-            Select TOP 1 DelLineStockId ,ProductIndex
-            from ZZDeliveryNoteLines LN
-            JOIN (Select * from[dbo].[ZZProductStockItem])STK on STK.ProductEvoStockLink = LN.DelLineStockId
-            where DelHeaderId = HEA.DelIndex
-            )LIN
-    Join _uvMarketAgent AGENT on AGENT.DCLink = HEA.DeliClientId
-    LEFT JOIN (
-            Select * from [dbo].[ZZAgentProductCommDisc]
-            )COM on COM.ComAgentLink = AGENT.DCLink and COM.ComProductLink =  LIN.ProductIndex
-    WHERE DelNoteNo = ?
+        SELECT 
+            HEA.DelNoteNo,
+            AGENT.AgentName,
+            PROD.ProductDescription,
+            PRODUN.ProdUnitName,
+            SALLIN.SalesQty,
+            SALLIN.SalesPrice,
+            SALLIN.DiscountAmnt,
+            SALLIN.SalesAmnt,
+            LIN.DelLineIndex,
+            LIN.DelLineStockId,
+            HEA.DeliClientId,
+            SALLIN.SalesLineIndex,
+            SALLIN.SalesDate
+        FROM ZZDeliveryNoteHeader HEA
+        JOIN (SELECT DCLink, Name AgentName, MarketComm, AgentComm FROM _uvMarketAgent) AGENT 
+            ON AGENT.DCLink = HEA.DeliClientId
+        JOIN (SELECT DelHeaderId, DelLineIndex, DelLineFarmId, DelLineStockId 
+              FROM ZZDeliveryNoteLines) LIN 
+            ON LIN.DelHeaderId = HEA.DelIndex
+        JOIN (SELECT StockLink, ProductDescription FROM _uvMarketProduct) PROD 
+            ON PROD.StockLink = LIN.DelLineStockId
+        JOIN (SELECT ProjectLink, ProdUnitName FROM _uvMarketProdUnit) PRODUN 
+            ON PRODUN.ProjectLink = LIN.DelLineFarmId
+        LEFT JOIN (SELECT SalesDelLineId, SalesQty, SalesPrice, DiscountAmnt, SalesAmnt, SalesLineIndex, SalesDate 
+                   FROM ZZSalesLines) SALLIN 
+            ON SALLIN.SalesDelLineId = LIN.DelLineIndex
+        WHERE HEA.DelNoteNo = ?
     """, (note_number,))
-    header = cursor.fetchone()
+    rows = cursor.fetchall()
 
-    if header:
-        del_index, del_client_id, agent_comm, market_comm = header
-
-        # find agent's agentComm and MarketComm
-        cursor.execute("""
-            SELECT marketComm, agentComm
-            FROM _uvMarketAgent
-            WHERE DCLink = ?
-        """, (del_client_id,))
-        commissions = cursor.fetchone()
-        if (not commissions):
-            print("No agent found")
-            commissions = [0,0]
-
-
-        client = agent_code_to_agent_name(del_client_id, cursor)
-
-        # Step 2: Fetch all delivery note lines (DelLineIndex) with their Stock id (DelLineStockId)
-        cursor.execute("""
-            SELECT DelLineIndex, DelLineStockId, DelHeaderId
-            FROM dbo.ZZDeliveryNoteLines
-            WHERE DelHeaderId = ?
-        """, (del_index,))
-        lines = cursor.fetchall()
-
-        # Prepare the results structure to store line and sales details
-        result = {
-            'note_number': note_number,
-            'market_id': client[1],
-            'market_comm': market_comm,
-            'agent_comm': agent_comm,
-            'lines': []
-        }
-
-        
-
-        # Step 3: For each delivery line, find the corresponding sales lines (SalesLineIndex, SalesAmnt)
-        for line in lines:
-            del_line_index, del_line_stock_id, del_header_id = line
-            stock_name = get_stock_name(del_line_stock_id, cursor)
-
-            # Step 3a: Fetch sales lines for the current delivery note line
-            cursor.execute("""
-                SELECT SalesLineIndex, SalesAmnt, SalesDate, SalesQty, SalesPrice
-                FROM [dbo].[_uvMarketSales]
-                WHERE SalesDelLineId = ? AND Invoiced = 'FALSE'
-                ORDER BY SalesDate
-            """, (del_line_index,))
-            sales_lines = cursor.fetchall()
-
-            # Add sales lines and amount details to the current line
-            line_data = {
-                'line_id': del_line_index,
-                'stock_id': stock_name,
-                'sales_lines': [{'sales_line_id': sales_line[0], 'amount': sales_line[1], 'date': sales_line[2], 'quantity': sales_line[3], 'price': sales_line[4]} for sales_line in sales_lines],
-                'total_sales': sum(sale[1] for sale in sales_lines)  # Calculate the sum of sales amounts
-            }
-            if(sales_lines):
-                result['lines'].append(line_data)
-        close_db_connection(cursor, conn)
-        if result['lines'] == []:
-            return result, 310
-        return result
-    else:
+    if not rows:
         close_db_connection(cursor, conn)
         return None
+
+    # Header info from first row
+    del_note_no = rows[0][0]
+    agent_name = rows[0][1]
+    del_client_id = rows[0][10]
+
+    # Commissions
+    cursor.execute("""
+        SELECT MarketComm, AgentComm
+        FROM _uvMarketAgent
+        WHERE DCLink = ?
+    """, (del_client_id,))
+    commissions = cursor.fetchone() or (0, 0)
+    market_comm, agent_comm = commissions
+
+    result = {
+        "note_number": del_note_no,
+        "market_id": agent_name,
+        "production_units": list({r[3] for r in rows if r[3]}),  # ProdUnitName
+        "market_comm": market_comm,
+        "agent_comm": agent_comm,
+        "lines": []
+    }
+
+    # Group by delivery line
+    lines_dict = {}
+    for row in rows:
+        product_desc = row[2]
+        prod_unit = row[3]
+        qty = row[4]
+        price = row[5]
+        discount = row[6]
+        amount = row[7]
+        line_id = row[8]
+        stock_id = row[9]
+        sales_line_id = row[11]
+        sales_date = row[12]
+
+        if line_id not in lines_dict:
+            lines_dict[line_id] = {
+                "line_id": line_id,
+                "stock": product_desc,
+                "prod_unit": prod_unit,
+                "sales_lines": []
+            }
+
+        if qty is not None:
+            lines_dict[line_id]["sales_lines"].append({
+                "sales_line_id": sales_line_id,
+                "date": sales_date,
+                "quantity": qty,
+                "price": price,
+                "discount": discount,
+                "amount": amount
+            })
+
+    result["lines"] = list(lines_dict.values())
+
+    close_db_connection(cursor, conn)
+    return result
+
+
 
 @invoice_bp.route('/get_delivery_note_lines', methods=['POST'])
 @role_required()
