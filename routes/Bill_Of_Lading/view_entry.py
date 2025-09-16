@@ -43,11 +43,19 @@ def delivery_note(del_note_no):
     """, (del_note_no,))
     matched_count = cursor.fetchone()[0] or 0
 
+    # Get discount percent
+    cursor.execute("""
+    Select DiscountPercent from _uvMarketAgent
+    WHERE Account = ?
+    """, ( header[2],))
+    discount_percent = cursor.fetchone()
+
     return render_template(
         'Bill Of Lading Page/View_Delivery_note.html',
         header=header,
         linked_count=linked_count,
-        matched_count=matched_count
+        matched_count=matched_count,
+        discount_percent=discount_percent[0]
     )
 
 @view_entry_bp.route('/api/fetch_delivery_note_lines/<del_note_no>')

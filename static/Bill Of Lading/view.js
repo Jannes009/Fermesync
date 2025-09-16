@@ -127,10 +127,15 @@ function showSaleDetailsModal(selectedLine, delNoteNo) {
         cancelButtonText: 'Back',
         showCloseButton: true,
         didOpen: () => {
+             // Default discount from backend
+            const discountInput = document.getElementById('saleDiscount');
+            if (window.defaultDiscountPercent !== undefined && window.defaultDiscountPercent !== null) {
+                discountInput.value = window.defaultDiscountPercent;
+            }
+
             // Live calculation
             const qtyInput = document.getElementById('saleQty');
             const priceInput = document.getElementById('salePrice');
-            const discountInput = document.getElementById('saleDiscount');
             const amountInput = document.getElementById('saleAmount');
             
             function updateAmount() {
