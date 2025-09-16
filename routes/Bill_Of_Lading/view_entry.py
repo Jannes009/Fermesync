@@ -60,6 +60,7 @@ def delivery_note(del_note_no):
 
 @view_entry_bp.route('/api/fetch_delivery_note_lines/<del_note_no>')
 def fetch_delivery_note_lines(del_note_no):
+    print("DelNoteNo", del_note_no)
     conn = create_db_connection()
     cursor = conn.cursor()
     cursor.execute("""
@@ -624,7 +625,7 @@ def update_line_quantities():
         # Insert new line
         cursor.execute("""
             SELECT TOP 1 DelIndex FROM ZZDeliveryNoteHeader WHERE DelNoteNo = ?
-        """, (new_line_info['del_note_no'],))
+        """, (new_line_info['delNoteNo'],))
         header_row = cursor.fetchone()
         production_unit_id = production_unit_name_to_production_unit_id(new_line_info['prod_unit'], cursor)
         if not header_row:

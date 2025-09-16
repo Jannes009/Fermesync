@@ -1,7 +1,7 @@
 
 function addSale(delNoteNo) {
     // First modal - Select line
-    fetch(`/api/available-lines/${delNoteNo}`)
+    fetch(`/api/available-lines/${encodeURIComponent(delNoteNo)}`)
     .then(response => response.json())
     .then(data => {
         if (!data.lines || data.lines.length === 0) {
@@ -328,7 +328,7 @@ function updateTotals() {
 
 // Function to update the counts display
 function updateCountsDisplay(delnoteNo) {
-    fetch(`/api/update-counts/${delnoteNo}`)
+    fetch(`/api/update-counts/${encodeURIComponent(delnoteNo)}`)
         .then(response => response.json())
         .then(data => {
             // Update the badges
@@ -500,11 +500,11 @@ window.clearSalesFilter = function() {
 // Function to handle delivery header editing
 window.editDeliveryHeader = function(delnoteNo) {
     // Check order status (Transport PO + Invoice)
-    fetch(`/api/order-status/${delnoteNo}`)
+    fetch(`/api/order-status/${encodeURIComponent(delnoteNo)}`)
         .then(response => response.json())
         .then(orderStatus => {
             // Fetch current header data
-            fetch(`/api/delivery-header/${delnoteNo}`)
+            fetch(`/api/delivery-header/${encodeURIComponent(delnoteNo)}`)
                 .then(response => response.json())
                 .then(header => {
                     // Fetch dropdown options
@@ -688,7 +688,7 @@ window.editDeliveryHeader = function(delnoteNo) {
                         }).then((result) => {
                             if (result.isConfirmed) {
                                 // Save
-                                fetch(`/api/save-delivery-header/${delnoteNo}`, {
+                                fetch(`/api/save-delivery-header/${encodeURIComponent(delnoteNo)}`, {
                                     method: 'POST',
                                     headers: { 'Content-Type': 'application/json' },
                                     body: JSON.stringify(result.value)
@@ -698,7 +698,7 @@ window.editDeliveryHeader = function(delnoteNo) {
                                     if (data.success) {
                                         const newDelNoteNo = result.value.delnoteno;
                                         if (newDelNoteNo && newDelNoteNo !== delnoteNo) {
-                                            window.location.href = `/delivery-note/${newDelNoteNo}`;
+                                            window.location.href = `/delivery-note/${encodeURIComponent(newDelNoteNo)}`;
                                         } else {
                                             window.location.reload();
                                         }
@@ -767,20 +767,12 @@ window.saveQuantityChanges = function() {
         const prod_unit = newLine.querySelector('td:nth-child(3)')?.textContent?.trim() || '';
         const qtyInput = newLine.querySelector('.quantity-input');
         const quantity = qtyInput ? parseInt(qtyInput.value) || 0 : 0;
-
-        // Get the delivery note number from the header
-        let del_note_no = null;
-        const header = document.querySelector('.delivery-header h1');
-        if (header) {
-            const match = header.textContent.match(/#(\d+)/);
-            if (match) del_note_no = match[1];
-        }
-
+        const delNoteNo = window.delNoteNo
         new_line_info = {
             product_id,
             prod_unit,
             quantity,
-            del_note_no
+            delNoteNo
         };
     }
     
@@ -833,14 +825,8 @@ window.saveQuantityChanges = function() {
     .then(data => {
         if (data.success) {
             // Reload the delivery lines table to reflect new/updated lines
-            const header = document.querySelector('.delivery-header h1');
-            let delNoteNo = null;
-            if (header) {
-                const match = header.textContent.match(/#(\d+)/);
-                if (match) delNoteNo = match[1];
-            }
-            if (delNoteNo) {
-                load_delivery_lines_table(delNoteNo);
+            if (window.delNoteNo) {
+                load_delivery_lines_table(window.delNoteNo);
             }
 
             // Switch back to display mode

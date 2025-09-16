@@ -1,6 +1,6 @@
 function load_delivery_lines_table(delnoteno) {
     console.log(delnoteno)
-    fetch(`/api/fetch_delivery_note_lines/${delnoteno}`)
+    fetch(`/api/fetch_delivery_note_lines/${encodeURIComponent(delnoteno)}`)
         .then(response => response.json())
         .then(data => {
             const lines = data.lines;
@@ -81,7 +81,8 @@ function load_delivery_lines_table(delnoteno) {
 }
 
 function load_sales_lines_table(delnoteno) {
-    fetch(`/api/fetch_sales_note_lines/${delnoteno}`)
+    console.log(delnoteno)
+    fetch(`/api/fetch_sales_note_lines/${encodeURIComponent(delnoteno)}`)
         .then(response => response.json())
         .then(data => {
             const lines = data.lines;
@@ -150,16 +151,8 @@ function load_sales_lines_table(delnoteno) {
 }
 
 document.addEventListener('DOMContentLoaded', function() {
-    // Try to get the delivery note number from the header
-    const header = document.querySelector('.delivery-header h1');
-    if (header) {
-        const match = header.textContent.match(/#([\w ]+)/);
-        if (match) {
-            const delnoteno = match[1];
-            load_delivery_lines_table(delnoteno);
-            load_sales_lines_table(delnoteno)
-        }
-    }
+    load_delivery_lines_table(window.delNoteNo);
+    load_sales_lines_table(window.elNoteNo)
 });
 
 

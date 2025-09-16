@@ -335,8 +335,8 @@ function filterSalesTableByInvoice(row, invoiceNo) {
 
 
 document.addEventListener('DOMContentLoaded', function() {
-    const delNoteNo = '{{ header.delnoteno }}';
-    fetch(`/api/invoices-for-delivery-note/${delNoteNo}`)
+    window.delNoteNo = "{{ header.delnoteno }}";
+    fetch(`/api/invoices-for-delivery-note/${window.delNoteNo}`)
         .then(r => r.json())
         .then(data => {
             console.log(data);
