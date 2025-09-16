@@ -141,82 +141,82 @@ def get_delivery_note_lines():
 @invoice_bp.route('/submit_invoice', methods=['POST'])
 @role_required()
 def submit_invoice():
-    try:
-        data = request.json
-        print(data)
+    # try:
+    data = request.json
+    print(data)
 
-        # Extract data from request
-        InvoiceDate = data.get('InvoiceDate')
-        InvoiceNo = data.get('InvoiceNo')
-        InvoiceDelNoteNo = data.get('InvoiceDelNoteNo')
-        InvoiceQty = data.get('InvoiceQty')
-        InvoiceGross = data.get('InvoiceGross')
-        InvoiceTotalDeducted = data.get('InvoiceTotalDeducted')
-        InvoiceMarketCommIncl = data.get('InvoiceMarketCommIncl')
-        InvoiceAgentCommIncl = data.get('InvoiceAgentCommIncl')
-        InvoiceOtherCostsIncl = data.get('InvoiceOtherCostsIncl')
-        SalesLines = data.get('tickedLines')
-        TaxRate = data.get('TaxRate')
-        print(InvoiceDate, InvoiceNo, InvoiceDelNoteNo, InvoiceQty, InvoiceGross, InvoiceTotalDeducted, InvoiceMarketCommIncl, InvoiceAgentCommIncl, InvoiceOtherCostsIncl, SalesLines, TaxRate)
-        # Insert into database
-        conn = create_db_connection()
-        cursor = conn.cursor()
+    # Extract data from request
+    InvoiceDate = data.get('InvoiceDate')
+    InvoiceNo = data.get('InvoiceNo')
+    InvoiceDelNoteNo = data.get('InvoiceDelNoteNo')
+    InvoiceQty = data.get('InvoiceQty')
+    InvoiceGross = data.get('InvoiceGross')
+    InvoiceTotalDeducted = data.get('InvoiceTotalDeducted')
+    InvoiceMarketCommIncl = data.get('InvoiceMarketCommIncl')
+    InvoiceAgentCommIncl = data.get('InvoiceAgentCommIncl')
+    InvoiceOtherCostsIncl = data.get('InvoiceOtherCostsIncl')
+    SalesLines = data.get('tickedLines')
+    TaxRate = data.get('TaxRate')
+    print(InvoiceDate, InvoiceNo, InvoiceDelNoteNo, InvoiceQty, InvoiceGross, InvoiceTotalDeducted, InvoiceMarketCommIncl, InvoiceAgentCommIncl, InvoiceOtherCostsIncl, SalesLines, TaxRate)
+    # Insert into database
+    conn = create_db_connection()
+    cursor = conn.cursor()
 
-        DelNoteId = del_note_number_to_del_id(InvoiceDelNoteNo, cursor)
-        print(DelNoteId)
+    DelNoteId = del_note_number_to_del_id(InvoiceDelNoteNo, cursor)
+    print(DelNoteId)
 
+    query = """
+    Select [DeliClientId] From [dbo].[ZZDeliveryNoteHeader]
+    Where [DelNoteNo] = ?
+    """
+    cursor.execute(query, (InvoiceDelNoteNo, )),
+    clientId = cursor.fetchone()
+
+    query = """
+    INSERT INTO [dbo].[ZZInvoiceHeader] (
+        [InvoiceDate], [InvoiceNo], [InvoiceDelNoteId], [InvoiceDelNoteNo],
+        [InvoiceQty], [InvoiceGross], [InvoiceTotalDeducted],
+        [InvoiceMarketCommIncl], [InvoiceAgentCommIncl], [InvoiceOtherCostsIncl], 
+        [InvoiceiClientId], [InvoiceTaxRate]
+    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+    """
+    cursor.execute(query, (
+        InvoiceDate, InvoiceNo, DelNoteId[0], InvoiceDelNoteNo,
+        InvoiceQty, InvoiceGross, InvoiceTotalDeducted,
+        InvoiceMarketCommIncl, InvoiceAgentCommIncl, InvoiceOtherCostsIncl,
+        clientId[0], TaxRate,
+    ))
+
+    headerId = get_invoice_id(InvoiceNo, cursor)
+
+    for line in SalesLines:
+        line = dict(line)
+        print(headerId, type(headerId))
         query = """
-        Select [DeliClientId] From [dbo].[ZZDeliveryNoteHeader]
-        Where [DelNoteNo] = ?
-        """
-        cursor.execute(query, (InvoiceDelNoteNo, )),
-        clientId = cursor.fetchone()
-
-        query = """
-        INSERT INTO [dbo].[ZZInvoiceHeader] (
-            [InvoiceDate], [InvoiceNo], [InvoiceDelNoteId], [InvoiceDelNoteNo],
-            [InvoiceQty], [InvoiceGross], [InvoiceTotalDeducted],
-            [InvoiceMarketCommIncl], [InvoiceAgentCommIncl], [InvoiceOtherCostsIncl], 
-            [InvoiceiClientId], [InvoiceTaxRate]
-        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+        INSERT INTO [dbo].[ZZInvoiceLines] (
+            [InvoiceHeaderId], [InvoiceSaleLineIndex] 
+        ) VALUES (?, ?)
         """
         cursor.execute(query, (
-            InvoiceDate, InvoiceNo, DelNoteId[0], InvoiceDelNoteNo,
-            InvoiceQty, InvoiceGross, InvoiceTotalDeducted,
-            InvoiceMarketCommIncl, InvoiceAgentCommIncl, InvoiceOtherCostsIncl,
-            clientId[0], TaxRate,
+            headerId, line['salesLineId'],
         ))
+    conn.commit()
+    # create invoice
+    cursor.execute("EXEC [dbo].[SIGCreateSalesOrder]")
 
-        headerId = get_invoice_id(InvoiceNo, cursor)
+    conn.commit()
+    cursor.close()
+    conn.close()
 
-        for line in SalesLines:
-            line = dict(line)
-            print(headerId, type(headerId))
-            query = """
-            INSERT INTO [dbo].[ZZInvoiceLines] (
-                [InvoiceHeaderId], [InvoiceSaleLineIndex] 
-            ) VALUES (?, ?)
-            """
-            cursor.execute(query, (
-                headerId, line['salesLineId'],
-            ))
-        conn.commit()
-        # create invoice
-        cursor.execute("EXEC [dbo].[SIGCreateSalesOrder]")
+    return jsonify({'success': True})
 
-        conn.commit()
-        cursor.close()
-        conn.close()
-
-        return jsonify({'success': True})
-
-    except odbc.IntegrityError as e:
-        print(f"Error: {e}")
-        return jsonify({'success': False, 'error': "This invoice is already captured. Please change the invoice number."})
+    # except odbc.IntegrityError as e:
+    #     print(f"Error: {e}")
+    #     return jsonify({'success': False, 'error': "This invoice is already captured. Please change the invoice number."})
     
-    except Exception as e:
-        print(f"Error: {e}")
-        return jsonify({'success': False, 'error': str(e)})
+    # except Exception as e:
+    #     print(f"Error: {e}")
+    #     return jsonify({'success': False, 'error': str(e)})
 
 
 @invoice_bp.route('/get-tax-rate', methods=['GET'])

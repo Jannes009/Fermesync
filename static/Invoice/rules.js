@@ -195,7 +195,6 @@ document.addEventListener("DOMContentLoaded", () => {
         event.preventDefault();
 
         const invoiceNo = document.querySelector('input[name="ZZInvoiceNo"]').value;
-        console.log(invoiceNo)
         const isUnique = await isInvoiceNumberUnique(invoiceNo);
         if (!isUnique) {
             Swal.fire({
@@ -282,10 +281,15 @@ document.addEventListener("DOMContentLoaded", () => {
         checkedBoxes.forEach((checkbox) => {
             const compositeId = checkbox.getAttribute('data-id');
             if (compositeId) {
-                const [noteNumber, lineId, salesLineId] = compositeId.split('-');
+                // get everything after the last dash
+                const lastDashIndex = compositeId.lastIndexOf('-');
+                const salesLineId = compositeId.substring(lastDashIndex + 1);
+                
                 salesOrderData['tickedLines'].push({ salesLineId });
             }
         });
+        
+        console.log(salesOrderData['tickedLines'])
         Swal.fire({
             title: 'Creating Invoice',
             html: '<p style="margin-top: 10px; font-size: 1.1rem; color: #555;">Please wait while we process your request...</p>',
