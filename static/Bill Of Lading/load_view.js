@@ -152,7 +152,7 @@ function load_sales_lines_table(delnoteno) {
 
 document.addEventListener('DOMContentLoaded', function() {
     load_delivery_lines_table(window.delNoteNo);
-    load_sales_lines_table(window.elNoteNo)
+    load_sales_lines_table(window.delNoteNo)
 });
 
 
