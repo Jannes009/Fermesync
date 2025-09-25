@@ -177,15 +177,6 @@ def submit_sales_entry():
             net_sales = float(amount) - (float(amount) * (float(agent_commission) + float(market_commission)) / 100)
             if salesId != None:
                 cursor.execute("""
-                SELECT AgentComm, MarketComm FROM [dbo].[_uvDelLinCommission]
-                WHERE DelLineIndex = ?
-                """,(lineId,))
-                row = cursor.fetchone()
-                agent_commission = row[0]
-                market_commission = row[1]
-                net_sales = float(amount) - (float(amount) * (float(agent_commission) + float(market_commission)) / 100)
-            
-                cursor.execute("""
                 UPDATE ZZSalesLines
                     SET SalesDate = ?, SalesQty = ?, DiscountPercent = ?, DiscountAmnt = ?, 
                     SalesAmnt = ?, SalesStockId = ?, SalesPrice = ?, GrossSalesAmnt = ?, 

@@ -6,6 +6,9 @@
     <script src="https://cdn.tailwindcss.com"></script>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css">
     <link rel="stylesheet" href="{{ url_for('static', filename='color-template.css') }}">
+    <link href="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/css/select2.min.css" rel="stylesheet" />
+    <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/js/select2.min.js"></script>
     <style>
         body {
             background: var(--primary-bg);
@@ -152,6 +155,35 @@
             text-shadow: 0 1px 2px rgba(0, 0, 0, 0.1);
             letter-spacing: 0.5px;
         }
+        /* Filter Buttons */
+        .action-btn {
+            text-align: center;
+            margin: 15px 0;
+            padding: 10px 0;
+        }
+
+        .action-btn {
+            background-color: var(--muted-bg);
+            color: var(--primary-text);
+            /* border: 1px solid var(--input-border); */
+            padding: 8px 16px;
+            font-size: 14px;
+            cursor: pointer;
+            margin: 5px;
+            border-radius: 6px;
+            transition: all 0.3s ease;
+        }
+
+        .action-btn :hover {
+            background-color: var(--table-row-hover);
+            border-color: var(--input-focus);
+        }
+
+        .action-btn .active {
+            background-color: var(--button-bg) !important;
+            color: var(--button-text);
+            border-color: var(--button-bg);
+        }
     </style>
 </head>
 <body>
@@ -164,6 +196,7 @@
             <div class="sales-order-header-card mb-6" style="position: relative;">
                 <div style="position: absolute; top: 1.5rem; right: 2rem;">
                     <span id="sales-order-status-badge" class="status-badge"></span>
+                    <button id="open-correct-modal" class="custom-btn" style="margin-left: 1rem;"><i class="fa fa-wrench"></i> Correct Invoice</button>
                 </div>
                 <div class="sales-order-header-title" id="sales-order-title"></div>
                 <div class="sales-order-header-grid" id="sales-order-header-details"></div>
@@ -371,5 +404,86 @@ async function loadSalesOrder() {
 
 window.addEventListener('DOMContentLoaded', loadSalesOrder);
 </script>
+<!-- Correction Modal -->
+<div id="correct-modal" class="fixed inset-0 bg-black bg-opacity-40 hidden" style="z-index: 1000;">
+    <div class="bg-white rounded-lg shadow-lg mx-auto my-12 p-6" style="max-width: 900px;">
+        <div class="flex justify-between items-center mb-4">
+            <h2 class="text-lg font-bold" style="color: var(--logo-color);">Correct Invoice</h2>
+            <button id="close-correct-modal" class="text-gray-600 hover:text-gray-900"><i class="fa fa-times"></i></button>
+        </div>
+        <div id="correct-steps">
+            <div class="mb-4 p-3 rounded" style="background: var(--muted-bg); border: 1px solid var(--table-border);">
+                <div class="grid md:grid-cols-3 gap-3 text-sm">
+                    <div><span class="font-semibold">Delivery Note:</span> <span id="cm-delnote"></span></div>
+                    <div><span class="font-semibold">Invoice:</span> <span id="cm-invoice"></span></div>
+                    <div><span class="font-semibold">Evo SO:</span> <span id="cm-evoso"></span></div>
+                </div>
+            </div>
+            <!-- Step 1: Choose correction type -->
+            <div id="step-type" class="mb-6">
+                <p class="mb-2 font-semibold">Choose what you want to correct</p>
+                <div class="action-btn-group">
+                    <button id="choose-agent" class="action-btn">Edit Agent</button>
+                    <button id="choose-prod" class="action-btn">Edit Production Unit</button>
+                </div>
+            </div>
+
+            <!-- Agent correction -->
+            <div id="step-agent" class="hidden">
+                <div class="grid md:grid-cols-3 gap-4 items-end">
+                    <div>
+                        <label class="block mb-1 font-semibold">Current Agent</label>
+                        <input id="cm-agent-current" class="w-full border rounded px-3 py-2 bg-gray-100" readonly />
+                    </div>
+                    <div class="md:col-span-2">
+                        <label class="block mb-1 font-semibold">New Agent</label>
+                        <select id="cm-agent-select" class="w-full border rounded px-3 py-2"></select>
+                    </div>
+                </div>
+                <div class="mt-4">
+                    <h3 class="font-semibold mb-2">Invoices for delivery note</h3>
+                    <table class="fs-table w-full">
+                        <thead><tr><th>Invoice No</th><th>Date</th><th>Nett</th><th>Status</th></tr></thead>
+                        <tbody id="cm-agent-invoices"></tbody>
+                    </table>
+                    <div class="mt-4 flex justify-end gap-2">
+                        <button id="cm-agent-submit" class="btn-primary"><i class="fa fa-check"></i> Submit</button>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Production unit correction -->
+            <div id="step-prod" class="hidden">
+                <div class="grid md:grid-cols-3 gap-4 items-end">
+                    <div>
+                        <label class="block mb-1 font-semibold">Old Production Unit</label>
+                        <select id="cm-old-prod" class="w-full border rounded px-3 py-2"></select>
+                    </div>
+                    <div>
+                        <label class="block mb-1 font-semibold">New Production Unit</label>
+                        <select id="cm-new-prod" class="w-full border rounded px-3 py-2"></select>
+                    </div>
+                    <div>
+                        <button id="cm-prod-submit" class="btn-primary w-full">Submit</button>
+                    </div>
+                </div>
+                <div class="mt-4">
+                    <h3 class="font-semibold mb-2">All Delivery Note Lines</h3>
+                    <table class="fs-table w-full mb-4">
+                        <thead><tr><th>Line</th><th>Product</th><th>Prod Unit</th><th>Status</th></tr></thead>
+                        <tbody id="cm-prod-lines"></tbody>
+                    </table>
+                    <h3 class="font-semibold mb-2">Affected Invoices</h3>
+                    <table class="fs-table w-full">
+                        <thead><tr><th>Invoice No</th><th>Date</th><th>Nett</th><th>Status</th><th>Change</th></tr></thead>
+                        <tbody id="cm-prod-invoices"></tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+</div>
+<script src="{{ url_for('static', filename='Invoice/correct-modal.js') }}"></script>
 </body>
 </html> 

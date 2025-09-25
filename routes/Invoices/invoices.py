@@ -348,3 +348,205 @@ def api_invoices_for_delivery_note(del_note_no):
     print(invoices)
     close_db_connection(cursor, conn)
     return jsonify(invoices)
+
+
+# =========================
+# Correct Invoice workflow
+# =========================
+
+@invoice_bp.route('/api/correct-invoice/agents')
+@role_required()
+def correct_invoice_agents():
+    """List available agents (markets)."""
+    conn = create_db_connection()
+    cursor = conn.cursor()
+    try:
+        cursor.execute("SELECT Account, Name FROM _uvMarketAgent ORDER BY Name")
+        rows = cursor.fetchall()
+        return jsonify([{"id": r[0], "name": r[1]} for r in rows])
+    finally:
+        close_db_connection(cursor, conn)
+
+
+
+
+@invoice_bp.route('/api/correct-invoice/old-prod-units-and-invoices/<del_note_no>')
+@role_required()
+def correct_invoice_old_prod_units_and_invoices(del_note_no):
+    """
+    Return production units currently used in delivery note and invoices for that delivery note.
+    """
+    conn = create_db_connection()
+    cursor = conn.cursor()
+    try:
+        # Fetch production units currently used in the delivery note
+        cursor.execute(
+            """
+            SELECT DISTINCT PU.ProjectLink, PU.ProdUnitName
+            FROM ZZDeliveryNoteHeader H
+            JOIN ZZDeliveryNoteLines L ON L.DelHeaderId = H.DelIndex
+            JOIN _uvMarketProdUnit PU ON PU.ProjectLink = L.DelLineFarmId
+            WHERE H.DelNoteNo = ?
+            ORDER BY PU.ProdUnitName
+            """,
+            (del_note_no,)
+        )
+        old_prod_units = [{"id": r[0], "name": r[1]} for r in cursor.fetchall()]
+        
+        # Fetch invoices for the delivery note (same as agent step)
+        cursor.execute("""
+            SELECT InvoiceIndex, InvoiceNo, InvoiceDate, InvoiceGross, InvoiceNett, Status
+            FROM _uvInvoiceSOStatus
+            WHERE InvoiceDelNoteNo = ?
+            ORDER BY InvoiceDate DESC, InvoiceIndex DESC
+        """, (del_note_no,))
+        invoice_rows = cursor.fetchall()
+        invoice_columns = [desc[0] for desc in cursor.description]
+        invoices = [dict(zip(invoice_columns, row)) for row in invoice_rows]
+        
+        return jsonify({"old_prod_units": old_prod_units, "invoices": invoices})
+    finally:
+        close_db_connection(cursor, conn)
+
+
+@invoice_bp.route('/api/correct-invoice/all-prod-units')
+@role_required()
+def correct_invoice_all_prod_units():
+    """
+    Return all available production units from _uvMarketProdUnit.
+    """
+    conn = create_db_connection()
+    cursor = conn.cursor()
+    try:
+        cursor.execute("SELECT ProjectLink, ProdUnitName FROM _uvMarketProdUnit ORDER BY ProdUnitName")
+        rows = cursor.fetchall()
+        return jsonify([{"id": r[0], "name": r[1]} for r in rows])
+    finally:
+        close_db_connection(cursor, conn)
+
+
+@invoice_bp.route('/api/correct-invoice/lines-and-invoices')
+@role_required()
+def correct_invoice_lines_and_invoices():
+    """
+    Given del_note_no and old_prod_unit_id, return lines under that prod unit and the invoices
+    that contain sales lines for those delivery lines.
+    """
+    del_note_no = request.args.get('del_note_no')
+    old_prod_unit_id = request.args.get('old_prod_unit_id')
+    if not del_note_no or not old_prod_unit_id:
+        return jsonify({"error": "del_note_no and old_prod_unit_id are required"}), 400
+
+    conn = create_db_connection()
+    cursor = conn.cursor()
+    try:
+        # Fetch delivery lines for the given production unit
+        cursor.execute(
+            """
+            SELECT L.DelLineIndex, P.ProductDescription, PU.ProdUnitName
+            FROM ZZDeliveryNoteHeader H
+            JOIN ZZDeliveryNoteLines L ON L.DelHeaderId = H.DelIndex
+            JOIN _uvMarketProduct P ON P.StockLink = L.DelLineStockId
+            JOIN _uvMarketProdUnit PU ON PU.ProjectLink = L.DelLineFarmId
+            WHERE H.DelNoteNo = ? AND L.DelLineFarmId = ?
+            ORDER BY L.DelLineIndex
+            """,
+            (del_note_no, old_prod_unit_id,)
+        )
+        line_rows = cursor.fetchall()
+
+        invoices = []
+        # Find invoices containing sales lines that reference these delivery lines
+        cursor.execute(
+            """
+        SELECT DISTINCT
+            INV.InvoiceIndex,
+            INV.InvoiceNo,
+            INV.InvoiceDate,
+            INV.InvoiceNett,
+            INV.Status,
+            DELL.DelLineIndex
+        FROM _uvInvoiceSOStatus INV
+        JOIN ZZInvoiceLines ZIL
+            ON ZIL.InvoiceHeaderId = INV.InvoiceIndex
+        JOIN ZZSalesLines ZSL
+            ON ZSL.SalesLineIndex = ZIL.InvoiceSaleLineIndex
+        JOIN ZZDeliveryNoteLines DELL
+            ON DELL.DelLineIndex = ZSL.SalesDelLineId
+        JOIN ZZDeliveryNoteHeader DELH
+            ON DELH.DelIndex = DELL.DelHeaderId
+        WHERE DELH.DelNoteNo = ?;
+            """, (del_note_no,)
+        )
+        invoices = [
+            {"InvoiceIndex": r[0], "InvoiceNo": r[1], "InvoiceDate": r[2], "InvoiceNett": r[3], "InvoiceStatus": r[4], "DelLineIndex": r[5]}
+            for r in cursor.fetchall()
+        ]
+
+        lines = [{"DelLineIndex": r[0], "ProductDescription": r[1], "ProdUnitName": r[2]} for r in line_rows]
+        return jsonify({"lines": lines, "invoices": invoices})
+    finally:
+        close_db_connection(cursor, conn)
+
+
+@invoice_bp.route('/api/correct-invoice/submit-agent-change', methods=['POST'])
+@role_required()
+def submit_agent_change():
+    data = request.get_json(force=True)
+    del_note_no = data.get('del_note_no')
+    new_agent_id = data.get('new_agent_id')
+    if not del_note_no or not new_agent_id:
+        return jsonify({"error": "del_note_no and new_agent_id are required"}), 400
+
+    conn = create_db_connection()
+    cursor = conn.cursor()
+    try:
+        # Update the delivery note header agent (client)
+        cursor.execute("""
+            EXEC [SIGUpdateProcessedAgentAccount]
+                @DelNoteNo = ?,
+                @NewAgentAccount = ?;
+            """,(del_note_no,new_agent_id,)
+        )
+        conn.commit()
+        return jsonify({"success": True})
+    except Exception as e:
+        conn.rollback()
+        return jsonify({"success": False, "error": str(e)}), 500
+    finally:
+        cursor.close()
+        conn.close()
+
+
+@invoice_bp.route('/api/correct-invoice/submit-produnit-change', methods=['POST'])
+@role_required()
+def submit_produnit_change():
+    data = request.get_json(force=True)
+    del_note_no = data.get('del_note_no')
+    old_prod_unit_id = data.get('old_prod_unit_id')
+    new_prod_unit_id = data.get('new_prod_unit_id')
+    if not del_note_no or not old_prod_unit_id or not new_prod_unit_id:
+        return jsonify({"error": "del_note_no, old_prod_unit_id, new_prod_unit_id are required"}), 400
+
+    conn = create_db_connection()
+    cursor = conn.cursor()
+    print(del_note_no, old_prod_unit_id, new_prod_unit_id)
+    try:
+        # Update lines for this delivery note that match the old production unit
+        cursor.execute(
+            """
+        EXEC [dbo].[SIGChangeProcessedProject]
+            @DelNoteNo       = ?,
+            @OldProjectId  = ?,
+            @NewProjectId  = ?;
+            """,
+            (del_note_no, old_prod_unit_id, new_prod_unit_id,)
+        )
+        conn.commit()
+        return jsonify({"success": True})
+    except Exception as e:
+        conn.rollback()
+        return jsonify({"success": False, "error": str(e)}), 500
+    finally:
+        cursor.close()
+        conn.close()
