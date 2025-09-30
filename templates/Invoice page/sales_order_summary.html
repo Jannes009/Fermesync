@@ -127,6 +127,9 @@
                     <a href="/create_sales_order" class="custom-btn">
                         <i class="fas fa-plus"></i> Create Sales Order
                     </a>
+                    <a onclick="RefreshInvoices()" class="custom-btn">
+                        <i class="fas fa-refresh"></i> Refresh Evo Invoices
+                    </a>
                     <div class="flex items-center">
                         <label class="switch">
                             <input type="checkbox" id="toggle-completed">
@@ -158,7 +161,28 @@
         </div>
     </div>
 </div>
+    <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
 <script>
+    function RefreshInvoices() {
+        fetch('/api/refresh-invoices', { method: 'POST' })
+            .then(response => {
+                if (!response.ok) throw new Error('Failed to refresh invoices');
+                return response.json();
+            })
+            .then(data => {
+                Swal.fire({
+                title: 'Success',
+                text: 'Invoices refreshed successfully.',
+                icon: 'success',
+                timer: 1500,
+                showConfirmButton: false
+                });
+                loadSalesOrders(); // Reload the sales orders
+            })
+            .catch(err => {
+                swal.fire('Error', err.message || 'Failed to refresh invoices.', 'error');
+            });
+    }
 function statusBadge(status) {
     let s = (status || '').toLowerCase();
     if (s === 'processed') return '<span class="badge badge-processed">Processed</span>';

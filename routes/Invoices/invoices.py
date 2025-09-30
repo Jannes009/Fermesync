@@ -349,6 +349,23 @@ def api_invoices_for_delivery_note(del_note_no):
     close_db_connection(cursor, conn)
     return jsonify(invoices)
 
+@invoice_bp.route('/api/refresh-invoices', methods=['POST'])
+@role_required()
+def refresh_invoices():
+    try:
+        conn = create_db_connection()
+        cursor = conn.cursor()
+        cursor.execute("EXEC [dbo].[SIGUpdateMarketFromEvoInvoices]" \
+        "; EXEC [dbo].[SIGRemoveCreditNotedInvoice];")
+        conn.commit()
+        return jsonify({'success': True, 'message': 'Invoices refreshed successfully.'})
+    except Exception as e:
+        return jsonify({'success': False, 'message': str(e)}), 500
+    finally:
+        if 'cursor' in locals():
+            cursor.close()
+        if 'conn' in locals():
+            conn.close()
 
 # =========================
 # Correct Invoice workflow
