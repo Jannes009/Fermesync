@@ -1,0 +1,449 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Reports</title>
+    <link rel="stylesheet" href="/static/color-template.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css">
+    <style>
+        body {
+            background: var(--primary-bg);
+            padding: 0;
+            margin: 0;
+            font-size: 0.95rem;
+            min-height: 100vh;
+            color: var(--primary-text);
+        }
+        .container-card {
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 2rem 1.2rem;
+        }
+        .with-fixed-taskbar {
+            padding-top: 4rem;
+        }
+        .button-container {
+            display: flex;
+            gap: 1rem;
+            padding: 1rem;
+            justify-content: center;
+        }
+        .dashboard-button {
+            background-color: var(--button-bg);
+            color: var(--button-text);
+            padding: 0.8rem 1.5rem;
+            border: none;
+            border-radius: 6px;
+            font-size: 1rem;
+            font-weight: 500;
+            cursor: pointer;
+            transition: background-color 0.2s;
+        }
+        .dashboard-button:hover {
+            background-color: var(--button-hover);
+        }
+        .dashboard-button:disabled {
+            background-color: var(--secondary-text);
+            cursor: not-allowed;
+            opacity: 0.6;
+        }
+        .report-content {
+            margin-top: 1rem;
+            padding: 1rem;
+        }
+        table {
+            width: 100%;
+            border-collapse: separate;
+            border-spacing: 0;
+            font-size: 0.95rem;
+            background: var(--container-bg);
+            border-radius: 8px;
+            overflow: hidden;
+            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+        }
+        th {
+            background: var(--table-header-bg);
+            color: var(--table-header-text);
+            font-weight: 700;
+            border: none;
+            padding: 0.6em 0.8em;
+            text-align: left;
+        }
+        td {
+            border: none;
+            padding: 0.6em 0.8em;
+            color: var(--primary-text);
+            background: var(--table-row-uneven);
+            vertical-align: middle;
+        }
+        tr:not(:last-child) td {
+            border-bottom: 1px solid var(--table-border);
+        }
+        tr.agent, tr.market {
+            font-weight: bold;
+            background: var(--table-row-hover);
+            cursor: pointer;
+        }
+        tr.product {
+            font-style: italic;
+            background: var(--table-row-uneven);
+        }
+        tr.product td:first-child {
+            padding-left: 20px;
+        }
+        .hidden {
+            display: none;
+        }
+        .filters-section {
+            margin-top: 1rem;
+            padding: 1.2rem;
+            border-radius: 12px;
+            background: var(--container-bg);
+            box-shadow: 0 4px 24px 0 rgba(44, 62, 80, 0.08);
+            transition: box-shadow 0.2s;
+        }
+        .filters-section:hover {
+            box-shadow: 0 8px 32px 0 rgba(44, 62, 80, 0.16);
+        }
+        .filters-toggle {
+            background-color: var(--button-bg);
+            color: var(--button-text);
+            padding: 0.5rem 1rem;
+            border: none;
+            border-radius: 6px;
+            cursor: pointer;
+            font-size: 0.9rem;
+            font-weight: 500;
+            transition: background-color 0.2s;
+        }
+        .filters-toggle:disabled {
+            background-color: var(--secondary-text);
+            cursor: not-allowed;
+            opacity: 0.6;
+        }
+        .filters-toggle:hover {
+            background-color: var(--button-hover);
+        }
+        .filters-content {
+            display: none;
+            margin-top: 1rem;
+        }
+        .filters-content.show {
+            display: block;
+        }
+        .slicer-group {
+            margin-bottom: 1rem;
+        }
+        .slicer-group label {
+            font-weight: 600;
+            color: var(--primary-text);
+            margin-right: 0.5rem;
+        }
+        .custom-btn {
+            background-color: var(--button-bg);
+            border: 1px solid var(--button-bg);
+            color: var(--button-text);
+            padding: 0.3em 0.7em;
+            border-radius: 6px;
+            font-size: 0.8rem;
+            cursor: pointer;
+            transition: all 0.2s ease;
+            text-decoration: none;
+            display: inline-block;
+            margin: 0.2rem;
+        }
+        .custom-btn:hover {
+            background-color: var(--button-hover);
+            border-color: var(--button-hover);
+        }
+        .custom-btn.active {
+            background-color: var(--table-header-bg);
+            color: var(--logo-color);
+            font-weight: 600;
+        }
+        .custom-btn.btn-primary {
+            background-color: var(--button-bg);
+            border-color: var(--button-bg);
+        }
+        .custom-btn.btn-primary:hover {
+            background-color: var(--button-hover);
+            border-color: var(--button-hover);
+        }
+        .custom-btn:disabled {
+            background-color: var(--secondary-text);
+            cursor: not-allowed;
+            opacity: 0.6;
+        }
+        .loading-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0, 0, 0, 0.5);
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            z-index: 1000;
+        }
+        .loading-content {
+            background: var(--container-bg);
+            padding: 2rem;
+            border-radius: 8px;
+            text-align: center;
+            box-shadow: 0 4px 24px rgba(0, 0, 0, 0.2);
+        }
+        .spinner {
+            display: inline-block;
+            width: 1rem;
+            height: 1rem;
+            border: 2px solid var(--input-border);
+            border-radius: 50%;
+            border-top-color: var(--button-bg);
+            animation: spin 1s ease-in-out infinite;
+            margin-right: 0.5rem;
+        }
+        @keyframes spin {
+            to { transform: rotate(360deg); }
+        }
+    </style>
+</head>
+<body>
+    {% include 'taskbar.html' %}
+    <div class="loading-overlay" id="loadingOverlay">
+        <div class="loading-content">
+            <div class="spinner"></div>
+            <div>Loading report data, please wait...</div>
+        </div>
+    </div>
+    <div class="container-card with-fixed-taskbar">
+        <h1>Reports</h1>
+        <div class="button-container">
+            <button class="dashboard-button" data-report="quantities" disabled>Quantities</button>
+            <button class="dashboard-button" data-report="nettamounts" disabled>NettAmounts</button>
+            <button class="dashboard-button" data-report="summary" disabled>Summary</button>
+            <button class="dashboard-button" data-report="peragent" disabled>PerAgent</button>
+        </div>
+        <div class="filters-section">
+            <button class="filters-toggle" onclick="toggleFilters()" disabled><i class="fas fa-filter"></i> Filters</button>
+            <div class="filters-content" id="filtersContent"></div>
+        </div>
+        <div class="report-content">
+            <!-- Quantities Template -->
+            <div id="delivery-note-quantities" class="hidden" data-report-content="quantities">
+                <h1>Delivery Note Quantities Report</h1>
+                <table id="quantitiesTable">
+                    <thead>
+                        <tr>
+                            <th>Label</th>
+                            <th>Delivered Qty</th>
+                            <th>Sold Qty</th>
+                            <th>Invoiced Qty</th>
+                            <th>Not Sold Qty</th>
+                        </tr>
+                    </thead>
+                    <tbody></tbody>
+                </table>
+            </div>
+            <!-- NettAmounts Template -->
+            <div id="delivery-note-nettamounts" class="hidden" data-report-content="nettamounts">
+                <h1>Delivery Note Nett Amounts Report</h1>
+                <table id="nettAmountsTable">
+                    <thead>
+                        <tr>
+                            <th>Row Labels</th>
+                            <th>Estimated Nett Amount</th>
+                            <th>Sold Nett Amount</th>
+                            <th>Invoiced Nett Amount</th>
+                            <th>Average Price Sold</th>
+                            <th>Delivered Transport Cost</th>
+                            <th>Invoiced After Transport</th>
+                        </tr>
+                    </thead>
+                    <tbody></tbody>
+                </table>
+            </div>
+            <!-- Summary Template -->
+            <div id="delivery-note-summary" class="hidden" data-report-content="summary">
+                <h1>Delivery Note Summary Report</h1>
+                <table id="summaryTable">
+                    <thead>
+                        <tr>
+                            <th>Row Labels</th>
+                            <th>Del10kg</th>
+                            <th>Sold10kg</th>
+                            <th>Destr10kg</th>
+                            <th>NotSold10kg</th>
+                            <th>Gross Sales</th>
+                            <th>Total Cost</th>
+                            <th>Nett Sales</th>
+                            <th>Nett Price/10kg</th>
+                            <th>Sold Transport</th>
+                            <th>Sales After Trans</th>
+                            <th>After Trans Per 10kg</th>
+                        </tr>
+                    </thead>
+                    <tbody></tbody>
+                </table>
+            </div>
+            <!-- PerAgent Template -->
+            <div id="delivery-note-peragent" class="hidden" data-report-content="peragent">
+                <h1>Delivery Note Per Agent Report</h1>
+                <table id="perAgentTable">
+                    <thead>
+                        <tr>
+                            <th>Row Labels</th>
+                            <th>Sold10kg</th>
+                            <th>Gross Sales</th>
+                            <th>Total Cost</th>
+                            <th>Nett Sales</th>
+                            <th>Nett Price/10kg</th>
+                            <th>Sold Transport</th>
+                            <th>Sales After Trans</th>
+                            <th>After Trans/10kg</th>
+                        </tr>
+                    </thead>
+                    <tbody></tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+    <script>
+    function toggleFilters() {
+        const content = document.getElementById("filtersContent");
+        content.classList.toggle("show");
+    }
+
+    function showLoadingOverlay() {
+        document.getElementById("loadingOverlay").style.display = "flex";
+        document.querySelectorAll(".dashboard-button, .filters-toggle, .custom-btn").forEach(el => {
+            el.disabled = true;
+        });
+    }
+
+    function hideLoadingOverlay() {
+        document.getElementById("loadingOverlay").style.display = "none";
+        document.querySelectorAll(".dashboard-button, .filters-toggle, .custom-btn").forEach(el => {
+            el.disabled = false;
+        });
+    }
+
+    function applyGlobalFilters(data) {
+        if (window.activePackhouse) data = data.filter(r => r.marketname === window.activePackhouse);
+        if (window.activeAgentName) data = data.filter(r => r.agentname === window.activeAgentName);
+        if (window.activeProduct) data = data.filter(r => r.product === window.activeProduct);
+        if (window.activeClass) data = data.filter(r => r.class === window.activeClass);
+        if (window.activeSize) data = data.filter(r => r.size === window.activeSize);
+        if (window.activeBrand) data = data.filter(r => r.brand === window.activeBrand);
+        if (window.activeVariety) data = data.filter(r => r.variety === window.activeVariety);
+        if (window.activeMainProdUnitName) data = data.filter(r => r.mainprodunitname === window.activeMainProdUnitName);
+        if (window.activeProdUnitName) data = data.filter(r => r.produnitname === window.activeProdUnitName);
+        return data;
+    }
+
+    function renderGlobalSlicers() {
+        const filtersContent = document.getElementById("filtersContent");
+        filtersContent.innerHTML = "";
+
+        const slicerConfigs = [
+            { label: "Packhouse", field: "marketname", activeVar: "activePackhouse" },
+            { label: "Agent Name", field: "agentname", activeVar: "activeAgentName" },
+            { label: "Product", field: "product", activeVar: "activeProduct" },
+            { label: "Class", field: "class", activeVar: "activeClass" },
+            { label: "Size", field: "size", activeVar: "activeSize" },
+            { label: "Brand", field: "brand", activeVar: "activeBrand" },
+            { label: "Variety", field: "variety", activeVar: "activeVariety" },
+            { label: "Main Prod Unit", field: "mainprodunitname", activeVar: "activeMainProdUnitName" },
+            { label: "Prod Unit", field: "produnitname", activeVar: "activeProdUnitName" }
+        ];
+
+        slicerConfigs.forEach(config => {
+            const uniqueValues = [...new Set(window.data.map(r => r[config.field]))].filter(v => v);
+            if (uniqueValues.length > 0) {
+                const groupDiv = document.createElement("div");
+                groupDiv.className = "slicer-group";
+                groupDiv.innerHTML = `<label>${config.label}:</label>`;
+                uniqueValues.sort().forEach(val => {
+                    const btn = document.createElement("button");
+                    btn.className = "custom-btn btn-primary btn-sm";
+                    btn.textContent = val;
+                    btn.onclick = () => {
+                        window[config.activeVar] = window[config.activeVar] === val ? null : val;
+                        groupDiv.querySelectorAll(".custom-btn").forEach(b => b.classList.remove("active"));
+                        if (window[config.activeVar]) btn.classList.add("active");
+                        showLoadingOverlay();
+                        reloadCurrentReport();
+                    };
+                    groupDiv.appendChild(btn);
+                });
+                filtersContent.appendChild(groupDiv);
+            }
+        });
+    }
+
+    function reloadCurrentReport() {
+        if (!window.currentReportType) {
+            hideLoadingOverlay();
+            return;
+        }
+        switch (window.currentReportType) {
+            case "quantities":
+                loadQuantitiesReport().finally(hideLoadingOverlay);
+                break;
+            case "nettamounts":
+                loadNettAmountsReport().finally(hideLoadingOverlay);
+                break;
+            case "summary":
+                loadSummaryReport().finally(hideLoadingOverlay);
+                break;
+            case "peragent":
+                loadPerAgentReport().finally(hideLoadingOverlay);
+                break;
+        }
+    }
+
+    document.addEventListener("DOMContentLoaded", async () => {
+        showLoadingOverlay();
+        try {
+            const response = await fetch("/api/fetch-delivery-note-report");
+            window.data = await response.json();
+            renderGlobalSlicers();
+            hideLoadingOverlay();
+
+            const buttons = document.querySelectorAll(".dashboard-button");
+            const reportContents = document.querySelectorAll(".report-content > div");
+
+            buttons.forEach(button => {
+                button.addEventListener("click", () => {
+                    const reportType = button.dataset.report;
+                    window.currentReportType = reportType;
+
+                    reportContents.forEach(content => {
+                        content.classList.add("hidden");
+                    });
+
+                    const selectedContent = document.querySelector(`[data-report-content="${reportType}"]`);
+                    if (selectedContent) {
+                        selectedContent.classList.remove("hidden");
+                        showLoadingOverlay();
+                        reloadCurrentReport();
+                    }
+                });
+            });
+        } catch (err) {
+            document.getElementById("loadingOverlay").innerHTML = `
+                <div class="loading-content">
+                    <div class="alert alert-danger">Failed to load report data. Please try again later.</div>
+                </div>
+            `;
+        }
+    });
+    </script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/js/all.min.js"></script>
+    <script src="{{ url_for('static', filename='reports/quantities.js') }}"></script>
+    <script src="{{ url_for('static', filename='reports/nettamounts.js') }}"></script>
+    <script src="{{ url_for('static', filename='reports/summary.js') }}"></script>
+    <script src="{{ url_for('static', filename='reports/peragent.js') }}"></script>
+</body>
+</html>
