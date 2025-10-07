@@ -159,7 +159,6 @@ body {
       margin-bottom: 2rem;
       padding: 1.2rem 1.2rem 0.8rem 1.2rem;
       transition: box-shadow 0.2s;
-      /* width:65% */
     }
     .container-card:hover {
       box-shadow: 0 8px 32px 0 rgba(44, 62, 80, 0.16);

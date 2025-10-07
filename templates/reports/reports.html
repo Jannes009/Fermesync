@@ -6,6 +6,8 @@
     <title>Reports</title>
     <link rel="stylesheet" href="/static/color-template.css">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css">
+    <!-- Optional: Add Danfo.js for large datasets -->
+    <!-- <script src="https://cdn.jsdelivr.net/npm/danfojs@1.1.2/lib/danfo.min.js"></script> -->
     <style>
         body {
             background: var(--primary-bg);
@@ -15,10 +17,27 @@
             min-height: 100vh;
             color: var(--primary-text);
         }
-        .container-card {
+        .report-container {
+            max-width: 1400px;
+            margin: 0 auto;
+            padding: 0 1.2rem;
+        }
+        .main-content {
+            padding: 2rem 0;
+        }
+        .container-wide {
             max-width: 1200px;
             margin: 0 auto;
-            padding: 2rem 1.2rem;
+            padding: 0 1.2rem;
+            display: flex;
+            gap: 1.5rem;
+        }
+        .sidebar {
+            flex: 0 0 250px;
+            min-width: 250px;
+        }
+        .content {
+            flex: 1;
         }
         .with-fixed-taskbar {
             padding-top: 4rem;
@@ -29,7 +48,7 @@
             padding: 1rem;
             justify-content: center;
         }
-        .dashboard-button {
+        .dashboard-button, .print-button, .create-report-button {
             background-color: var(--button-bg);
             color: var(--button-text);
             padding: 0.8rem 1.5rem;
@@ -40,10 +59,10 @@
             cursor: pointer;
             transition: background-color 0.2s;
         }
-        .dashboard-button:hover {
+        .dashboard-button:hover, .print-button:hover, .create-report-button:hover {
             background-color: var(--button-hover);
         }
-        .dashboard-button:disabled {
+        .dashboard-button:disabled, .print-button:disabled, .create-report-button:disabled {
             background-color: var(--secondary-text);
             cursor: not-allowed;
             opacity: 0.6;
@@ -51,6 +70,43 @@
         .report-content {
             margin-top: 1rem;
             padding: 1rem;
+        }
+        .report-creation-section {
+            padding: 1.2rem;
+            border-radius: 12px;
+            background: var(--container-bg);
+            box-shadow: 0 4px 24px 0 rgba(44, 62, 80, 0.08);
+            transition: box-shadow 0.2s;
+            margin-bottom: 1.5rem;
+        }
+        .report-creation-section:hover {
+            box-shadow: 0 8px 32px 0 rgba(44, 62, 80, 0.16);
+        }
+        .report-creation-section label {
+            font-weight: 600;
+            color: var(--primary-text);
+            margin-right: 0.5rem;
+        }
+        .report-creation-section input[type="date"] {
+            padding: 0.5rem;
+            border: 1px solid var(--input-border);
+            border-radius: 6px;
+            background: var(--input-bg);
+            color: var(--primary-text);
+            font-size: 0.9rem;
+            margin-right: 1rem;
+        }
+        .report-creation-section .date-inputs {
+            display: flex;
+            align-items: center;
+            gap: 1rem;
+            margin-bottom: 1rem;
+        }
+        .report-parameters {
+            margin-top: 0.5rem;
+            font-size: 0.9rem;
+            color: var(--secondary-text);
+            font-style: italic;
         }
         table {
             width: 100%;
@@ -80,7 +136,7 @@
         tr:not(:last-child) td {
             border-bottom: 1px solid var(--table-border);
         }
-        tr.agent, tr.market {
+        tr.agent, tr.market, tr.date, tr.note {
             font-weight: bold;
             background: var(--table-row-hover);
             cursor: pointer;
@@ -92,11 +148,14 @@
         tr.product td:first-child {
             padding-left: 20px;
         }
+        tr.hover:hover td{
+            background: var(--table-row-hover);
+            transition: background 0.15s;
+        }
         .hidden {
             display: none;
         }
         .filters-section {
-            margin-top: 1rem;
             padding: 1.2rem;
             border-radius: 12px;
             background: var(--container-bg);
@@ -116,6 +175,8 @@
             font-size: 0.9rem;
             font-weight: 500;
             transition: background-color 0.2s;
+            width: 100%;
+            text-align: left;
         }
         .filters-toggle:disabled {
             background-color: var(--secondary-text);
@@ -134,11 +195,38 @@
         }
         .slicer-group {
             margin-bottom: 1rem;
+            background: var(--container-bg);
+            border: 1px solid var(--table-border);
+            border-radius: 6px;
+            padding: 0.5rem;
+            height: 150px;
+            width: 200px;
+            overflow-y: auto;
+            position: relative;
+            scrollbar-width: thin;
+            scrollbar-color: #6c757d #f8f9fa;
         }
         .slicer-group label {
             font-weight: 600;
             color: var(--primary-text);
-            margin-right: 0.5rem;
+            margin-bottom: 0.5rem;
+            display: block;
+            padding-left: 0.5rem;
+            padding-right: 25px;
+        }
+        .slicer-group::-webkit-scrollbar {
+            width: 8px;
+        }
+        .slicer-group::-webkit-scrollbar-track {
+            background: #f8f9fa;
+            border-radius: 4px;
+        }
+        .slicer-group::-webkit-scrollbar-thumb {
+            background: #6c757d;
+            border-radius: 4px;
+        }
+        .slicer-group::-webkit-scrollbar-thumb:hover {
+            background: #495057;
         }
         .custom-btn {
             background-color: var(--button-bg);
@@ -150,8 +238,10 @@
             cursor: pointer;
             transition: all 0.2s ease;
             text-decoration: none;
-            display: inline-block;
-            margin: 0.2rem;
+            display: block;
+            margin: 0.2rem 0.5rem;
+            text-align: left;
+            width: calc(100% - 1rem);
         }
         .custom-btn:hover {
             background-color: var(--button-hover);
@@ -174,6 +264,36 @@
             background-color: var(--secondary-text);
             cursor: not-allowed;
             opacity: 0.6;
+        }
+        .slicer-clear-btn {
+            position: absolute;
+            top: 8px;
+            right: 8px;
+            width: 20px;
+            height: 20px;
+            background: #dc3545;
+            color: white;
+            border: none;
+            border-radius: 50%;
+            cursor: pointer;
+            font-size: 12px;
+            font-weight: bold;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 0;
+            transition: all 0.2s ease;
+        }
+        .slicer-clear-btn:hover {
+            background: #c82333;
+            transform: scale(1.1);
+        }
+        .slicer-clear-btn:active {
+            transform: scale(0.95);
+        }
+        .slicer-options {
+            max-height: 120px;
+            overflow-y: auto;
         }
         .loading-overlay {
             position: fixed;
@@ -207,243 +327,624 @@
         @keyframes spin {
             to { transform: rotate(360deg); }
         }
+        @media (max-width: 768px) {
+            .container-wide {
+                flex-direction: column;
+                gap: 1rem;
+            }
+            .sidebar, .content {
+                flex: 0 0 100%;
+                min-width: 100%;
+            }
+            .report-creation-section .date-inputs {
+                flex-direction: column;
+                align-items: flex-start;
+            }
+        }
+        #pdfContent {
+            position: absolute;
+            left: -9999px;
+            top: 0;
+            font-family: Arial, sans-serif;
+            width: 100%;
+            max-width: 595px;
+        }
+        #svgContainer {
+            display: none;
+        }
+        #logoContainer {
+            text-align: center;
+            margin-bottom: 20px;
+        }
+        #logoContainer img, #logoContainer div {
+            margin: 0 auto;
+        }
     </style>
 </head>
 <body>
     {% include 'taskbar.html' %}
-    <div class="loading-overlay" id="loadingOverlay">
+    <div class="loading-overlay hidden" id="loadingOverlay">
         <div class="loading-content">
             <div class="spinner"></div>
             <div>Loading report data, please wait...</div>
         </div>
     </div>
-    <div class="container-card with-fixed-taskbar">
-        <h1>Reports</h1>
-        <div class="button-container">
-            <button class="dashboard-button" data-report="quantities" disabled>Quantities</button>
-            <button class="dashboard-button" data-report="nettamounts" disabled>NettAmounts</button>
-            <button class="dashboard-button" data-report="summary" disabled>Summary</button>
-            <button class="dashboard-button" data-report="peragent" disabled>PerAgent</button>
-        </div>
-        <div class="filters-section">
-            <button class="filters-toggle" onclick="toggleFilters()" disabled><i class="fas fa-filter"></i> Filters</button>
-            <div class="filters-content" id="filtersContent"></div>
-        </div>
-        <div class="report-content">
-            <!-- Quantities Template -->
-            <div id="delivery-note-quantities" class="hidden" data-report-content="quantities">
-                <h1>Delivery Note Quantities Report</h1>
-                <table id="quantitiesTable">
-                    <thead>
-                        <tr>
-                            <th>Label</th>
-                            <th>Delivered Qty</th>
-                            <th>Sold Qty</th>
-                            <th>Invoiced Qty</th>
-                            <th>Not Sold Qty</th>
-                        </tr>
-                    </thead>
-                    <tbody></tbody>
-                </table>
+    <div class="report-container">
+        <div class="container-card main-content with-fixed-taskbar">
+            <div class="report-creation-section">
+                <h2>Create Report</h2>
+                <div class="date-inputs">
+                    <label for="startDate">Start Date:</label>
+                    <input type="date" id="startDate" name="startDate">
+                    <label for="endDate">End Date:</label>
+                    <input type="date" id="endDate" name="endDate">
+                    <button class="create-report-button" onclick="fetchData()">Create Report</button>
+                </div>
+                <div class="report-parameters" id="reportParameters"></div>
             </div>
-            <!-- NettAmounts Template -->
-            <div id="delivery-note-nettamounts" class="hidden" data-report-content="nettamounts">
-                <h1>Delivery Note Nett Amounts Report</h1>
-                <table id="nettAmountsTable">
-                    <thead>
-                        <tr>
-                            <th>Row Labels</th>
-                            <th>Estimated Nett Amount</th>
-                            <th>Sold Nett Amount</th>
-                            <th>Invoiced Nett Amount</th>
-                            <th>Average Price Sold</th>
-                            <th>Delivered Transport Cost</th>
-                            <th>Invoiced After Transport</th>
-                        </tr>
-                    </thead>
-                    <tbody></tbody>
-                </table>
-            </div>
-            <!-- Summary Template -->
-            <div id="delivery-note-summary" class="hidden" data-report-content="summary">
-                <h1>Delivery Note Summary Report</h1>
-                <table id="summaryTable">
-                    <thead>
-                        <tr>
-                            <th>Row Labels</th>
-                            <th>Del10kg</th>
-                            <th>Sold10kg</th>
-                            <th>Destr10kg</th>
-                            <th>NotSold10kg</th>
-                            <th>Gross Sales</th>
-                            <th>Total Cost</th>
-                            <th>Nett Sales</th>
-                            <th>Nett Price/10kg</th>
-                            <th>Sold Transport</th>
-                            <th>Sales After Trans</th>
-                            <th>After Trans Per 10kg</th>
-                        </tr>
-                    </thead>
-                    <tbody></tbody>
-                </table>
-            </div>
-            <!-- PerAgent Template -->
-            <div id="delivery-note-peragent" class="hidden" data-report-content="peragent">
-                <h1>Delivery Note Per Agent Report</h1>
-                <table id="perAgentTable">
-                    <thead>
-                        <tr>
-                            <th>Row Labels</th>
-                            <th>Sold10kg</th>
-                            <th>Gross Sales</th>
-                            <th>Total Cost</th>
-                            <th>Nett Sales</th>
-                            <th>Nett Price/10kg</th>
-                            <th>Sold Transport</th>
-                            <th>Sales After Trans</th>
-                            <th>After Trans/10kg</th>
-                        </tr>
-                    </thead>
-                    <tbody></tbody>
-                </table>
+            <div class="container-wide">
+                <div class="sidebar">
+                    <div class="filters-section">
+                        <button class="filters-toggle" onclick="toggleFilters()" disabled><i class="fas fa-filter"></i> Filters</button>
+                        <div class="filters-content" id="filtersContent"></div>
+                    </div>
+                </div>
+                <div class="content">
+                    <h1>Reports</h1>
+                    <div class="button-container">
+                        <button class="dashboard-button" data-report="quantities" disabled>Quantities</button>
+                        <button class="dashboard-button" data-report="nettamounts" disabled>NettAmounts</button>
+                        <button class="dashboard-button" data-report="summary" disabled>Summary</button>
+                        <button class="dashboard-button" data-report="peragent" disabled>PerAgent</button>
+                        <button class="print-button" onclick="generatePDF()" disabled><i class="fas fa-print"></i> Print</button>
+                    </div>
+                    <div class="report-content">
+                        <!-- Quantities Template -->
+                        <div id="delivery-note-quantities" class="hidden" data-report-content="quantities">
+                            <h1>Delivery Note Quantities Report</h1>
+                            <table id="quantitiesTable">
+                                <thead>
+                                    <tr>
+                                        <th>Label</th>
+                                        <th>Delivered Qty</th>
+                                        <th>Sold Qty</th>
+                                        <th>Invoiced Qty</th>
+                                        <th>Not Sold Qty</th>
+                                    </tr>
+                                </thead>
+                                <tbody></tbody>
+                            </table>
+                        </div>
+                        <!-- NettAmounts Template -->
+                        <div id="delivery-note-nettamounts" class="hidden" data-report-content="nettamounts">
+                            <h1>Delivery Note Nett Amounts Report</h1>
+                            <table id="nettAmountsTable">
+                                <thead>
+                                    <tr>
+                                        <th>Row Labels</th>
+                                        <th>Estimated Nett Amount</th>
+                                        <th>Sold Nett Amount</th>
+                                        <th>Invoiced Nett Amount</th>
+                                        <th>Average Price Sold</th>
+                                        <th>Delivered Transport Cost</th>
+                                        <th>Invoiced After Transport</th>
+                                    </tr>
+                                </thead>
+                                <tbody></tbody>
+                            </table>
+                        </div>
+                        <!-- Summary Template -->
+                        <div id="delivery-note-summary" class="hidden" data-report-content="summary">
+                            <h1>Delivery Note Summary Report</h1>
+                            <table id="summaryTable">
+                                <thead>
+                                    <tr>
+                                        <th>Row Labels</th>
+                                        <th>Del10kg</th>
+                                        <th>Sold10kg</th>
+                                        <th>Destr10kg</th>
+                                        <th>NotSold10kg</th>
+                                        <th>Gross Sales</th>
+                                        <th>Total Cost</th>
+                                        <th>Nett Sales</th>
+                                        <th>Nett Price/10kg</th>
+                                        <th>Sold Transport</th>
+                                        <th>Sales After Trans</th>
+                                        <th>After Trans Per 10kg</th>
+                                    </tr>
+                                </thead>
+                                <tbody></tbody>
+                            </table>
+                        </div>
+                        <!-- PerAgent Template -->
+                        <div id="delivery-note-peragent" class="hidden" data-report-content="peragent">
+                            <h1>Delivery Note Per Agent Report</h1>
+                            <table id="perAgentTable">
+                                <thead>
+                                    <tr>
+                                        <th>Row Labels</th>
+                                        <th>Sold10kg</th>
+                                        <th>Gross Sales</th>
+                                        <th>Total Cost</th>
+                                        <th>Nett Sales</th>
+                                        <th>Nett Price/10kg</th>
+                                        <th>Sold Transport</th>
+                                        <th>Sales After Trans</th>
+                                        <th>After Trans/10kg</th>
+                                    </tr>
+                                </thead>
+                                <tbody></tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
             </div>
         </div>
     </div>
+    <div id="pdfContent">
+        <div id="logoContainer">
+            <img id="pdfLogo" src="/static/Image/LogoIcon.svg" alt="Logo" style="max-width: 150px; display: none;">
+            <div id="logoText" style="font-size: 24px; font-weight: bold; color: var(--primary-text); display: none;">Company Logo</div>
+            <div id="logoError" style="display: none; color: var(--primary-text); font-style: italic;">Logo unavailable</div>
+        </div>
+        <h1 style="font-size: 24px; color: var(--primary-text); margin-bottom: 20px; text-align: center;"></h1>
+        <h2 style="font-size: 18px; color: var(--primary-text); margin-bottom: 10px;">Report Parameters</h2>
+        <ul id="filterList" style="margin-bottom: 20px; padding-left: 20px;"></ul>
+        <div id="reportTable" style="font-family: Arial, sans-serif; font-size: 12px;"></div>
+    </div>
+    <div id="svgContainer" style="display: none;"></div>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
     <script>
-    function toggleFilters() {
-        const content = document.getElementById("filtersContent");
-        content.classList.toggle("show");
-    }
-
-    function showLoadingOverlay() {
-        document.getElementById("loadingOverlay").style.display = "flex";
-        document.querySelectorAll(".dashboard-button, .filters-toggle, .custom-btn").forEach(el => {
-            el.disabled = true;
-        });
-    }
-
-    function hideLoadingOverlay() {
-        document.getElementById("loadingOverlay").style.display = "none";
-        document.querySelectorAll(".dashboard-button, .filters-toggle, .custom-btn").forEach(el => {
-            el.disabled = false;
-        });
-    }
-
-    function applyGlobalFilters(data) {
-        if (window.activePackhouse) data = data.filter(r => r.marketname === window.activePackhouse);
-        if (window.activeAgentName) data = data.filter(r => r.agentname === window.activeAgentName);
-        if (window.activeProduct) data = data.filter(r => r.product === window.activeProduct);
-        if (window.activeClass) data = data.filter(r => r.class === window.activeClass);
-        if (window.activeSize) data = data.filter(r => r.size === window.activeSize);
-        if (window.activeBrand) data = data.filter(r => r.brand === window.activeBrand);
-        if (window.activeVariety) data = data.filter(r => r.variety === window.activeVariety);
-        if (window.activeMainProdUnitName) data = data.filter(r => r.mainprodunitname === window.activeMainProdUnitName);
-        if (window.activeProdUnitName) data = data.filter(r => r.produnitname === window.activeProdUnitName);
-        return data;
-    }
-
-    function renderGlobalSlicers() {
-        const filtersContent = document.getElementById("filtersContent");
-        filtersContent.innerHTML = "";
-
-        const slicerConfigs = [
-            { label: "Packhouse", field: "marketname", activeVar: "activePackhouse" },
-            { label: "Agent Name", field: "agentname", activeVar: "activeAgentName" },
-            { label: "Product", field: "product", activeVar: "activeProduct" },
-            { label: "Class", field: "class", activeVar: "activeClass" },
-            { label: "Size", field: "size", activeVar: "activeSize" },
-            { label: "Brand", field: "brand", activeVar: "activeBrand" },
-            { label: "Variety", field: "variety", activeVar: "activeVariety" },
-            { label: "Main Prod Unit", field: "mainprodunitname", activeVar: "activeMainProdUnitName" },
-            { label: "Prod Unit", field: "produnitname", activeVar: "activeProdUnitName" }
-        ];
-
-        slicerConfigs.forEach(config => {
-            const uniqueValues = [...new Set(window.data.map(r => r[config.field]))].filter(v => v);
-            if (uniqueValues.length > 0) {
-                const groupDiv = document.createElement("div");
-                groupDiv.className = "slicer-group";
-                groupDiv.innerHTML = `<label>${config.label}:</label>`;
-                uniqueValues.sort().forEach(val => {
-                    const btn = document.createElement("button");
-                    btn.className = "custom-btn btn-primary btn-sm";
-                    btn.textContent = val;
-                    btn.onclick = () => {
-                        window[config.activeVar] = window[config.activeVar] === val ? null : val;
-                        groupDiv.querySelectorAll(".custom-btn").forEach(b => b.classList.remove("active"));
-                        if (window[config.activeVar]) btn.classList.add("active");
-                        showLoadingOverlay();
-                        reloadCurrentReport();
-                    };
-                    groupDiv.appendChild(btn);
-                });
-                filtersContent.appendChild(groupDiv);
-            }
-        });
-    }
-
-    function reloadCurrentReport() {
-        if (!window.currentReportType) {
-            hideLoadingOverlay();
-            return;
+        // Enable debug logging
+        window.debugMode = true;
+        function debugLog(...args) {
+            if (window.debugMode) console.log(...args);
         }
-        switch (window.currentReportType) {
-            case "quantities":
-                loadQuantitiesReport().finally(hideLoadingOverlay);
-                break;
-            case "nettamounts":
-                loadNettAmountsReport().finally(hideLoadingOverlay);
-                break;
-            case "summary":
-                loadSummaryReport().finally(hideLoadingOverlay);
-                break;
-            case "peragent":
-                loadPerAgentReport().finally(hideLoadingOverlay);
-                break;
+
+        function toggleFilters() {
+            const content = document.getElementById("filtersContent");
+            content.classList.toggle("show");
         }
-    }
 
-    document.addEventListener("DOMContentLoaded", async () => {
-        showLoadingOverlay();
-        try {
-            const response = await fetch("/api/fetch-delivery-note-report");
-            window.data = await response.json();
-            renderGlobalSlicers();
-            hideLoadingOverlay();
-
-            const buttons = document.querySelectorAll(".dashboard-button");
-            const reportContents = document.querySelectorAll(".report-content > div");
-
-            buttons.forEach(button => {
-                button.addEventListener("click", () => {
-                    const reportType = button.dataset.report;
-                    window.currentReportType = reportType;
-
-                    reportContents.forEach(content => {
-                        content.classList.add("hidden");
-                    });
-
-                    const selectedContent = document.querySelector(`[data-report-content="${reportType}"]`);
-                    if (selectedContent) {
-                        selectedContent.classList.remove("hidden");
-                        showLoadingOverlay();
-                        reloadCurrentReport();
-                    }
-                });
-            });
-        } catch (err) {
-            document.getElementById("loadingOverlay").innerHTML = `
+        function showLoadingOverlay(message = "Creating report, please wait...") {
+            const overlay = document.getElementById("loadingOverlay");
+            overlay.innerHTML = `
                 <div class="loading-content">
-                    <div class="alert alert-danger">Failed to load report data. Please try again later.</div>
+                    <div class="spinner"></div>
+                    <div>${message}</div>
                 </div>
             `;
+            overlay.style.display = "flex";
+            document.querySelectorAll(".dashboard-button, .filters-toggle, .custom-btn, .print-button, .create-report-button").forEach(el => {
+                el.disabled = true;
+            });
+        }
+
+        function hideLoadingOverlay() {
+            document.getElementById("loadingOverlay").style.display = "none";
+            document.querySelectorAll(".dashboard-button, .filters-toggle, .custom-btn, .print-button, .create-report-button").forEach(el => {
+                el.disabled = false;
+            });
+        }
+
+        // Initialize active selections as arrays for multi-select
+        window.activePackhouse = [];
+        window.activeAgentName = [];
+        window.activeProduct = [];
+        window.activeClass = [];
+        window.activeSize = [];
+        window.activeBrand = [];
+        window.activeVariety = [];
+        window.activeMainProdUnitName = [];
+        window.activeProdUnitName = [];
+        window.reportParameters = { startDate: null, endDate: null };
+
+// Updated applyGlobalFilters to handle arrays and allow excluding specific filters
+function applyGlobalFilters(data, excludeFilter = null) {
+    let filtered = data;
+    if (excludeFilter !== 'activePackhouse' && window.activePackhouse.length > 0) {
+        filtered = filtered.filter(r => window.activePackhouse.includes(r.marketname));
+    }
+    if (excludeFilter !== 'activeAgentName' && window.activeAgentName.length > 0) {
+        filtered = filtered.filter(r => window.activeAgentName.includes(r.agentname));
+    }
+    if (excludeFilter !== 'activeProduct' && window.activeProduct.length > 0) {
+        filtered = filtered.filter(r => window.activeProduct.includes(r.product));
+    }
+    if (excludeFilter !== 'activeClass' && window.activeClass.length > 0) {
+        filtered = filtered.filter(r => window.activeClass.includes(r.class));
+    }
+    if (excludeFilter !== 'activeSize' && window.activeSize.length > 0) {
+        filtered = filtered.filter(r => window.activeSize.includes(r.size));
+    }
+    if (excludeFilter !== 'activeBrand' && window.activeBrand.length > 0) {
+        filtered = filtered.filter(r => window.activeBrand.includes(r.brand));
+    }
+    if (excludeFilter !== 'activeVariety' && window.activeVariety.length > 0) {
+        filtered = filtered.filter(r => window.activeVariety.includes(r.variety));
+    }
+    if (excludeFilter !== 'activeMainProdUnitName' && window.activeMainProdUnitName.length > 0) {
+        filtered = filtered.filter(r => window.activeMainProdUnitName.includes(r.mainprodunitname));
+    }
+    if (excludeFilter !== 'activeProdUnitName' && window.activeProdUnitName.length > 0) {
+        filtered = filtered.filter(r => window.activeProdUnitName.includes(r.produnitname));
+    }
+    return filtered;
+}
+
+function renderGlobalSlicers() {
+    debugLog("Rendering slicers, clearing caches");
+    const filtersContent = document.getElementById("filtersContent");
+    filtersContent.innerHTML = "";
+
+    // Clear report caches to ensure fresh data after filtering
+    window.quantityReportCache = null;
+    window.nettAmountsReportCache = null;
+    window.summaryReportCache = null;
+    window.perAgentReportCache = null;
+    debugLog("All report caches cleared for slicers");
+
+    const slicerConfigs = [
+        { label: "Packhouse", field: "marketname", activeVar: "activePackhouse" },
+        { label: "Agent Name", field: "agentname", activeVar: "activeAgentName" },
+        { label: "Product", field: "product", activeVar: "activeProduct" },
+        { label: "Class", field: "class", activeVar: "activeClass" },
+        { label: "Size", field: "size", activeVar: "activeSize" },
+        { label: "Brand", field: "brand", activeVar: "activeBrand" },
+        { label: "Variety", field: "variety", activeVar: "activeVariety" },
+        { label: "Main Prod Unit", field: "mainprodunitname", activeVar: "activeMainProdUnitName" },
+        { label: "Prod Unit", field: "produnitname", activeVar: "activeProdUnitName" }
+    ];
+
+    // Pre-compute the base filtered data excluding each slicer's own filter
+    const baseFilteredData = {};
+    slicerConfigs.forEach(config => {
+        baseFilteredData[config.activeVar] = applyGlobalFilters(window.originalData, config.activeVar);
+    });
+
+    slicerConfigs.forEach(config => {
+        const uniqueValues = [...new Set(window.originalData.map(r => r[config.field]))].filter(v => v);
+        if (uniqueValues.length > 0) {
+            const groupDiv = document.createElement("div");
+            groupDiv.className = "slicer-group";
+            const activeVar = config.activeVar;
+            const activeSelections = window[activeVar] || [];
+            const selectedCount = activeSelections.length;
+
+            // Determine which options would produce no data
+            const disabledOptions = new Set();
+            const baseData = baseFilteredData[activeVar];
+            uniqueValues.forEach(val => {
+                // Simulate selecting this value by creating a temporary filter array
+                const tempSelections = [...activeSelections, val];
+                const tempFilters = { [activeVar]: tempSelections };
+                let tempData = baseData;
+                if (tempSelections.length > 0) {
+                    tempData = tempData.filter(r => tempSelections.includes(r[config.field]));
+                }
+                if (tempData.length === 0 && !activeSelections.includes(val)) {
+                    disabledOptions.add(val);
+                }
+            });
+
+            groupDiv.innerHTML = `
+                <label>${config.label}${selectedCount > 0 ? ` (${selectedCount} selected)` : ''}</label>
+                ${selectedCount > 0 ? `<button class="slicer-clear-btn" onclick="clearSlicer('${activeVar}', this.parentElement)" title="Clear ${config.label}">×</button>` : ''}
+                <div class="slicer-options">
+                    ${uniqueValues.sort().map(val => `
+                        <button class="custom-btn btn-primary btn-sm ${activeSelections.includes(val) ? 'active' : ''} ${disabledOptions.has(val) ? 'disabled' : ''}" 
+                                onclick="toggleSlicerOption('${activeVar}', '${val}', this.parentElement)"
+                                ${disabledOptions.has(val) ? 'disabled' : ''}>
+                            ${val}
+                        </button>
+                    `).join('')}
+                </div>
+            `;
+            filtersContent.appendChild(groupDiv);
         }
     });
+}
+
+function toggleSlicerOption(activeVar, val, optionsContainer) {
+    // Prevent toggling disabled options (redundant due to pointer-events: none, but added for safety)
+    const button = optionsContainer.querySelector(`.custom-btn:not(.active)[textContent="${val}"]`);
+    if (button && button.classList.contains('disabled')) {
+        debugLog(`Attempted to toggle disabled option: ${val} in ${activeVar}`);
+        return;
+    }
+
+    const activeSelections = window[activeVar] || [];
+    const index = activeSelections.indexOf(val);
+    if (index > -1) {
+        activeSelections.splice(index, 1); // Deselect
+    } else {
+        activeSelections.push(val); // Select
+    }
+    window[activeVar] = activeSelections;
+    debugLog(`Toggled ${activeVar}:`, activeSelections);
+
+    // Update button states
+    optionsContainer.querySelectorAll('.custom-btn').forEach(btn => {
+        btn.classList.toggle('active', activeSelections.includes(btn.textContent));
+    });
+
+    // Re-render slicers to update counts, clear buttons, and disabled states
+    renderGlobalSlicers();
+
+    // Trigger report reload
+    showLoadingOverlay();
+    window.data = applyGlobalFilters(window.originalData);
+    reloadCurrentReport();
+}
+
+        function clearSlicer(activeVar, groupDiv) {
+            window[activeVar] = [];
+            debugLog(`Cleared ${activeVar}`);
+
+            // Trigger report reload
+            showLoadingOverlay();
+            window.data = applyGlobalFilters(window.originalData);
+            renderGlobalSlicers();
+            reloadCurrentReport();
+        }
+
+        function getActiveFilters() {
+    const filters = [];
+
+    // Removed date range here — handled separately now
+
+    const slicerConfigs = [
+        { label: "Packhouse", activeVar: "activePackhouse" },
+        { label: "Agent Name", activeVar: "activeAgentName" },
+        { label: "Product", activeVar: "activeProduct" },
+        { label: "Class", activeVar: "activeClass" },
+        { label: "Size", activeVar: "activeSize" },
+        { label: "Brand", activeVar: "activeBrand" },
+        { label: "Variety", activeVar: "activeVariety" },
+        { label: "Main Prod Unit", activeVar: "activeMainProdUnitName" },
+        { label: "Prod Unit", activeVar: "activeProdUnitName" }
+    ];
+
+    slicerConfigs.forEach(config => {
+        const selections = window[config.activeVar] || [];
+        if (selections.length > 0) {
+            filters.push(`${config.label}: ${selections.join(', ')}`);
+        }
+    });
+
+    return filters.length > 0 ? filters : ["None"];
+}
+
+
+        function clearAllReportTables() {
+            debugLog("Clearing all report tables");
+            const tables = [
+                "#quantitiesTable tbody",
+                "#nettAmountsTable tbody",
+                "#summaryTable tbody",
+                "#perAgentTable tbody"
+            ];
+            tables.forEach(selector => {
+                const tbody = document.querySelector(selector);
+                if (tbody) {
+                    tbody.innerHTML = "";
+                    debugLog(`Cleared ${selector}`);
+                } else {
+                    debugLog(`Table not found: ${selector}`);
+                }
+            });
+        }
+
+        function reloadCurrentReport() {
+            if (!window.currentReportType) {
+                debugLog("No report type selected, hiding overlay");
+                hideLoadingOverlay();
+                return;
+            }
+            debugLog(`Reloading report: ${window.currentReportType}`);
+            window.quantityReportCache = null;
+            window.nettAmountsReportCache = null;
+            window.summaryReportCache = null;
+            window.perAgentReportCache = null;
+            clearAllReportTables();
+
+            switch (window.currentReportType) {
+                case "quantities":
+                    debugLog("Calling loadQuantitiesReport");
+                    loadQuantitiesReport().then(() => {
+                        debugLog("Finished loading Quantities report");
+                        const tbody = document.querySelector("#quantitiesTable tbody");
+                        debugLog(`Quantities table rows: ${tbody.children.length}`);
+                        hideLoadingOverlay();
+                    }).catch(err => {
+                        debugLog("Error loading Quantities report:", err);
+                        hideLoadingOverlay();
+                    });
+                    break;
+                case "nettamounts":
+                    debugLog("Calling loadNettAmountsReport");
+                    loadNettAmountsReport().then(() => {
+                        debugLog("Finished loading Nett Amounts report");
+                        const tbody = document.querySelector("#nettAmountsTable tbody");
+                        debugLog(`Nett Amounts table rows: ${tbody.children.length}`);
+                        hideLoadingOverlay();
+                    }).catch(err => {
+                        debugLog("Error loading Nett Amounts report:", err);
+                        hideLoadingOverlay();
+                    });
+                    break;
+                case "summary":
+                    debugLog("Calling loadSummaryReport");
+                    loadSummaryReport().then(() => {
+                        debugLog("Finished loading Summary report");
+                        const tbody = document.querySelector("#summaryTable tbody");
+                        debugLog(`Summary table rows: ${tbody.children.length}`);
+                        hideLoadingOverlay();
+                    }).catch(err => {
+                        debugLog("Error loading Summary report:", err);
+                        hideLoadingOverlay();
+                    });
+                    break;
+                case "peragent":
+                    debugLog("Calling loadPerAgentReport");
+                    loadPerAgentReport().then(() => {
+                        debugLog("Finished loading Per Agent report");
+                        const tbody = document.querySelector("#perAgentTable tbody");
+                        debugLog(`Per Agent table rows: ${tbody.children.length}`);
+                        hideLoadingOverlay();
+                    }).catch(err => {
+                        debugLog("Error loading Per Agent report:", err);
+                        hideLoadingOverlay();
+                    });
+                    break;
+            }
+        }
+
+        function fetchData() {
+            const startDate = document.getElementById("startDate").value;
+            const endDate = document.getElementById("endDate").value;
+
+            if (!startDate || !endDate) {
+                document.getElementById("loadingOverlay").innerHTML = `
+                    <div class="loading-content">
+                        <div class="alert alert-danger">Please select both start and end dates.</div>
+                    </div>
+                `;
+                return;
+            }
+
+            if (new Date(startDate) > new Date(endDate)) {
+                document.getElementById("loadingOverlay").innerHTML = `
+                    <div class="loading-content">
+                        <div class="alert alert-danger">Start date cannot be after end date.</div>
+                    </div>
+                `;
+                return;
+            }
+
+            showLoadingOverlay("Creating report, please wait...");
+            const url = `/api/fetch-delivery-note-report?startDate=${encodeURIComponent(startDate)}&endDate=${encodeURIComponent(endDate)}`;
+            fetch(url)
+                .then(response => {
+                    if (!response.ok) throw new Error("Failed to fetch report data");
+                    return response.json();
+                })
+                .then(response => {
+                    debugLog("Data fetched, updating window.data");
+                    window.originalData = response.data || [];
+                    window.reportParameters = response.parameters || { startDate, endDate };
+                    debugLog("Report parameters:", window.reportParameters);
+
+                    // Update report parameters display
+                    const paramsDiv = document.getElementById("reportParameters");
+                    paramsDiv.textContent = `Report Parameters: Start Date: ${window.reportParameters.startDate}, End Date: ${window.reportParameters.endDate}`;
+
+                    // Preserve multi-select state
+                    window.activePackhouse = window.activePackhouse || [];
+                    window.activeAgentName = window.activeAgentName || [];
+                    window.activeProduct = window.activeProduct || [];
+                    window.activeClass = window.activeClass || [];
+                    window.activeSize = window.activeSize || [];
+                    window.activeBrand = window.activeBrand || [];
+                    window.activeVariety = window.activeVariety || [];
+                    window.activeMainProdUnitName = window.activeMainProdUnitName || [];
+                    window.activeProdUnitName = window.activeProdUnitName || [];
+                    window.data = applyGlobalFilters(window.originalData);
+                    renderGlobalSlicers();
+                    if (window.currentReportType) {
+                        reloadCurrentReport();
+                    } else {
+                        hideLoadingOverlay();
+                    }
+                })
+                .catch(err => {
+                    document.getElementById("loadingOverlay").innerHTML = `
+                        <div class="loading-content">
+                            <div class="alert alert-danger">Failed to fetch report data. Please try again later.</div>
+                        </div>
+                    `;
+                    debugLog("Error in fetchData:", err);
+                });
+        }
+
+        document.addEventListener("DOMContentLoaded", async () => {
+            showLoadingOverlay();
+            try {
+                const today = new Date().toISOString().split('T')[0];
+                document.getElementById("endDate").value = today;
+                document.getElementById("startDate").value = new Date(new Date().setDate(new Date().getDate() - 7)).toISOString().split('T')[0];
+
+                const response = await fetch("/static/delivery_note_data.json");
+                if (!response.ok) throw new Error("Failed to load JSON data");
+                const responseData = await response.json();
+                window.originalData = responseData.data || responseData;
+                window.reportParameters = responseData.parameters || { startDate: document.getElementById("startDate").value, endDate: document.getElementById("endDate").value };
+                debugLog("Initial data loaded, size:", window.originalData.length);
+                debugLog("Initial parameters:", window.reportParameters);
+
+                // Initialize report parameters display
+                const paramsDiv = document.getElementById("reportParameters");
+                paramsDiv.textContent = `Report Parameters: Start Date: ${window.reportParameters.startDate}, End Date: ${window.reportParameters.endDate}`;
+
+                // Initialize multi-select arrays
+                window.activePackhouse = window.activePackhouse || [];
+                window.activeAgentName = window.activeAgentName || [];
+                window.activeProduct = window.activeProduct || [];
+                window.activeClass = window.activeClass || [];
+                window.activeSize = window.activeSize || [];
+                window.activeBrand = window.activeBrand || [];
+                window.activeVariety = window.activeVariety || [];
+                window.activeMainProdUnitName = window.activeMainProdUnitName || [];
+                window.activeProdUnitName = window.activeProdUnitName || [];
+                window.data = applyGlobalFilters(window.originalData);
+                renderGlobalSlicers();
+                hideLoadingOverlay();
+
+                // Enable buttons after data loads
+                document.querySelectorAll(".dashboard-button, .filters-toggle, .print-button, .create-report-button").forEach(el => {
+                    el.disabled = false;
+                });
+
+                const buttons = document.querySelectorAll(".dashboard-button");
+                const reportContents = document.querySelectorAll(".report-content > div");
+
+                buttons.forEach(button => {
+                    button.addEventListener("click", () => {
+                        const reportType = button.dataset.report;
+                        debugLog(`Switching to report: ${reportType}`);
+                        window.currentReportType = reportType;
+
+                        reportContents.forEach(content => {
+                            content.classList.add("hidden");
+                        });
+
+                        const selectedContent = document.querySelector(`[data-report-content="${reportType}"]`);
+                        if (selectedContent) {
+                            selectedContent.classList.remove("hidden");
+                            showLoadingOverlay();
+                            reloadCurrentReport();
+                        } else {
+                            debugLog(`Report content not found for: ${reportType}`);
+                            hideLoadingOverlay();
+                        }
+                    });
+                });
+            } catch (err) {
+                document.getElementById("loadingOverlay").innerHTML = `
+                    <div class="loading-content">
+                        <div class="alert alert-danger">Failed to load report data. Please try again later.</div>
+                    </div>
+                `;
+                debugLog("Error in DOMContentLoaded:", err);
+            }
+        });
     </script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/js/all.min.js"></script>
     <script src="{{ url_for('static', filename='reports/quantities.js') }}"></script>
     <script src="{{ url_for('static', filename='reports/nettamounts.js') }}"></script>
     <script src="{{ url_for('static', filename='reports/summary.js') }}"></script>
     <script src="{{ url_for('static', filename='reports/peragent.js') }}"></script>
+    <script src="{{ url_for('static', filename='reports/pdfGenerator.js') }}"></script>
 </body>
 </html>

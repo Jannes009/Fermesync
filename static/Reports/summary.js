@@ -1,68 +1,163 @@
-async function loadPerAgentReport() {
-    console.log("Loading per agent report");
+// Cache to store grouped data and DOM fragment for unchanged window.data
+window.summaryReportCache = null;
+
+async function loadSummaryReport() {
+    console.log("Loading summary report");
     try {
-        const tbody = document.querySelector("#perAgentTable tbody");
-        tbody.innerHTML = "";
+        const tbody = document.querySelector("#summaryTable tbody");
+        if (!tbody) {
+            console.error("Error: #summaryTable tbody not found");
+            throw new Error("Summary table not found");
+        }
+        tbody.innerHTML = ""; // Clear existing content
 
-        let data = applyGlobalFilters(window.data);
+        const data = applyGlobalFilters(window.data); // Apply filters
 
-        // Group by Agent Name
-        const agents = groupBy(data, "agentname");
-        Object.entries(agents).forEach(([agentName, agentRows]) => {
-            const agentTotals = calcPerAgentTotals(agentRows);
-            const agentRow = makePerAgentRow(agentName, agentTotals, "agent");
-            tbody.appendChild(agentRow);
+        // Use cached result if window.data hasn't changed and fragment is valid
+        if (window.summaryReportCache && window.summaryReportCache.data === data && window.summaryReportCache.fragment.hasChildNodes()) {
+            console.log("Cache hit for Summary");
+            tbody.appendChild(window.summaryReportCache.fragment.cloneNode(true)); // Clone to preserve original
+            console.log(`Summary table rows: ${tbody.children.length}`);
+            return;
+        }
 
-            // Group by Product Description inside Agent
-            const products = groupBy(agentRows, "productdescription");
-            Object.entries(products).forEach(([prodDesc, prodRows]) => {
-                const prodTotals = calcPerAgentTotals(prodRows);
-                const prodRow = makePerAgentRow("↳ " + prodDesc, prodTotals, "product", agentRow);
-                tbody.appendChild(prodRow);
-            });
-        });
+        // Group data and calculate totals in one pass
+        const grouped = groupSummaryData(data);
+        // Build DOM fragment for batched rendering
+        const fragment = makeSummaryRows(grouped);
+        tbody.appendChild(fragment); // Clone before appending
+
+        // Cache the result
+        window.summaryReportCache = { data, fragment };
+        console.log(`Summary table rows: ${tbody.children.length}`);
     } catch (err) {
-        console.error("Error:", err);
+        console.error("Error in loadSummaryReport:", err);
         throw err; // Re-throw to allow caller to handle
     }
 }
 
-// Helper: group array of objects by key
-function groupBy(arr, key) {
-    return arr.reduce((acc, row) => {
-        const val = row[key];
-        acc[val] = acc[val] || [];
-        acc[val].push(row);
-        return acc;
-    }, {});
+// Group data in a single pass and compute totals
+function groupSummaryData(data) {
+    const grouped = {};
+    for (const row of data) {
+        const prodDesc = row.productdescription || "Unknown";
+        const agentName = row.agentname || "Unknown";
+
+        // Initialize nested structure with totals
+        if (!grouped[prodDesc]) {
+            grouped[prodDesc] = {
+                rows: [],
+                totals: {
+                    del10kg: 0,
+                    sold10kg: 0,
+                    destr10kg: 0,
+                    notSold10kg: 0,
+                    grossSales: 0,
+                    totalCost: 0,
+                    nettSales: 0,
+                    nettPricePer10kg: 0,
+                    soldTransport: 0,
+                    salesAfterTrans: 0,
+                    afterTransPer10kg: 0
+                },
+                agents: {}
+            };
+        }
+        if (!grouped[prodDesc].agents[agentName]) {
+            grouped[prodDesc].agents[agentName] = {
+                rows: [],
+                totals: {
+                    del10kg: 0,
+                    sold10kg: 0,
+                    destr10kg: 0,
+                    notSold10kg: 0,
+                    grossSales: 0,
+                    totalCost: 0,
+                    nettSales: 0,
+                    nettPricePer10kg: 0,
+                    soldTransport: 0,
+                    salesAfterTrans: 0,
+                    afterTransPer10kg: 0
+                }
+            };
+        }
+
+        // Calculate row totals
+        const weightPerUnit = row.weightkgperunit || 10; // Default to 10kg
+        const rowTotals = {
+            del10kg: (row.dellinequantitybags || 0) * (weightPerUnit / 10),
+            sold10kg: (row.totalqtysold || 0) * (weightPerUnit / 10),
+            destr10kg: (row.destroyedqty || 0) * (weightPerUnit / 10),
+            notSold10kg: (row.totalnotinvoiced || 0) * (weightPerUnit / 10),
+            grossSales: row.salesgrossamnt || 0,
+            totalCost: row.deliveredtransportcost || 0, // Assuming total cost is transport cost
+            nettSales: row.salesnettamnt || 0,
+            soldTransport: row.soldtransportcost || 0
+        };
+        rowTotals.salesAfterTrans = rowTotals.nettSales - rowTotals.soldTransport;
+        rowTotals.nettPricePer10kg = rowTotals.sold10kg > 0 ? rowTotals.nettSales / rowTotals.sold10kg : 0;
+        rowTotals.afterTransPer10kg = rowTotals.sold10kg > 0 ? rowTotals.salesAfterTrans / rowTotals.sold10kg : 0;
+
+        // Update rows and totals
+        grouped[prodDesc].rows.push(row);
+        grouped[prodDesc].totals.del10kg += rowTotals.del10kg;
+        grouped[prodDesc].totals.sold10kg += rowTotals.sold10kg;
+        grouped[prodDesc].totals.destr10kg += rowTotals.destr10kg;
+        grouped[prodDesc].totals.notSold10kg += rowTotals.notSold10kg;
+        grouped[prodDesc].totals.grossSales += rowTotals.grossSales;
+        grouped[prodDesc].totals.totalCost += rowTotals.totalCost;
+        grouped[prodDesc].totals.nettSales += rowTotals.nettSales;
+        grouped[prodDesc].totals.soldTransport += rowTotals.soldTransport;
+        grouped[prodDesc].totals.salesAfterTrans += rowTotals.salesAfterTrans;
+
+        grouped[prodDesc].agents[agentName].rows.push(row);
+        grouped[prodDesc].agents[agentName].totals.del10kg += rowTotals.del10kg;
+        grouped[prodDesc].agents[agentName].totals.sold10kg += rowTotals.sold10kg;
+        grouped[prodDesc].agents[agentName].totals.destr10kg += rowTotals.destr10kg;
+        grouped[prodDesc].agents[agentName].totals.notSold10kg += rowTotals.notSold10kg;
+        grouped[prodDesc].agents[agentName].totals.grossSales += rowTotals.grossSales;
+        grouped[prodDesc].agents[agentName].totals.totalCost += rowTotals.totalCost;
+        grouped[prodDesc].agents[agentName].totals.nettSales += rowTotals.nettSales;
+        grouped[prodDesc].agents[agentName].totals.soldTransport += rowTotals.soldTransport;
+        grouped[prodDesc].agents[agentName].totals.salesAfterTrans += rowTotals.salesAfterTrans;
+    }
+
+    // Compute derived metrics for each level
+    Object.values(grouped).forEach(prodData => {
+        prodData.totals.nettPricePer10kg = prodData.totals.sold10kg > 0 ? prodData.totals.nettSales / prodData.totals.sold10kg : 0;
+        prodData.totals.afterTransPer10kg = prodData.totals.sold10kg > 0 ? prodData.totals.salesAfterTrans / prodData.totals.sold10kg : 0;
+        Object.values(prodData.agents).forEach(agentData => {
+            agentData.totals.nettPricePer10kg = agentData.totals.sold10kg > 0 ? agentData.totals.nettSales / agentData.totals.sold10kg : 0;
+            agentData.totals.afterTransPer10kg = agentData.totals.sold10kg > 0 ? agentData.totals.salesAfterTrans / agentData.totals.sold10kg : 0;
+        });
+    });
+
+    return grouped;
 }
 
-// Helper: calculate totals for per agent
-function calcPerAgentTotals(rows) {
-    const weightPerUnit = rows[0]?.weightkgperunit || 10; // Default to 10kg if not specified
-    const sold10kg = rows.reduce((s, r) => s + (r.totalqtysold || 0) * (r.weightkgperunit / 10), 0);
-    const grossSales = rows.reduce((s, r) => s + (r.salesgrossamnt || 0), 0);
-    const totalCost = rows.reduce((s, r) => s + (r.deliveredtransportcost || 0), 0); // Assuming total cost is transport cost
-    const nettSales = rows.reduce((s, r) => s + (r.salesnettamnt || 0), 0);
-    const nettPricePer10kg = sold10kg > 0 ? nettSales / sold10kg : 0;
-    const soldTransport = rows.reduce((s, r) => s + (r.soldtransportcost || 0), 0);
-    const salesAfterTrans = nettSales - soldTransport;
-    const afterTransPer10kg = sold10kg > 0 ? salesAfterTrans / sold10kg : 0;
+// Build DOM fragment for batched rendering
+function makeSummaryRows(grouped) {
+    const fragment = document.createDocumentFragment();
+    const rowMap = new Map(); // Track rows for parent-child relationships
 
-    return {
-        sold10kg,
-        grossSales,
-        totalCost,
-        nettSales,
-        nettPricePer10kg,
-        soldTransport,
-        salesAfterTrans,
-        afterTransPer10kg
-    };
+    Object.entries(grouped).forEach(([prodDesc, prodData]) => {
+        const prodRow = makeSummaryRow(prodDesc, prodData.totals, "product");
+        prodRow.classList.add("hover");
+        rowMap.set(prodDesc, prodRow);
+        fragment.appendChild(prodRow);
+
+        Object.entries(prodData.agents).forEach(([agentName, agentData]) => {
+            const agentRow = makeSummaryRow("↳ " + agentName, agentData.totals, "agent", prodRow);
+            rowMap.set(`${prodDesc}-${agentName}`, agentRow);
+            fragment.appendChild(agentRow);
+        });
+    });
+
+    return fragment;
 }
 
-// Helper: make row for per agent
-function makePerAgentRow(label, totals, level, parentRow = null) {
+// Helper: Create a table row for summary
+function makeSummaryRow(label, totals, level, parentRow = null) {
     const tr = document.createElement("tr");
     tr.classList.add(level);
 
@@ -76,7 +171,10 @@ function makePerAgentRow(label, totals, level, parentRow = null) {
 
     tr.innerHTML = `
         <td>${label}</td>
+        <td>${totals.del10kg.toLocaleString('en-US', { minimumFractionDigits: 0, maximumFractionDigits: 0 })}</td>
         <td>${totals.sold10kg.toLocaleString('en-US', { minimumFractionDigits: 0, maximumFractionDigits: 0 })}</td>
+        <td>${totals.destr10kg.toLocaleString('en-US', { minimumFractionDigits: 0, maximumFractionDigits: 0 })}</td>
+        <td>${totals.notSold10kg.toLocaleString('en-US', { minimumFractionDigits: 0, maximumFractionDigits: 0 })}</td>
         <td>${totals.grossSales.toLocaleString('en-US', { minimumFractionDigits: 0, maximumFractionDigits: 0 })}</td>
         <td>${totals.totalCost.toLocaleString('en-US', { minimumFractionDigits: 0, maximumFractionDigits: 0 })}</td>
         <td>${totals.nettSales.toLocaleString('en-US', { minimumFractionDigits: 0, maximumFractionDigits: 0 })}</td>
@@ -86,16 +184,16 @@ function makePerAgentRow(label, totals, level, parentRow = null) {
         <td>${totals.afterTransPer10kg.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</td>
     `;
 
-    // Only allow toggling if it has children
-    if (level === "agent") {
-        tr.addEventListener("click", () => toggleChildren(tr.dataset.rowId));
+    // Only allow toggling for product level
+    if (level === "product") {
+        tr.addEventListener("click", () => toggleSummaryChildren(tr.dataset.rowId));
     }
 
     return tr;
 }
 
 // Show/hide child rows
-function toggleChildren(rowId) {
+function toggleSummaryChildren(rowId) {
     document.querySelectorAll(`[data-parent-id="${rowId}"]`).forEach(child => {
         child.classList.toggle("hidden");
     });
