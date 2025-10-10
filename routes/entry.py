@@ -167,6 +167,9 @@ def run_background_procedures(del_note_no, user):
 
         cursor.execute("EXEC SIGCreateTransportPO")
         cursor.execute("EXEC SIGUpdateDelQuantities")
+        cursor.execute("EXEC SIGUpdateWeightTransport")
+        cursor.execute("EXEC [dbo].[SIGUpdatePackagingCost]")
+        cursor.execute("EXEC [dbo].[SIGUpdateWeightTransport]")
 
         conn.commit()
         print(f"Finished background procedures for DelNoteNo {del_note_no}")

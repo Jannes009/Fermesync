@@ -15,6 +15,12 @@ def delivery_note_report():
         'Reports/reports.html'
     )
 
+@report_bp.route('/delivery-note-report-template')
+def delivery_note_report_template():
+    return render_template(
+        'Reports/reports_templates.html'
+    )
+
 from datetime import datetime
 
 @report_bp.route('/api/fetch-delivery-note-report', methods=['GET'])
@@ -43,7 +49,7 @@ def fetch_delivery_note_report():
         
         # Parameterized query to prevent SQL injection
         query = """
-            SELECT * FROM [dbo].[_uvMarketDeliveryNote]
+            SELECT * FROM [dbo].[_uvMarketDeliveryNotetbl]
             WHERE DelDate BETWEEN ? AND ?
         """
         cursor.execute(query, (start_date, end_date))
@@ -55,11 +61,12 @@ def fetch_delivery_note_report():
         cursor.close()
         conn.close()
 
-        # Prepare response with parameters
+        # Prepare response with parameters including date created
         response = {
             "parameters": {
                 "startDate": start_date,
-                "endDate": end_date
+                "endDate": end_date,
+                "dateCreated": datetime.now().strftime('%Y-%m-%d')
             },
             "data": data
         }
@@ -80,3 +87,68 @@ def fetch_delivery_note_report():
 
 
 
+from flask import Blueprint, request, jsonify
+import json
+import os
+import tempfile
+
+TEMPLATE_DIR = "static/templates"
+os.makedirs(TEMPLATE_DIR, exist_ok=True)
+TEMPLATE_FILE = os.path.join(TEMPLATE_DIR, "report_templates.json")
+
+
+def read_templates_file():
+    """Return the templates object from disk, or {} on error / missing file."""
+    if not os.path.exists(TEMPLATE_FILE):
+        return {}
+    try:
+        with open(TEMPLATE_FILE, "r", encoding="utf-8") as fh:
+            return json.load(fh) or {}
+    except Exception:
+        # If the file is corrupt or unreadable, return empty dict
+        return {}
+
+
+def write_templates_file(templates_obj):
+    """Atomically write templates_obj to TEMPLATE_FILE."""
+    # write to a temp file in same dir then replace (atomic on most platforms)
+    fd, tmp_path = tempfile.mkstemp(dir=TEMPLATE_DIR)
+    try:
+        with os.fdopen(fd, "w", encoding="utf-8") as tmpf:
+            json.dump(templates_obj, tmpf, indent=4, ensure_ascii=False)
+        os.replace(tmp_path, TEMPLATE_FILE)
+    finally:
+        # if anything left, try to remove tmp
+        if os.path.exists(tmp_path):
+            try:
+                os.remove(tmp_path)
+            except Exception:
+                pass
+
+@report_bp.route("/save_template", methods=["POST"])
+def save_template():
+    data = request.get_json(silent=True)
+    if not data:
+        return jsonify({"error": "Invalid JSON payload"}), 400
+
+    name = data.get("name")
+    if not name:
+        return jsonify({"error": "Missing required field: 'name'"}), 400
+
+    template_name = str(name).strip()
+    template_entry = {
+        "name": template_name,
+        "levels": data.get("levels", []),
+        "fields": data.get("fields", [])
+    }
+
+    try:
+        templates = read_templates_file()
+        if not isinstance(templates, dict):
+            templates = {}
+
+        templates[template_name] = template_entry
+        write_templates_file(templates)
+        return jsonify({"message": "Template saved", "template": template_name}), 200
+    except Exception as exc:
+        return jsonify({"error": "Failed to save template", "details": str(exc)}), 500

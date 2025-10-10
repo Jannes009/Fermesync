@@ -18,7 +18,7 @@
             color: var(--primary-text);
         }
         .report-container {
-            max-width: 1400px;
+            max-width: 1800px;
             margin: 0 auto;
             padding: 0 1.2rem;
         }
@@ -26,7 +26,7 @@
             padding: 2rem 0;
         }
         .container-wide {
-            max-width: 1200px;
+            max-width: 1600px;
             margin: 0 auto;
             padding: 0 1.2rem;
             display: flex;
@@ -102,11 +102,16 @@
             gap: 1rem;
             margin-bottom: 1rem;
         }
-        .report-parameters {
-            margin-top: 0.5rem;
-            font-size: 0.9rem;
-            color: var(--secondary-text);
-            font-style: italic;
+        .report-results {
+            padding: 1.2rem;
+            border-radius: 12px;
+            background: var(--container-bg);
+            box-shadow: 0 4px 24px 0 rgba(44, 62, 80, 0.08);
+            transition: box-shadow 0.2s;
+            margin-bottom: 1rem;
+        }
+        .report-results:hover {
+            box-shadow: 0 8px 32px 0 rgba(44, 62, 80, 0.16);
         }
         table {
             width: 100%;
@@ -136,7 +141,7 @@
         tr:not(:last-child) td {
             border-bottom: 1px solid var(--table-border);
         }
-        tr.agent, tr.market, tr.date, tr.note {
+        tr.agent, tr.packhouse, tr.date, tr.note {
             font-weight: bold;
             background: var(--table-row-hover);
             cursor: pointer;
@@ -195,38 +200,38 @@
         }
         .slicer-group {
             margin-bottom: 1rem;
-            background: var(--container-bg);
             border: 1px solid var(--table-border);
-            border-radius: 6px;
-            padding: 0.5rem;
-            height: 150px;
-            width: 200px;
-            overflow-y: auto;
-            position: relative;
-            scrollbar-width: thin;
-            scrollbar-color: #6c757d #f8f9fa;
+            border-radius: 8px;
+            overflow: hidden;
+            background: var(--container-bg);
         }
-        .slicer-group label {
+        .slicer-header {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            background: var(--table-header-bg);
+            color: var(--table-header-text);
+            padding: 0.6rem 1rem;
             font-weight: 600;
-            color: var(--primary-text);
-            margin-bottom: 0.5rem;
-            display: block;
-            padding-left: 0.5rem;
-            padding-right: 25px;
+            cursor: pointer;
+            transition: background 0.2s;
         }
-        .slicer-group::-webkit-scrollbar {
-            width: 8px;
+        .slicer-header i {
+            transition: transform 0.25s ease;
         }
-        .slicer-group::-webkit-scrollbar-track {
-            background: #f8f9fa;
-            border-radius: 4px;
+        .slicer-group.collapsed .slicer-header i {
+            transform: rotate(-90deg);
         }
-        .slicer-group::-webkit-scrollbar-thumb {
-            background: #6c757d;
-            border-radius: 4px;
+        .slicer-options {
+            max-height: 500px;
+            overflow-y: auto;
+            padding: 0.5rem;
+            transition: max-height 0.3s ease;
         }
-        .slicer-group::-webkit-scrollbar-thumb:hover {
-            background: #495057;
+        .slicer-group.collapsed .slicer-options {
+            max-height: 0;
+            overflow: hidden;
+            padding: 0;
         }
         .custom-btn {
             background-color: var(--button-bg);
@@ -265,30 +270,22 @@
             cursor: not-allowed;
             opacity: 0.6;
         }
-        .slicer-clear-btn {
-            position: absolute;
-            top: 8px;
-            right: 8px;
-            width: 20px;
-            height: 20px;
-            background: #dc3545;
+        .slicer-clear-btn-text {
+            background-color: #dc3545;
             color: white;
             border: none;
-            border-radius: 50%;
+            border-radius: 6px;
+            padding: 0.3em 0.8em;
             cursor: pointer;
-            font-size: 12px;
+            font-size: 0.8rem;
             font-weight: bold;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            padding: 0;
             transition: all 0.2s ease;
         }
-        .slicer-clear-btn:hover {
-            background: #c82333;
-            transform: scale(1.1);
+        .slicer-clear-btn-text:hover {
+            background-color: #c82333;
+            transform: scale(1.05);
         }
-        .slicer-clear-btn:active {
+        .slicer-clear-btn-text:active {
             transform: scale(0.95);
         }
         .slicer-options {
@@ -359,6 +356,48 @@
         #logoContainer img, #logoContainer div {
             margin: 0 auto;
         }
+        .report-header {
+    display: grid;
+    grid-template-columns: 1fr auto 1fr;
+    grid-template-rows: auto auto;
+    align-items: center;
+    justify-items: center;
+    text-align: center;
+    margin: 0 auto 1.5rem auto;
+    max-width: 100%;
+}
+
+.report-header h2 {
+    grid-column: 1 / 4; /* spans all three columns */
+    grid-row: 1;
+    margin: 0;
+    font-size: 1.4rem;
+    font-weight: 700;
+    color: var(--primary-text);
+    line-height: 1.2;
+}
+
+.report-date-left {
+    grid-column: 1;
+    grid-row: 2;
+    justify-self: start;
+}
+
+.report-date-right {
+    grid-column: 3;
+    grid-row: 2;
+    justify-self: end;
+}
+
+.report-date-left h3,
+.report-date-right h3 {
+    margin: 0.2rem 0 0 0;
+    font-weight: 500;
+    font-size: 0.9rem;
+    color: var(--primary-text);
+}
+
+
     </style>
 </head>
 <body>
@@ -369,8 +408,9 @@
             <div>Loading report data, please wait...</div>
         </div>
     </div>
-    <div class="report-container">
-        <div class="container-card main-content with-fixed-taskbar">
+    <div class="report-container with-fixed-taskbar">
+        <div class="container-card main-content">
+            <h1>Reports</h1>
             <div class="report-creation-section">
                 <h2>Create Report</h2>
                 <div class="date-inputs">
@@ -380,24 +420,42 @@
                     <input type="date" id="endDate" name="endDate">
                     <button class="create-report-button" onclick="fetchData()">Create Report</button>
                 </div>
-                <div class="report-parameters" id="reportParameters"></div>
             </div>
             <div class="container-wide">
                 <div class="sidebar">
                     <div class="filters-section">
-                        <button class="filters-toggle" onclick="toggleFilters()" disabled><i class="fas fa-filter"></i> Filters</button>
-                        <div class="filters-content" id="filtersContent"></div>
+                        <div class="filters-content show" id="filtersContent"></div>
                     </div>
                 </div>
                 <div class="content">
-                    <h1>Reports</h1>
-                    <div class="button-container">
-                        <button class="dashboard-button" data-report="quantities" disabled>Quantities</button>
-                        <button class="dashboard-button" data-report="nettamounts" disabled>NettAmounts</button>
-                        <button class="dashboard-button" data-report="summary" disabled>Summary</button>
-                        <button class="dashboard-button" data-report="peragent" disabled>PerAgent</button>
-                        <button class="print-button" onclick="generatePDF()" disabled><i class="fas fa-print"></i> Print</button>
-                    </div>
+                    <div class="report-results">
+                        <div class="report-header">
+                            <div class="report-date-left">
+                                <h3>As On: <span id="reportDateCreated"></span></h3>
+                            </div>
+                            <h2 id="reportHeader">Delivery Note Report</h2>
+                            <div class="report-date-right">
+                                <h3>For the period: <span id="reportStartDate"></span> to <span id="reportEndDate"></span></h3>
+                            </div>
+                        </div>
+                        
+                    
+                        <div class="button-container">
+                            <button class="dashboard-button" data-report="quantities" disabled>Quantities</button>
+                            <button class="dashboard-button" data-report="nettamounts" disabled>NettAmounts</button>
+                            <button class="dashboard-button" data-report="summary" disabled>Summary</button>
+                            <button class="dashboard-button" data-report="peragent" disabled>PerAgent</button>
+                        
+                            <!-- New dropdown and fetch button -->
+                             <div>
+                                <select id="reportSelect" class="custom-btn btn-primary">
+                                    <option value="" disabled selected>Select Report</option>
+                                </select>
+                                <button class="dashboard-button"  data-report="template" disabled>Fetch</button>
+                            </div> 
+                            <button class="print-button" onclick="generatePDF()" disabled><i class="fas fa-print"></i> Print</button>
+                        </div>
+                        
                     <div class="report-content">
                         <!-- Quantities Template -->
                         <div id="delivery-note-quantities" class="hidden" data-report-content="quantities">
@@ -476,6 +534,10 @@
                                 <tbody></tbody>
                             </table>
                         </div>
+                        <!-- Custom Template -->
+                        <div id="delivery-note-template" class="hidden" data-report-content="template">
+                        </div>
+                    </div>
                     </div>
                 </div>
             </div>
@@ -501,12 +563,6 @@
         function debugLog(...args) {
             if (window.debugMode) console.log(...args);
         }
-
-        function toggleFilters() {
-            const content = document.getElementById("filtersContent");
-            content.classList.toggle("show");
-        }
-
         function showLoadingOverlay(message = "Creating report, please wait...") {
             const overlay = document.getElementById("loadingOverlay");
             overlay.innerHTML = `
@@ -538,145 +594,172 @@
         window.activeVariety = [];
         window.activeMainProdUnitName = [];
         window.activeProdUnitName = [];
-        window.reportParameters = { startDate: null, endDate: null };
+        window.reportParameters = { startDate: null, endDate: null, dateCreated: null };
+        // Keep per-slicer open/closed state so re-renders don't reset them
+        window.slicerOpenState = window.slicerOpenState || {};
 
-// Updated applyGlobalFilters to handle arrays and allow excluding specific filters
-function applyGlobalFilters(data, excludeFilter = null) {
-    let filtered = data;
-    if (excludeFilter !== 'activePackhouse' && window.activePackhouse.length > 0) {
-        filtered = filtered.filter(r => window.activePackhouse.includes(r.marketname));
-    }
-    if (excludeFilter !== 'activeAgentName' && window.activeAgentName.length > 0) {
-        filtered = filtered.filter(r => window.activeAgentName.includes(r.agentname));
-    }
-    if (excludeFilter !== 'activeProduct' && window.activeProduct.length > 0) {
-        filtered = filtered.filter(r => window.activeProduct.includes(r.product));
-    }
-    if (excludeFilter !== 'activeClass' && window.activeClass.length > 0) {
-        filtered = filtered.filter(r => window.activeClass.includes(r.class));
-    }
-    if (excludeFilter !== 'activeSize' && window.activeSize.length > 0) {
-        filtered = filtered.filter(r => window.activeSize.includes(r.size));
-    }
-    if (excludeFilter !== 'activeBrand' && window.activeBrand.length > 0) {
-        filtered = filtered.filter(r => window.activeBrand.includes(r.brand));
-    }
-    if (excludeFilter !== 'activeVariety' && window.activeVariety.length > 0) {
-        filtered = filtered.filter(r => window.activeVariety.includes(r.variety));
-    }
-    if (excludeFilter !== 'activeMainProdUnitName' && window.activeMainProdUnitName.length > 0) {
-        filtered = filtered.filter(r => window.activeMainProdUnitName.includes(r.mainprodunitname));
-    }
-    if (excludeFilter !== 'activeProdUnitName' && window.activeProdUnitName.length > 0) {
-        filtered = filtered.filter(r => window.activeProdUnitName.includes(r.produnitname));
-    }
-    return filtered;
-}
+        // Updated applyGlobalFilters to handle arrays and allow excluding specific filters
+        function applyGlobalFilters(data, excludeFilter = null) {
+            let filtered = data;
+            if (excludeFilter !== 'activePackhouse' && window.activePackhouse.length > 0) {
+                filtered = filtered.filter(r => window.activePackhouse.includes(r.packhousename));
+            }
+            if (excludeFilter !== 'activeAgentName' && window.activeAgentName.length > 0) {
+                filtered = filtered.filter(r => window.activeAgentName.includes(r.agentname));
+            }
+            if (excludeFilter !== 'activeProduct' && window.activeProduct.length > 0) {
+                filtered = filtered.filter(r => window.activeProduct.includes(r.product));
+            }
+            if (excludeFilter !== 'activeClass' && window.activeClass.length > 0) {
+                filtered = filtered.filter(r => window.activeClass.includes(r.class));
+            }
+            if (excludeFilter !== 'activeSize' && window.activeSize.length > 0) {
+                filtered = filtered.filter(r => window.activeSize.includes(r.size));
+            }
+            if (excludeFilter !== 'activeBrand' && window.activeBrand.length > 0) {
+                filtered = filtered.filter(r => window.activeBrand.includes(r.brand));
+            }
+            if (excludeFilter !== 'activeVariety' && window.activeVariety.length > 0) {
+                filtered = filtered.filter(r => window.activeVariety.includes(r.variety));
+            }
+            if (excludeFilter !== 'activeMainProdUnitName' && window.activeMainProdUnitName.length > 0) {
+                filtered = filtered.filter(r => window.activeMainProdUnitName.includes(r.mainprodunitname));
+            }
+            if (excludeFilter !== 'activeProdUnitName' && window.activeProdUnitName.length > 0) {
+                filtered = filtered.filter(r => window.activeProdUnitName.includes(r.produnitname));
+            }
+            return filtered;
+        }
 
-function renderGlobalSlicers() {
-    debugLog("Rendering slicers, clearing caches");
-    const filtersContent = document.getElementById("filtersContent");
-    filtersContent.innerHTML = "";
+        function renderGlobalSlicers() {
+            debugLog("Rendering slicers, clearing caches");
+            const filtersContent = document.getElementById("filtersContent");
+            filtersContent.innerHTML = "";
 
-    // Clear report caches to ensure fresh data after filtering
-    window.quantityReportCache = null;
-    window.nettAmountsReportCache = null;
-    window.summaryReportCache = null;
-    window.perAgentReportCache = null;
-    debugLog("All report caches cleared for slicers");
+            // Clear report caches to ensure fresh data after filtering
+            window.quantityReportCache = null;
+            window.nettAmountsReportCache = null;
+            window.summaryReportCache = null;
+            window.perAgentReportCache = null;
+            debugLog("All report caches cleared for slicers");
 
-    const slicerConfigs = [
-        { label: "Packhouse", field: "marketname", activeVar: "activePackhouse" },
-        { label: "Agent Name", field: "agentname", activeVar: "activeAgentName" },
-        { label: "Product", field: "product", activeVar: "activeProduct" },
-        { label: "Class", field: "class", activeVar: "activeClass" },
-        { label: "Size", field: "size", activeVar: "activeSize" },
-        { label: "Brand", field: "brand", activeVar: "activeBrand" },
-        { label: "Variety", field: "variety", activeVar: "activeVariety" },
-        { label: "Main Prod Unit", field: "mainprodunitname", activeVar: "activeMainProdUnitName" },
-        { label: "Prod Unit", field: "produnitname", activeVar: "activeProdUnitName" }
-    ];
+            const slicerConfigs = [
+                { label: "Packhouse", field: "packhousename", activeVar: "activePackhouse" },
+                { label: "Agent Name", field: "agentname", activeVar: "activeAgentName" },
+                { label: "Product", field: "product", activeVar: "activeProduct" },
+                { label: "Class", field: "class", activeVar: "activeClass" },
+                { label: "Size", field: "size", activeVar: "activeSize" },
+                { label: "Brand", field: "brand", activeVar: "activeBrand" },
+                { label: "Variety", field: "variety", activeVar: "activeVariety" },
+                { label: "Main Prod Unit", field: "mainprodunitname", activeVar: "activeMainProdUnitName" },
+                { label: "Prod Unit", field: "produnitname", activeVar: "activeProdUnitName" }
+            ];
 
-    // Pre-compute the base filtered data excluding each slicer's own filter
-    const baseFilteredData = {};
-    slicerConfigs.forEach(config => {
-        baseFilteredData[config.activeVar] = applyGlobalFilters(window.originalData, config.activeVar);
-    });
-
-    slicerConfigs.forEach(config => {
-        const uniqueValues = [...new Set(window.originalData.map(r => r[config.field]))].filter(v => v);
-        if (uniqueValues.length > 0) {
-            const groupDiv = document.createElement("div");
-            groupDiv.className = "slicer-group";
-            const activeVar = config.activeVar;
-            const activeSelections = window[activeVar] || [];
-            const selectedCount = activeSelections.length;
-
-            // Determine which options would produce no data
-            const disabledOptions = new Set();
-            const baseData = baseFilteredData[activeVar];
-            uniqueValues.forEach(val => {
-                // Simulate selecting this value by creating a temporary filter array
-                const tempSelections = [...activeSelections, val];
-                const tempFilters = { [activeVar]: tempSelections };
-                let tempData = baseData;
-                if (tempSelections.length > 0) {
-                    tempData = tempData.filter(r => tempSelections.includes(r[config.field]));
-                }
-                if (tempData.length === 0 && !activeSelections.includes(val)) {
-                    disabledOptions.add(val);
-                }
+            // Pre-compute the base filtered data excluding each slicer's own filter
+            const baseFilteredData = {};
+            slicerConfigs.forEach(config => {
+                baseFilteredData[config.activeVar] = applyGlobalFilters(window.originalData, config.activeVar);
             });
 
-            groupDiv.innerHTML = `
-                <label>${config.label}${selectedCount > 0 ? ` (${selectedCount} selected)` : ''}</label>
-                ${selectedCount > 0 ? `<button class="slicer-clear-btn" onclick="clearSlicer('${activeVar}', this.parentElement)" title="Clear ${config.label}">×</button>` : ''}
-                <div class="slicer-options">
-                    ${uniqueValues.sort().map(val => `
-                        <button class="custom-btn btn-primary btn-sm ${activeSelections.includes(val) ? 'active' : ''} ${disabledOptions.has(val) ? 'disabled' : ''}" 
-                                onclick="toggleSlicerOption('${activeVar}', '${val}', this.parentElement)"
-                                ${disabledOptions.has(val) ? 'disabled' : ''}>
+            slicerConfigs.forEach(config => {
+                const activeVar = config.activeVar;
+                const uniqueValues = [...new Set(window.originalData.map(r => r[config.field]))].filter(v => v);
+                if (uniqueValues.length > 0) {
+                    const groupDiv = document.createElement("div");
+                    groupDiv.dataset.activeVar = activeVar; // so toggleSlicerCollapse knows which one
+
+                    // Determine whether this slicer should be open. Default = closed.
+                    const isOpen = (typeof window.slicerOpenState[activeVar] !== 'undefined')
+                        ? !!window.slicerOpenState[activeVar]
+                        : false; // default closed
+
+                    groupDiv.className = `slicer-group${isOpen ? '' : ' collapsed'}`;
+                    // Start collapsed by default
+
+                    const activeSelections = window[activeVar] || [];
+                    const selectedCount = activeSelections.length;
+
+                    // Determine which options would produce no data
+                    const disabledOptions = new Set();
+                    const baseData = baseFilteredData[activeVar];
+                    uniqueValues.forEach(val => {
+                        // Simulate selecting this value by creating a temporary filter array
+                        const tempSelections = [...activeSelections, val];
+                        const tempFilters = { [activeVar]: tempSelections };
+                        let tempData = baseData;
+                        if (tempSelections.length > 0) {
+                            tempData = tempData.filter(r => tempSelections.includes(r[config.field]));
+                        }
+                        if (tempData.length === 0 && !activeSelections.includes(val)) {
+                            disabledOptions.add(val);
+                        }
+                    });
+
+                    groupDiv.innerHTML = `
+                        <div class="slicer-header" onclick="toggleSlicerCollapse(this)">
+                            <span>${config.label}${selectedCount > 0 ? ` (${selectedCount})` : ''}</span>
+                            <div style="display:flex;align-items:center;gap:0.5rem;">
+                                ${selectedCount > 0 ? `<button class="slicer-clear-btn-text" onclick="event.stopPropagation(); clearSlicer('${activeVar}', this.closest('.slicer-group'))" title="Clear ${config.label}">Clear</button>` : ''}
+                                <i class="fas fa-chevron-down"></i>
+                            </div>
+                        </div>
+                        <div class="slicer-options">
+                            ${uniqueValues.sort().map(val => `
+                            <button
+                            class="custom-btn btn-primary btn-sm ${activeSelections.includes(val) ? 'active' : ''} ${disabledOptions.has(val) ? 'disabled' : ''}"
+                            onclick="event.stopPropagation(); toggleSlicerOption('${activeVar}', '${val}', this.parentElement)"
+                            ${disabledOptions.has(val) ? 'disabled' : ''}>
                             ${val}
-                        </button>
-                    `).join('')}
-                </div>
-            `;
-            filtersContent.appendChild(groupDiv);
+                            </button>
+                            `).join('')}
+                        </div>
+                    `;
+
+                    filtersContent.appendChild(groupDiv);
+                }
+            });
         }
-    });
-}
 
-function toggleSlicerOption(activeVar, val, optionsContainer) {
-    // Prevent toggling disabled options (redundant due to pointer-events: none, but added for safety)
-    const button = optionsContainer.querySelector(`.custom-btn:not(.active)[textContent="${val}"]`);
-    if (button && button.classList.contains('disabled')) {
-        debugLog(`Attempted to toggle disabled option: ${val} in ${activeVar}`);
-        return;
-    }
+        function toggleSlicerCollapse(headerEl) {
+            const group = headerEl.closest('.slicer-group');
+            const activeVar = group.dataset.activeVar;
+            window.slicerOpenState = window.slicerOpenState || {};
+            const newOpenState = !window.slicerOpenState[activeVar]; // flip
+            window.slicerOpenState[activeVar] = newOpenState;
+            group.classList.toggle('collapsed', !newOpenState);
+        }
 
-    const activeSelections = window[activeVar] || [];
-    const index = activeSelections.indexOf(val);
-    if (index > -1) {
-        activeSelections.splice(index, 1); // Deselect
-    } else {
-        activeSelections.push(val); // Select
-    }
-    window[activeVar] = activeSelections;
-    debugLog(`Toggled ${activeVar}:`, activeSelections);
+        function toggleSlicerOption(activeVar, val, optionsContainer) {
+            // Prevent toggling disabled options (redundant due to pointer-events: none, but added for safety)
+            const button = optionsContainer.querySelector(`.custom-btn:not(.active)[textContent="${val}"]`);
+            if (button && button.classList.contains('disabled')) {
+                debugLog(`Attempted to toggle disabled option: ${val} in ${activeVar}`);
+                return;
+            }
 
-    // Update button states
-    optionsContainer.querySelectorAll('.custom-btn').forEach(btn => {
-        btn.classList.toggle('active', activeSelections.includes(btn.textContent));
-    });
+            const activeSelections = window[activeVar] || [];
+            const index = activeSelections.indexOf(val);
+            if (index > -1) {
+                activeSelections.splice(index, 1); // Deselect
+            } else {
+                activeSelections.push(val); // Select
+            }
+            window[activeVar] = activeSelections;
+            debugLog(`Toggled ${activeVar}:`, activeSelections);
 
-    // Re-render slicers to update counts, clear buttons, and disabled states
-    renderGlobalSlicers();
+            // Update button states
+            optionsContainer.querySelectorAll('.custom-btn').forEach(btn => {
+                btn.classList.toggle('active', activeSelections.includes(btn.textContent));
+            });
 
-    // Trigger report reload
-    showLoadingOverlay();
-    window.data = applyGlobalFilters(window.originalData);
-    reloadCurrentReport();
-}
+            // Re-render slicers to update counts, clear buttons, and disabled states
+            renderGlobalSlicers();
+
+            // Trigger report reload
+            showLoadingOverlay();
+            window.data = applyGlobalFilters(window.originalData);
+            reloadCurrentReport();
+        }
 
         function clearSlicer(activeVar, groupDiv) {
             window[activeVar] = [];
@@ -690,32 +773,29 @@ function toggleSlicerOption(activeVar, val, optionsContainer) {
         }
 
         function getActiveFilters() {
-    const filters = [];
+            const filters = [];
 
-    // Removed date range here — handled separately now
+            const slicerConfigs = [
+                { label: "Packhouse", activeVar: "activePackhouse" },
+                { label: "Agent Name", activeVar: "activeAgentName" },
+                { label: "Product", activeVar: "activeProduct" },
+                { label: "Class", activeVar: "activeClass" },
+                { label: "Size", activeVar: "activeSize" },
+                { label: "Brand", activeVar: "activeBrand" },
+                { label: "Variety", activeVar: "activeVariety" },
+                { label: "Main Prod Unit", activeVar: "activeMainProdUnitName" },
+                { label: "Prod Unit", activeVar: "activeProdUnitName" }
+            ];
 
-    const slicerConfigs = [
-        { label: "Packhouse", activeVar: "activePackhouse" },
-        { label: "Agent Name", activeVar: "activeAgentName" },
-        { label: "Product", activeVar: "activeProduct" },
-        { label: "Class", activeVar: "activeClass" },
-        { label: "Size", activeVar: "activeSize" },
-        { label: "Brand", activeVar: "activeBrand" },
-        { label: "Variety", activeVar: "activeVariety" },
-        { label: "Main Prod Unit", activeVar: "activeMainProdUnitName" },
-        { label: "Prod Unit", activeVar: "activeProdUnitName" }
-    ];
+            slicerConfigs.forEach(config => {
+                const selections = window[config.activeVar] || [];
+                if (selections.length > 0) {
+                    filters.push(`${config.label}: ${selections.join(', ')}`);
+                }
+            });
 
-    slicerConfigs.forEach(config => {
-        const selections = window[config.activeVar] || [];
-        if (selections.length > 0) {
-            filters.push(`${config.label}: ${selections.join(', ')}`);
+            return filters.length > 0 ? filters : ["None"];
         }
-    });
-
-    return filters.length > 0 ? filters : ["None"];
-}
-
 
         function clearAllReportTables() {
             debugLog("Clearing all report tables");
@@ -798,6 +878,10 @@ function toggleSlicerOption(activeVar, val, optionsContainer) {
                         hideLoadingOverlay();
                     });
                     break;
+                case "template":
+                    name = document.getElementById("reportSelect").value
+                    loadTemplateReport(name)
+                    hideLoadingOverlay()
             }
         }
 
@@ -833,12 +917,12 @@ function toggleSlicerOption(activeVar, val, optionsContainer) {
                 .then(response => {
                     debugLog("Data fetched, updating window.data");
                     window.originalData = response.data || [];
-                    window.reportParameters = response.parameters || { startDate, endDate };
+                    window.reportParameters = response.parameters || { startDate, endDate, dateCreated: new Date().toISOString().split('T')[0] };
+                    // Update report header
+                    document.getElementById("reportDateCreated").textContent = window.reportParameters.dateCreated || new Date().toISOString().split('T')[0];
+                    document.getElementById("reportStartDate").textContent = window.reportParameters.startDate;
+                    document.getElementById("reportEndDate").textContent = window.reportParameters.endDate;
                     debugLog("Report parameters:", window.reportParameters);
-
-                    // Update report parameters display
-                    const paramsDiv = document.getElementById("reportParameters");
-                    paramsDiv.textContent = `Report Parameters: Start Date: ${window.reportParameters.startDate}, End Date: ${window.reportParameters.endDate}`;
 
                     // Preserve multi-select state
                     window.activePackhouse = window.activePackhouse || [];
@@ -879,13 +963,14 @@ function toggleSlicerOption(activeVar, val, optionsContainer) {
                 if (!response.ok) throw new Error("Failed to load JSON data");
                 const responseData = await response.json();
                 window.originalData = responseData.data || responseData;
-                window.reportParameters = responseData.parameters || { startDate: document.getElementById("startDate").value, endDate: document.getElementById("endDate").value };
+                window.reportParameters = responseData.parameters || { startDate: document.getElementById("startDate").value, endDate: document.getElementById("endDate").value, dateCreated: new Date().toISOString().split('T')[0] };
                 debugLog("Initial data loaded, size:", window.originalData.length);
                 debugLog("Initial parameters:", window.reportParameters);
 
-                // Initialize report parameters display
-                const paramsDiv = document.getElementById("reportParameters");
-                paramsDiv.textContent = `Report Parameters: Start Date: ${window.reportParameters.startDate}, End Date: ${window.reportParameters.endDate}`;
+                // Update report header
+                document.getElementById("reportDateCreated").textContent = window.reportParameters.dateCreated || new Date().toISOString().split('T')[0];
+                document.getElementById("reportStartDate").textContent = window.reportParameters.startDate;
+                document.getElementById("reportEndDate").textContent = window.reportParameters.endDate;
 
                 // Initialize multi-select arrays
                 window.activePackhouse = window.activePackhouse || [];
@@ -914,7 +999,7 @@ function toggleSlicerOption(activeVar, val, optionsContainer) {
                         const reportType = button.dataset.report;
                         debugLog(`Switching to report: ${reportType}`);
                         window.currentReportType = reportType;
-
+                        console.log(window.currentReportType)
                         reportContents.forEach(content => {
                             content.classList.add("hidden");
                         });
@@ -930,6 +1015,27 @@ function toggleSlicerOption(activeVar, val, optionsContainer) {
                         }
                     });
                 });
+                // Populate report dropdown
+                const reportSelect = document.getElementById("reportSelect");
+
+
+                const data = await fetch("/static/templates/report_templates.json");
+                if (!data.ok) throw new Error("Failed to load JSON data");
+
+                const templatesData = await data.json();
+                // Save globally for later use
+                window.templatesData = templatesData;
+
+                // Loop over keys of the JSON object
+                Object.keys(templatesData).forEach(key => {
+                    const report = templatesData[key];
+                    const option = document.createElement("option");
+                    option.value = key;           // use key as value (e.g., "R1")
+                    option.textContent = report.name || key; // display name
+                    reportSelect.appendChild(option);
+                });
+
+
             } catch (err) {
                 document.getElementById("loadingOverlay").innerHTML = `
                     <div class="loading-content">
@@ -939,12 +1045,14 @@ function toggleSlicerOption(activeVar, val, optionsContainer) {
                 debugLog("Error in DOMContentLoaded:", err);
             }
         });
+
     </script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/js/all.min.js"></script>
     <script src="{{ url_for('static', filename='reports/quantities.js') }}"></script>
     <script src="{{ url_for('static', filename='reports/nettamounts.js') }}"></script>
     <script src="{{ url_for('static', filename='reports/summary.js') }}"></script>
     <script src="{{ url_for('static', filename='reports/peragent.js') }}"></script>
+    <script src="{{ url_for('static', filename='reports/template-report-loader.js') }}"></script>
     <script src="{{ url_for('static', filename='reports/pdfGenerator.js') }}"></script>
 </body>
 </html>

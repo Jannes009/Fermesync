@@ -203,6 +203,11 @@ def submit_invoice():
     conn.commit()
     # create invoice
     cursor.execute("EXEC [dbo].[SIGCreateSalesOrder]")
+    cursor.execute("""
+        EXEC [dbo].[SIGUpdatePackagingCost]
+        EXEC [dbo].[SIGUpdateWeightTransport]
+        EXEC [dbo].[SIGUpdateDeliveryNoteLineTotals]
+    """)
 
     conn.commit()
     cursor.close()

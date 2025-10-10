@@ -1,4 +1,3 @@
-
 async function loadSVGAsImage(src) {
     return new Promise((resolve, reject) => {
         const img = new Image();
@@ -129,7 +128,6 @@ async function generatePDF() {
         const totalLength = headerLengths.reduce((a, b) => a + b, 0);
         const colWidths = headerLengths.map(l => (l / totalLength) * usableWidth);
 
-
         // helper: draw page header
         function drawPageHeader(pageTitle, firstPage = false) {
             let y = margin;
@@ -159,6 +157,13 @@ async function generatePDF() {
                 doc.setFontSize(11);
                 doc.setFont("helvetica", "bold");
                 
+                // --- As On date on the right
+                if (window.reportParameters.dateCreated) {
+                    doc.text(`As On: ${window.reportParameters.dateCreated}`, pageWidth - margin, y, { align: "right" });
+                }
+                
+                y += 6;
+
                 // --- "Active Filters:" on the left
                 doc.text("Active Filters:", margin, y);
                 
@@ -193,7 +198,6 @@ async function generatePDF() {
                 const textY = y + (headerText.length === 1 ? 6 : 4);
                 doc.text(headerText, xPos + colWidths[i] / 2, textY, { align: "center" });
             });
-
 
             return y + headerHeight + 2;
         }
@@ -263,4 +267,3 @@ async function generatePDF() {
         hideLoadingOverlay();
     }
 }
-
