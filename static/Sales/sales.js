@@ -527,206 +527,259 @@ window.submitRow = function(delnoteNo, idx, btn, salesId, lineId) {
 }
 
 // Function to handle product change
-window.changeProduct = function(lineId, currentProduct, delNoteNo) {
-  // Fetch products from the server
-  fetch('/api/products')
-    .then(response => response.json())
-    .then(products => {
-      // Create the modal HTML with searchable dropdown
-      const modalHtml = `
-        <div style="text-align: left;">
-          <div style="margin-bottom: 1rem;">
-            <label style="display: block; margin-bottom: 0.5rem; font-weight: 600; color: #334155;">Current Product</label>
-            <div style="padding: 0.8em; background: #f8fafc; border-radius: 8px; color: #64748b;">
-              ${currentProduct}
+window.changeProduct = function(lineId, currentProduct, delNoteNo, qtyInvoiced) {
+  console.log(qtyInvoiced);
+  // If there are invoiced quantities, show a warning first
+  if (parseFloat(qtyInvoiced) > 0) {
+    Swal.fire({
+      title: '⚠️ Warning',
+      html: `
+        <div style="text-align: left; font-size: 15px; line-height: 1.6; color: #444;">
+          This product already has <strong>${qtyInvoiced}</strong> invoiced units.<br><br>
+          <strong>Any invoice containing this product will also be edited</strong> if you proceed.
+          <br><br>
+          Do you want to continue?
+        </div>
+      `,
+      icon: 'warning',
+      showCancelButton: true,
+      confirmButtonText: 'Yes, continue',
+      cancelButtonText: 'Cancel',
+      reverseButtons: true,
+      confirmButtonColor: '#d33',
+    }).then(result => {
+      if (result.isConfirmed) {
+        openProductChangeModal();
+      }
+    });
+  } else {
+    openProductChangeModal();
+  }
+
+  // Separate function to open the modal
+  function openProductChangeModal() {
+    fetch('/api/products')
+      .then(response => response.json())
+      .then(products => {
+        const modalHtml = `
+          <div style="text-align: left;">
+            <div style="margin-bottom: 1rem;">
+              <label style="display: block; margin-bottom: 0.5rem; font-weight: 600; color: #334155;">Current Product</label>
+              <div style="padding: 0.8em; background: #f8fafc; border-radius: 8px; color: #64748b;">
+                ${currentProduct}
+              </div>
+            </div>
+            <div style="margin-bottom: 1rem;">
+              <label style="display: block; margin-bottom: 0.5rem; font-weight: 600; color: #334155;">New Product</label>
+              <select id="productSelect" class="form-select" style="width: 100%;">
+                <option value="">Select a product...</option>
+                ${products.map(p => `<option value="${p.StockLink}">${p.display_name}</option>`).join('')}
+              </select>
             </div>
           </div>
-          <div style="margin-bottom: 1rem;">
-            <label style="display: block; margin-bottom: 0.5rem; font-weight: 600; color: #334155;">New Product</label>
-            <select id="productSelect" class="form-select" style="width: 100%;">
-              <option value="">Select a product...</option>
-              ${products.map(p => `<option value="${p.StockLink}">${p.display_name}</option>`).join('')}
-            </select>
-          </div>
-        </div>
-      `;
+        `;
 
-      // Initialize Select2 on the dropdown
-      Swal.fire({
-        title: 'Change Product',
-        html: modalHtml,
-        showCancelButton: true,
-        confirmButtonText: 'Save',
-        cancelButtonText: 'Cancel',
-        width: 600,
-        didOpen: () => {
-          // Initialize Select2
-          $('#productSelect').select2({
-            dropdownParent: $('.swal2-container'),
-            width: '100%',
-            placeholder: 'Search for a product...',
-            allowClear: true,
-            matcher: productMatcher
-          });
-        },
-        preConfirm: () => {
-          const selectedProduct = document.getElementById('productSelect').value;
-          if (!selectedProduct) {
-            Swal.showValidationMessage('Please select a product');
-            return false;
-          }
-          return selectedProduct;
-        }
-      }).then((result) => {
-        if (result.isConfirmed) {
-          // Save the new product
-          fetch('/api/save_product', {
-            method: 'POST',
-            headers: {
-              'Content-Type': 'application/json',
-            },
-            body: JSON.stringify({
-              line_id: lineId,
-              product_id: result.value
-            })
-          })
-          .then(response => response.json())
-          .then(data => {
-            if (data.message) {
-              Swal.fire({
-                title: 'Success!',
-                text: 'Product has been updated successfully.',
-                icon: 'success',
-                timer: 1500,
-                showConfirmButton: false
-              }).then(() => {
-                // Refresh the sales table
-                load_sales_lines_table(delNoteNo)
-                load_delivery_lines_table(delNoteNo)
-              });
-            } else {
-              throw new Error(data.error || 'Failed to update product');
-            }
-          })
-          .catch(error => {
-            Swal.fire({
-              title: 'Error',
-              text: error.message || 'Failed to update product',
-              icon: 'error'
+        Swal.fire({
+          title: 'Change Product',
+          html: modalHtml,
+          showCancelButton: true,
+          confirmButtonText: 'Save',
+          cancelButtonText: 'Cancel',
+          width: 600,
+          didOpen: () => {
+            $('#productSelect').select2({
+              dropdownParent: $('.swal2-container'),
+              width: '100%',
+              placeholder: 'Search for a product...',
+              allowClear: true,
+              matcher: productMatcher
             });
-          });
-        }
+          },
+          preConfirm: () => {
+            const selectedProduct = document.getElementById('productSelect').value;
+            if (!selectedProduct) {
+              Swal.showValidationMessage('Please select a product');
+              return false;
+            }
+            return selectedProduct;
+          }
+        }).then((result) => {
+          if (result.isConfirmed) {
+            fetch('/api/save_product', {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({
+                line_id: lineId,
+                product_id: result.value
+              })
+            })
+            .then(response => response.json())
+            .then(data => {
+              if (data.message) {
+                Swal.fire({
+                  title: 'Success!',
+                  text: 'Product has been updated successfully.',
+                  icon: 'success',
+                  timer: 1500,
+                  showConfirmButton: false
+                }).then(() => {
+                  load_sales_lines_table(delNoteNo);
+                  load_delivery_lines_table(delNoteNo);
+                });
+              } else {
+                throw new Error(data.error || 'Failed to update product');
+              }
+            })
+            .catch(error => {
+              Swal.fire({
+                title: 'Error',
+                text: error.message || 'Failed to update product',
+                icon: 'error'
+              });
+            });
+          }
+        });
+      })
+      .catch(error => {
+        console.error('Error fetching products:', error);
+        Swal.fire({
+          title: 'Error',
+          text: 'Failed to load products',
+          icon: 'error'
+        });
       });
-    })
-    .catch(error => {
-      console.error('Error fetching products:', error);
-      Swal.fire({
-        title: 'Error',
-        text: 'Failed to load products',
-        icon: 'error'
-      });
-    });
+  }
 };
 
-// Function to handle Production Unit change
-window.changeProductionUnit = function(lineId, currentProdUnit, delNoteNo) {
-  // Fetch production units from the server
-  fetch('/api/production_units')
-    .then(response => response.json())
-    .then(units => {
-      // Create the modal HTML with searchable dropdown
-      const modalHtml = `
-        <div style="text-align: left;">
-          <div style="margin-bottom: 1rem;">
-            <label style="display: block; margin-bottom: 0.5rem; font-weight: 600; color: #334155;">Current Production Unit</label>
-            <div style="padding: 0.8em; background: #f8fafc; border-radius: 8px; color: #64748b;">
-              ${currentProdUnit}
+
+
+// Function to handle Production Unit change (now same logic as product)
+window.changeProductionUnit = function(lineId, currentProdUnit, delNoteNo, qtyInvoiced) {
+  console.log(qtyInvoiced);
+  // Show warning if invoiced quantity > 0
+  if (parseFloat(qtyInvoiced) > 0) {
+    Swal.fire({
+      title: '⚠️ Warning',
+      html: `
+        <div style="text-align: left; font-size: 15px; line-height: 1.6; color: #444;">
+          This production unit already has <strong>${qtyInvoiced}</strong> invoiced units.<br><br>
+          <strong>Any invoice containing this production unit will also be edited</strong> if you proceed.
+          <br><br>
+          Do you want to continue?
+        </div>
+      `,
+      icon: 'warning',
+      showCancelButton: true,
+      confirmButtonText: 'Yes, continue',
+      cancelButtonText: 'Cancel',
+      reverseButtons: true,
+      confirmButtonColor: '#d33',
+    }).then(result => {
+      if (result.isConfirmed) {
+        openProductionUnitModal();
+      }
+    });
+  } else {
+    openProductionUnitModal();
+  }
+
+  // Function to show the production unit change modal
+  function openProductionUnitModal() {
+    fetch('/api/production_units')
+      .then(response => response.json())
+      .then(units => {
+        const modalHtml = `
+          <div style="text-align: left; font-size: 0.95rem;">
+            <div style="margin-bottom: 1rem;">
+              <label style="display: block; margin-bottom: 0.5rem; font-weight: 600; color: #334155;">
+                Current Production Unit
+              </label>
+              <div style="padding: 0.75rem; background: #f8fafc; border-radius: 8px; color: #475569; border: 1px solid #e2e8f0;">
+                ${currentProdUnit}
+              </div>
+            </div>
+
+            <div style="margin-bottom: 1rem;">
+              <label style="display: block; margin-bottom: 0.5rem; font-weight: 600; color: #334155;">
+                New Production Unit
+              </label>
+              <select id="prodUnitSelect" class="form-select" style="width: 100%; padding: 0.5rem; border: 1px solid #d1d5db; border-radius: 8px; background: white; color: #111827;">
+                <option value="">Select a production unit...</option>
+                ${units.map(u => `<option value="${u.UnitId}">${u.UnitName}</option>`).join('')}
+              </select>
             </div>
           </div>
-          <div style="margin-bottom: 1rem;">
-            <label style="display: block; margin-bottom: 0.5rem; font-weight: 600; color: #334155;">New Production Unit</label>
-            <select id="prodUnitSelect" class="form-select" style="width: 100%;">
-              <option value="">Select a production unit...</option>
-              ${units.map(u => `<option value="${u.UnitId}">${u.UnitName}</option>`).join('')}
-            </select>
-          </div>
-        </div>
-      `;
+        `;
 
-      // Initialize Select2 on the dropdown
-      Swal.fire({
-        title: 'Change Production Unit',
-        html: modalHtml,
-        showCancelButton: true,
-        confirmButtonText: 'Save',
-        cancelButtonText: 'Cancel',
-        width: 600,
-        didOpen: () => {
-          // Initialize Select2
-          $('#prodUnitSelect').select2({
-            dropdownParent: $('.swal2-container'),
-            width: '100%',
-            placeholder: 'Search for a production unit...',
-            allowClear: true
-          });
-        },
-        preConfirm: () => {
-          const selectedUnit = document.getElementById('prodUnitSelect').value;
-          if (!selectedUnit) {
-            Swal.showValidationMessage('Please select a production unit');
-            return false;
-          }
-          return selectedUnit;
-        }
-      }).then((result) => {
-        if (result.isConfirmed) {
-          // Save the new production unit
-          fetch('/api/save_production_unit', {
-            method: 'POST',
-            headers: {
-              'Content-Type': 'application/json',
-            },
-            body: JSON.stringify({
-              line_id: lineId,
-              unit_id: result.value
-            })
-          })
-          .then(response => response.json())
-          .then(data => {
-            if (data.message) {
-              Swal.fire({
-                title: 'Success!',
-                text: 'Production unit has been updated successfully.',
-                icon: 'success',
-                timer: 1500,
-                showConfirmButton: false
-              }).then(() => {
-                // Refresh the delivery table
-                load_delivery_lines_table(delNoteNo)
-              });
-            } else {
-              throw new Error(data.error || 'Failed to update production unit');
-            }
-          })
-          .catch(error => {
-            Swal.fire({
-              title: 'Error',
-              text: error.message || 'Failed to update production unit',
-              icon: 'error'
+        Swal.fire({
+          title: 'Change Production Unit',
+          html: modalHtml,
+          showCancelButton: true,
+          confirmButtonText: 'Save',
+          cancelButtonText: 'Cancel',
+          width: 600,
+          didOpen: () => {
+            $('#prodUnitSelect').select2({
+              dropdownParent: $('.swal2-container'),
+              width: '100%',
+              placeholder: 'Search for a production unit...',
+              allowClear: true
             });
-          });
-        }
+          },
+          preConfirm: () => {
+            const selectedUnit = document.getElementById('prodUnitSelect').value;
+            if (!selectedUnit) {
+              Swal.showValidationMessage('Please select a production unit');
+              return false;
+            }
+            return selectedUnit;
+          }
+        }).then((result) => {
+          if (result.isConfirmed) {
+            fetch('/api/save_production_unit', {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({
+                line_id: lineId,
+                unit_id: result.value
+              })
+            })
+            .then(response => response.json())
+            .then(data => {
+              if (data.message) {
+                Swal.fire({
+                  title: 'Success!',
+                  text: 'Production unit has been updated successfully.',
+                  icon: 'success',
+                  timer: 1500,
+                  showConfirmButton: false
+                }).then(() => {
+                  load_delivery_lines_table(delNoteNo);
+                });
+              } else {
+                throw new Error(data.error || 'Failed to update production unit');
+              }
+            })
+            .catch(error => {
+              Swal.fire({
+                title: 'Error',
+                text: error.message || 'Failed to update production unit',
+                icon: 'error'
+              });
+            });
+          }
+        });
+      })
+      .catch(() => {
+        Swal.fire({
+          title: 'Error',
+          text: 'Failed to load production units',
+          icon: 'error'
+        });
       });
-    })
-    .catch(error => {
-      console.error('Error fetching production units:', error);
-      Swal.fire({
-        title: 'Error',
-        text: 'Failed to load production units',
-        icon: 'error'
-      });
-    });
+  }
 };
+
 
 
 // Placeholder for delete (implement backend as needed)

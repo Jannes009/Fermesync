@@ -341,14 +341,11 @@ def save_product():
 
     try:
         query = """
-            UPDATE ZZDeliveryNoteLines
-            SET DelLineStockId = ?
-            WHERE DelLineIndex = ?
-            UPDATE ZZSalesLines
-            SET SalesStockId = ?
-            WHERE SalesDelLineId = ?
+        EXEC [SIGChangeDelNoteStockItem]
+            @NewStockLink = ?,
+            @LineId = ?;
         """
-        cursor.execute(query, (product_id, line_id, product_id, line_id))
+        cursor.execute(query, (product_id, line_id))
         cursor.execute("""
         EXEC [dbo].[SIGUpdatePackagingCost]
         EXEC [dbo].[SIGUpdateWeightTransport]
@@ -509,6 +506,11 @@ def save_delivery_header(delnote_no):
             data['destinationid'],
             delnote_no
         ))
+        cursor.execute("""
+        EXEC [SIGUpdateProcessedAgentAccount]
+            @DelNoteNumber = ?,
+            @NewAgentId = ?;
+                """,(delnote_no, data['deliclientid']))
         conn.commit()
 
         # Edit Transport PO

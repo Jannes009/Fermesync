@@ -518,21 +518,9 @@ window.editDeliveryHeader = function(delnoteNo) {
                         const isProcessed = orderStatus.isProcessed;
                         const hasInvoice = orderStatus.hasInvoice;
 
-                        // Transport restrictions
+                        // Styling
                         const transportDisabled = isProcessed ? 'disabled' : '';
                         const transportStyle = isProcessed
-                            ? 'padding: 0.6rem; border-radius: 6px; border: 1px solid var(--input-border); width: 100%; background-color: var(--table-row-even); color: var(--secondary-text);'
-                            : 'padding: 0.6rem; border-radius: 6px; border: 1px solid var(--input-border); width: 100%; background: var(--container-bg); color: var(--primary-text);';
-
-                        // Agent restrictions
-                        const agentDisabled = hasInvoice ? 'disabled' : '';
-                        const agentStyle = hasInvoice
-                            ? 'padding: 0.6rem; border-radius: 6px; border: 1px solid var(--input-border); width: 100%; background-color: var(--table-row-even); color: var(--secondary-text);'
-                            : 'width: 100%; background: var(--container-bg); color: var(--primary-text); border: 1px solid var(--input-border);';
-
-                        // Delivery Note restrictions
-                        const delNoteDisabled = hasInvoice ? 'disabled' : '';
-                        const delNoteStyle = hasInvoice
                             ? 'padding: 0.6rem; border-radius: 6px; border: 1px solid var(--input-border); width: 100%; background-color: var(--table-row-even); color: var(--secondary-text);'
                             : 'padding: 0.6rem; border-radius: 6px; border: 1px solid var(--input-border); width: 100%; background: var(--container-bg); color: var(--primary-text);';
 
@@ -551,81 +539,68 @@ window.editDeliveryHeader = function(delnoteNo) {
                                     </p>
                                 </div>` : ''}
 
-                                <!-- Invoice warning -->
-                                ${hasInvoice ? `
-                                <div style="margin-bottom: 1.5rem; padding: 1rem; background-color: var(--muted-bg); border: 1px solid var(--table-border); border-radius: 8px;">
-                                    <div style="display: flex; align-items: center; gap: 0.5rem;">
-                                        <span style="color: var(--logo-color); font-size: 1.2em;">⚠️</span>
-                                        <span style="color: var(--logo-color); font-weight: 600;">Invoice Exists</span>
-                                    </div>
-                                    <p style="color: var(--logo-color); margin: 0.5rem 0 0 0; font-size: 0.9rem;">
-                                        An invoice exists for this delivery note. Agent and Delivery Note No cannot be changed.
-                                    </p>
-                                </div>` : ''}
-
                                 <!-- Delivery Note No -->
                                 <div style="margin-bottom: 1.5rem;">
-                                    <label style="display: block; margin-bottom: 0.5rem; font-weight: 600; color: var(--primary-text); font-size: 0.95rem;">Delivery Note No</label>
-                                    <input type="text" id="deliveryNoteNo" class="form-control" value="${header.delnoteno}" 
-                                           style="${delNoteStyle}" ${delNoteDisabled}>
+                                    <label style="display:block;margin-bottom:0.5rem;font-weight:600;color:var(--primary-text);font-size:0.95rem;">Delivery Note No</label>
+                                    <input type="text" id="deliveryNoteNo" class="form-control" value="${header.delnoteno}"
+                                           style="padding:0.6rem;border-radius:6px;border:1px solid var(--input-border);width:100%;background:var(--container-bg);color:var(--primary-text);">
                                 </div>
 
                                 <!-- Delivery Date -->
-                                <div style="margin-bottom: 1.5rem;">
-                                    <label style="display: block; margin-bottom: 0.5rem; font-weight: 600; color: var(--primary-text); font-size: 0.95rem;">Delivery Date</label>
-                                    <input type="date" id="deliveryDate" class="form-control" value="${header.deldate}" 
-                                           style="padding: 0.6rem; border-radius: 6px; border: 1px solid var(--input-border); width: 100%; background: var(--container-bg); color: var(--primary-text);">
+                                <div style="margin-bottom:1.5rem;">
+                                    <label style="display:block;margin-bottom:0.5rem;font-weight:600;color:var(--primary-text);font-size:0.95rem;">Delivery Date</label>
+                                    <input type="date" id="deliveryDate" class="form-control" value="${header.deldate}"
+                                           style="padding:0.6rem;border-radius:6px;border:1px solid var(--input-border);width:100%;background:var(--container-bg);color:var(--primary-text);">
                                 </div>
 
                                 <!-- Agent -->
-                                <div style="margin-bottom: 1.5rem;">
-                                    <label style="display: block; margin-bottom: 0.5rem; font-weight: 600; color: var(--primary-text); font-size: 0.95rem;">Agent</label>
+                                <div style="margin-bottom:0.5rem;">
+                                    <label style="display:block;margin-bottom:0.5rem;font-weight:600;color:var(--primary-text);font-size:0.95rem;">Agent</label>
+                                    <select id="agentSelect" class="form-select" style="width:100%;background:var(--container-bg);color:var(--primary-text);border:1px solid var(--input-border);">
+                                        <option value="">Select an agent...</option>
+                                        ${agents.map(a => `<option value="${a.DCLink}" ${a.DCLink === header.deliclientid ? 'selected' : ''}>${a.display_name}</option>`).join('')}
+                                    </select>
                                     ${hasInvoice ? `
-                                        <div style="padding: 0.8em; background: var(--table-row-even); border-radius: 8px; color: var(--logo-color); border: 1px solid var(--input-border);">
-                                            ${agents.find(a => a.DCLink === header.deliclientid)?.display_name || 'Unknown Agent'}
+                                        <div style="margin-top:0.4rem;color:var(--logo-color);font-size:0.85rem;">
+                                            ⚠️ An invoice already exists for this delivery note. Changing the agent will also update the related invoices.
                                         </div>
-                                    ` : `
-                                        <select id="agentSelect" class="form-select" style="${agentStyle}">
-                                            <option value="">Select an agent...</option>
-                                            ${agents.map(a => `<option value="${a.DCLink}" ${a.DCLink === header.deliclientid ? 'selected' : ''}>${a.display_name}</option>`).join('')}
-                                        </select>
-                                    `}
+                                    ` : ''}
                                 </div>
 
                                 <!-- Packhouse -->
-                                <div style="margin-bottom: 1.5rem;">
-                                    <label style="display: block; margin-bottom: 0.5rem; font-weight: 600; color: var(--primary-text); font-size: 0.95rem;">Packhouse</label>
-                                    <select id="marketSelect" class="form-select" style="width: 100%; background: var(--container-bg); color: var(--primary-text); border: 1px solid var(--input-border);">
+                                <div style="margin-bottom:1.5rem;">
+                                    <label style="display:block;margin-bottom:0.5rem;font-weight:600;color:var(--primary-text);font-size:0.95rem;">Packhouse</label>
+                                    <select id="marketSelect" class="form-select" style="width:100%;background:var(--container-bg);color:var(--primary-text);border:1px solid var(--input-border);">
                                         <option value="">Select a packhouse...</option>
                                         ${packhouses.map(m => `<option value="${m.WhseLink}" ${m.WhseLink === header.delmarketid ? 'selected' : ''}>${m.display_name}</option>`).join('')}
                                     </select>
                                 </div>
 
                                 <!-- Destination -->
-                                <div style="margin-bottom: 1.5rem;">
-                                    <label style="display: block; margin-bottom: 0.5rem; font-weight: 600; color: var(--primary-text); font-size: 0.95rem;">Destination</label>
-                                    <select id="destinationSelect" class="form-select" style="width: 100%; background: var(--container-bg); color: var(--primary-text); border: 1px solid var(--input-border);">
+                                <div style="margin-bottom:1.5rem;">
+                                    <label style="display:block;margin-bottom:0.5rem;font-weight:600;color:var(--primary-text);font-size:0.95rem;">Destination</label>
+                                    <select id="destinationSelect" class="form-select" style="width:100%;background:var(--container-bg);color:var(--primary-text);border:1px solid var(--input-border);">
                                         <option value="">Select a destination...</option>
                                         ${destinations.map(d => `<option value="${d.DestinationId}" ${d.DestinationId === header.destinationid ? 'selected' : ''}>${d.display_name}</option>`).join('')}
                                     </select>
                                 </div>
 
                                 <!-- Total Quantity -->
-                                <div style="margin-bottom: 1.5rem;">
-                                    <label style="display: block; margin-bottom: 0.5rem; font-weight: 600; color: var(--primary-text); font-size: 0.95rem;">Total Quantity (Bags)</label>
+                                <div style="margin-bottom:1.5rem;">
+                                    <label style="display:block;margin-bottom:0.5rem;font-weight:600;color:var(--primary-text);font-size:0.95rem;">Total Quantity (Bags)</label>
                                     <input type="number" id="totalQuantity" class="form-control" value="${header.delquantitybags || 0}"
-                                           style="padding: 0.6rem; border-radius: 6px; border: 1px solid var(--input-border); width: 100%; background: var(--container-bg); color: var(--primary-text);">
+                                           style="padding:0.6rem;border-radius:6px;border:1px solid var(--input-border);width:100%;background:var(--container-bg);color:var(--primary-text);">
                                 </div>
 
                                 <!-- Transporter -->
-                                <div style="margin-bottom: 1.5rem;">
-                                    <label style="display: block; margin-bottom: 0.5rem; font-weight: 600; color: var(--primary-text); font-size: 0.95rem;">Transporter</label>
+                                <div style="margin-bottom:1.5rem;">
+                                    <label style="display:block;margin-bottom:0.5rem;font-weight:600;color:var(--primary-text);font-size:0.95rem;">Transporter</label>
                                     ${isProcessed ? `
-                                        <div style="padding: 0.8em; background: var(--table-row-even); border-radius: 8px; color: var(--logo-color); border: 1px solid var(--input-border);">
+                                        <div style="padding:0.8em;background:var(--table-row-even);border-radius:8px;color:var(--logo-color);border:1px solid var(--input-border);">
                                             ${transporters.find(t => t.TransporterAccount === header.deltransporter)?.display_name || 'Unknown Transporter'}
                                         </div>
                                     ` : `
-                                        <select id="transporterSelect" class="form-select" style="width: 100%; background: var(--container-bg); color: var(--primary-text); border: 1px solid var(--input-border);">
+                                        <select id="transporterSelect" class="form-select" style="width:100%;background:var(--container-bg);color:var(--primary-text);border:1px solid var(--input-border);">
                                             <option value="">Select a transporter...</option>
                                             ${transporters.map(t => `<option value="${t.TransporterAccount}" ${t.TransporterAccount === header.deltransporter ? 'selected' : ''}>${t.display_name}</option>`).join('')}
                                         </select>
@@ -633,8 +608,8 @@ window.editDeliveryHeader = function(delnoteNo) {
                                 </div>
 
                                 <!-- Transport Cost -->
-                                <div style="margin-bottom: 1.5rem;">
-                                    <label style="display: block; margin-bottom: 0.5rem; font-weight: 600; color: var(--primary-text); font-size: 0.95rem;">Transport Cost</label>
+                                <div>
+                                    <label style="display:block;margin-bottom:0.5rem;font-weight:600;color:var(--primary-text);font-size:0.95rem;">Transport Cost</label>
                                     <input type="number" id="transportCost" class="form-control" value="${header.deltransportcostexcl || 0}"
                                            style="${transportStyle}" ${transportDisabled}>
                                 </div>
@@ -649,35 +624,21 @@ window.editDeliveryHeader = function(delnoteNo) {
                             confirmButtonText: 'Save Changes',
                             cancelButtonText: 'Cancel',
                             width: 600,
-                            customClass: {
-                                container: 'delivery-header-modal',
-                                popup: 'delivery-header-modal-popup',
-                                title: 'delivery-header-modal-title',
-                                confirmButton: 'btn btn-primary',
-                                cancelButton: 'btn btn-secondary'
-                            },
                             didOpen: () => {
                                 // Initialize Select2
-                                const selectElements = [];
-                                if (!hasInvoice) selectElements.push('#agentSelect');
-                                selectElements.push('#marketSelect', '#destinationSelect');
-                                if (!isProcessed) selectElements.push('#transporterSelect');
-
-                                $(selectElements.join(',')).select2({
+                                $('#agentSelect, #marketSelect, #destinationSelect, #transporterSelect').select2({
                                     dropdownParent: $('.swal2-container'),
                                     width: '100%',
                                     placeholder: 'Select an option...',
                                     allowClear: true,
                                     theme: 'bootstrap-5'
-                                }).on('select2:open', () => {
-                                    document.querySelector('.select2-container--open').style.zIndex = 9999;
                                 });
                             },
                             preConfirm: () => {
                                 return {
-                                    delnoteno: hasInvoice ? header.delnoteno : document.getElementById('deliveryNoteNo').value,
+                                    delnoteno: document.getElementById('deliveryNoteNo').value,
                                     deldate: document.getElementById('deliveryDate').value,
-                                    deliclientid: hasInvoice ? header.deliclientid : document.getElementById('agentSelect').value,
+                                    deliclientid: document.getElementById('agentSelect').value,
                                     delmarketid: document.getElementById('marketSelect').value,
                                     destinationid: document.getElementById('destinationSelect').value,
                                     deltransporter: isProcessed ? header.deltransporter : document.getElementById('transporterSelect').value,
@@ -687,54 +648,48 @@ window.editDeliveryHeader = function(delnoteNo) {
                             }
                         }).then((result) => {
                             if (result.isConfirmed) {
-                                // Save
-                                fetch(`/api/save-delivery-header/${encodeURIComponent(delnoteNo)}`, {
-                                    method: 'POST',
-                                    headers: { 'Content-Type': 'application/json' },
-                                    body: JSON.stringify(result.value)
-                                })
-                                .then(response => response.json())
-                                .then(data => {
-                                    if (data.success) {
-                                        const newDelNoteNo = result.value.delnoteno;
-                                        if (newDelNoteNo && newDelNoteNo !== delnoteNo) {
-                                            window.location.href = `/delivery-note/${encodeURIComponent(newDelNoteNo)}`;
-                                        } else {
-                                            window.location.reload();
-                                        }
-                                    } else {
-                                        throw new Error(data.message || 'Failed to update delivery note header');
-                                    }
-                                })
-                                .catch(error => {
+                                const changedAgent = hasInvoice && result.value.deliclientid !== String(header.deliclientid);
+                                
+                                if (changedAgent) {
                                     Swal.fire({
-                                        title: 'Error',
-                                        text: error.message || 'Failed to update delivery note header',
-                                        icon: 'error'
+                                        title: 'Change will affect invoices',
+                                        text: 'This delivery note has an existing invoice. Changing the agent will also update the invoices. Continue?',
+                                        icon: 'warning',
+                                        showCancelButton: true,
+                                        confirmButtonText: 'Yes, continue',
+                                        cancelButtonText: 'Cancel'
+                                    }).then(confirmRes => {
+                                        if (confirmRes.isConfirmed) saveHeader(delnoteNo, result.value);
                                     });
-                                });
+                                } else {
+                                    saveHeader(delnoteNo, result.value);
+                                }
                             }
                         });
+
+                        function saveHeader(dn, values) {
+                            fetch(`/api/save-delivery-header/${encodeURIComponent(dn)}`, {
+                                method: 'POST',
+                                headers: { 'Content-Type': 'application/json' },
+                                body: JSON.stringify(values)
+                            })
+                            .then(r => r.json())
+                            .then(data => {
+                                if (data.success) {
+                                    const newNo = values.delnoteno;
+                                    if (newNo && newNo !== dn) window.location.href = `/delivery-note/${encodeURIComponent(newNo)}`;
+                                    else window.location.reload();
+                                } else throw new Error(data.message || 'Failed to update delivery note header');
+                            })
+                            .catch(e => Swal.fire('Error', e.message, 'error'));
+                        }
                     });
                 })
-                .catch(error => {
-                    console.error('Error fetching header data:', error);
-                    Swal.fire({
-                        title: 'Error',
-                        text: 'Failed to load delivery note header data',
-                        icon: 'error'
-                    });
-                });
+                .catch(err => Swal.fire('Error', 'Failed to load delivery note header data', 'error'));
         })
-        .catch(error => {
-            console.error('Error fetching order status:', error);
-            Swal.fire({
-                title: 'Error',
-                text: 'Failed to load order status',
-                icon: 'error'
-            });
-        });
+        .catch(err => Swal.fire('Error', 'Failed to load order status', 'error'));
 };
+
 
 
 // Function to save quantity changes

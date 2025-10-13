@@ -22,11 +22,16 @@ async function loadTemplateReport(name, data = window.data) {
             container.appendChild(window.templateReportCache.fragment.cloneNode(true));
             return;
         }
-        console.log(data)
+
         // Group and render data
         const grouped = groupByTemplateLevels(data, template.levels);
         const fragment = buildReportTable(template, grouped);
+
+        const title = document.createElement("h1")
+        title.innerHTML = `Delivery Note ${name} Report`
+
         container.innerHTML = "";
+        container.appendChild(title)
         container.appendChild(fragment);
 
         // Cache
@@ -63,7 +68,7 @@ function buildReportTable(template, groupedData) {
     const fragment = document.createDocumentFragment();
     const table = document.createElement("table");
     table.classList.add("report-table");
-    table.id = "quantitiesTable"; // Match quantities report ID for consistency
+    table.id = "templateTable";
     table.innerHTML = `
         <thead>
             <tr>
@@ -90,13 +95,10 @@ function buildReportTable(template, groupedData) {
 function buildRowsRecursive(tbody, groupedData, levels, fields, rowIdCounter, parentRow = null, depth = 0) {
     if (!groupedData) return;
     const isLastLevel = levels.length === 1;
-    const levelNames = ["market", "date", "note", "product"]; // Match quantities report level classes
-    const levelName = levelNames[depth] || `level-${depth}`;
 
     for (const [key, subData] of Object.entries(groupedData)) {
         const tr = document.createElement("tr");
         tr.dataset.rowId = `row-${rowIdCounter.value++}`;
-        tr.classList.add(levelName);
         if (parentRow) {
             tr.classList.add("hidden");
             tr.dataset.parentId = parentRow.dataset.rowId;

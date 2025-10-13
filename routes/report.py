@@ -92,7 +92,7 @@ import json
 import os
 import tempfile
 
-TEMPLATE_DIR = "static/templates"
+TEMPLATE_DIR = "static/"
 os.makedirs(TEMPLATE_DIR, exist_ok=True)
 TEMPLATE_FILE = os.path.join(TEMPLATE_DIR, "report_templates.json")
 
