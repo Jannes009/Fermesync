@@ -254,7 +254,12 @@ def match_consignment():
         if cursor.rowcount == 0:
             return jsonify({"error": "No matching line found for the given line ID."}), 404
         
-        # cursor.execute("EXEC SIGCreateSalesFromTrn")
+        cursor.execute("EXEC SIGCreateSalesFromTrn")
+        cursor.execute("""
+            EXEC [dbo].[SIGUpdatePackagingCost]
+            EXEC [dbo].[SIGUpdateWeightTransport]
+            EXEC [dbo].[SIGUpdateDeliveryNoteLineTotals]
+        """)
         conn.commit()
 
         return jsonify({"message": "Consignment matched successfully."}), 200

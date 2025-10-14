@@ -181,7 +181,7 @@ def submit_sales_entry():
                     SET SalesDate = ?, SalesQty = ?, DiscountPercent = ?, DiscountAmnt = ?, 
                     SalesAmnt = ?, SalesStockId = ?, SalesPrice = ?, GrossSalesAmnt = ?, 
                     SalesMarketComPercent = ?, SalesAgentComPercent = ?, NettSalesAmnt = ?,
-                    Destroyed = ?
+                    Destroyed = ?, SalesLineTransportCostExcl = NULL
                     WHERE SalesLineIndex = ?
                 """, (date, quantity, discount, discountAmnt, amount, stockId, price, 
                       gross_amount, market_commission, agent_commission, net_sales, destroyed, salesId, ))
@@ -199,6 +199,11 @@ def submit_sales_entry():
                         price, stockId, 0, discount, 
                         discountAmnt, gross_amount,
                         market_commission, agent_commission, net_sales, destroyed,))
+            cursor.execute("""
+            EXEC [dbo].[SIGUpdatePackagingCost]
+            EXEC [dbo].[SIGUpdateWeightTransport]
+            EXEC [dbo].[SIGUpdateDeliveryNoteLineTotals]
+            """)
         conn.commit()
     finally:
         cursor.close()
@@ -262,6 +267,7 @@ def delete_sales_entry(sales_id):
             from [dbo].[ZZMarketDataTrn] TRN 
             where DocketNumber = ?;
         """, (sales_id, docket_number[0]))
+        cursor.execute("EXEC [dbo].[SIGUpdateDeliveryNoteLineTotals]")
         conn.commit()
 
         # Check if any rows were deleted
@@ -284,6 +290,7 @@ def unlink_consignment(consignment_id):
 
         # Execute the stored procedure to unlink the consignment
         cursor.execute("EXEC SIGUnlinkConsignment @ConsignmentID = ?", (consignment_id,))
+        cursor.execute("EXEC [dbo].[SIGUpdateDeliveryNoteLineTotals]")
         conn.commit()
 
         return jsonify({'success': True, 'message': 'Consignment unlinked successfully'})
@@ -334,14 +341,16 @@ def save_product():
 
     try:
         query = """
-            UPDATE ZZDeliveryNoteLines
-            SET DelLineStockId = ?
-            WHERE DelLineIndex = ?
-            UPDATE ZZSalesLines
-            SET SalesStockId = ?
-            WHERE SalesDelLineId = ?
+        EXEC [SIGChangeDelNoteStockItem]
+            @NewStockLink = ?,
+            @LineId = ?;
         """
-        cursor.execute(query, (product_id, line_id, product_id, line_id))
+        cursor.execute(query, (product_id, line_id))
+        cursor.execute("""
+        EXEC [dbo].[SIGUpdatePackagingCost]
+        EXEC [dbo].[SIGUpdateWeightTransport]
+        EXEC [dbo].[SIGUpdateDeliveryNoteLineTotals]
+        """)
         conn.commit()
         return jsonify({'message': 'Product updated successfully'})
     except Exception as e:
@@ -497,10 +506,19 @@ def save_delivery_header(delnote_no):
             data['destinationid'],
             delnote_no
         ))
+        cursor.execute("""
+        EXEC [SIGUpdateProcessedAgentAccount]
+            @DelNoteNumber = ?,
+            @NewAgentId = ?;
+                """,(delnote_no, data['deliclientid']))
         conn.commit()
 
         # Edit Transport PO
         cursor.execute("EXEC [dbo].[SIGCreateTransportPO]")
+        cursor.execute("""
+        EXEC [dbo].[SIGUpdateWeightTransport]
+        EXEC [dbo].[SIGUpdateDeliveryNoteLineTotals]
+        """)
 
         conn.commit()
         return jsonify({'success': True})
@@ -683,6 +701,11 @@ def update_line_quantities():
             SET DelLineQuantityBags = ?
             WHERE DelLineIndex = ?
         """, (new_qty, line_id))
+    cursor.execute("""
+    EXEC [dbo].[SIGUpdatePackagingCost]
+    EXEC [dbo].[SIGUpdateWeightTransport]
+    EXEC [dbo].[SIGUpdateDeliveryNoteLineTotals]
+    """)
     conn.commit()
     return jsonify({
         'success': True,
@@ -707,6 +730,7 @@ def delete_delivery_line(line_id):
         # Optionally, add safety checks here (e.g., not deleting if sold/invoiced qty > 0)
         cursor.execute("""
             DELETE FROM ZZDeliveryNoteLines WHERE DelLineIndex = ?
+            DELETE FROM [dbo].[ZZDeliveryNoteLineTotals] WHERE DelLineId = ?
         """, (line_id,))
         conn.commit()
         if cursor.rowcount == 0:
