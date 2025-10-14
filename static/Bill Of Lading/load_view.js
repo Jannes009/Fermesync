@@ -20,6 +20,12 @@ function load_delivery_lines_table(delnoteno) {
             `;
             lines.forEach(line => {
                 const invoicedQty = line.totalqtyinvoiced || 0;
+                const ProdUnitButton = invoicedQty === 0
+                    ? `<button class="icon-btn" onclick="changeProductionUnit('${line.dellineindex}', '${line.produnitname}', '${delnoteno}', '${line.totalqtyinvoiced}'); event.stopPropagation();">
+                            <img src="/static/Image/change.png" alt="Change Production Unit">
+                       </button>`
+                    : '';
+                
 
                 tableHtml += `
                   <tr class="delivery-line" data-line-id="${line.dellineindex}" onclick="selectDeliveryLine(this, '${line.dellineindex}')" style="cursor: pointer;">
@@ -35,9 +41,7 @@ function load_delivery_lines_table(delnoteno) {
                     <td>
                       <div style="display: flex; align-items: center; gap: 8px;">
                         <span>${line.produnitname}</span>
-                            <button class="icon-btn" onclick="changeProductionUnit('${line.dellineindex}', '${line.produnitname}', '${delnoteno}', '${line.totalqtyinvoiced}'); event.stopPropagation();">
-                                <img src="/static/Image/change.png" alt="Change Production Unit">
-                            </button>  
+                            ${ProdUnitButton}
                       </div>
                     </td>
                     <td>
