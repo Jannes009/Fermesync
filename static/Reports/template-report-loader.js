@@ -27,11 +27,80 @@ async function loadTemplateReport(name, data = window.data) {
         const grouped = groupByTemplateLevels(data, template.levels);
         const fragment = buildReportTable(template, grouped);
 
-        const title = document.createElement("h1")
-        title.innerHTML = `Delivery Note ${name} Report`
+        // --- Create Title and Action Buttons Container ---
+        const titleContainer = document.createElement("div");
+        titleContainer.style.display = "flex";
+        titleContainer.style.justifyContent = "space-between";
+        titleContainer.style.alignItems = "center";
+        titleContainer.style.marginBottom = "10px";
 
+        const title = document.createElement("h1");
+        title.textContent = `Delivery Note ${name} Report`;
+
+        // --- Right Button Group ---
+        const buttonGroup = document.createElement("div");
+        buttonGroup.style.display = "flex";
+        buttonGroup.style.gap = "8px";
+
+        // --- Expand/Collapse Button ---
+        const expandBtn = document.createElement("button");
+        expandBtn.textContent = "Expand All";
+        expandBtn.className = "expand-all-btn";
+        Object.assign(expandBtn.style, {
+            padding: "6px 12px",
+            border: "1px solid #ccc",
+            borderRadius: "6px",
+            cursor: "pointer",
+            background: "var(--input-bg, #f5f5f5)",
+            transition: "background 0.2s"
+        });
+
+        expandBtn.addEventListener("mouseenter", () => expandBtn.style.background = "var(--hover-bg, #e8e8e8)");
+        expandBtn.addEventListener("mouseleave", () => expandBtn.style.background = "var(--input-bg, #f5f5f5)");
+
+        // --- Expand/Collapse Toggle Logic ---
+        let expanded = false;
+        expandBtn.addEventListener("click", () => {
+            const hiddenRows = document.querySelectorAll("tr.hidden");
+            if (!expanded) {
+                hiddenRows.forEach(r => r.classList.remove("hidden"));
+                expandBtn.textContent = "Collapse All";
+                expanded = true;
+            } else {
+                document.querySelectorAll("tr[data-parent-id]").forEach(r => r.classList.add("hidden"));
+                expandBtn.textContent = "Expand All";
+                expanded = false;
+            }
+        });
+
+        // --- Print Button ---
+        const printBtn = document.createElement("button");
+        printBtn.className = "print-button";
+        printBtn.innerHTML = `<i class="fas fa-print"></i> Print`;
+        printBtn.disabled = true; // initially disabled
+        Object.assign(printBtn.style, {
+            padding: "6px 12px",
+            border: "1px solid #ccc",
+            borderRadius: "6px",
+            cursor: "pointer",
+            background: "var(--input-bg, #f5f5f5)",
+            transition: "background 0.2s"
+        });
+
+        printBtn.addEventListener("mouseenter", () => printBtn.style.background = "var(--hover-bg, #e8e8e8)");
+        printBtn.addEventListener("mouseleave", () => printBtn.style.background = "var(--input-bg, #f5f5f5)");
+        printBtn.addEventListener("click", generatePDF);
+
+        // --- Assemble Button Group ---
+        buttonGroup.appendChild(expandBtn);
+        buttonGroup.appendChild(printBtn);
+
+        titleContainer.appendChild(title);
+        titleContainer.appendChild(buttonGroup);
+
+        // --- Render ---
         container.innerHTML = "";
-        container.appendChild(title)
+        container.appendChild(titleContainer);
         container.appendChild(fragment);
 
         // Cache
@@ -41,6 +110,8 @@ async function loadTemplateReport(name, data = window.data) {
         container.innerHTML = `<p style="color:red;">Error loading report: ${err.message}</p>`;
     }
 }
+
+
 
 // 🧩 Group data recursively according to template levels
 function groupByTemplateLevels(data, levels) {
@@ -109,9 +180,10 @@ function buildRowsRecursive(tbody, groupedData, levels, fields, rowIdCounter, pa
         // Match quantities report indentation style
         const indent = depth === 0 ? "" : "↳ ".repeat(depth >= 3 ? 3 : depth) + (depth >= 3 ? "&nbsp;&nbsp;&nbsp;" : "");
         tr.innerHTML = `
-            <td>${indent}${key}</td>
-            ${fields.map(f => `<td>${formatValue(totals[f.field])}</td>`).join("")}
-        `;
+        <td>${indent}${key}</td>
+        ${fields.map(f => `<td>${formatValue(totals[f.field], f.valueType)}</td>`).join("")}
+    `;
+    
 
         // Toggle click handler
         if (!isLastLevel) {
@@ -212,10 +284,30 @@ function flattenGroupedData(grouped) {
     return arr;
 }
 
-// 🪄 Utility: format numbers cleanly
-function formatValue(v) {
-    return typeof v === "number" && !isNaN(v) ? v.toLocaleString(undefined, { maximumFractionDigits: 2 }) : "-";
-}
+function formatValue(value, fieldType = "amount") {
+    if (value == null || value === "" || isNaN(value)) return "-";
+  
+    const num = parseFloat(value);
+    if (isNaN(num)) return "-";
+  
+    switch (fieldType) {
+      case "weight":
+        return num.toLocaleString(undefined, {
+          minimumFractionDigits: 0,
+          maximumFractionDigits: 2
+        }) + " kg";
+  
+      case "quantity":
+        return Math.round(num).toLocaleString();
+  
+      case "amount":
+      default:
+        return "R " + num.toLocaleString(undefined, {
+          minimumFractionDigits: 2,
+          maximumFractionDigits: 2
+        });
+    }
+  }  
 
 // 👁️ Toggle visibility of child rows
 function toggleChildren(rowId) {

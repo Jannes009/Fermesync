@@ -59,7 +59,7 @@
             align-items: center;
             gap: 0.5rem;
         }
-        .dashboard-button, .print-button, .create-template-button {
+        .dashboard-button,.create-template-button {
             background-color: var(--button-bg);
             color: var(--button-text);
             padding: 0.6rem 1.2rem;
@@ -73,11 +73,11 @@
             align-items: center;
             gap: 0.5rem;
         }
-        .dashboard-button:hover, .print-button:hover, .create-template-button:hover {
+        .dashboard-button:hover, .create-template-button:hover {
             background-color: var(--button-hover);
             transform: translateY(-1px);
         }
-        .dashboard-button:disabled, .print-button:disabled, .create-template-button:disabled {
+        .dashboard-button:disabled,  .create-template-button:disabled {
             background-color: var(--secondary-text);
             cursor: not-allowed;
             opacity: 0.6;
@@ -480,6 +480,81 @@
             font-size: 0.9rem;
             color: var(--primary-text);
         }
+        #selected-levels span,
+#selected-fields span {
+  font-size: 14px;
+  color: var(--primary-text);
+}
+
+#selected-levels div,
+#selected-fields div {
+  background: var(--input-bg, #f5f5f5);
+  padding: 4px 8px;
+  border-radius: 4px;
+  transition: background 0.2s;
+}
+
+#selected-levels div:hover,
+#selected-fields div:hover {
+  background: var(--hover-bg, #e8e8e8);
+}
+.report-table td {
+  text-align: right;
+}
+.report-table td:first-child {
+  text-align: left;
+}
+.expand-all-btn {
+  font-size: 14px;
+  background: var(--input-bg, #f5f5f5);
+  border: 1px solid #ccc;
+  border-radius: 6px;
+  padding: 6px 12px;
+  cursor: pointer;
+  transition: background 0.2s, transform 0.1s;
+}
+
+.expand-all-btn:hover {
+  background: var(--hover-bg, #e8e8e8);
+  transform: scale(1.02);
+}
+.create-report-button {
+    background: var(--button-bg);
+    color: var(--button-text);
+    border: none;
+    border-radius: 6px;
+    padding: 0.6rem 1.4rem;
+    font-size: 0.95rem;
+    font-weight: 600;
+    cursor: pointer;
+    display: inline-flex;
+    align-items: center;
+    gap: 0.5rem;
+    transition: background-color 0.2s ease, transform 0.1s ease, box-shadow 0.2s ease;
+    box-shadow: 0 2px 6px rgba(0, 0, 0, 0.08);
+}
+
+.create-report-button:hover {
+    background: var(--button-hover);
+    transform: translateY(-1px);
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.12);
+}
+
+.create-report-button:active {
+    transform: translateY(0);
+    box-shadow: 0 2px 6px rgba(0, 0, 0, 0.08);
+}
+
+.create-report-button:disabled {
+    background-color: var(--secondary-text);
+    cursor: not-allowed;
+    opacity: 0.6;
+}
+
+.create-report-button i {
+    font-size: 1rem;
+}
+
 
     </style>
 </head>
@@ -531,9 +606,6 @@
                                     <option value="" disabled selected>Select Report</option>
                                 </select>
                             </div>
-                            <button class="print-button" onclick="generatePDF()" disabled>
-                                <i class="fas fa-print"></i> Print
-                            </button>
                         </div>
                         <div class="report-content" id="report-content">
                             <div id="delivery-note-template" class="hidden" data-report-content="template"></div>
@@ -861,7 +933,7 @@
                 });
         }
         async function loadReportDropdownOptions(){
-                    const data = await fetch("/static/templates/report_templates.json");
+                    const data = await fetch("/static/report_templates.json");
                     if (!data.ok) throw new Error("Failed to load JSON data");
                     reportSelect.innerHTML = "";
 
