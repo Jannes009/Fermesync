@@ -1,7 +1,7 @@
 async function loadSVGAsImage(src) {
     return new Promise((resolve, reject) => {
         const img = new Image();
-        img.crossOrigin = "Anonymous";
+        // img.crossOrigin = "Anonymous";
         img.src = src;
         img.onload = () => {
             try {
