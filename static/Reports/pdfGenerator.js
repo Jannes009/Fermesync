@@ -38,6 +38,12 @@ function cleanText(str) {
         .trim();
 }
 
+// Check if a row is a totals row
+function isTotalsRow(row) {
+    const firstCellText = cleanText(row.querySelector('td:first-child')?.textContent || '').toLowerCase();
+    return firstCellText.includes('total') || firstCellText.includes('grand') || firstCellText.includes('sum');
+}
+
 async function generatePDF() {
     if (!window.currentReportType) {
         showLoadingOverlay("No report selected. Please select a report first.");
@@ -127,14 +133,17 @@ async function generatePDF() {
         // Extract headers + data
         const headers = Array.from(table.querySelectorAll("th")).map(th => th.textContent.trim());
         const rows = Array.from(table.querySelectorAll("tbody tr"));
-        const tableData = rows.map(row => Array.from(row.querySelectorAll("td")).map(td => cleanText(td.textContent)));
+        const tableData = rows.map(row => ({
+            data: Array.from(row.querySelectorAll("td")).map(td => cleanText(td.textContent)),
+            isTotals: isTotalsRow(row)
+        }));
 
         // Determine column widths
         const colTextLengths = headers.map((header, colIndex) => {
             let total = header.length;
             let count = 1;
             for (const row of tableData) {
-                const cellText = cleanText(row[colIndex] || "");
+                const cellText = cleanText(row.data[colIndex] || "");
                 total += cellText.length;
                 count++;
             }
@@ -215,40 +224,88 @@ async function generatePDF() {
         // Render rows
         doc.setFontSize(9);
         let rowIndex = 0;
-        tableData.forEach(row => {
+        tableData.forEach(rowInfo => {
             if (currentY > pageHeight - 20) {
                 doc.addPage();
                 currentY = drawPageHeader(title, false);
             }
 
             const baseRowHeight = 7;
-            const bgColor = rowIndex % 2 === 0 ? [245, 247, 250] : [255, 255, 255];
+            const row = rowInfo.data;
+            const isTotals = rowInfo.isTotals;
 
-            const cellData = row.map((cell, i) => {
-                const text = cleanText(cell || "");
-                const textLines = doc.getTextWidth(text) > colWidths[i] - 4
-                    ? doc.splitTextToSize(text, colWidths[i] - 4)
-                    : [text];
-
-                return { textLines, cellHeight: Math.max(baseRowHeight, 4.5 * textLines.length) };
-            });
-
-            const rowHeight = Math.max(...cellData.map(c => c.cellHeight));
+            // Enhanced distinctive styling for totals row
+            let bgColor, textColor, fontStyle, rowHeight;
+            if (isTotals) {
+                // Professional dark gray background with white bold text for totals row
+                bgColor = [233, 239, 247]; // Professional dark gray background
+                textColor = [0, 0, 0]; // White text
+                fontStyle = "bold";
+                rowHeight = Math.max(baseRowHeight + 2, 9); // Slightly taller for totals row
+            } else {
+                // Normal alternating colors for regular rows
+                bgColor = rowIndex % 2 === 0 ? [245, 247, 250] : [255, 255, 255];
+                textColor = [0, 0, 0]; // Black text
+                fontStyle = "normal";
+                
+                const cellData = row.map((cell, i) => {
+                    const text = cleanText(cell || "");
+                    const textLines = doc.getTextWidth(text) > colWidths[i] - 4
+                        ? doc.splitTextToSize(text, colWidths[i] - 4)
+                        : [text];
+                    return { textLines, cellHeight: Math.max(baseRowHeight, 4.5 * textLines.length) };
+                });
+                rowHeight = Math.max(...cellData.map(c => c.cellHeight));
+            }
 
             headers.forEach((_, i) => {
                 const xPos = margin + colWidths.slice(0, i).reduce((sum, w) => sum + w, 0);
                 doc.setFillColor(...bgColor);
                 doc.rect(xPos, currentY, colWidths[i], rowHeight, "F");
 
-                const align = i === 0 ? "left" : "right";
-                const textX = align === "left" ? xPos + 2 : xPos + colWidths[i] - 2;
-                const textY = currentY + (rowHeight - 4.5 * cellData[i].textLines.length) / 2 + 4.5;
+                // Enhanced text positioning for totals row
+                if (isTotals) {
+                    // Use same alignment as normal rows for totals row
+                    const text = cleanText(row[i] || "");
+                    const textLines = doc.getTextWidth(text) > colWidths[i] - 4
+                        ? doc.splitTextToSize(text, colWidths[i] - 4)
+                        : [text];
+                    
+                    const align = i === 0 ? "left" : "right";
+                    const textX = align === "left" ? xPos + 2 : xPos + colWidths[i] - 2;
+                    const textY = currentY + (rowHeight - 4.5 * textLines.length) / 2 + 4.5;
+                    
+                    // Set text color and font style for totals row
+                    doc.setTextColor(...textColor);
+                    doc.setFont("helvetica", fontStyle);
+                    
+                    // Use same alignment as normal rows
+                    doc.text(textLines, textX, textY, { align, maxWidth: colWidths[i] - 4 });
+                } else {
+                    // Regular row styling
+                    const cellData = row.map((cell, j) => {
+                        const text = cleanText(cell || "");
+                        const textLines = doc.getTextWidth(text) > colWidths[j] - 4
+                            ? doc.splitTextToSize(text, colWidths[j] - 4)
+                            : [text];
+                        return { textLines, cellHeight: Math.max(baseRowHeight, 4.5 * textLines.length) };
+                    });
 
-                doc.text(cellData[i].textLines, textX, textY, { align, maxWidth: colWidths[i] - 4 });
+                    const align = i === 0 ? "left" : "right";
+                    const textX = align === "left" ? xPos + 2 : xPos + colWidths[i] - 2;
+                    const textY = currentY + (rowHeight - 4.5 * cellData[i].textLines.length) / 2 + 4.5;
+
+                    doc.setTextColor(...textColor);
+                    doc.setFont("helvetica", fontStyle);
+                    
+                    doc.text(cellData[i].textLines, textX, textY, { align, maxWidth: colWidths[i] - 4 });
+                }
             });
 
             currentY += rowHeight;
-            rowIndex++;
+            if (!isTotals) {
+                rowIndex++;
+            }
         });
 
         // Page numbers
@@ -257,6 +314,7 @@ async function generatePDF() {
             doc.setPage(i);
             doc.setFontSize(9);
             doc.setFont("helvetica", "normal");
+            doc.setTextColor(0, 0, 0); // Ensure page numbers are black
             doc.text(`Page ${i} of ${pageCount}`, pageWidth / 2, pageHeight - 8, { align: "center" });
         }
 

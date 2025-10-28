@@ -134,7 +134,6 @@ function groupByTemplateLevels(data, levels) {
     return result;
 }
 
-// 🧱 Build report table and rows based on template
 function buildReportTable(template, groupedData) {
     const fragment = document.createDocumentFragment();
     const table = document.createElement("table");
@@ -151,6 +150,8 @@ function buildReportTable(template, groupedData) {
     `;
     const tbody = table.querySelector("tbody");
     const rowIdCounter = { value: 0 };
+    
+    // Build all rows recursively
     buildRowsRecursive(
         tbody,
         groupedData,
@@ -158,9 +159,23 @@ function buildReportTable(template, groupedData) {
         template.fields,
         rowIdCounter
     );
+
+    // --- Add totals row ---
+    const allRows = flattenGroupedData(groupedData); // Flatten everything
+    const totals = computeFieldTotals(allRows, template.fields);
+    const totalsRow = document.createElement("tr");
+    totalsRow.style.fontWeight = "bold";
+    totalsRow.style.background = "var(--table-total-bg, #f0f0f0)"; // optional styling
+    totalsRow.innerHTML = `
+        <td>Totals</td>
+        ${template.fields.map(f => `<td>${formatValue(totals[f.field], f.valueType)}</td>`).join("")}
+    `;
+    tbody.appendChild(totalsRow);
+
     fragment.appendChild(table);
     return fragment;
 }
+
 
 // 🪜 Recursively build table rows
 function buildRowsRecursive(tbody, groupedData, levels, fields, rowIdCounter, parentRow = null, depth = 0) {
