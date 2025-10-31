@@ -256,7 +256,7 @@ def delete_sales_entry(sales_id):
             where SalesLineIndex = ?
         """,(sales_id,))
         docket_number = cursor.fetchone()
-
+        rowcount = cursor.rowcount
         # Delete the entry from the database
         cursor.execute("""
             Delete
@@ -271,7 +271,7 @@ def delete_sales_entry(sales_id):
         conn.commit()
 
         # Check if any rows were deleted
-        if cursor.rowcount == 0:
+        if rowcount == 0:
             return jsonify({'success': False, 'message': 'No entry found to delete'}), 404
 
         return jsonify({'success': True, 'message': 'Entry deleted successfully'}), 200
@@ -731,7 +731,7 @@ def delete_delivery_line(line_id):
         cursor.execute("""
             DELETE FROM ZZDeliveryNoteLines WHERE DelLineIndex = ?
             DELETE FROM [dbo].[ZZDeliveryNoteLineTotals] WHERE DelLineId = ?
-        """, (line_id,))
+        """, (line_id, line_id,))
         conn.commit()
         if cursor.rowcount == 0:
             return jsonify({'success': False, 'message': 'No line found to delete'}), 404
