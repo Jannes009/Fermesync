@@ -103,17 +103,240 @@ form {
     flex: 0 0 150px; /* Fixed smaller width for Pallets Out and Pallets Back */
 }
 
+/* Mobile Responsive Styles */
 @media (max-width: 768px) {
-    .form-row {
-        flex-direction: column; /* Stack items for smaller screens */
+    /* Container adjustments */
+    .container {
+        width: 95%;
+        padding: 10px;
     }
+
+    /* Form adjustments */
+    form {
+        max-width: 100%;
+        padding: 15px;
+        margin: 10px auto;
+    }
+
+    /* Header title */
+    h1 {
+        font-size: 1.5rem;
+        margin-bottom: 15px;
+        text-align: center;
+    }
+
+    /* Form rows - stack vertically on mobile */
+    .form-row {
+        grid-template-columns: 1fr !important; /* Single column on mobile */
+        gap: 15px;
+        margin-bottom: 15px;
+    }
+
+    .form-row-4 {
+        grid-template-columns: 1fr !important; /* Single column on mobile */
+        gap: 15px;
+        margin-bottom: 15px;
+    }
+
+    /* Form groups - full width on mobile */
+    .form-group {
+        min-width: 100%;
+        width: 100%;
+    }
+
     .form-group.small-group {
-        flex: 1; /* Expand smaller groups to full width on mobile */
+        flex: 1;
+        min-width: 100%;
+    }
+
+    /* Input adjustments for mobile */
+    .form-group input,
+    .form-group select {
+        font-size: 16px; /* Prevent zoom on iOS */
+        padding: 12px;
+        height: 44px; /* Better touch target */
+    }
+
+    /* Input wrapper adjustments */
+    .input-wrapper {
+        width: 100%;
+    }
+
+    .input-wrapper input {
+        padding-right: 35px; /* More space for icon on mobile */
+        font-size: 16px; /* Prevent zoom on iOS */
+    }
+
+    .verify-icon {
+        width: 20px;
+        height: 20px;
+        right: 10px;
+    }
+
+    /* Tax rate info - stack on mobile */
+    .tax-rate-info {
+        justify-content: center;
+        text-align: center;
+        margin: 15px 0;
+        flex-direction: column;
+        gap: 8px;
+    }
+
+    .tax-rate-info img {
+        margin-left: 0;
+        margin-top: 4px;
+    }
+
+    #current-tax-rate {
+        font-size: 0.9rem;
+    }
+
+    /* Form static elements */
+    .form-static {
+        padding: 10px 12px;
+        min-height: 44px;
+        font-size: 16px;
+    }
+
+    /* Nett invoice amount - responsive */
+    .nett-invoice-amount {
+        margin: 20px auto;
+        padding: 15px 20px;
+        max-width: 90%;
+    }
+
+    .nett-amount-value {
+        font-size: 1.5rem;
+    }
+
+    .nett-amount-value .currency {
+        font-size: 1.5rem;
+    }
+
+    /* Button adjustments */
+    button {
+        padding: 14px;
+        font-size: 16px;
+        margin-top: 15px;
+    }
+
+    /* Search container adjustments */
+    #search-container {
+        padding: 15px;
+        margin: 15px auto;
+    }
+
+    #search-container h2 {
+        font-size: 1.4rem;
+        margin-bottom: 15px;
+    }
+
+    #input-group {
+        flex-direction: column;
+        gap: 10px;
+    }
+
+    #input-group input {
+        width: 100%;
+        font-size: 16px; /* Prevent zoom on iOS */
+    }
+
+    /* Pivot table container */
+    #pivot-table-container {
+        margin: 10px;
+        padding: 10px;
+        overflow-x: auto;
+    }
+
+    /* Table adjustments for mobile */
+    #pivot-table,
+    .parent-table,
+    .child-table {
+        font-size: 0.85rem;
+        min-width: 600px; /* Allow horizontal scroll on very small screens */
+    }
+
+    #pivot-table th,
+    #pivot-table td,
+    .parent-table th,
+    .parent-table td,
+    .child-table th,
+    .child-table td {
+        padding: 8px 6px;
+        font-size: 0.85rem;
+    }
+}
+
+/* Small mobile devices (phones in portrait) */
+@media (max-width: 480px) {
+    body {
+        padding: 10px 0;
+    }
+
+    form {
+        padding: 12px;
+    }
+
+    h1 {
+        font-size: 1.3rem;
+        margin-bottom: 12px;
+    }
+
+    .form-row,
+    .form-row-4 {
+        gap: 12px;
+        margin-bottom: 12px;
+    }
+
+    .form-group label {
+        font-size: 13px;
+        margin-bottom: 4px;
+    }
+
+    .form-group input,
+    .form-group select {
+        padding: 10px;
+        height: 42px;
+    }
+
+    .nett-invoice-amount {
+        padding: 12px 15px;
+    }
+
+    .nett-amount-value {
+        font-size: 1.3rem;
+    }
+
+    .nett-amount-value .currency {
+        font-size: 1.3rem;
+    }
+
+    .tax-rate-info {
+        font-size: 0.85rem;
+    }
+}
+
+/* Tablet adjustments */
+@media (min-width: 769px) and (max-width: 1024px) {
+    .form-row-4 {
+        grid-template-columns: repeat(2, 1fr); /* 2 columns on tablet */
+        gap: 15px;
+    }
+
+    form {
+        max-width: 95%;
+        padding: 18px;
     }
 }
 
 .headers{
     display: grid;
+    width: 100%;
+}
+
+/* Header container wrapper */
+.headers > div:first-child {
+    width: 100%;
 }
 
 

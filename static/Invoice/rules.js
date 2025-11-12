@@ -178,6 +178,40 @@ document.addEventListener("DOMContentLoaded", () => {
     updateFields(); // initial load
 });
 
+function validateRequiredFields() {
+    const headerContainer = document.querySelector(".headers");
+    if (!headerContainer) return true;
+
+    const inputs = headerContainer.querySelectorAll("input");
+    const missing = [];
+
+    inputs.forEach((input) => {
+        const value = (input.value ?? "").toString().trim();
+        const isEmpty = value === "";
+        if (isEmpty) {
+            const label =
+                input.closest(".form-group")?.querySelector("label")?.textContent?.trim() ||
+                input.name ||
+                input.id ||
+                "Unknown field";
+            missing.push(label);
+        }
+    });
+
+    if (missing.length) {
+        const listHtml = `<ul style="text-align:left;margin:0 0 0 20px;">${missing
+            .map((m) => `<li>${m}</li>`)
+            .join("")}</ul>`;
+        Swal.fire({
+            title: "Missing Required Fields",
+            html: `<p>Please fill in the following fields before submitting:</p>${listHtml}`,
+            icon: "warning"
+        });
+        return false;
+    }
+    return true;
+}
+
 async function isInvoiceNumberUnique(invoiceNo) {
     const response = await fetch('/check_invoice_no', {
         method: 'POST',
@@ -193,6 +227,11 @@ document.addEventListener("DOMContentLoaded", () => {
 
     submitBtn.addEventListener("click", async (event) => {
         event.preventDefault();
+
+        // Basic required-field validation (HTML5 'required' won't run on manual click handler)
+        if (!validateRequiredFields()) {
+            return;
+        }
 
         const invoiceNo = document.querySelector('input[name="ZZInvoiceNo"]').value;
         const isUnique = await isInvoiceNumberUnique(invoiceNo);

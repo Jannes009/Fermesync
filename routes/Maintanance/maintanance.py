@@ -7,6 +7,7 @@ from routes.db_functions import (
 )
 from pypyodbc import IntegrityError
 from routes.db_functions import get_products
+import pypyodbc as odbc
 
 maintanance_bp = Blueprint('maintanance', __name__, url_prefix='/maintanance')
 
@@ -196,7 +197,7 @@ def add_item():
     
     except odbc.ProgrammingError as e:
         print(f"Error: {e}")
-        return jsonify({'success': False, 'error': "Code can't be more than 4 characters"})
+        return jsonify({'success': False, 'error': "Description exceeded the maximum character count"})
     
     except Exception as e:
         print(f"Error: {e}")
