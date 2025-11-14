@@ -3,6 +3,7 @@ from datetime import timedelta
 from flask_session import Session
 from flask_login import login_user, logout_user, current_user, login_required
 import logging
+import os
 from auth import login_manager, UserLogin
 from apscheduler.schedulers.background import BackgroundScheduler
 from routes.Import.scheduler import run_all_import_jobs
@@ -14,6 +15,14 @@ def create_app():
 
     # Basic configuration
     app.secret_key = "secret_key"
+    # app.config['EVOLUTION_SALES_ORDER_API'] = os.getenv(
+    #     'EVOLUTION_SALES_ORDER_API',
+    #     'http://localhost:5295/api/evolutiontest/create-sales-order'
+    # )
+    # app.config['EVOLUTION_WAREHOUSE_TRANSFER_API'] = os.getenv(
+    #     'EVOLUTION_WAREHOUSE_TRANSFER_API',
+    #     'http://localhost:5295/api/warehousetransfer/create'
+    # )
     
     from sqlalchemy.pool import NullPool  # add this import at the top of main.py
 
@@ -47,6 +56,7 @@ def create_app():
     from routes.dashboard import dashboard_bp
     from routes.Bill_Of_Lading.view_entry import view_entry_bp
     from routes.BOM import bom_bp
+    from routes.EvolutionSDK import SDK_bp
 
     app.register_blueprint(entry_bp)
     app.register_blueprint(view_bp)
@@ -58,6 +68,8 @@ def create_app():
     app.register_blueprint(dashboard_bp)
     app.register_blueprint(view_entry_bp)
     app.register_blueprint(bom_bp)
+    app.register_blueprint(SDK_bp)
+
     # Create all tables
     with app.app_context():
         db.create_all()

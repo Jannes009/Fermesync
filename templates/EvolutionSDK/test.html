@@ -1,0 +1,207 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <link rel="stylesheet" href="/static/color-template.css">
+  <title>Purchase Order — Mobile Stepper</title>
+
+  <style>
+body {
+    background: var(--primary-bg);
+    color: var(--primary-text);
+    font-size: 0.85rem;
+    margin: 0;
+    padding: 1rem;
+}
+
+.card {
+    background: var(--container-bg);
+    border-radius: 12px;
+    box-shadow: 0 4px 24px rgba(44, 62, 80, 0.08);
+    padding: 1.2rem;
+    margin-bottom: 1.5rem;
+}
+
+label {
+    font-weight: 600;
+    color: var(--secondary-text);
+    display: block;
+    margin-bottom: 6px;
+}
+
+select {
+    width: 100%;
+    padding: 10px;
+    border: 1px solid var(--input-border);
+    border-radius: 6px;
+    background: var(--form-bg);
+    font-size: 1rem;
+}
+
+button {
+    width: 100%;
+    background: var(--button-bg);
+    color: var(--button-text);
+    border: none;
+    padding: 12px;
+    border-radius: 8px;
+    font-size: 1rem;
+    margin-top: 1rem;
+}
+
+button:hover {
+    background: var(--button-hover);
+}
+
+header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 1.2rem;
+}
+
+.steps {
+    display: flex;
+    justify-content: space-between;
+    margin-bottom: 1.5rem;
+    padding: 0.6rem;
+    background: var(--container-bg);
+    border-radius: 10px;
+}
+
+.step {
+    flex: 1;
+    text-align: center;
+    padding: 8px 0;
+    border-radius: 6px;
+    font-weight: 600;
+    color: var(--secondary-text);
+}
+
+.step.active {
+    background: var(--button-bg);
+    color: white;
+}
+
+.hidden {
+    display: none;
+}
+
+/* --- PO table --- */
+#poTable {
+    width: 100%;
+    border-collapse: collapse;
+    margin-top: 1rem;
+    background: var(--container-bg);
+}
+
+#poTable th, #poTable td {
+    padding: 10px;
+    border-bottom: 1px solid var(--input-border);
+    text-align: left;
+    font-size: 0.9rem;
+}
+
+#poTable th {
+    background: var(--form-bg);
+    font-weight: 700;
+    color: var(--secondary-text);
+}
+
+.no-data {
+    text-align: center;
+    padding: 14px;
+    color: var(--secondary-text);
+}
+
+.po-line {
+    background: white;
+    padding: 15px;
+    margin-bottom: 12px;
+    border-radius: 10px;
+    box-shadow: 0 2px 6px rgba(0,0,0,0.1);
+}
+
+.line-header {
+    font-size: 1rem;
+    margin-bottom: 8px;
+}
+
+.line-row {
+    font-size: 0.9rem;
+    margin-bottom: 4px;
+}
+
+.input-row {
+    margin-top: 10px;
+}
+
+.qty-input {
+    width: 100%;
+    padding: 10px;
+    font-size: 1rem;
+    border-radius: 8px;
+    border: 1px solid #ccc;
+}
+
+  </style>
+
+</head>
+<body>
+
+    {% include 'taskbar.html' %}
+
+    <div class="page-content">
+        <div class="wrap with-fixed-taskbar">
+            <div class="card">
+
+                <header>
+                    <div><h1>Create GRV</h1></div>
+                </header>
+
+                <form id="poForm">
+                <section data-step="1">
+
+                    <label for="supplier">Supplier Name</label>
+                    <select id="supplier">
+                        <option value="">Select Supplier</option>
+                    </select>
+
+                    <!-- PO TABLE -->
+                    <div id="poTableWrapper" class="hidden">
+                        <table id="poTable">
+                            <thead>
+                                <tr>
+                                    <th>PO Number</th>
+                                    <th>Date</th>
+                                    <th>Description</th>
+                                    <th>Total Incl</th>
+                                </tr>
+                            </thead>
+                            <tbody id="poTableBody">
+                                <tr><td class="no-data" colspan="4">Select a supplier</td></tr>
+                            </tbody>
+                        </table>
+                    </div>
+
+                </section>
+
+                <!-- PO lines section -->
+                <div id="po-lines-section" style="display:none;">
+                    <h3>Outstanding Lines</h3>
+                    <div id="po-lines"></div>
+                    <button type="button" id="next-to-summary">Next: Review</button>
+                </div>
+
+                <!-- Summary Section -->
+                <div id="po-summary-section" style="display:none;">
+                    <h3>Review GRV</h3>
+                    <div id="po-summary"></div>
+                    <button type="button" id="submit-grv">Submit GRV</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</body>
+</html>

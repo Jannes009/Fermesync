@@ -1,6 +1,7 @@
-from flask import Blueprint, jsonify
+from flask import Blueprint, jsonify, current_app, request
 from datetime import datetime, timedelta
 from db import create_db_connection
+
 
 dashboard_bp = Blueprint('dashboard', __name__)
 
@@ -81,3 +82,5 @@ def dashboard_invoices():
         }
         for r in rows
     ])
+
+
