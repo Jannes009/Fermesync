@@ -38,10 +38,10 @@ class User(db.Model):
     username = db.Column(db.String(25), unique=True, nullable=False)
     password_hash = db.Column(db.String(150), nullable=False)
     role = db.Column(db.String(20), nullable=False, default="user")
-    server_name = db.Column(db.String(100), nullable=False)
-    database_name = db.Column(db.String(100), nullable=False)
-    db_username = db.Column(db.String(100), nullable=False)  # NEW
-    db_password = db.Column(db.String(250), nullable=False)  # Encrypted
+    # server_name = db.Column(db.String(100), nullable=False)
+    # database_name = db.Column(db.String(100), nullable=False)
+    # db_username = db.Column(db.String(100), nullable=False)  # NEW
+    # db_password = db.Column(db.String(250), nullable=False)  # Encrypted
 
     def set_password(self, password):
         self.password_hash = generate_password_hash(password)
@@ -54,12 +54,23 @@ class User(db.Model):
 
     def decrypt_password(self, encrypted_password):
         return cipher.decrypt(encrypted_password.encode()).decode()
+    
+class UserDatabaseConfig(db.Model):
+    id = db.Column(db.Integer, primary_key=True)
+    user_id = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=False)
+    server_name = db.Column(db.String(100), nullable=False)
+    database_type = db.Column(db.String(50), nullable=False)  # e.g., 'Market', 'Inventory', 'Evolution', etc.
+    database_name = db.Column(db.String(100), nullable=False)
+    db_username = db.Column(db.String(100), nullable=False)
+    db_password = db.Column(db.String(250), nullable=False)  # Encrypted
+
+    user = db.relationship('User', backref=db.backref('database_configs', lazy=True))
 
     def set_db_password(self, password):
-        self.db_password = self.encrypt_password(password)
+        self.db_password = cipher.encrypt(password.encode()).decode()
 
     def get_db_password(self):
-        return self.decrypt_password(self.db_password)
+        return cipher.decrypt(self.db_password.encode()).decode()
 
 class ConnectedService(db.Model):
     id = db.Column(db.Integer, primary_key=True)

@@ -8,7 +8,7 @@ market_bp = Blueprint(
 )
 
 # Import your routes here so they are registered with the blueprint
-from . import entry, view, view_account, report, dashboard, BOM
+from . import entry, view, report, dashboard, BOM
 from .Invoices import invoices  # noqa: F401
 from .Maintanance import maintanance  # noqa: F401
 from .Import import Import  # noqa: F401

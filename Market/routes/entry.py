@@ -93,7 +93,12 @@ def fetch_lines(cursor, entry_id):
 def create_entry():
     error_message = None
     form_data = None
-    connection = create_db_connection()
+
+    # Get connection for dropdowns and form processing
+    connection = create_db_connection(database_type="Market")
+    if not connection:
+        return "Database connection failed. Contact admin."
+
     cursor = connection.cursor()
 
     if request.method == 'POST':
@@ -101,30 +106,59 @@ def create_entry():
             form_data = fetch_header_data(request.form)
             lines_data = fetch_lines_data(request.form)
 
+            # Store header
             store_header(cursor, form_data)
-            cursor.execute("SELECT DelIndex FROM ZZDeliveryNoteHeader WHERE DelNoteNo = ?", (form_data['ZZDelNoteNo'],))
-            header_id = cursor.fetchone()[0]
 
+            cursor.execute("SELECT DelIndex FROM ZZDeliveryNoteHeader WHERE DelNoteNo = ?", 
+                           (form_data['ZZDelNoteNo'],))
+            header_row = cursor.fetchone()
+            if not header_row:
+                raise Exception("Header not found after insert.")
+            header_id = header_row[0]
+
+            # Store lines
             total_quantity = store_lines(cursor, header_id, lines_data)
-            update_header_quantity(cursor, header_id, total_quantity)
-            cursor.connection.commit()
 
-            # Save del_note_no for use in background
+            # Update header totals
+            update_header_quantity(cursor, header_id, total_quantity)
+
+            # Commit main write
+            connection.commit()
+
             del_note_no = form_data['ZZDelNoteNo']
 
-            # Close main connection
-            close_db_connection(cursor, connection)
+            # --------------------------
+            # Build background user snapshot from DB config
+            # --------------------------
+            from models import UserDatabaseConfig
+            cfg = UserDatabaseConfig.query.filter_by(
+                user_id=current_user.id,
+                database_type="Market"
+            ).first()
+
+            if not cfg:
+                raise Exception("No DB config found for user.")
 
             user_snapshot = {
                 "username": current_user.username,
-                "server_name": current_user.server_name,
-                "database_name": current_user.database_name,
-                "db_username": current_user.db_username,
-                "db_password": current_user.get_db_password(),
+                "server_name": cfg.server_name,
+                "database_name": cfg.database_name,
+                "db_username": cfg.db_username,
+                "db_password": cfg.get_db_password(),
             }
 
-            # Run stored procedures in background
-            threading.Thread(target=run_background_procedures, args=(del_note_no, user_snapshot)).start()
+            # --------------------------
+            # Close main connection
+            # --------------------------
+            close_db_connection(cursor, connection)
+
+            # --------------------------
+            # Run background procedures
+            # --------------------------
+            threading.Thread(
+                target=run_background_procedures, 
+                args=(del_note_no, user_snapshot)
+            ).start()
 
             session['del_note_no'] = del_note_no
             return redirect(url_for('entry.submission_success'))
@@ -133,33 +167,40 @@ def create_entry():
             error_data = integrity_error(e, request.form)
             error_message = error_data["error_message"]
             form_data = error_data["form_data"]
-        except Exception as e:
-            error_message = f"An error occurred: {str(e)}. See debug info for details."
 
+        except Exception as e:
+            error_message = f"An error occurred: {str(e)}"
+
+    # --------------------------
+    # GET request or POST error path
+    # --------------------------
     dropdown_options = fetch_dropdown_options(cursor)
 
     if not form_data:
         form_data = {}
-    if 'ZZDelDate' not in form_data or not form_data['ZZDelDate']:
+
+    if not form_data.get('ZZDelDate'):
         import datetime
         form_data['ZZDelDate'] = datetime.date.today().strftime('%Y-%m-%d')
 
+    # Close connection after dropdowns are fetched
     close_db_connection(cursor, connection)
 
-    return render_template('Bill Of Lading page/create_entry.html',
-                           error_message=error_message,
-                           form_data=form_data,
-                           product_quantity_pairs=[],
-                           **dropdown_options)
+    return render_template(
+        'Bill Of Lading page/create_entry.html',
+        error_message=error_message,
+        form_data=form_data,
+        product_quantity_pairs=[],
+        **dropdown_options
+    )
 
-
-def run_background_procedures(del_note_no, user):
+def run_background_procedures(del_note_no, user_snapshot):
     conn = None
     cursor = None
     try:
-        conn = create_db_connection(user)
+        conn = create_db_connection(user_snapshot, database_type="Market")
         if not conn:
-            print("Failed to create DB connection in background.")
+            print("Failed to create DB connection in background thread.")
             return
 
         cursor = conn.cursor()
@@ -176,9 +217,11 @@ def run_background_procedures(del_note_no, user):
 
     except Exception as e:
         print(f"Background error: {e}")
+
     finally:
         if cursor and conn:
             close_db_connection(cursor, conn)
+
 
 
 

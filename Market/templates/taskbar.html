@@ -35,7 +35,7 @@
         <div class="username" id="username">John Doe <span>&#9662;</span></div>
         <div class="dropdown">
             <a href="/inventory/dashboard">Fermesync Inventory</a>
-            <a href="{{ url_for('market.view_account') }}">View Account</a>
+            <a href="{{ url_for('account.view_account') }}">View Account</a>
             <a href="{{ url_for('logout') }}">Logout</a>
         </div>
     </div>
@@ -116,7 +116,7 @@
             </li>
         </ul>
         <div class="mobile-nav-footer">
-            <a href="{{ url_for('market.view_account') }}" class="mobile-nav-footer-link">View Account</a>
+            <a href="{{ url_for('account.view_account') }}" class="mobile-nav-footer-link">View Account</a>
             <a href="{{ url_for('logout') }}" class="mobile-nav-footer-link">Logout</a>
         </div>
     </nav>

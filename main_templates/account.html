@@ -1,0 +1,329 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Account Settings</title>
+  <link rel="stylesheet" href="{{ url_for('static', filename='color-template.css') }}">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css">
+  <style>
+    /* General */
+    body { background: var(--primary-bg); margin: 0; font-size: 0.95rem; color: var(--primary-text); min-height: 100vh; }
+    .main-content { padding: 2rem 0; }
+    .container-wide { max-width: 1200px; margin: 0 auto; padding: 0 1.2rem; }
+
+    .account-card, .section-card, .table-box {
+      background: var(--container-bg);
+      border-radius: 12px;
+      box-shadow: 0 4px 24px rgba(44,62,80,0.08);
+      margin-bottom: 1.5rem;
+      padding: 1.2rem;
+    }
+
+    .section-title {
+      font-size: 1.2rem;
+      font-weight: 700;
+      color: var(--logo-color);
+      margin-bottom: 1rem;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    /* Sidebar */
+    .sidebar-nav { list-style: none; padding: 0; margin: 0; }
+    .nav-item {
+      display: block;
+      padding: 0.8em 1.2em;
+      margin-bottom: 0.5em;
+      border-radius: 8px;
+      color: var(--secondary-text);
+      font-weight: 500;
+      text-decoration: none;
+      cursor: pointer;
+      transition: all 0.2s;
+    }
+    .nav-item:hover { background: var(--table-row-hover); color: var(--logo-color); }
+    .nav-item.active { background: var(--table-header-bg); color: var(--logo-color); font-weight: 600; }
+
+    /* Table */
+    .styled-table {
+      width: 100%;
+      border-collapse: separate;
+      border-spacing: 0;
+      font-size: 0.95rem;
+      border-radius: 8px;
+      overflow: hidden;
+    }
+    .styled-table th {
+      background: var(--table-header-bg);
+      color: var(--table-header-text);
+      font-weight: 700;
+      padding: 0.6em 0.8em;
+      text-align: left;
+    }
+    .styled-table td {
+      padding: 0.6em 0.8em;
+      background: var(--table-row-uneven);
+      border-bottom: 1px solid var(--table-border);
+    }
+    .styled-table tr:nth-child(even) td { background: var(--table-row-even); }
+
+    /* Badges */
+    .service-badge {
+      font-size: 0.8rem;
+      padding: 0.2em 0.6em;
+      border-radius: 6px;
+      font-weight: 600;
+    }
+    .technofresh-badge { background: #6f42c1; color: #fff; }
+    .freshlinq-badge { background: #20c997; color: #fff; }
+    .db-badge { background: #4361ee; color: #fff; }
+
+    /* Buttons */
+    .custom-btn {
+      padding: 0.4em 0.8em;
+      border-radius: 6px;
+      font-size: 0.85rem;
+      cursor: pointer;
+      text-decoration: none;
+      display: inline-block;
+      border: none;
+      transition: all 0.2s;
+    }
+    .btn-primary { background: var(--button-bg); color: var(--button-text); }
+    .btn-primary:hover { background: var(--button-hover); }
+    .btn-danger { background: #dc2626; color: #fff; }
+    .btn-danger:hover { background: #b91c1c; }
+
+    /* Forms */
+    .form-label { font-weight: 600; margin-bottom: 0.5em; display: block; }
+    .form-control, .form-select {
+      width: 100%;
+      padding: 0.6em 0.8em;
+      border: 1px solid var(--input-border);
+      border-radius: 6px;
+      background: var(--container-bg);
+      color: var(--primary-text);
+      font-size: 0.9rem;
+    }
+    .form-control:focus, .form-select:focus {
+      outline: none;
+      border-color: var(--input-focus);
+      box-shadow: 0 0 0 0.2rem var(--input-shadow);
+    }
+
+    /* Layout */
+    .row { display: flex; flex-wrap: nowrap; gap: 1.5rem; margin: 0 -0.6rem; }
+    .col-md-3 { flex: 0 0 300px; min-width: 300px; }
+    .col-md-9 { flex: 1; }
+    .mb-3 { margin-bottom: 1rem; }
+    .mt-3 { margin-top: 1rem; }
+    .text-center { text-align: center; }
+
+    @media (max-width: 768px) {
+      .row { flex-direction: column; gap: 1rem; }
+      .col-md-3, .col-md-9 { flex: 0 0 100%; min-width: 100%; }
+    }
+  </style>
+</head>
+<body>
+  {% include 'taskbar.html' %}
+
+  <div class="main-content with-fixed-taskbar">
+    <div class="container-wide">
+      <div class="row">
+
+        <!-- Main Content -->
+        <div class="col-md-9">
+          <div class="tab-content">
+
+            <!-- Account Info -->
+            <div class="tab-pane show active" id="account-info" role="tabpanel">
+              <div class="section-card">
+                <div class="section-title">Basic Information</div>
+                <table class="info-table">
+                  <tbody>
+                    <tr><th>Username</th><td>{{ user.username }}</td></tr>
+                    <tr><th>Role</th><td>{{ user.role }}</td></tr>
+                  </tbody>
+                </table>
+              </div>
+            </div>
+
+            <!-- Services -->
+            <div class="tab-pane" id="services" role="tabpanel">
+              <div class="section-card">
+                <div class="section-title">Connected Services</div>
+
+                {% if user.connected_services %}
+                  <div class="table-box">
+                    <table class="styled-table">
+                      <thead>
+                        <tr>
+                          <th>Service</th>
+                          <th>Username</th>
+                          <th>Actions</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {% for service in user.connected_services %}
+                          <tr>
+                            <td>
+                              <span class="service-badge {% if service.service_type == 'Technofresh' %}technofresh-badge{% elif service.service_type == 'FreshLinq' %}freshlinq-badge{% else %}bg-info{% endif %}">
+                                {{ service.service_type }}
+                              </span>
+                            </td>
+                            <td>{{ service.username }}</td>
+                            <td>
+                              <form method="POST" action="{{ url_for('account.remove_service', service_id=service.id) }}" class="d-inline">
+                                <button type="submit" class="custom-btn btn-danger btn-sm">Remove</button>
+                              </form>
+                            </td>
+                          </tr>
+                        {% endfor %}
+                      </tbody>
+                    </table>
+                  </div>
+                {% else %}
+                  <div class="alert alert-info">No connected services yet.</div>
+                {% endif %}
+
+                <!-- Add Service Form -->
+                <div class="table-box mt-3">
+                  <div class="section-title" style="font-size:1rem;">Add New Service</div>
+                  <form method="POST" action="{{ url_for('account.add_service') }}">
+                    <div class="mb-3">
+                      <label class="form-label">Service Type</label>
+                      <select class="form-select" name="service_type" required>
+                        <option value="" disabled selected>Select a service</option>
+                        <option value="Technofresh">Technofresh</option>
+                        <option value="FreshLinq">FreshLinq</option>
+                      </select>
+                    </div>
+                    <div class="mb-3">
+                      <label class="form-label">Username</label>
+                      <input type="text" class="form-control" name="service_username" required>
+                    </div>
+                    <div class="mb-3">
+                      <label class="form-label">Password</label>
+                      <input type="password" class="form-control" name="service_password" required>
+                    </div>
+                    <div class="mb-3">
+                      <label class="form-label">Your Account Password</label>
+                      <input type="password" class="form-control" name="account_password" required>
+                      <small class="form-text">For security verification</small>
+                    </div>
+                    <button type="submit" class="custom-btn btn-primary">Add Service</button>
+                  </form>
+                </div>
+              </div>
+            </div>
+
+            <!-- Databases -->
+            <div class="tab-pane" id="databases" role="tabpanel">
+              <div class="section-card">
+                <div class="section-title">Database Configurations</div>
+
+                {% if user.database_configs %}
+                  <div class="table-box">
+                    <table class="styled-table">
+                      <thead>
+                        <tr>
+                          <th>Type</th>
+                          <th>Server</th>
+                          <th>Database</th>
+                          <th>Username</th>
+                          <th>Actions</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {% for db in user.database_configs %}
+                          <tr>
+                            <td>{{ db.database_type }}</td>
+                            <td>{{ db.server_name }}</td>
+                            <td>{{ db.database_name }}</td>
+                            <td>{{ db.db_username }}</td>
+                            <td>
+                              <form method="POST" action="{{ url_for('account.remove_database', db_id=db.id) }}" class="d-inline">
+                                <button type="submit" class="custom-btn btn-danger btn-sm">Remove</button>
+                              </form>
+                            </td>
+                          </tr>
+                        {% endfor %}
+                      </tbody>
+                    </table>
+                  </div>
+                {% else %}
+                  <div class="alert alert-info">No database configurations yet.</div>
+                {% endif %}
+
+                <!-- Add Database Form -->
+                <div class="table-box mt-3">
+                  <div class="section-title" style="font-size:1rem;">Add Database Config</div>
+                  <form method="POST" action="{{ url_for('account.add_database_config') }}">
+                    <div class="mb-3">
+                      <label class="form-label">DB Type</label>
+                      <select class="form-select" name="db_type" required>
+                        <option value="Market">Market</option>
+                        <option value="Inventory">Inventory</option>
+                        <option value="Evolution">Evolution</option>
+                      </select>
+                    </div>
+                    <div class="mb-3">
+                      <label class="form-label">Server Name</label>
+                      <input type="text" class="form-control" name="server_name" required>
+                    </div>
+                    <div class="mb-3">
+                      <label class="form-label">Database Name</label>
+                      <input type="text" class="form-control" name="db_name" required>
+                    </div>
+                    <div class="mb-3">
+                      <label class="form-label">SQL Username</label>
+                      <input type="text" class="form-control" name="db_username" required>
+                    </div>
+                    <div class="mb-3">
+                      <label class="form-label">SQL Password</label>
+                      <input type="password" class="form-control" name="db_password" required>
+                    </div>
+                    <button type="submit" class="custom-btn btn-primary">Add Database</button>
+                  </form>
+                </div>
+              </div>
+            </div>
+
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/js/all.min.js"></script>
+  <script>
+    document.addEventListener('DOMContentLoaded', function () {
+      const tabs = document.querySelectorAll('.nav-item');
+      const panes = document.querySelectorAll('.tab-pane');
+
+      tabs.forEach(tab => {
+        tab.addEventListener('click', function (e) {
+          e.preventDefault();
+          const target = this.getAttribute('data-tab');
+
+          // Update active tab
+          tabs.forEach(t => t.classList.remove('active'));
+          this.classList.add('active');
+
+          // Show target pane
+          panes.forEach(p => {
+            p.classList.remove('show', 'active');
+          });
+          const pane = document.getElementById(target);
+          if (pane) {
+            pane.classList.add('show', 'active');
+          }
+        });
+      });
+    });
+  </script>
+</body>
+</html>

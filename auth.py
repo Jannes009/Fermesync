@@ -6,35 +6,24 @@ from models import db, User
 login_manager = LoginManager()
 login_manager.login_view = 'login'  # Ensure this matches your login route
 
+
 class UserLogin(UserMixin):
     def __init__(self, id, username, role):
         self.id = id
         self.username = username
         self.role = role
-        self.server_name = None
-        self.database_name = None
-        self.db_username = None
-        self.db_password = None
 
     def load_user_data(self):
-        user = db.session.get(User, self.id)
-        if user:
-            self.server_name = user.server_name
-            self.database_name = user.database_name
-            self.db_username = user.db_username
-            self.db_password = user.get_db_password()
+        pass  # No longer needed
 
-    def get_db_password(self):
-        return self.db_password if self.db_password else None
 
 @login_manager.user_loader
 def load_user(user_id):
     user = User.query.get(int(user_id))
     if user:
-        user_login = UserLogin(user.id, user.username, user.role)
-        user_login.load_user_data()  # Load DB credentials from database
-        return user_login
+        return UserLogin(user.id, user.username, user.role)
     return None
+
 
 def role_required(role=None):
     def decorator(f):

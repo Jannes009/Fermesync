@@ -13,7 +13,7 @@ from Market.routes.Import.scheduler import run_all_import_jobs
 def create_app():
     # Set template folder to Market/templates and static folder to Market/static/
     app_root = os.path.dirname(os.path.abspath(__file__))
-    template_dir = os.path.join(app_root, 'Market', 'templates')
+    template_dir = os.path.join(app_root, 'main_templates')
     static_dir = os.path.join(app_root, 'Market', 'static')
     app = Flask(__name__, template_folder=template_dir, static_folder=static_dir)
 
@@ -48,36 +48,15 @@ def create_app():
 
     from models import db, User
     db.init_app(app)
+    login_manager.init_app(app)
 
-    # Register blueprints
-    # from Market.routes.entry import entry_bp
-    # from Market.routes.Invoices.invoices import invoice_bp
-    # from Market.routes.view import view_bp
-    # from Market.routes.Maintanance.maintanance import maintanance_bp
-    # from Market.routes.Import.Import import import_bp
-    # from Market.routes.view_account import account_bp
-    # from Market.routes.report import report_bp
-    # from Market.routes.dashboard import dashboard_bp
-    # from Market.routes.Bill_Of_Lading.view_entry import view_entry_bp
-    # from Market.routes.BOM import bom_bp
-    # from Inventory.routes.EvolutionSDK import SDK_bp
-
-    # app.register_blueprint(entry_bp)
-    # app.register_blueprint(view_bp)
-    # app.register_blueprint(invoice_bp)
-    # app.register_blueprint(maintanance_bp)
-    # app.register_blueprint(import_bp, url_prefix='/import')
-    # app.register_blueprint(account_bp)
-    # app.register_blueprint(report_bp)
-    # app.register_blueprint(dashboard_bp)
-    # app.register_blueprint(view_entry_bp)
-    # app.register_blueprint(bom_bp)
-    # app.register_blueprint(SDK_bp)
     from Market.routes import market_bp
     from Inventory.routes import inventory_bp
+    from view_account import account_bp
 
     app.register_blueprint(market_bp, url_prefix='/market')
     app.register_blueprint(inventory_bp, url_prefix='/inventory')
+    app.register_blueprint(account_bp)
 
     # Create all tables
     with app.app_context():
@@ -88,7 +67,7 @@ def create_app():
         if current_user.is_authenticated:
             return redirect(url_for('dashboard'))
         error = request.args.get('error')
-        return render_template('/Login/index.html', error=error)
+        return render_template('/index.html', error=error)
 
     @app.route("/login", methods=["GET", "POST"])
     def login():
@@ -97,7 +76,7 @@ def create_app():
             
         if request.method == "GET":
             print("rendering template")
-            return render_template('/Login/index.html', next=request.args.get('next'))
+            return render_template('/index.html', next=request.args.get('next'))
 
         
         username = request.form.get('username')
@@ -133,17 +112,13 @@ def create_app():
             return redirect(url_for('dashboard'))
 
         if request.method == "GET":
-            return render_template('/Login/index.html')
+            return render_template('/index.html')
 
         username = request.form.get('username')
         password = request.form.get('password')
         role = request.form.get('role', 'user')
-        server_name = request.form.get('server_name')
-        db_name = request.form.get('db_name')
-        db_username = request.form.get('db_username')
-        db_password = request.form.get('db_password')
 
-        if not all([username, password, server_name, db_name, db_username, db_password]):
+        if not all([username, password]):
             print("All fields are required", "error")
             return redirect(url_for('register'))
 
@@ -153,13 +128,9 @@ def create_app():
 
         new_user = User(
             username=username,
-            role=role,
-            server_name=server_name,
-            database_name=db_name,
-            db_username=db_username
+            role=role
         )
         new_user.set_password(password)
-        new_user.set_db_password(db_password)
 
         try:
             db.session.add(new_user)
@@ -173,7 +144,7 @@ def create_app():
             return redirect(url_for('dashboard'))
         except Exception as e:
             db.session.rollback()
-            print("Registration failed", "error")
+            print("Registration failed", e)
             return redirect(url_for('register'))
 
 
