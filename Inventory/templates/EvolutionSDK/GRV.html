@@ -1,0 +1,397 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <link rel="stylesheet" href="{{ url_for('inventory.static', filename='color-template.css') }}">
+  <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+  <title>Purchase Order — Mobile Stepper</title>
+
+  <style>
+* {
+    box-sizing: border-box;
+}
+
+body {
+    background: var(--primary-bg);
+    color: var(--primary-text);
+    font-size: 0.95rem;
+    margin: 0;
+    padding: 0;
+    min-height: 100vh;
+}
+
+.page-content {
+    display: flex;
+    flex-direction: column;
+    flex: 1;
+}
+
+.wrap {
+    width: 100%;
+    max-width: 900px;
+    margin: 0 auto;
+    padding: 1.5rem;
+}
+
+.wrap.with-fixed-taskbar {
+    padding-top: 1.5rem;
+    margin-top: 60px;
+}
+
+.card {
+    background: var(--container-bg);
+    border-radius: 12px;
+    box-shadow: 0 2px 12px rgba(44, 62, 80, 0.08);
+    padding: 1.5rem;
+    margin-bottom: 1.5rem;
+}
+
+label {
+    font-weight: 600;
+    color: var(--secondary-text);
+    display: block;
+    margin-bottom: 8px;
+    font-size: 0.95rem;
+}
+
+select {
+    width: 100%;
+    padding: 10px 12px;
+    border: 1px solid var(--input-border);
+    border-radius: 6px;
+    background: var(--form-bg);
+    font-size: 1rem;
+    transition: border-color 0.2s, box-shadow 0.2s;
+}
+
+select:focus {
+    outline: none;
+    border-color: var(--input-focus);
+    box-shadow: 0 0 0 3px var(--input-shadow);
+}
+
+button {
+    width: 100%;
+    background: var(--button-bg);
+    color: var(--button-text);
+    border: none;
+    padding: 12px 16px;
+    border-radius: 8px;
+    font-size: 1rem;
+    margin-top: 1.5rem;
+    cursor: pointer;
+    font-weight: 600;
+    transition: background 0.2s, transform 0.1s;
+}
+
+button:hover {
+    background: var(--button-hover);
+}
+
+button:active {
+    transform: scale(0.98);
+}
+
+header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 1.5rem;
+}
+
+header h1 {
+    margin: 0;
+    font-size: 1.8rem;
+    color: var(--primary-text);
+}
+
+.hidden {
+    display: none;
+}
+
+/* --- PO table --- */
+#poTableWrapper {
+    margin-top: 1.5rem;
+    overflow-x: auto;
+}
+
+#poTable {
+    width: 100%;
+    border-collapse: collapse;
+    background: var(--container-bg);
+    border-radius: 8px;
+    overflow: hidden;
+}
+
+#poTable th, #poTable td {
+    padding: 12px;
+    border-bottom: 1px solid var(--input-border);
+    text-align: left;
+    font-size: 0.9rem;
+}
+
+#poTable th {
+    background: var(--form-bg);
+    font-weight: 700;
+    color: var(--secondary-text);
+    white-space: nowrap;
+}
+
+#poTable tbody tr {
+    cursor: pointer;
+    transition: background 0.15s;
+}
+
+#poTable tbody tr:hover {
+    background: var(--muted-bg);
+}
+
+.no-data {
+    text-align: center;
+    padding: 20px 14px;
+    color: var(--secondary-text);
+    font-style: italic;
+}
+
+.po-line {
+    background: var(--form-bg);
+    padding: 15px;
+    margin-bottom: 12px;
+    border-radius: 8px;
+    border-left: 4px solid var(--button-bg);
+    transition: box-shadow 0.2s;
+}
+
+.po-line:hover {
+    box-shadow: 0 2px 8px rgba(44, 62, 80, 0.1);
+}
+
+.line-header {
+    font-size: 1.05rem;
+    margin-bottom: 12px;
+    font-weight: 700;
+    color: var(--primary-text);
+}
+
+.line-row {
+    font-size: 0.9rem;
+    margin-bottom: 6px;
+    color: var(--primary-text);
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+
+.line-row strong {
+    color: var(--secondary-text);
+}
+
+.input-row {
+    margin-top: 12px;
+    padding-top: 12px;
+    border-top: 1px solid var(--input-border);
+}
+
+.qty-input {
+    width: 100%;
+    padding: 10px 12px;
+    font-size: 1rem;
+    border-radius: 6px;
+    border: 1px solid var(--input-border);
+    background: var(--container-bg);
+    transition: border-color 0.2s;
+}
+
+.qty-input:focus {
+    outline: none;
+    border-color: var(--input-focus);
+}
+
+.qty-warning {
+    font-size: 0.85rem;
+    margin-top: 8px;
+    display: block;
+}
+
+/* Section styling */
+#po-lines-section,
+#po-summary-section {
+    animation: fadeIn 0.3s ease-in;
+}
+
+@keyframes fadeIn {
+    from {
+        opacity: 0;
+        transform: translateY(10px);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+#po-lines-section h3,
+#po-summary-section h3 {
+    margin-top: 0;
+    margin-bottom: 1rem;
+    color: var(--primary-text);
+    font-size: 1.3rem;
+}
+
+/* Responsive Design */
+@media (max-width: 768px) {
+    .wrap {
+        padding: 1rem;
+    }
+
+    .wrap.with-fixed-taskbar {
+        padding-top: 1rem;
+    }
+
+    .card {
+        padding: 1rem;
+        border-radius: 10px;
+    }
+
+    header h1 {
+        font-size: 1.5rem;
+    }
+
+    #poTable th, #poTable td {
+        padding: 10px 8px;
+        font-size: 0.85rem;
+    }
+
+    .po-line {
+        padding: 12px;
+        margin-bottom: 10px;
+    }
+
+    .line-header {
+        font-size: 1rem;
+        margin-bottom: 10px;
+    }
+
+    .line-row {
+        font-size: 0.85rem;
+        margin-bottom: 4px;
+    }
+
+    button {
+        padding: 10px 14px;
+        font-size: 0.95rem;
+        margin-top: 1rem;
+    }
+}
+
+@media (max-width: 480px) {
+    .wrap {
+        padding: 0.75rem;
+    }
+
+    .card {
+        padding: 0.75rem;
+        border-radius: 8px;
+    }
+
+    header h1 {
+        font-size: 1.3rem;
+    }
+
+    #poTable {
+        font-size: 0.8rem;
+    }
+
+    #poTable th, #poTable td {
+        padding: 8px 6px;
+        font-size: 0.8rem;
+    }
+
+    .po-line {
+        padding: 10px;
+        margin-bottom: 8px;
+    }
+
+    .line-header {
+        font-size: 0.95rem;
+    }
+
+    .line-row {
+        font-size: 0.8rem;
+        flex-direction: column;
+        align-items: flex-start;
+        gap: 2px;
+    }
+
+    label {
+        font-size: 0.9rem;
+        margin-bottom: 6px;
+    }
+
+    select, .qty-input {
+        font-size: 16px; /* Prevents zoom on mobile */
+    }
+}
+  </style>
+
+</head>
+<body>
+
+    {% include 'inventory-taskbar.html' %}
+
+    <div class="page-content with-fixed-taskbar">
+        <div class="wrap ">
+            <div class="card">
+                <header>
+                    <h1>Create GRV</h1>
+                </header>
+
+                <form id="poForm">
+                <section data-step="1">
+
+                    <label for="supplier">Supplier Name</label>
+                    <select id="supplier">
+                        <option value="">Select Supplier</option>
+                    </select>
+
+                    <!-- PO TABLE -->
+                    <div id="poTableWrapper" class="hidden">
+                        <table id="poTable">
+                            <thead>
+                                <tr>
+                                    <th>PO Number</th>
+                                    <th>Date</th>
+                                    <th>Description</th>
+                                    <th>Total Incl</th>
+                                </tr>
+                            </thead>
+                            <tbody id="poTableBody">
+                                <tr><td class="no-data" colspan="4">Select a supplier</td></tr>
+                            </tbody>
+                        </table>
+                    </div>
+
+                </section>
+
+                <!-- PO lines section -->
+                <div id="po-lines-section" style="display:none;">
+                    <h3>Outstanding Lines</h3>
+                    <div id="po-lines"></div>
+                    <button type="button" id="next-to-summary">Next: Review</button>
+                </div>
+
+                <!-- Summary Section -->
+                <div id="po-summary-section" style="display:none;">
+                    <h3>Review GRV</h3>
+                    <div id="po-summary"></div>
+                    <button type="button" id="submit-grv">Submit GRV</button>
+                </div>
+                </form>
+            </div>
+        </div>
+    </div>
+
+    <script src="{{ url_for('inventory.static', filename='EvolutionSDK/GRV.js') }}"></script>
+</body>
+</html>

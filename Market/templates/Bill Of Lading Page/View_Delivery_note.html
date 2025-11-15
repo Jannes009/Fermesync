@@ -1,0 +1,388 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Delivery Note {{ header.delnoteno }}</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css">
+  <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+  <link rel="stylesheet" href="/static/color-template.css">
+  <style>
+
+    .main-content {
+      padding: 1.5rem;
+      flex-grow: 1;
+    }
+    .container-wide {
+      max-width: 65%;
+      margin: 0 auto;
+      padding: 0 0.8rem;
+    }
+    .sales-card {
+      background: var(--container-bg);
+      border-radius: 12px;
+      box-shadow: 0 4px 24px 0 rgba(44, 62, 80, 0.08);
+      margin-bottom: 2rem;
+      padding: 1.2rem 1.2rem 0.8rem 1.2rem;
+      transition: box-shadow 0.2s;
+    }
+    .sales-card:hover {
+      box-shadow: 0 8px 32px 0 rgba(44, 62, 80, 0.16);
+    }
+    .sales-header-title {
+      font-size: 1.2rem;
+      font-weight: 700;
+      color: var(--logo-color);
+      margin-right: 1rem;
+    }
+    .sales-header-badge {
+      background: var(--muted-bg);
+      color: var(--logo-color);
+      font-weight: 600;
+      border-radius: 10px;
+      padding: 0.2em 0.8em;
+      font-size: 0.9rem;
+      margin-right: 1rem;
+      display: inline-block;
+    }
+    .sales-btn {
+      display: inline-flex;
+      align-items: center;
+      gap: 0.3em;
+      border: none;
+      background: var(--button-bg);
+      color: var(--button-text);
+      font-weight: 600;
+      border-radius: 6px;
+      padding: 0.3em 1em;
+      font-size: 0.9rem;
+      transition: background 0.15s, color 0.15s, box-shadow 0.1s, transform 0.1s;
+      cursor: pointer;
+      box-shadow: none;
+    }
+    .sales-btn:hover, .sales-btn:focus {
+      background: var(--button-hover);
+      color: #fff;
+      box-shadow: 0 2px 8px 0 #dbeafe44;
+      transform: scale(1.02);
+      outline: none;
+    }
+
+    /* Sales table disables hover effect by not using .fs-hover */
+    .sales-row-actions {
+      display: flex;
+      gap: 0.5em;
+      align-items: center;
+      justify-content: center;
+    }
+    .icon-btn {
+      border: none;
+      background: none;
+      padding: 6px 8px;
+      border-radius: 5px;
+      transition: background 0.15s, box-shadow 0.1s, transform 0.1s;
+      cursor: pointer;
+      display: inline-flex;
+      align-items: center;
+    }
+    .icon-btn img {
+      width: 20px;
+      height: 20px;
+      filter: drop-shadow(0 1px 2px #ccc);
+    }
+    .icon-btn:hover, .icon-btn:focus {
+      background: var(--muted-bg);
+      box-shadow: 0 2px 8px 0 #dbeafe44;
+      transform: scale(1.12);
+      outline: none;
+    }
+
+.icon-btn-edit img {
+  width: 40px;
+  height: auto; /* or 20px with object-fit: contain if square images are preferred */
+  object-fit: contain;
+  filter: drop-shadow(0 1px 2px #ccc);
+}
+
+    .delivery-header {
+      background: var(--container-bg);
+      border-radius: 12px;
+      box-shadow: 0 4px 24px 0 rgba(44, 62, 80, 0.08);
+      padding: 1.2rem;
+      margin-bottom: 1.5rem;
+    }
+    .delivery-header h1 {
+      font-size: 1.5rem;
+      font-weight: 700;
+      color: var(--logo-color);
+      margin-bottom: 0.4rem;
+    }
+    .delivery-header p {
+      font-size: 0.95rem;
+      color: var(--secondary-text);
+    }
+    .delivery-header:hover {
+      background: var(--table-row-hover);
+      cursor: pointer;
+    }
+    .delivery-header strong {
+      color: var(--primary-text);
+    }
+    .delivery-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+      gap: 1.2rem;
+      margin-top: 1.2rem;
+    }
+    .delivery-grid h2 {
+      font-size: 0.95rem;
+      font-weight: 600;
+      color: var(--secondary-text);
+      margin-bottom: 0.2rem;
+    }
+    .delivery-grid p {
+      font-size: 0.95rem;
+      color: var(--primary-text);
+    }
+    .delivery-table {
+      background: var(--container-bg);
+      border-radius: 12px;
+      box-shadow: 0 4px 24px 0 rgba(44, 62, 80, 0.08);
+      padding: 1.2rem;
+      margin-bottom: 1.5rem;
+    }
+    .delivery-table h2 {
+      font-size: 1.2rem;
+      font-weight: 700;
+      color: var(--primary-text);
+      margin-bottom: 0.8rem;
+    }
+    .delivery-line {
+      transition: background-color 0.2s;
+    }
+    .invoice-summary-row {
+      cursor: pointer;
+      transition: background 0.15s;
+    }
+    .invoice-summary-row:hover td {
+      background: var(--muted-bg);
+    }
+    .invoice-summary-row td a {
+      cursor: pointer;
+      background: none;
+    }
+    .linked.sales-header-badge:hover {
+  background-color: var(--button-hover); /* example hover effect */
+  transition: background-color 0.3s ease;
+
+}
+.swal-confirm-btn {
+    background-color: #2563eb !important;
+    color: white !important;
+    border-radius: 8px !important;
+    padding: 0.6rem 1.4rem !important;
+    font-weight: 600 !important;
+  }
+  .swal-cancel-btn {
+    background-color: #e5e7eb !important;
+    color: #374151 !important;
+    border-radius: 8px !important;
+    padding: 0.6rem 1.4rem !important;
+    font-weight: 500 !important;
+  }
+  .swal2-popup {
+    font-family: 'Inter', sans-serif !important;
+  }
+  </style>
+</head>
+<body>
+  {% include 'taskbar.html' %}
+
+  <div class="main-content with-fixed-taskbar">
+    <div class="container-wide">
+      <!-- Header -->
+      <div class="delivery-header" onclick="editDeliveryHeader('{{ header.delnoteno }}')">
+        <h1>Delivery Note #{{ header.delnoteno }}</h1>
+        <p>Date: <strong>{{ header.deldate }}</strong></p>
+
+        <div class="delivery-grid">
+          <div>
+            <h2>Agent</h2>
+            <p>{{ header.agentname }} ({{ header.agentaccount }})</p>
+          </div>
+          <div>
+            <h2>Packhouse</h2>
+            <p>{{ header.packhousename }} ({{ header.packhousecode }})</p>
+          </div>
+          <div>
+            <h2>Total Quantity</h2>
+            <p>{{ header.deltotalquantity or 0 }}</p>
+          </div>
+          <div>
+            <h2>Destination</h2>
+            <p>{{ header.destinationdescription }}</p>
+          </div>
+          <div>
+            <h2>Transporter</h2>
+            <p>{{ header.transportername }} ({{ header.transporteraccount }})</p>
+          </div>
+          <div>
+            <h2>Transport Cost</h2>
+            <p>{{ header.deltransportcostexcl }}</p>
+          </div>
+        </div>
+      </div>
+
+      <!-- Delivery Lines Table -->
+      <div class="delivery-table">
+        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem;">
+          <span class="sales-header-title">Delivery Line Items</span>
+          <div style="display: flex; gap: 0.5rem;">
+            <button class="sales-btn" id="editQuantitiesBtn" onclick="toggleQuantityEdit()">
+              <i class="fas fa-edit"></i> Edit Quantities
+            </button>
+            <button class="sales-btn" id="addLineBtn" onclick="addDeliveryLine()">
+              <i class="fas fa-plus"></i> Add Line
+            </button>
+          </div>
+        </div>
+        <div class="overflow-auto" id="delivery-lines-table">
+          Loading...
+        </div>
+      </div>
+
+      <!-- Sales Section -->
+      <div class="sales-card">
+        <div class="sales-header" style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; margin-bottom: 0.8rem;">
+          <div style="display: flex; align-items: center; flex-wrap: wrap; gap: 0.7em;">
+            <span class="sales-header-title">Sales</span>
+            <span class="sales-header-badge linked" style="margin-right:0.5rem;cursor:pointer;" onclick="showLinkedModal('{{ header.delnoteno }}')">
+              Linked: {{ linked_count }}
+            </span>
+            <span class="sales-header-badge matched-badge" style="cursor:pointer;">
+              Matched: {{ matched_count }}
+            </span>
+            <button class="sales-btn" onclick="clearSalesFilter()" style="display: none;" id="clearFilterBtn">
+              <i class="fas fa-times"></i> Clear Filter
+            </button>
+          </div>
+          <div style="display: flex; gap: 0.5rem;">
+            <button class="sales-btn" onclick="addSale('{{ header.delnoteno }}')">
+              <i class="fas fa-plus"></i> Add Sale
+            </button>
+          </div>
+        </div>
+        <div id="salesTableContainer">
+          Loading...
+        </div>
+      </div>
+      <!-- Invoices Summary Section -->
+      <div class="sales-card" id="invoices-summary-card">
+        <div class="sales-header">
+          <span class="sales-header-title">Invoices for this Delivery Note</span>
+        </div>
+        <div id="invoices-summary-table">Loading...</div>
+      </div>
+    </div>
+  </div>
+
+  <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
+  <script src="https://code.jquery.com/jquery-3.7.1.min.js"></script>
+  <link href="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/css/select2.min.css" rel="stylesheet" />
+  <script src="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/js/select2.min.js"></script>
+  <script>
+window.defaultDiscountPercent = {{ discount_percent|tojson }};
+function formatCurrency(val) {
+    return 'R ' + ((parseFloat(val) || 0).toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2}));
+}
+
+
+// Store all sales rows for filtering
+let allSalesRowsHtml = null;
+
+function filterSalesTableByInvoice(row, invoiceNo) {
+    const btn = document.getElementById('editQuantitiesBtn');
+    if (btn && btn.classList.contains('editing')) {
+        // In edit mode, do nothing
+        return;
+    }
+        // Remove selected class from all rows
+    document.querySelectorAll('.delivery-line').forEach(r => {
+        r.classList.remove('selected');
+    });
+    // Remove selected class from all rows
+    document.querySelectorAll('.invoice-line').forEach(r => {
+        r.classList.remove('selected');
+    });
+    
+    // Add selected class to clicked row
+    row.classList.add('selected');
+    const salesTable = document.getElementById('salesTableContainer');
+    if (!allSalesRowsHtml) {
+        // Save the original table HTML for clearing the filter
+        allSalesRowsHtml = salesTable.innerHTML;
+    }
+    // Parse the table and filter rows
+    const tempDiv = document.createElement('div');
+    tempDiv.innerHTML = allSalesRowsHtml;
+    const rows = tempDiv.querySelectorAll('tbody tr');
+    let found = false;
+    rows.forEach(row => {
+        const cell = row.querySelector('td:nth-child(8)'); // Invoice No column
+        if (cell && cell.textContent.trim() === invoiceNo) {
+            row.style.display = '';
+            found = true;
+        } else {
+            row.style.display = 'none';
+        }
+    });
+    // Show/hide totals row
+    const totalsRow = tempDiv.querySelector('tfoot tr');
+    if (totalsRow) {
+        totalsRow.style.display = found ? '' : 'none';
+    }
+    salesTable.innerHTML = tempDiv.innerHTML;
+    // Show clear filter button
+    const clearBtn = document.getElementById('clearFilterBtn');
+    if (clearBtn) {
+        clearBtn.style.display = '';
+    }
+}
+
+
+document.addEventListener('DOMContentLoaded', function() {
+    window.delNoteNo = "{{ header.delnoteno }}";
+    fetch(`/market/api/invoices-for-delivery-note/${window.delNoteNo}`)
+        .then(r => r.json())
+        .then(data => {
+            console.log(data);
+            document.getElementById('invoices-summary-table').innerHTML = renderInvoicesTable(data);
+            // Add click handlers to invoice summary rows
+            document.querySelectorAll('.invoice-summary-row').forEach(row => {
+                row.addEventListener('click', function(e) {
+                    if (e.target.tagName.toLowerCase() === 'a') return;
+                    const invoiceNo = this.getAttribute('data-invoice-no');
+                    filterSalesTableByInvoice(this, invoiceNo);
+                });
+                row.addEventListener('mouseover', function(e) {
+                    if (e.target.tagName.toLowerCase() !== 'a') {
+                        this.style.background = '#e0edff';
+                    }
+                });
+                row.addEventListener('mouseout', function(e) {
+                    this.style.background = '';
+                });
+            });
+        })
+        .catch(() => {
+            document.getElementById('invoices-summary-table').innerHTML = '<div style="color:red;">Failed to load invoices.</div>';
+        });
+});
+
+</script>
+  <script src="/static/Bill Of Lading/load_view.js"></script>
+    <script src="/static/Sales/sales.js"></script>
+  <script src="/static/Bill Of Lading/view.js"></script>
+</body>
+</html>

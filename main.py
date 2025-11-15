@@ -6,12 +6,16 @@ import logging
 import os
 from auth import login_manager, UserLogin
 from apscheduler.schedulers.background import BackgroundScheduler
-from routes.Import.scheduler import run_all_import_jobs
+from Market.routes.Import.scheduler import run_all_import_jobs
 
 
 # Function to create and configure the Flask app
 def create_app():
-    app = Flask(__name__)
+    # Set template folder to Market/templates and static folder to Market/static/
+    app_root = os.path.dirname(os.path.abspath(__file__))
+    template_dir = os.path.join(app_root, 'Market', 'templates')
+    static_dir = os.path.join(app_root, 'Market', 'static')
+    app = Flask(__name__, template_folder=template_dir, static_folder=static_dir)
 
     # Basic configuration
     app.secret_key = "secret_key"
@@ -46,29 +50,34 @@ def create_app():
     db.init_app(app)
 
     # Register blueprints
-    from routes.entry import entry_bp
-    from routes.view import view_bp
-    from routes.Invoices.invoices import invoice_bp
-    from routes.Maintanance.maintanance import maintanance_bp
-    from routes.Import.Import import import_bp
-    from routes.view_account import account_bp
-    from routes.report import report_bp
-    from routes.dashboard import dashboard_bp
-    from routes.Bill_Of_Lading.view_entry import view_entry_bp
-    from routes.BOM import bom_bp
-    from routes.EvolutionSDK import SDK_bp
+    # from Market.routes.entry import entry_bp
+    # from Market.routes.Invoices.invoices import invoice_bp
+    # from Market.routes.view import view_bp
+    # from Market.routes.Maintanance.maintanance import maintanance_bp
+    # from Market.routes.Import.Import import import_bp
+    # from Market.routes.view_account import account_bp
+    # from Market.routes.report import report_bp
+    # from Market.routes.dashboard import dashboard_bp
+    # from Market.routes.Bill_Of_Lading.view_entry import view_entry_bp
+    # from Market.routes.BOM import bom_bp
+    # from Inventory.routes.EvolutionSDK import SDK_bp
 
-    app.register_blueprint(entry_bp)
-    app.register_blueprint(view_bp)
-    app.register_blueprint(invoice_bp)
-    app.register_blueprint(maintanance_bp)
-    app.register_blueprint(import_bp, url_prefix='/import')
-    app.register_blueprint(account_bp)
-    app.register_blueprint(report_bp)
-    app.register_blueprint(dashboard_bp)
-    app.register_blueprint(view_entry_bp)
-    app.register_blueprint(bom_bp)
-    app.register_blueprint(SDK_bp)
+    # app.register_blueprint(entry_bp)
+    # app.register_blueprint(view_bp)
+    # app.register_blueprint(invoice_bp)
+    # app.register_blueprint(maintanance_bp)
+    # app.register_blueprint(import_bp, url_prefix='/import')
+    # app.register_blueprint(account_bp)
+    # app.register_blueprint(report_bp)
+    # app.register_blueprint(dashboard_bp)
+    # app.register_blueprint(view_entry_bp)
+    # app.register_blueprint(bom_bp)
+    # app.register_blueprint(SDK_bp)
+    from Market.routes import market_bp
+    from Inventory.routes import inventory_bp
+
+    app.register_blueprint(market_bp, url_prefix='/market')
+    app.register_blueprint(inventory_bp, url_prefix='/inventory')
 
     # Create all tables
     with app.app_context():
@@ -79,7 +88,7 @@ def create_app():
         if current_user.is_authenticated:
             return redirect(url_for('dashboard'))
         error = request.args.get('error')
-        return render_template('Login/index.html', error=error)
+        return render_template('/Login/index.html', error=error)
 
     @app.route("/login", methods=["GET", "POST"])
     def login():
@@ -88,7 +97,7 @@ def create_app():
             
         if request.method == "GET":
             print("rendering template")
-            return render_template('Login/index.html', next=request.args.get('next'))
+            return render_template('/Login/index.html', next=request.args.get('next'))
 
         
         username = request.form.get('username')
@@ -124,7 +133,7 @@ def create_app():
             return redirect(url_for('dashboard'))
 
         if request.method == "GET":
-            return render_template('Login/index.html')
+            return render_template('/Login/index.html')
 
         username = request.form.get('username')
         password = request.form.get('password')
@@ -171,7 +180,7 @@ def create_app():
     @app.route("/dashboard")
     @login_required
     def dashboard():
-        return render_template("Home page/index.html",
+        return render_template("/Home page/index.html",
                             username=current_user.username,
                             role=current_user.role)
     
@@ -202,6 +211,9 @@ def create_app():
         db.session.remove()
 
     return app
+
+def set_last_module(name):
+    session['last_module'] = name
 
 app = create_app()
 

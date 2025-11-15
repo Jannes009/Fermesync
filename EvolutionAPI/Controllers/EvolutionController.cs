@@ -62,13 +62,13 @@ namespace EvolutionAPI.Controllers
     // DTOs must be **outside the controller class**
     public class GRVRequest
     {
-        public string PoNumber { get; set; }
-        public List<GRVLine> Lines { get; set; }
+        public required string PoNumber { get; set; }
+        public required List<GRVLine> Lines { get; set; }
     }
 
     public class GRVLine
     {
-        public string ProductId { get; set; }
+        public required string ProductId { get; set; }
         public decimal QtyReceived { get; set; }
     }
 }

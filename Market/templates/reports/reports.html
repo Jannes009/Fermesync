@@ -1,0 +1,1020 @@
+```html
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Reports</title>
+    <link rel="stylesheet" href="/static/color-template.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css">
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/select2/4.0.13/css/select2.min.css" rel="stylesheet" />
+    <style>
+        body {
+            background: var(--primary-bg);
+            padding: 0;
+            margin: 0;
+            font-size: 0.95rem;
+            min-height: 100vh;
+            color: var(--primary-text);
+        }
+        .report-container {
+            max-width: 1800px;
+            margin: 0 auto;
+            padding: 0 1.2rem;
+        }
+        .main-content {
+            padding: 2rem 0;
+        }
+        .container-wide {
+            max-width: 1600px;
+            margin: 0 auto;
+            padding: 0 1.2rem;
+            display: flex;
+            gap: 1.5rem;
+        }
+        .sidebar {
+            flex: 0 0 250px;
+            min-width: 250px;
+        }
+        .content {
+            flex: 1;
+        }
+        .with-fixed-taskbar {
+            padding-top: 4rem;
+        }
+        .button-container {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 0.75rem;
+            padding: 1rem 0;
+            justify-content: center;
+            align-items: center;
+            background: var(--container-bg);
+            border-radius: 8px;
+            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+            margin-bottom: 1rem;
+        }
+        .button-container button, .button-container .select-wrapper {
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+        .dashboard-button,.create-template-button {
+            background-color: var(--button-bg);
+            color: var(--button-text);
+            padding: 0.6rem 1.2rem;
+            border: none;
+            border-radius: 6px;
+            font-size: 0.95rem;
+            font-weight: 500;
+            cursor: pointer;
+            transition: background-color 0.2s, transform 0.1s;
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+        .dashboard-button:hover, .create-template-button:hover {
+            background-color: var(--button-hover);
+            transform: translateY(-1px);
+        }
+        .dashboard-button:disabled,  .create-template-button:disabled {
+            background-color: var(--secondary-text);
+            cursor: not-allowed;
+            opacity: 0.6;
+        }
+        .select-wrapper {
+            position: relative;
+            display: inline-flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+        .select-wrapper label {
+            font-weight: 600;
+            color: var(--primary-text);
+            font-size: 0.95rem;
+        }
+        #reportSelect {
+            appearance: none;
+            -webkit-appearance: none;
+            -moz-appearance: none;
+            background-color: var(--input-bg, #ffffff);
+            color: var(--primary-text);
+            padding: 0.6rem 2rem 0.6rem 1rem;
+            border: 1px solid var(--input-border, #d1d5db);
+            border-radius: 6px;
+            font-size: 0.95rem;
+            font-weight: 500;
+            cursor: pointer;
+            transition: border-color 0.2s, box-shadow 0.2s;
+            min-width: 200px;
+            max-width: 300px;
+        }
+        #reportSelect:hover {
+            border-color: var(--button-hover, #2563eb);
+            box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.1);
+        }
+        #reportSelect:focus {
+            outline: none;
+            border-color: var(--button-hover, #2563eb);
+            box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.2);
+        }
+        #reportSelect:disabled {
+            background-color: var(--secondary-text);
+            border-color: var(--secondary-text);
+            cursor: not-allowed;
+            opacity: 0.6;
+        }
+        .select-wrapper::after {
+            content: '\f078'; /* Font Awesome chevron-down */
+            font-family: 'Font Awesome 6 Free';
+            font-weight: 900;
+            color: var(--primary-text);
+            position: absolute;
+            right: 0.8rem;
+            pointer-events: none;
+            font-size: 0.8rem;
+        }
+        .report-content {
+            margin-top: 1rem;
+            padding: 1rem;
+        }
+        .report-creation-section {
+            padding: 1.2rem;
+            border-radius: 12px;
+            background: var(--container-bg);
+            box-shadow: 0 4px 24px 0 rgba(44, 62, 80, 0.08);
+            transition: box-shadow 0.2s;
+            margin-bottom: 1.5rem;
+        }
+        .report-creation-section:hover {
+            box-shadow: 0 8px 32px 0 rgba(44, 62, 80, 0.16);
+        }
+        .report-creation-section label {
+            font-weight: 600;
+            color: var(--primary-text);
+            margin-right: 0.5rem;
+        }
+        .report-creation-section input[type="date"] {
+            padding: 0.5rem;
+            border: 1px solid var(--input-border);
+            border-radius: 6px;
+            background: var(--input-bg);
+            color: var(--primary-text);
+            font-size: 0.9rem;
+            margin-right: 1rem;
+        }
+        .report-creation-section .date-inputs {
+            display: flex;
+            align-items: center;
+            gap: 1rem;
+            margin-bottom: 1rem;
+        }
+        .report-results {
+            padding: 1.2rem;
+            border-radius: 12px;
+            background: var(--container-bg);
+            box-shadow: 0 4px 24px 0 rgba(44, 62, 80, 0.08);
+            transition: box-shadow 0.2s;
+            margin-bottom: 1rem;
+        }
+        .report-results:hover {
+            box-shadow: 0 8px 32px 0 rgba(44, 62, 80, 0.16);
+        }
+        table {
+            width: 100%;
+            border-collapse: separate;
+            border-spacing: 0;
+            font-size: 0.95rem;
+            background: var(--container-bg);
+            border-radius: 8px;
+            overflow: hidden;
+            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+        }
+        th {
+            background: var(--table-header-bg);
+            color: var(--table-header-text);
+            font-weight: 700;
+            border: none;
+            padding: 0.6em 0.8em;
+            text-align: left;
+        }
+        td {
+            border: none;
+            padding: 0.6em 0.8em;
+            color: var(--primary-text);
+            background: var(--table-row-uneven);
+            vertical-align: middle;
+        }
+        tr:not(:last-child) td {
+            border-bottom: 1px solid var(--table-border);
+        }
+        tr.agent, tr.packhouse, tr.date, tr.note {
+            font-weight: bold;
+            background: var(--table-row-hover);
+            cursor: pointer;
+        }
+        tr.product {
+            font-style: italic;
+            background: var(--table-row-uneven);
+        }
+        tr.product td:first-child {
+            padding-left: 20px;
+        }
+        tr.hover:hover td {
+            background: var(--table-row-hover);
+            transition: background 0.15s;
+        }
+        .hidden {
+            display: none;
+        }
+        .filters-section {
+            padding: 1.2rem;
+            border-radius: 12px;
+            background: var(--container-bg);
+            box-shadow: 0 4px 24px 0 rgba(44, 62, 80, 0.08);
+            transition: box-shadow 0.2s;
+        }
+        .filters-section:hover {
+            box-shadow: 0 8px 32px 0 rgba(44, 62, 80, 0.16);
+        }
+        .filters-toggle {
+            background-color: var(--button-bg);
+            color: var(--button-text);
+            padding: 0.5rem 1rem;
+            border: none;
+            border-radius: 6px;
+            cursor: pointer;
+            font-size: 0.9rem;
+            font-weight: 500;
+            transition: background-color 0.2s;
+            width: 100%;
+            text-align: left;
+        }
+        .filters-toggle:disabled {
+            background-color: var(--secondary-text);
+            cursor: not-allowed;
+            opacity: 0.6;
+        }
+        .filters-toggle:hover {
+            background-color: var(--button-hover);
+        }
+        .filters-content {
+            display: none;
+            margin-top: 1rem;
+        }
+        .filters-content.show {
+            display: block;
+        }
+        .slicer-group {
+            margin-bottom: 1rem;
+            border: 1px solid var(--table-border);
+            border-radius: 8px;
+            overflow: hidden;
+            background: var(--container-bg);
+        }
+        .slicer-header {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            background: var(--table-header-bg);
+            color: var(--table-header-text);
+            padding: 0.6rem 1rem;
+            font-weight: 600;
+            cursor: pointer;
+            transition: background 0.2s;
+        }
+        .slicer-header i {
+            transition: transform 0.25s ease;
+        }
+        .slicer-group.collapsed .slicer-header i {
+            transform: rotate(-90deg);
+        }
+        .slicer-options {
+            max-height: 500px;
+            overflow-y: auto;
+            padding: 0.5rem;
+            transition: max-height 0.3s ease;
+        }
+        .slicer-group.collapsed .slicer-options {
+            max-height: 0;
+            overflow: hidden;
+            padding: 0;
+        }
+        .custom-btn {
+            background-color: var(--button-bg);
+            border: 1px solid var(--button-bg);
+            color: var(--button-text);
+            padding: 0.3em 0.7em;
+            border-radius: 6px;
+            font-size: 0.8rem;
+            cursor: pointer;
+            transition: all 0.2s ease;
+            text-decoration: none;
+            display: block;
+            margin: 0.2rem 0.5rem;
+            text-align: left;
+            width: calc(100% - 1rem);
+        }
+        .custom-btn:hover {
+            background-color: var(--button-hover);
+            border-color: var(--button-hover);
+        }
+        .custom-btn.active {
+            background-color: var(--table-header-bg);
+            color: var(--logo-color);
+            font-weight: 600;
+        }
+        .custom-btn.btn-primary {
+            background-color: var(--button-bg);
+            border-color: var(--button-bg);
+        }
+        .custom-btn.btn-primary:hover {
+            background-color: var(--button-hover);
+            border-color: var(--button-hover);
+        }
+        .custom-btn:disabled {
+            background-color: var(--secondary-text);
+            cursor: not-allowed;
+            opacity: 0.6;
+        }
+        .slicer-clear-btn-text {
+            background-color: #dc3545;
+            color: white;
+            border: none;
+            border-radius: 6px;
+            padding: 0.3em 0.8em;
+            cursor: pointer;
+            font-size: 0.8rem;
+            font-weight: bold;
+            transition: all 0.2s ease;
+        }
+        .slicer-clear-btn-text:hover {
+            background-color: #c82333;
+            transform: scale(1.05);
+        }
+        .slicer-clear-btn-text:active {
+            transform: scale(0.95);
+        }
+        .slicer-options {
+            max-height: 120px;
+            overflow-y: auto;
+        }
+        .loading-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0, 0, 0, 0.5);
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            z-index: 1000;
+        }
+        .loading-content {
+            background: var(--container-bg);
+            padding: 2rem;
+            border-radius: 8px;
+            text-align: center;
+            box-shadow: 0 4px 24px rgba(0, 0, 0, 0.2);
+        }
+        .spinner {
+            display: inline-block;
+            width: 1rem;
+            height: 1rem;
+            border: 2px solid var(--input-border);
+            border-radius: 50%;
+            border-top-color: var(--button-bg);
+            animation: spin 1s ease-in-out infinite;
+            margin-right: 0.5rem;
+        }
+        @keyframes spin {
+            to { transform: rotate(360deg); }
+        }
+        @media (max-width: 768px) {
+            .container-wide {
+                flex-direction: column;
+                gap: 1rem;
+            }
+            .sidebar, .content {
+                flex: 0 0 100%;
+                min-width: 100%;
+            }
+            .report-creation-section .date-inputs {
+                flex-direction: column;
+                align-items: flex-start;
+            }
+            .button-container {
+                flex-direction: column;
+                align-items: stretch;
+                padding: 0.75rem;
+            }
+            .button-container button, .button-container .select-wrapper {
+                width: 100%;
+                justify-content: center;
+            }
+            #reportSelect {
+                width: 100%;
+                max-width: none;
+            }
+            .select-wrapper {
+                flex-direction: column;
+                align-items: stretch;
+            }
+            .select-wrapper label {
+                margin-bottom: 0.25rem;
+                margin-right: 0;
+            }
+        }
+        #pdfContent {
+            position: absolute;
+            left: -9999px;
+            top: 0;
+            font-family: Arial, sans-serif;
+            width: 100%;
+            max-width: 595px;
+        }
+        #svgContainer {
+            display: none;
+        }
+        #logoContainer {
+            text-align: center;
+            margin-bottom: 20px;
+        }
+        #logoContainer img, #logoContainer div {
+            margin: 0 auto;
+        }
+        .report-header {
+            display: grid;
+            grid-template-columns: 1fr auto 1fr;
+            grid-template-rows: auto auto;
+            align-items: center;
+            justify-items: center;
+            text-align: center;
+            margin: 0 auto 1.5rem auto;
+            max-width: 100%;
+        }
+        .report-header h2 {
+            grid-column: 1 / 4;
+            grid-row: 1;
+            margin: 0;
+            font-size: 1.4rem;
+            font-weight: 700;
+            color: var(--primary-text);
+            line-height: 1.2;
+        }
+        .report-date-left {
+            grid-column: 1;
+            grid-row: 2;
+            justify-self: start;
+        }
+        .report-date-right {
+            grid-column: 3;
+            grid-row: 2;
+            justify-self: end;
+        }
+        .report-date-left h3,
+        .report-date-right h3 {
+            margin: 0.2rem 0 0 0;
+            font-weight: 500;
+            font-size: 0.9rem;
+            color: var(--primary-text);
+        }
+        #selected-levels span,
+#selected-fields span {
+  font-size: 14px;
+  color: var(--primary-text);
+}
+
+#selected-levels div,
+#selected-fields div {
+  background: var(--input-bg, #f5f5f5);
+  padding: 4px 8px;
+  border-radius: 4px;
+  transition: background 0.2s;
+}
+
+#selected-levels div:hover,
+#selected-fields div:hover {
+  background: var(--hover-bg, #e8e8e8);
+}
+.report-table td {
+  text-align: right;
+}
+.report-table td:first-child {
+  text-align: left;
+}
+.expand-all-btn {
+  font-size: 14px;
+  background: var(--input-bg, #f5f5f5);
+  border: 1px solid #ccc;
+  border-radius: 6px;
+  padding: 6px 12px;
+  cursor: pointer;
+  transition: background 0.2s, transform 0.1s;
+}
+
+.expand-all-btn:hover {
+  background: var(--hover-bg, #e8e8e8);
+  transform: scale(1.02);
+}
+.create-report-button {
+    background: var(--button-bg);
+    color: var(--button-text);
+    border: none;
+    border-radius: 6px;
+    padding: 0.6rem 1.4rem;
+    font-size: 0.95rem;
+    font-weight: 600;
+    cursor: pointer;
+    display: inline-flex;
+    align-items: center;
+    gap: 0.5rem;
+    transition: background-color 0.2s ease, transform 0.1s ease, box-shadow 0.2s ease;
+    box-shadow: 0 2px 6px rgba(0, 0, 0, 0.08);
+}
+
+.create-report-button:hover {
+    background: var(--button-hover);
+    transform: translateY(-1px);
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.12);
+}
+
+.create-report-button:active {
+    transform: translateY(0);
+    box-shadow: 0 2px 6px rgba(0, 0, 0, 0.08);
+}
+
+.create-report-button:disabled {
+    background-color: var(--secondary-text);
+    cursor: not-allowed;
+    opacity: 0.6;
+}
+
+.create-report-button i {
+    font-size: 1rem;
+}
+
+
+    </style>
+</head>
+<body>
+    {% include 'taskbar.html' %}
+    <div class="loading-overlay hidden" id="loadingOverlay">
+        <div class="loading-content">
+            <div class="spinner"></div>
+            <div>Loading report data, please wait...</div>
+        </div>
+    </div>
+    <div class="report-container with-fixed-taskbar">
+        <div class="container-card main-content">
+            <h1>Reports</h1>
+            <div class="report-creation-section">
+                <h2>Create Report</h2>
+                <div class="date-inputs">
+                    <label for="startDate">Start Date:</label>
+                    <input type="date" id="startDate" name="startDate">
+                    <label for="endDate">End Date:</label>
+                    <input type="date" id="endDate" name="endDate">
+                    <button class="create-report-button" onclick="fetchData()">Create Report</button>
+                </div>
+            </div>
+            <div class="container-wide">
+                <div class="sidebar">
+                    <div class="filters-section">
+                        <div class="filters-content show" id="filtersContent"></div>
+                    </div>
+                </div>
+                <div class="content">
+                    <div class="report-results">
+                        <div class="report-header">
+                            <div class="report-date-left">
+                                <h3>As On: <span id="reportDateCreated"></span></h3>
+                            </div>
+                            <h2 id="reportHeader">Delivery Note Report</h2>
+                            <div class="report-date-right">
+                                <h3>For the period: <span id="reportStartDate"></span> to <span id="reportEndDate"></span></h3>
+                            </div>
+                        </div>
+                        <div class="button-container">
+                            <button class="create-template-button" onclick="openTemplateWizard()">
+                                <i class="fas fa-plus"></i> Create Template
+                            </button>
+                            <div class="select-wrapper">
+                                <label for="reportSelect">Display Template:</label>
+                                <select id="reportSelect">
+                                    <option value="" disabled selected>Select Report</option>
+                                </select>
+                            </div>
+                        </div>
+                        <div class="report-content" id="report-content">
+                            <div id="delivery-note-template" class="hidden" data-report-content="template"></div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    <div id="pdfContent">
+        <div id="logoContainer">
+            <img id="pdfLogo" src="/static/Image/LogoIcon.svg" alt="Logo" style="max-width: 150px; display: none;">
+            <div id="logoText" style="font-size: 24px; font-weight: bold; color: var(--primary-text); display: none;">Company Logo</div>
+            <div id="logoError" style="display: none; color: var(--primary-text); font-style: italic;">Logo unavailable</div>
+        </div>
+        <h1 style="font-size: 24px; color: var(--primary-text); margin-bottom: 20px; text-align: center;"></h1>
+        <h2 style="font-size: 18px; color: var(--primary-text); margin-bottom: 10px;">Report Parameters</h2>
+        <ul id="filterList" style="margin-bottom: 20px; padding-left: 20px;"></ul>
+        <div id="reportTable" style="font-family: Arial, sans-serif; font-size: 12px;"></div>
+    </div>
+    <div id="svgContainer" style="display: none;"></div>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
+    <script>
+        // Enable debug logging
+        window.debugMode = true;
+        function debugLog(...args) {
+            if (window.debugMode) console.log(...args);
+        }
+        function showLoadingOverlay(message = "Creating report, please wait...") {
+            const overlay = document.getElementById("loadingOverlay");
+            overlay.innerHTML = `
+                <div class="loading-content">
+                    <div class="spinner"></div>
+                    <div>${message}</div>
+                </div>
+            `;
+            overlay.style.display = "flex";
+            document.querySelectorAll(".dashboard-button, .filters-toggle, .custom-btn, .print-button, .create-report-button, .create-template-button").forEach(el => {
+                el.disabled = true;
+            });
+        }
+
+        function hideLoadingOverlay() {
+            document.getElementById("loadingOverlay").style.display = "none";
+            document.querySelectorAll(".dashboard-button, .filters-toggle, .custom-btn, .print-button, .create-report-button, .create-template-button").forEach(el => {
+                el.disabled = false;
+            });
+        }
+
+        // Initialize active selections as arrays for multi-select
+        window.activePackhouse = [];
+        window.activeAgentName = [];
+        window.activeProduct = [];
+        window.activeClass = [];
+        window.activeSize = [];
+        window.activeBrand = [];
+        window.activeVariety = [];
+        window.activeMainProdUnitName = [];
+        window.activeProdUnitName = [];
+        window.reportParameters = { startDate: null, endDate: null, dateCreated: null };
+        window.slicerOpenState = window.slicerOpenState || {};
+
+        function applyGlobalFilters(data, excludeFilter = null) {
+            let filtered = data;
+            if (excludeFilter !== 'activePackhouse' && window.activePackhouse.length > 0) {
+                filtered = filtered.filter(r => window.activePackhouse.includes(r.packhousename));
+            }
+            if (excludeFilter !== 'activeAgentName' && window.activeAgentName.length > 0) {
+                filtered = filtered.filter(r => window.activeAgentName.includes(r.agentname));
+            }
+            if (excludeFilter !== 'activeProduct' && window.activeProduct.length > 0) {
+                filtered = filtered.filter(r => window.activeProduct.includes(r.product));
+            }
+            if (excludeFilter !== 'activeClass' && window.activeClass.length > 0) {
+                filtered = filtered.filter(r => window.activeClass.includes(r.class));
+            }
+            if (excludeFilter !== 'activeSize' && window.activeSize.length > 0) {
+                filtered = filtered.filter(r => window.activeSize.includes(r.size));
+            }
+            if (excludeFilter !== 'activeBrand' && window.activeBrand.length > 0) {
+                filtered = filtered.filter(r => window.activeBrand.includes(r.brand));
+            }
+            if (excludeFilter !== 'activeVariety' && window.activeVariety.length > 0) {
+                filtered = filtered.filter(r => window.activeVariety.includes(r.variety));
+            }
+            if (excludeFilter !== 'activeMainProdUnitName' && window.activeMainProdUnitName.length > 0) {
+                filtered = filtered.filter(r => window.activeMainProdUnitName.includes(r.mainprodunitname));
+            }
+            if (excludeFilter !== 'activeProdUnitName' && window.activeProdUnitName.length > 0) {
+                filtered = filtered.filter(r => window.activeProdUnitName.includes(r.produnitname));
+            }
+            return filtered;
+        }
+
+        function renderGlobalSlicers() {
+            debugLog("Rendering slicers, clearing caches");
+            const filtersContent = document.getElementById("filtersContent");
+            filtersContent.innerHTML = "";
+
+            window.quantityReportCache = null;
+            window.nettAmountsReportCache = null;
+            window.summaryReportCache = null;
+            window.perAgentReportCache = null;
+            window.templateReportCache = null;
+            debugLog("All report caches cleared for slicers");
+
+            const slicerConfigs = [
+                { label: "Packhouse", field: "packhousename", activeVar: "activePackhouse" },
+                { label: "Agent Name", field: "agentname", activeVar: "activeAgentName" },
+                { label: "Product", field: "product", activeVar: "activeProduct" },
+                { label: "Class", field: "class", activeVar: "activeClass" },
+                { label: "Size", field: "size", activeVar: "activeSize" },
+                { label: "Brand", field: "brand", activeVar: "activeBrand" },
+                { label: "Variety", field: "variety", activeVar: "activeVariety" },
+                { label: "Main Prod Unit", field: "mainprodunitname", activeVar: "activeMainProdUnitName" },
+                { label: "Prod Unit", field: "produnitname", activeVar: "activeProdUnitName" }
+            ];
+
+            const baseFilteredData = {};
+            slicerConfigs.forEach(config => {
+                baseFilteredData[config.activeVar] = applyGlobalFilters(window.originalData, config.activeVar);
+            });
+
+            slicerConfigs.forEach(config => {
+                const activeVar = config.activeVar;
+                const uniqueValues = [...new Set(window.originalData.map(r => r[config.field]))].filter(v => v);
+                if (uniqueValues.length > 0) {
+                    const groupDiv = document.createElement("div");
+                    groupDiv.dataset.activeVar = activeVar;
+
+                    const isOpen = (typeof window.slicerOpenState[activeVar] !== 'undefined')
+                        ? !!window.slicerOpenState[activeVar]
+                        : false;
+                    groupDiv.className = `slicer-group${isOpen ? '' : ' collapsed'}`;
+
+                    const activeSelections = window[activeVar] || [];
+                    const selectedCount = activeSelections.length;
+
+                    const disabledOptions = new Set();
+                    const baseData = baseFilteredData[activeVar];
+                    uniqueValues.forEach(val => {
+                        const tempSelections = [...activeSelections, val];
+                        const tempFilters = { [activeVar]: tempSelections };
+                        let tempData = baseData;
+                        if (tempSelections.length > 0) {
+                            tempData = tempData.filter(r => tempSelections.includes(r[config.field]));
+                        }
+                        if (tempData.length === 0 && !activeSelections.includes(val)) {
+                            disabledOptions.add(val);
+                        }
+                    });
+
+                    groupDiv.innerHTML = `
+                        <div class="slicer-header" onclick="toggleSlicerCollapse(this)">
+                            <span>${config.label}${selectedCount > 0 ? ` (${selectedCount})` : ''}</span>
+                            <div style="display:flex;align-items:center;gap:0.5rem;">
+                                ${selectedCount > 0 ? `<button class="slicer-clear-btn-text" onclick="event.stopPropagation(); clearSlicer('${activeVar}', this.closest('.slicer-group'))" title="Clear ${config.label}">Clear</button>` : ''}
+                                <i class="fas fa-chevron-down"></i>
+                            </div>
+                        </div>
+                        <div class="slicer-options">
+                            ${uniqueValues.sort().map(val => `
+                            <button
+                            class="custom-btn btn-primary btn-sm ${activeSelections.includes(val) ? 'active' : ''} ${disabledOptions.has(val) ? 'disabled' : ''}"
+                            onclick="event.stopPropagation(); toggleSlicerOption('${activeVar}', '${val}', this.parentElement)"
+                            ${disabledOptions.has(val) ? 'disabled' : ''}>
+                            ${val}
+                            </button>
+                            `).join('')}
+                        </div>
+                    `;
+
+                    filtersContent.appendChild(groupDiv);
+                }
+            });
+        }
+
+        function toggleSlicerCollapse(headerEl) {
+            const group = headerEl.closest('.slicer-group');
+            const activeVar = group.dataset.activeVar;
+            window.slicerOpenState = window.slicerOpenState || {};
+            const newOpenState = !window.slicerOpenState[activeVar];
+            window.slicerOpenState[activeVar] = newOpenState;
+            group.classList.toggle('collapsed', !newOpenState);
+        }
+
+        function toggleSlicerOption(activeVar, val, optionsContainer) {
+            const button = optionsContainer.querySelector(`.custom-btn:not(.active)[textContent="${val}"]`);
+            if (button && button.classList.contains('disabled')) {
+                debugLog(`Attempted to toggle disabled option: ${val} in ${activeVar}`);
+                return;
+            }
+
+            const activeSelections = window[activeVar] || [];
+            const index = activeSelections.indexOf(val);
+            if (index > -1) {
+                activeSelections.splice(index, 1);
+            } else {
+                activeSelections.push(val);
+            }
+            window[activeVar] = activeSelections;
+            debugLog(`Toggled ${activeVar}:`, activeSelections);
+
+            optionsContainer.querySelectorAll('.custom-btn').forEach(btn => {
+                btn.classList.toggle('active', activeSelections.includes(btn.textContent));
+            });
+
+            renderGlobalSlicers();
+            showLoadingOverlay();
+            window.data = applyGlobalFilters(window.originalData);
+            reloadCurrentReport();
+        }
+
+        function clearSlicer(activeVar, groupDiv) {
+            window[activeVar] = [];
+            debugLog(`Cleared ${activeVar}`);
+            showLoadingOverlay();
+            window.data = applyGlobalFilters(window.originalData);
+            renderGlobalSlicers();
+            reloadCurrentReport();
+        }
+
+        function getActiveFilters() {
+            const filters = [];
+            const slicerConfigs = [
+                { label: "Packhouse", activeVar: "activePackhouse" },
+                { label: "Agent Name", activeVar: "activeAgentName" },
+                { label: "Product", activeVar: "activeProduct" },
+                { label: "Class", activeVar: "activeClass" },
+                { label: "Size", activeVar: "activeSize" },
+                { label: "Brand", activeVar: "activeBrand" },
+                { label: "Variety", activeVar: "activeVariety" },
+                { label: "Main Prod Unit", activeVar: "activeMainProdUnitName" },
+                { label: "Prod Unit", activeVar: "activeProdUnitName" }
+            ];
+
+            slicerConfigs.forEach(config => {
+                const selections = window[config.activeVar] || [];
+                if (selections.length > 0) {
+                    filters.push(`${config.label}: ${selections.join(', ')}`);
+                }
+            });
+
+            return filters.length > 0 ? filters : ["None"];
+        }
+
+        function reloadCurrentReport() {
+            window.quantityReportCache = null;
+            window.nettAmountsReportCache = null;
+            window.summaryReportCache = null;
+            window.perAgentReportCache = null;
+            window.templateReportCache = null;
+            
+            const name = document.getElementById("reportSelect").value;
+            window.currentReportType = name;
+            debugLog("Calling loadTemplateReport:", name);
+            loadTemplateReport(name);
+            hideLoadingOverlay();
+
+        }
+
+        function fetchData() {
+            const startDate = document.getElementById("startDate").value;
+            const endDate = document.getElementById("endDate").value;
+
+            if (!startDate || !endDate) {
+                document.getElementById("loadingOverlay").innerHTML = `
+                    <div class="loading-content">
+                        <div class="alert alert-danger">Please select both start and end dates.</div>
+                    </div>
+                `;
+                return;
+            }
+
+            if (new Date(startDate) > new Date(endDate)) {
+                document.getElementById("loadingOverlay").innerHTML = `
+                    <div class="loading-content">
+                        <div class="alert alert-danger">Start date cannot be after end date.</div>
+                    </div>
+                `;
+                return;
+            }
+
+            showLoadingOverlay("Creating report, please wait...");
+            const url = `/market/api/fetch-delivery-note-report?startDate=${encodeURIComponent(startDate)}&endDate=${encodeURIComponent(endDate)}`;
+            fetch(url)
+                .then(response => {
+                    if (!response.ok) throw new Error("Failed to fetch report data");
+                    return response.json();
+                })
+                .then(response => {
+                    debugLog("Data fetched, updating window.data");
+                    window.originalData = response.data || [];
+                    window.reportParameters = response.parameters || { startDate, endDate, dateCreated: new Date().toISOString().split('T')[0] };
+                    document.getElementById("reportDateCreated").textContent = window.reportParameters.dateCreated || new Date().toISOString().split('T')[0];
+                    document.getElementById("reportStartDate").textContent = window.reportParameters.startDate;
+                    document.getElementById("reportEndDate").textContent = window.reportParameters.endDate;
+                    debugLog("Report parameters:", window.reportParameters);
+
+                    window.activePackhouse = window.activePackhouse || [];
+                    window.activeAgentName = window.activeAgentName || [];
+                    window.activeProduct = window.activeProduct || [];
+                    window.activeClass = window.activeClass || [];
+                    window.activeSize = window.activeSize || [];
+                    window.activeBrand = window.activeBrand || [];
+                    window.activeVariety = window.activeVariety || [];
+                    window.activeMainProdUnitName = window.activeMainProdUnitName || [];
+                    window.activeProdUnitName = window.activeProdUnitName || [];
+                    window.data = applyGlobalFilters(window.originalData);
+                    renderGlobalSlicers();
+                    if (window.currentReportType) {
+                        reloadCurrentReport();
+                    } else {
+                        hideLoadingOverlay();
+                    }
+                })
+                .catch(err => {
+                    document.getElementById("loadingOverlay").innerHTML = `
+                        <div class="loading-content">
+                            <div class="alert alert-danger">Failed to fetch report data. Please try again later.</div>
+                        </div>
+                    `;
+                    debugLog("Error in fetchData:", err);
+                });
+        }
+        async function loadReportDropdownOptions(){
+                    const data = await fetch("/static/report_templates.json");
+                    if (!data.ok) throw new Error("Failed to load JSON data");
+                    reportSelect.innerHTML = "";
+
+                    const templatesData = await data.json();
+                    window.templatesData = templatesData;
+
+                    Object.keys(templatesData).forEach(key => {
+                        const report = templatesData[key];
+                        const option = document.createElement("option");
+                        option.value = key;
+                        option.textContent = report.name || key;
+                        reportSelect.appendChild(option);
+
+                    });
+            }
+
+        document.addEventListener("DOMContentLoaded", async () => {
+            showLoadingOverlay();
+            try {
+                const today = new Date().toISOString().split('T')[0];
+                document.getElementById("endDate").value = today;
+                document.getElementById("startDate").value = new Date(new Date().setDate(new Date().getDate() - 7)).toISOString().split('T')[0];
+
+                loadReportDropdownOptions()
+                const response = await fetch("/static/delivery_note_data.json");
+                if (!response.ok) throw new Error("Failed to load JSON data");
+                const responseData = await response.json();
+                window.originalData = responseData.data || responseData;
+                window.reportParameters = responseData.parameters || { startDate: document.getElementById("startDate").value, endDate: document.getElementById("endDate").value, dateCreated: new Date().toISOString().split('T')[0] };
+
+                document.getElementById("reportDateCreated").textContent = window.reportParameters.dateCreated || new Date().toISOString().split('T')[0];
+                document.getElementById("reportStartDate").textContent = window.reportParameters.startDate;
+                document.getElementById("reportEndDate").textContent = window.reportParameters.endDate;
+
+                window.activePackhouse = window.activePackhouse || [];
+                window.activeAgentName = window.activeAgentName || [];
+                window.activeProduct = window.activeProduct || [];
+                window.activeClass = window.activeClass || [];
+                window.activeSize = window.activeSize || [];
+                window.activeBrand = window.activeBrand || [];
+                window.activeVariety = window.activeVariety || [];
+                window.activeMainProdUnitName = window.activeMainProdUnitName || [];
+                window.activeProdUnitName = window.activeProdUnitName || [];
+                window.data = applyGlobalFilters(window.originalData);
+                renderGlobalSlicers();
+                hideLoadingOverlay();
+
+                document.querySelectorAll(".filters-toggle, .print-button, .create-report-button, .create-template-button").forEach(el => {
+                    el.disabled = false;
+                });
+
+                const reportSelect = document.getElementById("reportSelect");
+                reportSelect.addEventListener("change", () => {
+                    const selectedContent = document.querySelector(`[data-report-content="template"]`);
+                    if (selectedContent) {
+                        selectedContent.classList.remove("hidden");
+                        showLoadingOverlay();
+                        reloadCurrentReport();
+                    } else {
+                        debugLog("Template report content not found");
+                        hideLoadingOverlay();
+                    }
+                });
+
+            } catch (err) {
+                document.getElementById("loadingOverlay").innerHTML = `
+                    <div class="loading-content">
+                        <div class="alert alert-danger">Failed to load report data. Please try again later.</div>
+                    </div>
+                `;
+                debugLog("Error in DOMContentLoaded:", err);
+            }
+        });
+    </script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/js/all.min.js"></script>
+    <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/select2/4.0.13/js/select2.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+    <script src="{{ url_for('static', filename='reports/template-report-loader.js') }}"></script>
+    <script src="{{ url_for('static', filename='reports/pdfGenerator.js') }}"></script>
+    <script src="{{ url_for('static', filename='reports/create-template.js') }}"></script>
+</body>
+</html>
+```

@@ -1,0 +1,684 @@
+<!-- taskbar.html -->
+<header class="taskbar">
+    <div class="logo-container">
+        <a href="/inventory/dashboard" class="logo-link">
+            <img src="{{ url_for('static', filename='Image/HorizontalLogoAndText.svg') }}" alt="Fermesync Logo" class="taskbar-logo">
+        </a>
+    </div>
+    
+    <!-- Desktop Navigation -->
+    <nav class="desktop-nav">
+        <ul>
+            <!-- <li class="dropdown-parent" style="position:relative;">
+                <a href="/market/create_entry" class="taskbar-link" id="delivery-note-link">Delivery Note <span style="font-size:0.8em;">&#9662;</span></a>
+                <ul class="dropdown-menu">
+                    <li><a href="/market/create_entry" class="dropdown-item">Create</a></li>
+                    <li><a href="/market/view_entries" class="dropdown-item">View</a></li>
+                </ul>
+            </li>
+            <li><a href="/market/import/main" class="taskbar-link" id="import-link">Import</a></li> -->
+        </ul>
+    </nav>
+    
+    <!-- Desktop User Section -->
+    <div class="user-section desktop-user">
+        <div class="username" id="username">John Doe <span>&#9662;</span></div>
+        <div class="dropdown">
+            <a href="/market/dashboard">Fermesync Market</a>
+            <a href="{{ url_for('market.view_account') }}">View Account</a>
+            <a href="{{ url_for('logout') }}">Logout</a>
+        </div>
+    </div>
+    
+    <!-- Mobile Menu Button -->
+    <button class="mobile-menu-toggle" id="mobile-menu-toggle" aria-label="Toggle menu">
+        <span class="hamburger-line"></span>
+        <span class="hamburger-line"></span>
+        <span class="hamburger-line"></span>
+    </button>
+</header>
+
+<!-- Mobile Menu Overlay -->
+<div class="mobile-menu-overlay" id="mobile-menu-overlay">
+    <nav class="mobile-nav">
+        <div class="mobile-nav-header">
+            <div class="mobile-username" id="mobile-username">John Doe</div>
+            <button class="mobile-menu-close" id="mobile-menu-close" aria-label="Close menu">×</button>
+        </div>
+        <div class="mobile-nav-footer">
+            <!-- <a href="{{ url_for('market.view_account') }}" class="mobile-nav-footer-link">View Account</a> -->
+             <a href="/dashboard">Fermesync Market</a>
+            <a href="{{ url_for('logout') }}" class="mobile-nav-footer-link">Logout</a>
+        </div>
+    </nav>
+</div>
+<style>
+@import url('../static/color-template.css');
+
+/* Reset default margins */
+body, html {
+    margin: 0;
+    padding: 0;
+    font-family: 'Arial', sans-serif;
+}
+
+body {
+    display: block !important;
+}
+
+.logo-container {
+    display: flex;
+    align-items: center;
+    height: 100%;
+}
+
+.logo-link {
+    display: flex;
+    align-items: center;
+    text-decoration: none;
+}
+
+.taskbar-logo {
+    height: 40px;
+    width: auto;
+}
+
+.taskbar {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    background-color: var(--taskbar-bg);
+    color: var(--taskbar-text);
+    z-index: 1000;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 0 20px;
+    font-family: 'Arial', sans-serif;
+    height: 60px;
+    border-radius: 0;
+}
+
+/* Utility class for content that needs to be pushed below the fixed taskbar */
+.with-fixed-taskbar {
+    padding-top: 70px;
+}
+
+/* Ensure content starts after taskbar */
+main {
+    padding: 20px;
+    flex-grow: 1;
+}
+
+/* Navigation - Desktop Only */
+.taskbar .desktop-nav {
+    position: absolute;
+    left: 50%;
+    transform: translateX(-50%);
+}
+
+.taskbar .desktop-nav ul {
+    display: flex;
+    list-style: none;
+    padding: 0;
+    margin: 0;
+}
+
+.taskbar-link {
+    text-decoration: none;
+    color: var(--taskbar-text);
+    font-size: 1rem;
+    font-family: Georgia, 'Times New Roman', Times, serif;
+    padding: 12px 20px;
+    display: inline-block;
+    transition: background 0.3s ease, color 0.3s ease;
+    border-radius: 4px;
+}
+
+.taskbar-link:hover,
+.taskbar-link.active {
+    background-color: var(--taskbar-hover);
+    color: var(--container-bg);
+}
+
+/* User Section - Desktop Only */
+.user-section.desktop-user {
+    position: relative;
+    display: flex;
+    align-items: center;
+    cursor: pointer;
+}
+
+.username {
+    font-size: 1rem;
+    padding: 12px 15px;
+    background-color: var(--taskbar-user-bg);
+    border-radius: 4px;
+    transition: background 0.3s ease;
+    color: var(--taskbar-text);
+}
+
+.username:hover {
+    background-color: var(--taskbar-user-hover);
+}
+
+/* Dropdown */
+.dropdown {
+    display: none;
+    position: absolute;
+    top: 45px;
+    right: 0;
+    background-color: var(--taskbar-dropdown-bg);
+    border-radius: 4px;
+    min-width: 150px;
+    box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2);
+    padding: 5px 0;
+}
+
+.dropdown a {
+    color: var(--taskbar-text);
+    padding: 10px 20px;
+    display: block;
+    text-decoration: none;
+    transition: background 0.2s ease;
+}
+
+.dropdown a:hover {
+    background-color: var(--taskbar-dropdown-hover);
+}
+
+.user-section:hover .dropdown {
+    display: block;
+}
+
+.dropdown-parent:hover .dropdown-menu,
+.dropdown-parent:focus-within .dropdown-menu {
+    display: block !important;
+}
+
+/* CSS Reset for taskbar elements to prevent page style interference */
+.taskbar *,
+.taskbar *::before,
+.taskbar *::after {
+    box-sizing: border-box;
+}
+
+.taskbar ul,
+.taskbar li {
+    margin: 0;
+    padding: 0;
+    list-style: none;
+}
+
+.taskbar a {
+    text-decoration: none;
+    color: inherit;
+}
+
+/* Taskbar-specific dropdown styles - isolated from page styles */
+.taskbar .dropdown-menu {
+    display: none;
+    position: absolute;
+    left: 0;
+    top: 100%;
+    background: var(--container-bg);
+    min-width: 180px;
+    box-shadow: 0 4px 12px rgba(0,0,0,0.12);
+    border-radius: 0 0 8px 8px;
+    z-index: 1001;
+    padding: 0.5em 0;
+    margin: 0;
+    list-style: none;
+    border: 1px solid var(--table-border);
+}
+
+.taskbar .dropdown-item {
+    display: block;
+    padding: 0.7em 1.2em;
+    color: var(--primary-text);
+    text-decoration: none;
+    font-size: 1em;
+    transition: background 0.18s, color 0.18s;
+    background: transparent;
+}
+
+.taskbar .dropdown-item:hover {
+    background: var(--table-row-hover);
+    color: var(--logo-color);
+}
+
+/* Mobile Menu Toggle Button (Hamburger) */
+.mobile-menu-toggle {
+    display: none;
+    flex-direction: column;
+    justify-content: space-around;
+    width: 30px;
+    height: 30px;
+    background: transparent;
+    border: none;
+    cursor: pointer;
+    padding: 0;
+    z-index: 1001;
+}
+
+.hamburger-line {
+    width: 100%;
+    height: 3px;
+    background-color: var(--taskbar-text);
+    border-radius: 3px;
+    transition: all 0.3s ease;
+}
+
+.mobile-menu-toggle.active .hamburger-line:nth-child(1) {
+    transform: rotate(45deg) translate(8px, 8px);
+}
+
+.mobile-menu-toggle.active .hamburger-line:nth-child(2) {
+    opacity: 0;
+}
+
+.mobile-menu-toggle.active .hamburger-line:nth-child(3) {
+    transform: rotate(-45deg) translate(7px, -7px);
+}
+
+/* Mobile Menu Overlay */
+.mobile-menu-overlay {
+    display: none;
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100vh;
+    background-color: rgba(0, 0, 0, 0.5);
+    z-index: 9999;
+    opacity: 0;
+    transition: opacity 0.3s ease;
+}
+
+.mobile-menu-overlay.active {
+    display: block;
+    opacity: 1;
+}
+
+.mobile-nav {
+    position: fixed;
+    top: 0;
+    right: -100%;
+    width: 85%;
+    max-width: 320px;
+    height: 100vh;
+    background-color: var(--taskbar-bg);
+    box-shadow: -2px 0 10px rgba(0, 0, 0, 0.3);
+    transition: right 0.3s ease;
+    display: flex;
+    flex-direction: column;
+    overflow-y: auto;
+}
+
+.mobile-menu-overlay.active .mobile-nav {
+    right: 0;
+}
+
+.mobile-nav-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 20px;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+    background-color: var(--taskbar-user-bg);
+}
+
+.mobile-username {
+    color: var(--taskbar-text);
+    font-size: 1.1rem;
+    font-weight: 600;
+}
+
+.mobile-menu-close {
+    background: none;
+    border: none;
+    color: var(--taskbar-text);
+    font-size: 2rem;
+    cursor: pointer;
+    padding: 0;
+    width: 30px;
+    height: 30px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    line-height: 1;
+    transition: transform 0.2s ease;
+}
+
+.mobile-menu-close:hover {
+    transform: scale(1.2);
+}
+
+.mobile-nav-list {
+    list-style: none;
+    padding: 0;
+    margin: 0;
+    flex: 1;
+    overflow-y: auto;
+}
+
+.mobile-nav-item {
+    border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+}
+
+.mobile-nav-link {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 18px 20px;
+    color: var(--taskbar-text);
+    text-decoration: none;
+    font-size: 1rem;
+    transition: background-color 0.2s ease;
+    width: 100%;
+}
+
+.mobile-nav-content {
+    display: flex;
+    align-items: center;
+    gap: 15px;
+    flex: 1;
+}
+
+.mobile-nav-chevron {
+    font-size: 1.5rem;
+    color: var(--taskbar-text);
+    opacity: 0.7;
+    transition: transform 0.2s ease;
+}
+
+.mobile-nav-item.active .mobile-nav-chevron {
+    transform: rotate(90deg);
+}
+
+.mobile-nav-link:hover,
+.mobile-nav-link.active {
+    background-color: var(--taskbar-hover);
+}
+
+.mobile-nav-icon {
+    font-size: 1.3rem;
+    width: 24px;
+    text-align: center;
+}
+
+.mobile-submenu {
+    list-style: none;
+    padding: 0;
+    margin: 0;
+    background-color: rgba(0, 0, 0, 0.2);
+    display: none;
+}
+
+.mobile-nav-item.active .mobile-submenu {
+    display: block;
+}
+
+.mobile-submenu-link {
+    display: block;
+    padding: 14px 20px 14px 55px;
+    color: var(--taskbar-text);
+    text-decoration: none;
+    font-size: 0.9rem;
+    transition: background-color 0.2s ease;
+    border-top: 1px solid rgba(255, 255, 255, 0.05);
+}
+
+.mobile-submenu-link:hover {
+    background-color: var(--taskbar-hover);
+    padding-left: 60px;
+}
+
+.mobile-nav-footer {
+    border-top: 1px solid rgba(255, 255, 255, 0.1);
+    padding: 15px 20px;
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+}
+
+.mobile-nav-footer-link {
+    color: var(--taskbar-text);
+    text-decoration: none;
+    padding: 12px;
+    border-radius: 4px;
+    transition: background-color 0.2s ease;
+    text-align: center;
+    font-size: 0.95rem;
+}
+
+.mobile-nav-footer-link:hover {
+    background-color: var(--taskbar-hover);
+}
+
+/* Mobile Responsive Styles */
+@media (max-width: 768px) {
+    /* Hide desktop navigation and user section on mobile */
+    .desktop-nav,
+    .desktop-user {
+        display: none !important;
+    }
+
+    /* Show mobile menu toggle */
+    .mobile-menu-toggle {
+        display: flex;
+    }
+
+    /* Adjust taskbar for mobile */
+    .taskbar {
+        padding: 10px 15px;
+        height: 60px;
+        justify-content: space-between;
+    }
+
+    /* Smaller logo on mobile */
+    .taskbar-logo {
+        height: 40px !important;
+        width: auto;
+        transform: translateY(0);
+    }
+
+    .logo-container {
+        flex: 0 0 auto;
+    }
+
+    /* Adjust padding for content below taskbar */
+    .with-fixed-taskbar {
+        padding-top: 70px;
+    }
+}
+
+/* Desktop styles - ensure desktop nav is visible */
+@media (min-width: 769px) {
+    .mobile-menu-toggle {
+        display: none !important;
+    }
+
+    .mobile-menu-overlay {
+        display: none !important;
+    }
+
+    .desktop-nav,
+    .desktop-user {
+        display: flex;
+    }
+}
+
+</style>
+<script>
+    document.addEventListener("DOMContentLoaded", function () {
+        const path = window.location.pathname;
+        
+        // Desktop: Active link highlighting
+        document.querySelectorAll(".taskbar-link").forEach((link) => {
+            if (path.includes(link.getAttribute("href"))) {
+                link.classList.add("active");
+            }
+        });
+
+        // Mobile: Active link highlighting
+        document.querySelectorAll(".mobile-nav-link").forEach((link) => {
+            if (path === link.getAttribute("href") || path.includes(link.getAttribute("href"))) {
+                link.classList.add("active");
+            }
+        });
+
+        // Desktop: Dropdown handling for user
+        const usernameEl = document.getElementById("username");
+        if (usernameEl) {
+            usernameEl.addEventListener("click", function () {
+                const dropdown = document.querySelector(".user-section .dropdown");
+                if (dropdown) {
+                    dropdown.style.display = dropdown.style.display === "block" ? "none" : "block";
+                }
+            });
+        }
+
+        // Fetch username for both desktop and mobile
+        fetch('/get_username')
+            .then(response => response.json())
+            .then(data => {
+                const desktopUsername = document.getElementById('username');
+                const mobileUsername = document.getElementById('mobile-username');
+                if (desktopUsername) {
+                    desktopUsername.textContent = data.username + " ▼";
+                }
+                if (mobileUsername) {
+                    mobileUsername.textContent = data.username;
+                }
+            })
+            .catch(error => {
+                console.error('Error fetching username:', error);
+            });
+
+        // Desktop: Dropdown handling for nav (hover)
+        document.querySelectorAll('.dropdown-parent').forEach(function(parent) {
+            parent.addEventListener('mouseenter', function() {
+                const menu = this.querySelector('.dropdown-menu');
+                if (menu) {
+                    menu.style.display = 'block';
+                }
+            });
+            parent.addEventListener('mouseleave', function() {
+                const menu = this.querySelector('.dropdown-menu');
+                if (menu) {
+                    menu.style.display = 'none';
+                }
+            });
+        });
+
+        // Mobile Menu Toggle
+        const mobileMenuToggle = document.getElementById('mobile-menu-toggle');
+        const mobileMenuOverlay = document.getElementById('mobile-menu-overlay');
+        const mobileMenuClose = document.getElementById('mobile-menu-close');
+        const mobileNav = document.querySelector('.mobile-nav');
+
+        function openMobileMenu() {
+            if (mobileMenuToggle && mobileMenuOverlay) {
+                mobileMenuToggle.classList.add('active');
+                mobileMenuOverlay.classList.add('active');
+                document.body.style.overflow = 'hidden'; // Prevent background scrolling
+            }
+        }
+
+        function closeMobileMenu() {
+            if (mobileMenuToggle && mobileMenuOverlay) {
+                mobileMenuToggle.classList.remove('active');
+                mobileMenuOverlay.classList.remove('active');
+                document.body.style.overflow = ''; // Restore scrolling
+                
+                // Close any open submenus
+                document.querySelectorAll('.mobile-nav-item').forEach(item => {
+                    item.classList.remove('active');
+                });
+            }
+        }
+
+        // Toggle menu when hamburger is clicked
+        if (mobileMenuToggle) {
+            mobileMenuToggle.addEventListener('click', function(e) {
+                e.stopPropagation();
+                if (mobileMenuOverlay.classList.contains('active')) {
+                    closeMobileMenu();
+                } else {
+                    openMobileMenu();
+                }
+            });
+        }
+
+        // Close menu when close button is clicked
+        if (mobileMenuClose) {
+            mobileMenuClose.addEventListener('click', closeMobileMenu);
+        }
+
+        // Close menu when clicking overlay (but not the menu itself)
+        if (mobileMenuOverlay) {
+            mobileMenuOverlay.addEventListener('click', function(e) {
+                if (e.target === mobileMenuOverlay) {
+                    closeMobileMenu();
+                }
+            });
+        }
+
+        // Prevent menu from closing when clicking inside it
+        if (mobileNav) {
+            mobileNav.addEventListener('click', function(e) {
+                e.stopPropagation();
+            });
+        }
+
+        // Mobile: Handle submenu expansion
+        document.querySelectorAll('.mobile-nav-item').forEach(function(item) {
+            const link = item.querySelector('.mobile-nav-link');
+            const submenu = item.querySelector('.mobile-submenu');
+            
+            if (link && submenu) {
+                // Parent link with submenu - toggle submenu on click
+                link.addEventListener('click', function(e) {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    item.classList.toggle('active');
+                });
+            } else if (link) {
+                // Regular link without submenu - navigate and close menu
+                link.addEventListener('click', function(e) {
+                    setTimeout(closeMobileMenu, 100);
+                });
+            }
+        });
+
+        // Close mobile menu when a submenu link is clicked
+        document.querySelectorAll('.mobile-submenu-link').forEach(function(link) {
+            link.addEventListener('click', function(e) {
+                // Small delay to allow navigation to start
+                setTimeout(closeMobileMenu, 100);
+            });
+        });
+
+        // Close mobile menu on window resize if it becomes desktop size
+        window.addEventListener('resize', function() {
+            if (window.innerWidth > 768) {
+                closeMobileMenu();
+            }
+        });
+
+        // Close mobile menu on ESC key press
+        document.addEventListener('keydown', function(e) {
+            if (e.key === 'Escape' && mobileMenuOverlay && mobileMenuOverlay.classList.contains('active')) {
+                closeMobileMenu();
+            }
+        });
+
+        // Hide dropdown menus initially (desktop)
+        document.querySelectorAll('.dropdown-menu').forEach(menu => {
+            menu.style.display = 'none';
+        });
+    });
+</script>

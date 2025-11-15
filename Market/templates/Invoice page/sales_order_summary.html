@@ -1,0 +1,277 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Sales Order Summary</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css">
+    <link rel="stylesheet" href="{{ url_for('static', filename='color-template.css') }}">
+    <style>
+        body { 
+            background: var(--primary-bg); 
+            font-size: 0.95rem; 
+            min-height: 100vh; 
+            color: var(--primary-text);
+        }
+        .sales-order-table-card {
+            background: var(--container-bg);
+            border-radius: 12px;
+            box-shadow: 0 4px 24px 0 rgba(44, 62, 80, 0.08);
+            padding: 1.5rem 2rem 1.2rem 2rem;
+            margin-bottom: 2rem;
+        }
+        .summary-table th, .summary-table td { padding: 0.7em 1em; }
+        .summary-table th { 
+            background: var(--table-header-bg); 
+            color: var(--table-header-text); 
+            font-weight: 700; 
+        }
+        .summary-table tr { 
+            background: var(--table-row-uneven); 
+            transition: background 0.18s, box-shadow 0.18s; 
+        }
+        .summary-table tr.striped { background: var(--table-row-even); }
+        .summary-table tr.clickable-row { cursor: pointer; }
+        .summary-table tr.clickable-row:hover {
+            background: var(--table-row-hover) !important;
+            box-shadow: 0 2px 12px 0 rgba(160, 150, 115, 0.3);
+        }
+        .badge { 
+            display: inline-block; 
+            padding: 0.3em 1em; 
+            border-radius: 999px; 
+            font-weight: 600; 
+            font-size: 0.95em; 
+        }
+        .badge-unprocessed { 
+            background: var(--muted-bg); 
+            color: var(--logo-color); 
+            border: 1px solid var(--input-border); 
+        }
+        .badge-processed { 
+            background: #d1fae5; 
+            color: #059669; 
+            border: 1px solid #6ee7b7; 
+        }
+        .badge-cancelled { 
+            background: #fee2e2; 
+            color: #dc2626; 
+            border: 1px solid #fecaca; 
+        }
+        .loading { text-align: center; font-size: 1.2em; color: var(--secondary-text); }
+        .error { color: #dc2626; text-align: center; }
+        .switch { display: inline-flex; align-items: center; cursor: pointer; user-select: none; }
+        .switch input { display: none; }
+        .slider { 
+            position: relative; 
+            width: 46px; 
+            height: 24px; 
+            background-color: var(--input-border); 
+            border-radius: 24px; 
+            transition: background 0.3s; 
+        }
+        .slider:before { 
+            content: ""; 
+            position: absolute; 
+            left: 4px; 
+            top: 4px; 
+            width: 16px; 
+            height: 16px; 
+            background: var(--container-bg); 
+            border-radius: 50%; 
+            transition: transform 0.3s; 
+        }
+        input:checked + .slider { background-color: var(--button-bg); }
+        input:checked + .slider:before { transform: translateX(22px); }
+        .switch-label { font-weight: 500; color: var(--primary-text); }
+        
+        /* Custom button styling using color template */
+        .custom-btn {
+            display: inline-flex;
+            align-items: center;
+            gap: 0.5rem;
+            font-weight: 600;
+            padding: 0.5rem 1rem;
+            border-radius: 6px;
+            border: 2px solid;
+            cursor: pointer;
+            transition: all 0.2s ease;
+            text-decoration: none;
+            font-family: inherit;
+            color: var(--button-text);
+            background-color: var(--button-bg);
+            border-color: var(--button-bg);
+        }
+        .custom-btn:hover {
+            background-color: var(--button-hover);
+            border-color: var(--button-hover);
+            color: var(--primary-text);
+        }
+        
+        /* Page title styling */
+        .page-title {
+            font-size: 1.5rem;
+            font-weight: 700;
+            color: var(--logo-color);
+        }
+    </style>
+</head>
+<body>
+{% include 'taskbar.html' %}
+<div class="main-content py-8 with-fixed-taskbar">
+    <div class="container-wide mx-auto px-4" style="max-width: 1200px;">
+        <div class="sales-order-table-card">
+            <div class="flex justify-between items-center mb-6">
+                <h1 class="page-title">Sales Orders</h1>
+                <div class="flex items-center gap-4">
+                    <a href="/create_sales_order" class="custom-btn">
+                        <i class="fas fa-plus"></i> Create Sales Order
+                    </a>
+                    <a onclick="RefreshInvoices()" class="custom-btn">
+                        <i class="fas fa-refresh"></i> Refresh Evo Invoices
+                    </a>
+                    <div class="flex items-center">
+                        <label class="switch">
+                            <input type="checkbox" id="toggle-completed">
+                            <span class="slider"></span>
+                        </label>
+                        <span class="switch-label ml-3" id="toggle-label">Hide Completed</span>
+                    </div>
+                    
+                </div>
+            </div>
+            <div id="loading" class="loading">Loading sales orders...</div>
+            <div id="error-message" class="error" style="display:none;"></div>
+            <div class="overflow-auto">
+                <table class="summary-table w-full rounded shadow" id="sales-order-table">
+                    <thead>
+                        <tr>
+                            <th>Sales Order No</th>
+                            <th>Date</th>
+                            <th>Agent</th>
+                            <th>Delivery Note</th>
+                            <th>Qty</th>
+                            <th>Nett Amount</th>
+                            <th>Status</th>
+                        </tr>
+                    </thead>
+                    <tbody id="sales-order-table-body"></tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+</div>
+    <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+<script>
+    function RefreshInvoices() {
+        fetch('/market/api/refresh-invoices', { method: 'POST' })
+            .then(response => {
+                if (!response.ok) throw new Error('Failed to refresh invoices');
+                return response.json();
+            })
+            .then(data => {
+                Swal.fire({
+                title: 'Success',
+                text: 'Invoices refreshed successfully.',
+                icon: 'success',
+                timer: 1500,
+                showConfirmButton: false
+                });
+                loadSalesOrders(); // Reload the sales orders
+            })
+            .catch(err => {
+                swal.fire('Error', err.message || 'Failed to refresh invoices.', 'error');
+            });
+    }
+function statusBadge(status) {
+    let s = (status || '').toLowerCase();
+    if (s === 'processed') return '<span class="badge badge-processed">Processed</span>';
+    if (s === 'cancelled') return '<span class="badge badge-cancelled">Cancelled</span>';
+    return '<span class="badge badge-unprocessed">Unprocessed</span>';
+}
+
+function formatAmount(val) {
+    return 'R ' + ((parseFloat(val) || 0).toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2}));
+}
+
+function applyRowStriping() {
+    const rows = Array.from(document.querySelectorAll('#sales-order-table-body tr'))
+        .filter(row => row.style.display !== 'none');
+    rows.forEach((row, idx) => {
+        row.classList.toggle('striped', idx % 2 === 1);
+    });
+}
+
+function renderTable(salesOrders) {
+    let rows = salesOrders.map(order => {
+        const status = (order.status || 'Unprocessed').toLowerCase();
+        return `
+            <tr class="clickable-row" data-sales-order-id="${order.invoiceindex}" data-status="${status}">
+                <td>${order.invoiceno}</td>
+                <td>${order.invoicedate || ''}</td>
+                <td>${order.agentname}</td>
+                <td><a href="/delivery-note/${order.invoicedelnoteno}" class="text-blue-600 hover:underline" onclick="event.stopPropagation();">${order.invoicedelnoteno}</a></td>
+                <td>${order.invoiceqty || ''}</td>
+                <td>${formatAmount(order.invoicenett)}</td>
+                <td>${statusBadge(order.status)}</td>
+            </tr>
+        `;
+    }).join('');
+    document.getElementById('sales-order-table-body').innerHTML = rows;
+    // Add click handler for rows
+    document.querySelectorAll('.clickable-row').forEach(row => {
+        row.addEventListener('click', function(e) {
+            if (e.target.tagName.toLowerCase() === 'a') return;
+            const salesOrderId = this.getAttribute('data-sales-order-id');
+            if (salesOrderId) {
+                window.location.href = `/sales-order/${salesOrderId}`;
+            }
+        });
+    });
+    applyRowStriping();
+}
+
+async function loadSalesOrders() {
+    try {
+        const response = await fetch('/market/api/sales-orders');
+        if (!response.ok) throw new Error('Failed to load sales orders');
+        const data = await response.json();
+        document.getElementById('loading').style.display = 'none';
+        if (!data.length) {
+            document.getElementById('error-message').style.display = '';
+            document.getElementById('error-message').textContent = 'No sales orders found.';
+            return;
+        }
+        renderTable(data);
+        filterTable(); // Apply initial filter
+    } catch (err) {
+        document.getElementById('loading').style.display = 'none';
+        document.getElementById('error-message').style.display = '';
+        document.getElementById('error-message').textContent = err.message || 'Failed to load sales orders.';
+    }
+}
+
+function filterTable() {
+    const showAll = document.getElementById('toggle-completed').checked;
+    const rows = document.querySelectorAll('#sales-order-table-body tr');
+    const toggleLabel = document.getElementById('toggle-label');
+
+    rows.forEach(row => {
+        const status = row.dataset.status;
+        if (showAll || (status !== 'processed' && status !== 'cancelled')) {
+            row.style.display = '';
+        } else {
+            row.style.display = 'none';
+        }
+    });
+    toggleLabel.textContent = showAll ? 'Showing All Orders' : 'Hide Completed';
+    applyRowStriping(); // <-- This ensures stripes are always correct after filtering
+}
+
+window.addEventListener('DOMContentLoaded', () => {
+    loadSalesOrders();
+    document.getElementById('toggle-completed').addEventListener('change', filterTable);
+});
+</script>
+</body>
+</html> 
