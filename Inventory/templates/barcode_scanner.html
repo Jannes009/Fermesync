@@ -1,0 +1,542 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+  <title>Barcode Scanner (ZXing)</title>
+
+  <!-- CSS libs -->
+  <link href="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/css/select2.min.css" rel="stylesheet" />
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+  <link href="https://cdn.jsdelivr.net/npm/sweetalert2@11/dist/sweetalert2.min.css" rel="stylesheet">
+
+  <style>
+    /* Basic layout */
+    body { background:#f8f9fa; padding:10px; -webkit-font-smoothing:antialiased; }
+    .container { max-width:1100px; margin:0 auto; }
+    .card { border:none; box-shadow:0 4px 8px rgba(0,0,0,.08); }
+    .scanner-preview { position:relative; width:100%; height:320px; background:#000; border-radius:8px; overflow:hidden; }
+    video#video { width:100%; height:100%; object-fit:cover; }
+    .scanner-overlay { position:absolute; inset:0; display:flex; align-items:center; justify-content:center; pointer-events:none; z-index:10; }
+    .scanner-guide { pointer-events:none; border:2px dashed rgba(0,255,0,.85); width:72%; height:48%; border-radius:6px; box-sizing:border-box; }
+    .scanner-hint { position:absolute; bottom:10px; left:50%; transform:translateX(-50%); color:#fff; font-weight:600; text-shadow:0 1px 4px rgba(0,0,0,0.7); z-index:12; }
+    .controls { gap:10px; }
+
+    /* Inputs & select2 sizing */
+    .form-control, .select2-selection { height:44px !important; font-size:16px !important; }
+    .btn-scan { min-height:44px; font-size:16px; }
+
+    /* Small screens */
+    @media (max-width:576px){
+      .scanner-preview{ height:380px; }
+      .controls { flex-direction: column; }
+      .btn-scan { width: 100%; }
+    }
+    
+    .scanning-active {
+      border: 3px solid #28a745;
+    }
+    .camera-permission {
+      position: absolute;
+      top: 50%;
+      left: 50%;
+      transform: translate(-50%, -50%);
+      color: white;
+      text-align: center;
+      z-index: 15;
+      background: rgba(0,0,0,0.8);
+      padding: 20px;
+      border-radius: 10px;
+    }
+  </style>
+</head>
+<body>
+    {% include 'inventory-taskbar.html' %}
+  <div class="container with-fixed-taskbar>
+    <h1 class="text-center mb-3">Barcode Scanner</h1>
+
+    <div class="card mb-3">
+      <div class="card-header bg-primary text-white">
+        <h5 class="mb-0">Scan Barcode</h5>
+      </div>
+      <div class="card-body">
+        <div class="mb-3 scanner-section">
+          <div class="scanner-preview" id="scanner-preview">
+            <video id="video" playsinline></video>
+            <div class="scanner-overlay">
+              <div class="scanner-guide" aria-hidden="true"></div>
+            </div>
+            <div class="scanner-hint">Align barcode inside green box</div>
+            <div id="camera-permission" class="camera-permission" style="display: none;">
+              <p>Camera permission required</p>
+              <button id="request-permission" class="btn btn-primary btn-sm">Allow Camera</button>
+            </div>
+          </div>
+
+          <div class="d-flex controls mt-3">
+            <button id="start-scanner" class="btn btn-primary btn-scan flex-fill">Start Scanner</button>
+            <button id="stop-scanner"  class="btn btn-secondary btn-scan flex-fill" disabled>Stop Scanner</button>
+            <button id="rescan-barcode" class="btn btn-warning btn-scan flex-fill" style="display:none;">Rescan</button>
+          </div>
+        </div>
+
+        <div class="form-section">
+          <form id="barcode-form">
+            <div class="mb-3">
+              <label for="barcode" class="form-label">Barcode</label>
+              <div class="input-group">
+                <input type="text" id="barcode" name="barcode" class="form-control" required />
+                <button type="button" id="clear-barcode" class="btn btn-outline-secondary">Clear</button>
+              </div>
+            </div>
+
+            <div class="mb-3">
+              <label for="product-select" class="form-label">Product</label>
+              <select id="product-select" class="form-control" name="stock_code" required>
+                <option value="">Select a product...</option>
+              </select>
+            </div>
+
+            <div class="mb-3">
+              <label for="uom-select" class="form-label">Unit of Measure</label>
+              <select id="uom-select" class="form-control" name="uom" required disabled>
+                <option value="">Select UOM...</option>
+              </select>
+            </div>
+
+            <div class="d-grid">
+              <button class="btn btn-success btn-scan" type="submit">Submit</button>
+            </div>
+          </form>
+        </div>
+
+      </div>
+    </div>
+  </div>
+
+  <!-- Libraries -->
+  <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/js/select2.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11/dist/sweetalert2.all.min.js"></script>
+  <!-- ZXing Library - Using browser build -->
+  <script src="https://unpkg.com/@zxing/library@0.19.1/umd/index.min.js"></script>
+
+  <script>
+    // jQuery ready
+    $(function(){
+      // Select2 init
+      $('#product-select').select2({ placeholder: 'Select a product...', allowClear: true, width: '100%' });
+
+      // State
+      let codeReader = null;
+      let activeStream = null;
+      let lastDetectedCode = null;
+      let detectionTimer = null;
+      let isScanning = false;
+      const videoElem = document.getElementById('video');
+
+      // Buttons
+      $('#start-scanner').on('click', startScanner);
+      $('#stop-scanner').on('click', stopScanner);
+      $('#rescan-barcode').on('click', resetScanner);
+      $('#clear-barcode').on('click', () => { 
+        $('#barcode').val(''); 
+        $('#rescan-barcode').show(); 
+        lastDetectedCode = null; 
+      });
+      $('#request-permission').on('click', requestCameraPermission);
+
+      // Product actions
+      $('#product-select').on('change', function(){
+        const uomCatId = $(this).find(':selected').data('uom-cat-id');
+        if(uomCatId) {
+          loadProductUOMs(uomCatId);
+          $('#uom-select').prop('disabled', false);
+        } else { 
+          $('#uom-select').prop('disabled', true).empty().append('<option value="">Select UOM...</option>'); 
+        }
+      });
+
+      $('#barcode-form').on('submit', function(e){
+        e.preventDefault();
+        submitBarcodeScan();
+      });
+
+      // Load product list
+      loadProducts();
+
+      // ===== Camera and Scanner Functions =====
+
+      async function startScanner() {
+        if (isScanning) {
+          showInfoToast('Scanner already running');
+          return;
+        }
+
+        showLoadingToast('Starting camera...');
+
+        try {
+          // Create code reader with formats
+          codeReader = new ZXing.BrowserMultiFormatReader();
+          
+          // First check camera permissions
+          const stream = await getCameraStream();
+          if (!stream) {
+            // Close the loading toast before showing permission request
+            Swal.close();
+            showCameraPermissionRequest();
+            return;
+          }
+
+          // start decoding from the video element
+          // start decoding without awaiting the returned promise so we don't block
+          // (awaiting here would prevent the loading toast from closing until
+          // the decoding loop finishes/stops)
+
+          // Log track settings and adjust preview mirroring depending on camera
+          try {
+            const track = stream.getVideoTracks && stream.getVideoTracks()[0];
+            const settings = track && track.getSettings ? track.getSettings() : {};
+            console.log('Camera track settings:', settings, 'label:', track && track.label);
+            // Mirror preview only for front-facing cameras
+            if (settings.facingMode === 'user' || /front/i.test(track && track.label || '')) {
+              videoElem.style.transform = 'scaleX(-1)';
+            } else {
+              videoElem.style.transform = '';
+            }
+          } catch (e) {
+            console.warn('Could not read track settings for mirroring:', e);
+          }
+
+          let decodeStarted = false;
+          let fallbackTimer = setTimeout(() => {
+            if (!decodeStarted) {
+              console.warn('No detection after timeout — trying decodeFromVideoDevice fallback');
+              tryFallbackDecodeDevice(stream);
+            }
+          }, 6000);
+
+          codeReader.decodeFromVideoElement(videoElem, (result, error) => {
+            decodeStarted = true;
+            if (typeof fallbackTimer !== 'undefined' && fallbackTimer) {
+              clearTimeout(fallbackTimer);
+              fallbackTimer = null;
+            }
+            if (result) {
+              handleDetected(result.getText());
+            }
+            if (error && !(error instanceof ZXing.NotFoundException)) {
+              console.debug('Scan error:', error);
+            }
+          }).catch(err => {
+            // log any unexpected startup errors
+            console.error('decodeFromVideoElement error:', err);
+          });
+
+
+          isScanning = true;
+          updateUIForScanning();
+          
+          // CLOSE THE LOADING TOAST HERE
+          Swal.close();
+          showSuccessToast('Scanner started — point camera at barcode');
+
+        } catch (err) {
+          console.error('Scanner error:', err);
+          // CLOSE THE LOADING TOAST ON ERROR TOO
+          Swal.close();
+          showErrorToast('Scanner error: ' + (err.message || err));
+          stopScanner();
+        }
+      }
+
+        // Fallback: try decoding using explicit deviceId if decodeFromVideoElement
+        // doesn't start producing results fast enough on some devices.
+        function tryFallbackDecodeDevice(stream) {
+          try {
+            const track = stream && stream.getVideoTracks && stream.getVideoTracks()[0];
+            const settings = track && track.getSettings ? track.getSettings() : {};
+            const deviceId = settings.deviceId || (track && track.label ? null : null);
+            if (!deviceId) {
+              console.warn('No deviceId available for fallback decode');
+              return;
+            }
+
+            console.log('Attempting fallback decodeFromVideoDevice with deviceId:', deviceId);
+            // reset any existing reader
+            try { codeReader.reset(); } catch(e) { /* ignore */ }
+
+            codeReader.decodeFromVideoDevice(deviceId, videoElem, (result, err) => {
+              if (result) {
+                handleDetected(result.getText());
+              }
+              if (err && !(err instanceof ZXing.NotFoundException)) {
+                console.debug('Fallback scan error:', err);
+              }
+            });
+          } catch (e) {
+            console.error('Fallback decode failed:', e);
+          }
+        }
+
+      async function getCameraStream() {
+        try {
+          // Try to get camera stream with preferred constraints
+          const constraints = {
+            video: {
+              facingMode: { ideal: "environment" },
+              width: { ideal: 1280 },
+              height: { ideal: 720 }
+            },
+            audio: false
+          };
+
+          const stream = await navigator.mediaDevices.getUserMedia(constraints);
+          activeStream = stream;
+          videoElem.srcObject = stream;
+          
+          // Wait for video to be ready
+          await new Promise((resolve) => {
+            videoElem.onloadedmetadata = () => {
+              videoElem.play().then(() => {
+                console.log('Video metadata loaded. videoWidth=', videoElem.videoWidth, 'videoHeight=', videoElem.videoHeight);
+                resolve();
+              });
+            };
+          });
+
+          return stream;
+        } catch (err) {
+          console.warn('Camera access failed:', err);
+          return null;
+        }
+      }
+
+      function showCameraPermissionRequest() {
+        $('#camera-permission').show();
+        showErrorToast('Camera access denied. Please allow camera permissions.');
+      }
+
+      async function requestCameraPermission() {
+        $('#camera-permission').hide();
+        showLoadingToast('Requesting camera permission...');
+        
+        try {
+          const stream = await getCameraStream();
+          // CLOSE LOADING TOAST BEFORE PROCEEDING
+          Swal.close();
+          if (stream) {
+            startScanner();
+          } else {
+            showCameraPermissionRequest();
+          }
+        } catch (err) {
+          // CLOSE LOADING TOAST ON ERROR
+          Swal.close();
+          showCameraPermissionRequest();
+        }
+      }
+
+      function stopScanner() {
+        if (codeReader) {
+          try {
+            codeReader.reset();
+            codeReader = null;
+          } catch (e) {
+            console.warn('Error stopping reader:', e);
+          }
+        }
+
+        cleanupStream();
+        isScanning = false;
+        updateUIForStopped();
+        showInfoToast('Scanner stopped');
+      }
+
+      function resetScanner() {
+        stopScanner();
+        $('#barcode').val('');
+        $('#rescan-barcode').hide();
+        lastDetectedCode = null;
+        
+        setTimeout(() => startScanner(), 500);
+      }
+
+      function cleanupStream() {
+        try {
+          if (activeStream) {
+            activeStream.getTracks().forEach(track => track.stop());
+            activeStream = null;
+          }
+          if (videoElem) {
+            videoElem.pause();
+            videoElem.srcObject = null;
+          }
+        } catch (e) {
+          console.warn('Cleanup error:', e);
+        }
+      }
+
+      function updateUIForScanning() {
+        $('#start-scanner').prop('disabled', true);
+        $('#stop-scanner').prop('disabled', false);
+        $('#rescan-barcode').hide();
+        $('#scanner-preview').addClass('scanning-active');
+        $('#camera-permission').hide();
+      }
+
+      function updateUIForStopped() {
+        $('#start-scanner').prop('disabled', false);
+        $('#stop-scanner').prop('disabled', true);
+        $('#scanner-preview').removeClass('scanning-active');
+      }
+
+      function handleDetected(text) {
+        if (!text || text === lastDetectedCode) return;
+
+        if (detectionTimer) clearTimeout(detectionTimer);
+        
+        detectionTimer = setTimeout(() => {
+          lastDetectedCode = text;
+          $('#barcode').val(text);
+          showSuccessToast('Barcode detected: ' + text);
+          
+          stopScanner();
+          $('#rescan-barcode').show();
+        }, 300);
+      }
+
+      // ===== Form submission & ajax =====
+      function submitBarcodeScan(){
+        const barcode = $('#barcode').val().trim();
+        const stockCode = $('#product-select').val();
+        const uom = $('#uom-select').val();
+
+        if (!barcode || !stockCode || !uom) {
+          showErrorToast('Please fill in all fields before submitting');
+          return;
+        }
+
+        showLoadingToast('Submitting...');
+        $.ajax({
+          url: '/inventory/submit_barcode_scan',
+          method: 'POST',
+          contentType: 'application/json',
+          data: JSON.stringify({ barcode, stock_code: stockCode, uom }),
+          success: function(res){
+            Swal.close();
+            if (res && res.success) {
+              showSuccessToast(res.message || 'Submitted successfully', 3000);
+              // Reset form
+              $('#barcode-form')[0].reset();
+              $('#uom-select').prop('disabled', true);
+              $('#product-select').val('').trigger('change');
+              $('#rescan-barcode').hide();
+              lastDetectedCode = null;
+            } else {
+              showErrorToast('Submit failed: ' + (res && res.error ? res.error : 'Unknown error'));
+            }
+          },
+          error: function(xhr, status, err) {
+            Swal.close();
+            showErrorToast('Submit failed: ' + err);
+          }
+        });
+      }
+
+      // ===== Load products & UOMs =====
+      function loadProducts(){
+        showLoadingToast('Loading products...');
+        $.ajax({
+          url: '/inventory/fetch_products',
+          type: 'POST',
+          success: function(response) {
+            Swal.close();
+            if (response && response.success) {
+              $('#product-select').empty().append('<option value="">Select a product...</option>');
+              response.products.forEach(p => {
+                $('#product-select').append(
+                  $('<option>').val(p.product_id).text(p.product_desc).data('uom-cat-id', p.uom_cat_id || '')
+                );
+              });
+              showSuccessToast('Products loaded successfully');
+            } else {
+              showErrorToast('Failed to load products: ' + (response && response.error ? response.error : 'Unknown error'));
+            }
+          },
+          error: function(xhr, status, err) {
+            Swal.close();
+            showErrorToast('Failed to load products: ' + err);
+          }
+        });
+      }
+
+      function loadProductUOMs(uomCatId){
+        showLoadingToast('Loading unit options...');
+        $.ajax({
+          url: '/inventory/fetch_product_uoms',
+          type: 'POST',
+          contentType: 'application/json',
+          data: JSON.stringify({ uom_cat_id: uomCatId }),
+          success: function(res){
+            Swal.close();
+            if (res && res.success) {
+              $('#uom-select').empty().append('<option value="">Select UOM...</option>');
+              res.uoms.forEach(u => $('#uom-select').append($('<option>').val(u.id).text(u.code)));
+              showSuccessToast('Unit options loaded');
+            } else {
+              showErrorToast('Failed to load UOMs: ' + (res && res.error ? res.error : 'Unknown error'));
+            }
+          },
+          error: function(xhr, status, err) { 
+            Swal.close();
+            showErrorToast('Failed to load UOMs: ' + err); 
+          }
+        });
+      }
+
+      // ===== Toast helpers =====
+      function getToast() {
+        return Swal.mixin({
+          toast: true,
+          position: 'top-end',
+          showConfirmButton: false,
+          timer: 3000,
+          timerProgressBar: true,
+          didOpen: (toast) => { 
+            toast.addEventListener('mouseenter', Swal.stopTimer); 
+            toast.addEventListener('mouseleave', Swal.resumeTimer); 
+          }
+        });
+      }
+      
+      function showSuccessToast(m, t=3000){ 
+        getToast().fire({ icon:'success', title: m, timer: t }); 
+      }
+      
+      function showErrorToast(m, t=4000){ 
+        getToast().fire({ icon:'error', title: m, timer: t }); 
+      }
+      
+      function showInfoToast(m, t=3000){ 
+        getToast().fire({ icon:'info', title: m, timer: t }); 
+      }
+      
+      function showLoadingToast(m){ 
+        Swal.fire({ 
+          title: m, 
+          allowOutsideClick: false, 
+          allowEscapeKey: false, 
+          didOpen: () => Swal.showLoading() 
+        }); 
+      }
+
+      // Clean up on page unload
+      $(window).on('beforeunload', function() {
+        stopScanner();
+      });
+    });
+  </script>
+</body>
+</html>

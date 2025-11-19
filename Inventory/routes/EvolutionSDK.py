@@ -95,127 +95,89 @@ def fetch_po_lines(po_number):
     return jsonify({"po_lines": po_lines})
 
 
-# The URL of your ASP.NET API
-EVOLUTION_API_URL = "http://localhost:5295/api/EvolutionTest/submit-grv"  # adjust port if needed
+from win32com.client import Dispatch
+from flask import request, jsonify
+import clr  # pythonnet
+import sys
+
+# Add the path to your Evolution DLLs
+sys.path.append(r"C:\Program Files (x86)\Sage Evolution")  # <-- replace with your DLL folder
+
+# Load Evolution DLLs
+clr.AddReference("Pastel.Evolution.Common")
+clr.AddReference("Pastel.Evolution")
+
+# Import classes
+from Pastel.Evolution import DatabaseContext
+from Pastel.Evolution import PurchaseOrder
 
 @inventory_bp.route("/submit_grv", methods=["POST"])
 def submit_grv():
     data = request.get_json()
-    print(data)
+    print("Received GRV data:", data)
+
     po_number = data.get("poNumber")
     lines = data.get("lines")  # list of { ProductId, QtyReceived }
 
-    if not po_number or not lines or not isinstance(lines, list):
-        return jsonify({"error": "Missing or invalid PO number or lines"}), 400
+    # -------------------------
+    # Basic validation
+    # -------------------------
+    if not po_number:
+        return jsonify({"success": False, "error": "PoNumber is required"}), 400
 
-    # Validate each line has required fields
+    if not lines or not isinstance(lines, list) or len(lines) == 0:
+        return jsonify({"success": False, "error": "Lines collection required"}), 400
+
     for l in lines:
         if "ProductId" not in l or "QtyReceived" not in l:
-            return jsonify({"error": "Invalid line format. Each line must have ProductId and QtyReceived"}), 400
-
-    payload = {
-        "PoNumber": po_number,
-        "Lines": lines
-    }
-    print("Submitting payload to Evolution API:", payload)
-
-    try:
-        response = requests.post(EVOLUTION_API_URL, json=payload)
-        print(f"Evolution API Response Status: {response.status_code}")
-        print(f"Evolution API Response Body: {response.text}")
-        
-        api_result = response.json()
-        
-        # Check if the API returned success=false in the response body
-        if not api_result.get("success", False):
             return jsonify({
                 "success": False,
-                "message": api_result.get("error", "Unknown error from Evolution API")
+                "error": "Each line must contain ProductId and QtyReceived"
             }), 400
-        
-        return jsonify({
-            "success": True,
-            "message": "GRV submitted to Evolution API successfully",
-            "api_result": api_result
-        })
-        
-    except requests.RequestException as e:
-        print(f"Evolution API Error: {str(e)}")
-        return jsonify({
-            "success": False,
-            "message": f"Failed to call Evolution API: {str(e)}"
-        }), 500
-    except ValueError as e:
-        print(f"JSON Parse Error: {str(e)}")
-        return jsonify({
-            "success": False,
-            "message": "Evolution API returned invalid JSON"
-        }), 500
-
-@inventory_bp.route('/SDK/create-sales-order', methods=['POST'])
-def SDK_create_sales_order():
-    if not current_user.get_db_password():
-        return jsonify({
-            "success": False,
-            "message": "Database credentials are not configured for your account."
-        }), 400
-
-    request_payload = request.get_json(silent=True) or {}
-
-    description = request_payload.get(
-        "description",
-        f"Sales Order - {datetime.now():%d-%m-%Y %H:%M}"
-    )
-    order_payload = {
-        "customerCode": request_payload.get("customerCode", "ZZZ001"),
-        "projectCode": request_payload.get("projectCode", "KAL-AAR"),
-        "inventoryItemCode": request_payload.get("inventoryItemCode", "AART-STD"),
-        "quantity": request_payload.get("quantity", 10),
-        "unitPriceIncl": request_payload.get("unitPriceIncl", 12.99),
-        "warehouseCode": request_payload.get("warehouseCode", "Mstr"),
-        "description": description
-    }
-
-    api_payload = {
-        "serverName": request_payload.get("serverName", current_user.server_name),
-        "commonDatabaseName": request_payload.get("commonDatabaseName", "SageCommon"),
-        "databaseName": request_payload.get("databaseName", current_user.database_name),
-        "username": request_payload.get("username", current_user.db_username),
-        "password": request_payload.get("password", current_user.get_db_password()),
-        "order": order_payload
-    }
-
-    api_url = current_app.config.get(
-        'EVOLUTION_SALES_ORDER_API',
-        'http://localhost:5295/api/evolutiontest/create-sales-order'
-    )
 
     try:
-        response = requests.post(api_url, json=api_payload, timeout=30)
-        response.raise_for_status()
-        data = response.json()
-    except requests.exceptions.RequestException as exc:
+        # -------------------------
+        # Connect to Evolution SDK
+        # -------------------------
+        DatabaseContext.CreateCommonDBConnection(
+            "SIGMAFIN-RDS\\EVOLUTION", "SageCommon", "sa", "@Evolution", False
+        )
+        DatabaseContext.SetLicense("DE12111082", "9824607")
+        DatabaseContext.CreateConnection(
+            "SIGMAFIN-RDS\\EVOLUTION", "UB_UITDRAAI_BDY", "sa", "@Evolution", False
+        )
+
+        # -------------------------
+        # Load Purchase Order
+        # -------------------------
+        PO = PurchaseOrder(po_number)
+
+        # -------------------------
+        # Match lines to PO.Detail
+        # -------------------------
+        for line in lines:
+            pid = str(line["ProductId"])
+            qty_received = float(line["QtyReceived"])
+
+            # Loop through Evolution PO Lines
+            for detail in PO.Detail:
+                if str(detail.InventoryItemID) == pid:
+                    detail.ToProcess = qty_received
+                    break
+
+        # -------------------------
+        # Process the GRV (same as C#: PO.ProcessStock())
+        # -------------------------
+        PO.ProcessStock()
+
+        return jsonify({
+            "success": True,
+            "message": "GRV submitted successfully"
+        })
+
+    except Exception as ex:
+        print("GRV Processing Error:", str(ex))
         return jsonify({
             "success": False,
-            "message": "Failed to reach Evolution API.",
-            "error": str(exc)
-        }), 502
-    except ValueError:
-        return jsonify({
-            "success": False,
-            "message": "Evolution API returned invalid JSON."
-        }), 502
-
-    if not data.get('success'):
-        return jsonify({
-            "success": False,
-            "message": data.get('error', 'Evolution API reported a failure.'),
-            "payload": data
-        }), 500
-
-    return jsonify({
-        "success": True,
-        "message": data.get('message', 'Sales Order created successfully.'),
-        "payload": data
-    }), 200
-
+            "error": str(ex)
+        }), 400

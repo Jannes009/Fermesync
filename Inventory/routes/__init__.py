@@ -8,3 +8,7 @@ inventory_bp = Blueprint(
 )
 
 from . import EvolutionSDK
+from . import IBT
+from . import stock_count
+from . import stock_issue
+from . import Barcode

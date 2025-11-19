@@ -1,0 +1,291 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <link rel="stylesheet" href="{{ url_for('inventory.static', filename='color-template.css') }}">
+  <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+  <script src="https://code.jquery.com/jquery-3.7.0.min.js"></script>
+  <title>Receive IBT</title>
+
+  <style>
+    /* ==== COMPACT LAYOUT ==== */
+    * { box-sizing: border-box; }
+    body { margin:0; font-family: 'Segoe UI', sans-serif; background:var(--primary-bg); color:var(--primary-text); font-size:0.9rem; }
+    .wrap { max-width:1000px; margin:0 auto; padding:0.75rem; }
+    .wrap.with-fixed-taskbar { padding-top:1rem; margin-top:60px; }
+    .card { background:var(--container-bg); border-radius:8px; padding:0.75rem; margin-bottom:0.75rem; box-shadow:0 1px 6px rgba(0,0,0,.08); }
+    header { display:flex; justify-content:space-between; align-items:center; margin-bottom:0.5rem; }
+    header h1 { margin:0; font-size:1.4rem; }
+    .btn-primary, .btn-secondary, .btn-danger {
+      padding:6px 12px; border-radius:6px; font-size:0.85rem; font-weight:500; cursor:pointer; text-decoration:none; display:inline-block;
+    }
+    .btn-primary { background:var(--button-bg); color:var(--button-text); }
+    .btn-secondary { background:#6c757d; color:#fff; }
+    .btn-danger { background:#e74c3c; color:#fff; }
+    .btn-primary:hover { background:var(--button-hover); }
+    .btn-secondary:hover { background:#5a6268; }
+    .btn-danger:hover { background:#c0392b; }
+
+    /* ==== IBT LIST ==== */
+    .ibt-list { display:grid; gap:8px; }
+    .ibt-item {
+      background:var(--form-bg); padding:10px; border-radius:6px; border-left:3px solid var(--button-bg); cursor:pointer;
+      transition:transform .15s,box-shadow .15s;
+    }
+    .ibt-item:hover { transform:translateY(-1px); box-shadow:0 3px 8px rgba(0,0,0,.1); }
+    .ibt-number { font-weight:600; font-size:1rem; margin-bottom:2px; }
+    .ibt-description { font-size:0.85rem; color:var(--secondary-text); margin-bottom:4px; }
+    .ibt-details { display:grid; grid-template-columns:1fr 1fr; gap:6px; font-size:0.8rem; color:#666; }
+
+    /* ==== IBT DETAIL ==== */
+    .ibt-detail-header { background:var(--form-bg); padding:10px; border-radius:6px; margin-bottom:8px; border-left:3px solid var(--button-bg); }
+    .ibt-detail-header h2 { margin:0 0 4px; font-size:1.1rem; }
+    .ibt-detail-header p { margin:0; font-size:0.8rem; color:#666; }
+    .ibt-detail-grid { display:grid; grid-template-columns:1fr 1fr; gap:8px; margin-bottom:8px; }
+    .ibt-detail-item { background:var(--container-bg); padding:8px; border-radius:5px; font-size:0.85rem; }
+    .ibt-detail-item strong { display:block; margin-bottom:2px; color:var(--secondary-text); font-size:0.8rem; }
+
+    /* ==== PRODUCT LINES ==== */
+    .product-lines { margin-top:12px; }
+    .product-line { background:var(--form-bg); padding:10px; border-radius:6px; margin-bottom:8px; border-left:3px solid #3498db; }
+    .product-line-header { display:flex; justify-content:space-between; align-items:flex-start; margin-bottom:8px; gap:8px; }
+    .product-info { flex:1; }
+    .product-code { font-weight:600; font-size:0.95rem; margin-bottom:2px; }
+    .product-desc { font-size:0.8rem; color:var(--secondary-text); margin-bottom:2px; }
+    .line-reference { font-size:0.75rem; color:#888; font-style:italic; }
+    .qty-issued { background:#e8f4fd; padding:4px 8px; border-radius:5px; font-weight:600; font-size:0.8rem; min-width:70px; text-align:center; }
+
+    /* ==== QUANTITY INPUTS ==== */
+    .quantity-inputs { display:grid; grid-template-columns:1fr 1fr 1fr; gap:8px; margin-top:8px; }
+    .quantity-group label { font-size:0.8rem; margin-bottom:3px; font-weight:600; color:var(--secondary-text); }
+    .quantity-input {
+      padding:6px 8px; border:1px solid var(--input-border); border-radius:5px; background:var(--form-bg); font-size:0.9rem;
+    }
+    .quantity-input:focus { outline:none; border-color:var(--input-focus); box-shadow:0 0 0 2px var(--input-shadow); }
+    .quantity-total { grid-column:1/-1; background:#f8f9fa; padding:6px; border-radius:5px; text-align:center; font-size:0.8rem; font-weight:600; margin-top:4px; }
+    .quantity-error { color:#e74c3c; font-size:0.75rem; margin-top:2px; display:none; }
+
+    /* ==== ACTION BUTTONS ==== */
+    .action-buttons { display:flex; gap:8px; margin-top:16px; justify-content:flex-end; }
+    @media (max-width:768px) {
+      .ibt-detail-grid, .quantity-inputs { grid-template-columns:1fr; }
+      .action-buttons { flex-direction:column; }
+      .product-line-header { flex-direction:column; gap:6px; }
+    }
+    .hidden { display:none; }
+    .loading, .empty-state { text-align:center; padding:20px; color:var(--secondary-text); font-size:0.9rem; }
+    .empty-state h3 { margin-bottom:4px; color:var(--primary-text); }
+  </style>
+</head>
+<body>
+{% include 'inventory-taskbar.html' %}
+<div class="page-content with-fixed-taskbar">
+  <div class="wrap">
+
+    <!-- IBT LIST -->
+    <div class="card" id="ibt-list-view">
+      <header><h1>Receive IBT</h1></header>
+      <div id="ibt-list-container"><div class="loading">Loading IBTs...</div></div>
+    </div>
+
+    <!-- IBT DETAIL -->
+    <div class="card hidden" id="ibt-detail-view">
+      <header>
+        <h1 id="detail-view-title">IBT Details</h1>
+        <button type="button" id="back-to-list" class="btn-secondary">Back</button>
+      </header>
+      <div id="ibt-detail-container"><div class="loading">Loading details...</div></div>
+      <div class="action-buttons">
+        <button type="button" id="submit-receipt" class="btn-primary">Submit Receipt</button>
+      </div>
+    </div>
+
+  </div>
+</div>
+
+<script>
+document.addEventListener("DOMContentLoaded", async () => {
+    let currentIbt = null;
+
+    await loadIbtList();
+
+    document.getElementById("back-to-list").addEventListener("click", () => {
+        document.getElementById("ibt-detail-view").classList.add("hidden");
+        document.getElementById("ibt-list-view").classList.remove("hidden");
+    });
+
+    document.getElementById("submit-receipt").addEventListener("click", submitReceipt);
+
+    async function loadIbtList() {
+        try {
+            const res = await fetch("/inventory/fetch_issued_ibts");
+            const { ibts } = await res.json();
+            displayIbtList(ibts);
+        } catch (err) {
+            document.getElementById("ibt-list-container").innerHTML = `<div class="empty-state"><h3>Error</h3><p>Failed to load IBTs.</p></div>`;
+        }
+    }
+
+    function displayIbtList(ibts) {
+        const container = document.getElementById("ibt-list-container");
+        if (!ibts?.length) {
+            container.innerHTML = `<div class="empty-state"><h3>No IBTs</h3><p>No issued IBTs to receive.</p></div>`;
+            return;
+        }
+        let html = '<div class="ibt-list">';
+        ibts.forEach((ibt) => {
+            html += `
+                <div class="ibt-item" data-ibt-number="${ibt.ibt_number}">
+                    <div class="ibt-number">${ibt.ibt_number}</div>
+                    <div class="ibt-description">${ibt.description || '—'}</div>
+                    <div class="ibt-details">
+                        <div><strong>From:</strong> ${ibt.warehouse_from}</div>
+                        <div><strong>To:</strong> ${ibt.warehouse_to}</div>
+                    </div>
+                </div>`;
+        });
+        html += '</div>';
+        container.innerHTML = html;
+
+        container.querySelectorAll('.ibt-item').forEach(el => {
+            el.addEventListener('click', function() {
+                const ibtNumber = this.getAttribute('data-ibt-number');
+                loadIbtDetail(ibtNumber);
+            });
+        });
+    }
+
+    async function loadIbtDetail(ibt_number) {
+        currentIbt = ibt_number;
+        document.getElementById("ibt-list-view").classList.add("hidden");
+        document.getElementById("ibt-detail-view").classList.remove("hidden");
+        const container = document.getElementById("ibt-detail-container");
+        container.innerHTML = '<div class="loading">Loading...</div>';
+
+        try {
+            const res = await fetch(`/inventory/display_ibt?ibt_number=${ibt_number}`);
+            const { ibt_details } = await res.json();
+            displayIbtDetail(ibt_details);
+        } catch (err) {
+            container.innerHTML = `<div class="empty-state"><h3>Error</h3><p>Failed to load details.</p></div>`;
+        }
+    }
+
+    function displayIbtDetail(lines) {
+        if (!lines?.length) {
+            document.getElementById("ibt-detail-container").innerHTML = `<div class="empty-state"><h3>No Lines</h3><p>No product lines found.</p></div>`;
+            return;
+        }
+        const first = lines[0];
+        let html = `
+            <div class="ibt-detail-header">
+                <h2>${first.description || 'IBT'}</h2>
+                <p>IBT #: ${first.ibt_number}</p>
+            </div>
+            <div class="ibt-detail-grid">
+                <div class="ibt-detail-item"><strong>From</strong><span>${first.warehouse_from}</span></div>
+                <div class="ibt-detail-item"><strong>To</strong><span>${first.warehouse_to}</span></div>
+            </div>
+            <h3 style="margin:12px 0 8px;font-size:1rem;">Product Lines</h3>
+            <div class="product-lines" id="product-lines-container">`;
+
+        lines.forEach((line, i) => {
+            html += `
+                <div class="product-line" data-line="${i}" data-product-code="${line.product_code}">
+                    <div class="product-line-header">
+                        <div class="product-info">
+                            <div class="product-code">${line.product_code}</div>
+                            <div class="product-desc">${line.product_desc}</div>
+                            <div class="line-reference">${line.line_reference || '—'}</div>
+                        </div>
+                        <div class="qty-issued">Issued: ${line.qty_issued}</div>
+                    </div>
+                    <div class="quantity-inputs">
+                        <div class="quantity-group">
+                            <label>Received</label>
+                            <input type="number" class="quantity-input qty-received" data-line="${i}" min="0" max="${line.qty_issued}" value="0" onchange="updateQty(${i})">
+                        </div>
+                        <div class="quantity-group">
+                            <label>Damaged</label>
+                            <input type="number" class="quantity-input qty-damaged" data-line="${i}" min="0" max="${line.qty_issued}" value="0" onchange="updateQty(${i})">
+                        </div>
+                        <div class="quantity-group">
+                            <label>Variance</label>
+                            <input type="number" class="quantity-input qty-variance" data-line="${i}" value="0" readonly style="background:#f8f9fa;">
+                        </div>
+                        <div class="quantity-total" id="total-${i}">Total: 0 / ${line.qty_issued}</div>
+                        <div class="quantity-error" id="err-${i}" style="display:none;">Must equal ${line.qty_issued}</div>
+                    </div>
+                </div>`;
+        });
+        html += `</div>`;
+        document.getElementById("ibt-detail-container").innerHTML = html;
+        document.getElementById("detail-view-title").textContent = `IBT: ${first.description || 'Details'}`;
+    }
+
+    window.updateQty = function(i) {
+        const issued = parseFloat(document.querySelector(`#total-${i}`).textContent.match(/\d+$/)[0]);
+        const rec = parseFloat(document.querySelector(`.qty-received[data-line="${i}"]`).value) || 0;
+        const dam = parseFloat(document.querySelector(`.qty-damaged[data-line="${i}"]`).value) || 0;
+        const varr = issued - rec - dam;
+        document.querySelector(`.qty-variance[data-line="${i}"]`).value = varr;
+        const total = rec + dam + varr;
+        document.getElementById(`total-${i}`).textContent = `Total: ${total} / ${issued}`;
+        document.getElementById(`err-${i}`).style.display = total !== issued ? 'block' : 'none';
+    };
+
+    async function submitReceipt() {
+        const lines = document.querySelectorAll('.product-line');
+        const payload = { ibt_number: currentIbt, lines: [] };
+        let valid = true;
+
+        lines.forEach(line => {
+            const i = line.dataset.line;
+            const productCode = line.dataset.productCode; // ← Get product code
+            const issued = parseFloat(document.getElementById(`total-${i}`).textContent.match(/\d+$/)[0]);
+            const rec = parseFloat(document.querySelector(`.qty-received[data-line="${i}"]`).value) || 0;
+            const dam = parseFloat(document.querySelector(`.qty-damaged[data-line="${i}"]`).value) || 0;
+            const varr = issued - rec - dam;
+
+            if (rec + dam + varr !== issued) valid = false;
+
+            payload.lines.push({
+                InventoryItemID: productCode, 
+                QuantityReceived: rec,
+                QuantityDamaged: dam,
+                QuantityVariance: varr,
+                Description: document.querySelector(`.product-line[data-line="${i}"] .line-reference`).textContent.trim() || "",
+                Reference: document.querySelector(`.product-line[data-line="${i}"] .product-code`).textContent.trim()
+            });
+        });
+
+        if (!valid) {
+            Swal.fire("Error", "All lines must add up to issued quantity", "error");
+            return;
+        }
+
+        try {
+            const res = await fetch("/inventory/submit_ibt_receive", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify(payload)
+            });
+            const result = await res.json();
+            if (result.success) {
+                Swal.fire("Success", result.message, "success").then(() => {
+                    document.getElementById("ibt-detail-view").classList.add("hidden");
+                    document.getElementById("ibt-list-view").classList.remove("hidden");
+                    loadIbtList();
+                });
+            } else {
+                Swal.fire("Failed", result.message || "Unknown error", "error");
+            }
+        } catch (err) {
+            Swal.fire("Error", "Submission failed", "error");
+        }
+    }
+});
+</script>
+</body>
+</html>

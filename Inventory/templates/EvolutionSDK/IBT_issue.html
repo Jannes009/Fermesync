@@ -1,0 +1,350 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <link rel="stylesheet" href="{{ url_for('inventory.static', filename='color-template.css') }}">
+  <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+  <!-- jQuery (required by Select2) -->
+  <script src="https://code.jquery.com/jquery-3.7.0.min.js"></script>
+  <title>Create IBT — Mobile Stepper</title>
+
+  <style>
+/* ----------- General Styles ----------- */
+* { box-sizing: border-box; }
+
+body {
+  background: var(--primary-bg);
+  color: var(--primary-text);
+  font-size: 0.95rem;
+  margin: 0;
+  padding: 0;
+  min-height: 100vh;
+  font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+}
+
+.page-content { display: flex; flex-direction: column; flex: 1; }
+
+.wrap {
+  width: 100%;
+  max-width: 900px;
+  margin: 0 auto;
+  padding: 1.5rem;
+}
+
+.wrap.with-fixed-taskbar { padding-top: 1.5rem; margin-top: 60px; }
+
+.card {
+  background: var(--container-bg);
+  border-radius: 12px;
+  box-shadow: 0 2px 12px rgba(44,62,80,0.08);
+  padding: 1.5rem;
+  margin-bottom: 1.5rem;
+}
+
+header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 1.5rem;
+}
+
+header h1 {
+  margin: 0;
+  font-size: 1.8rem;
+  color: var(--primary-text);
+}
+
+label {
+  font-weight: 600;
+  color: var(--secondary-text);
+  display: block;
+  margin-bottom: 6px;
+  font-size: 0.95rem;
+}
+
+/* ---------------- Dropdown and Inputs ---------------- */
+select, input[type="text"], input[type="number"], input[list] {
+  width: 100%;
+  padding: 12px 14px;
+  border: 1px solid var(--input-border);
+  border-radius: 8px;
+  background: var(--form-bg);
+  font-size: 1rem;
+  transition: border-color 0.2s, box-shadow 0.2s;
+}
+
+input[list] {
+  padding-right: 40px; /* extra space for dropdown arrow if needed */
+}
+
+select:focus, input:focus, input[list]:focus {
+  outline: none;
+  border-color: var(--input-focus);
+  box-shadow: 0 0 0 3px var(--input-shadow);
+}
+
+/* ---------------- Buttons ---------------- */
+.btn-primary {
+  width: 100%;
+  background: var(--button-bg);
+  color: var(--button-text);
+  border: none;
+  padding: 12px 16px;
+  border-radius: 8px;
+  font-size: 1rem;
+  margin-top: 1.5rem;
+  cursor: pointer;
+  font-weight: 600;
+  transition: background 0.2s, transform 0.1s;
+}
+
+.btn-secondary {
+  background: #6c757d;
+  color: white;
+  border: none;
+  padding: 10px 16px;
+  border-radius: 6px;
+  font-size: 0.9rem;
+  cursor: pointer;
+  font-weight: 500;
+  transition: background 0.2s, transform 0.1s;
+  margin-top: 1rem;
+}
+
+.btn-danger {
+  background: #e74c3c;
+  color: white;
+  border: none;
+  padding: 4px 8px;
+  border-radius: 4px;
+  font-size: 0.75rem;
+  cursor: pointer;
+  transition: background 0.2s;
+  line-height: 1;
+}
+
+.btn-primary:hover { background: var(--button-hover); }
+.btn-secondary:hover { background: #5a6268; }
+.btn-danger:hover { background: #c0392b; }
+
+button:active { transform: scale(0.98); }
+
+/* ---------------- Hidden ---------------- */
+.hidden { display: none; }
+
+/* ---------------- IBT Lines ---------------- */
+.ibt-line {
+  background: var(--form-bg);
+  padding: 15px;
+  margin-bottom: 12px;
+  border-radius: 8px;
+  border-left: 4px solid var(--button-bg);
+}
+
+.qty-send {
+  width: 80px;
+  padding: 6px;
+  border-radius: 4px;
+  border: 1px solid var(--input-border);
+  font-size: 0.9rem;
+  text-align: center;
+}
+
+.qty-send:focus {
+  outline: none;
+  border-color: var(--input-focus);
+  box-shadow: 0 0 0 2px var(--input-shadow);
+}
+
+.qty-warning {
+  font-size: 0.85rem;
+  margin-top: 8px;
+  color: #e74c3c;
+  display: none;
+}
+
+/* ---------------- Section Animation ---------------- */
+#ibt-step-2, #ibt-step-3 {
+  animation: fadeIn 0.3s ease-in;
+}
+
+@keyframes fadeIn {
+  from { opacity: 0; transform: translateY(10px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+#ibt-step-2 h3, #ibt-step-3 h3 {
+  margin-top: 0;
+  margin-bottom: 1rem;
+  color: var(--primary-text);
+  font-size: 1.3rem;
+}
+
+/* ---------------- Summary Styles ---------------- */
+.summary-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 1rem;
+  margin-bottom: 1.5rem;
+}
+
+.summary-item {
+  background: var(--form-bg);
+  padding: 12px;
+  border-radius: 8px;
+  border-left: 4px solid var(--button-bg);
+}
+
+.summary-item strong {
+  display: block;
+  margin-bottom: 4px;
+  color: var(--secondary-text);
+  font-size: 0.9rem;
+}
+
+.summary-item span {
+  color: var(--primary-text);
+  font-size: 1rem;
+}
+
+.product-line {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  background: var(--form-bg);
+  padding: 12px;
+  border-radius: 8px;
+  border-left: 4px solid #3498db;
+  margin-bottom: 10px;
+}
+
+.product-info {
+  flex: 1;
+}
+
+.product-info strong {
+  display: block;
+  margin-bottom: 4px;
+}
+
+.product-info small {
+  color: #7f8c8d;
+  font-size: 0.85rem;
+}
+
+.product-actions {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+/* ---------------- Select2 Custom Styles ---------------- */
+.select2-container--default .select2-selection--single {
+  border: 1px solid var(--input-border);
+  border-radius: 8px;
+  height: auto;
+  padding: 12px 14px;
+  background: var(--form-bg);
+}
+
+.select2-container--default .select2-selection--single .select2-selection__rendered {
+  padding-left: 0;
+  color: var(--primary-text);
+  line-height: 1.5;
+}
+
+.select2-container--default .select2-selection--single .select2-selection__arrow {
+  height: 100%;
+}
+
+.select2-container--default .select2-results__option--highlighted[aria-selected] {
+  background-color: var(--button-bg);
+}
+
+/* ---------------- Responsive ---------------- */
+@media (max-width: 768px) {
+  .wrap { padding: 1rem; }
+  .card { padding: 1rem; }
+  header h1 { font-size: 1.5rem; }
+  .summary-grid { grid-template-columns: 1fr; }
+  .product-line { flex-direction: column; align-items: flex-start; gap: 10px; }
+  .product-actions { width: 100%; justify-content: space-between; }
+}
+
+@media (max-width: 480px) {
+  .wrap { padding: 0.75rem; }
+  .card { padding: 0.75rem; }
+  header h1 { font-size: 1.3rem; }
+
+  input[list], input[type="number"] {
+    font-size: 0.95rem;
+    padding: 10px 12px;
+  }
+}
+
+  </style>
+</head>
+
+<body>
+{% include 'inventory-taskbar.html' %}
+
+<div class="page-content with-fixed-taskbar">
+  <div class="wrap">
+    <div class="card">
+
+      <header><h1>Create IBT</h1></header>
+
+      <form id="ibtForm">
+
+        <!-- STEP 1 — HEADER -->
+        <section id="ibt-step-1">
+          <label>Warehouse From</label>
+          <select id="wh-from"></select>
+
+          <label>Warehouse To</label>
+          <select id="wh-to"></select>
+
+          <label>Requested By</label>
+          <input type="text" id="requested-by" placeholder="Requested by">
+
+          <label>Dispatcher</label>
+          <input type="text" id="dispatcher" placeholder="Dispatcher name">
+
+          <label>Driver</label>
+          <input type="text" id="driver" placeholder="Driver name">
+
+          <button type="button" id="ibt-step-1-next" class="btn-primary">Next: Select Products</button>
+        </section>
+
+        <!-- STEP 2 — LINES -->
+        <section id="ibt-step-2" class="hidden">
+          <h3>Select Products</h3>
+
+          <label for="product-select">Choose Product</label>
+          <select id="product-select" style="width: 100%;"></select>
+
+          <label for="qty-input">Quantity to Send</label>
+          <input type="number" min="1" id="qty-input" placeholder="Enter quantity" />
+
+          <button type="button" id="ibt-add-product" class="btn-secondary">Add Another Product</button>
+          <button type="button" id="ibt-step-2-next" class="btn-primary">Next: Review IBT</button>
+        </section>
+
+        <!-- STEP 3 — SUMMARY -->
+        <section id="ibt-step-3" class="hidden">
+          <h3>Review IBT</h3>
+          <div id="ibt-summary"></div>
+          <button type="button" id="ibt-submit" class="btn-primary">Submit IBT</button>
+        </section>
+
+      </form>
+    </div>
+  </div>
+</div>
+<!-- Select2 CSS & JS -->
+<link href="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/css/select2.min.css" rel="stylesheet" />
+<script src="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/js/select2.min.js"></script>
+<script src="{{ url_for('inventory.static', filename='EvolutionSDK/IBT.js') }}"></script>
+</body>
+</html>

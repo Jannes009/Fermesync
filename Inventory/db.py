@@ -71,7 +71,6 @@ def create_db_connection(user=None, database_type="Inventory"):
 
     try:
         connection = odbc.connect(connection_string)
-        logger.info(f"Connected to {database_name} on {server_name} as {username}")
         return connection
 
     except odbc.DatabaseError as db_err:

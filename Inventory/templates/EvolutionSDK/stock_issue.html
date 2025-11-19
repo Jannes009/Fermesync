@@ -1,0 +1,93 @@
+<!doctype html>
+<html lang="en">
+<head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <link rel="stylesheet" href="{{ url_for('inventory.static', filename='color-template.css') }}">
+    <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+    <script src="https://code.jquery.com/jquery-3.7.0.min.js"></script>
+    <title>Stock Issue</title>
+
+    <style>
+        * { box-sizing: border-box; }
+        body { background: var(--primary-bg); color: var(--primary-text); font-size: 0.95rem; margin: 0; padding: 0; min-height: 100vh; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; }
+        .page-content { display: flex; flex-direction: column; flex: 1; }
+        .wrap { width: 100%; max-width: 1100px; margin: 0 auto; padding: 1rem; }
+        .wrap.with-fixed-taskbar { padding-top: 1rem; margin-top: 60px; }
+        .card { background: var(--container-bg); border-radius: 8px; box-shadow: 0 1px 6px rgba(44,62,80,0.08); padding: 1rem; margin-bottom: 1rem; }
+        header h1 { margin: 0; font-size: 1.4rem; color: var(--primary-text); }
+
+        .form-row { display: flex; gap: 12px; margin-bottom: 12px; align-items: center; }
+        .form-row label { width: 180px; font-weight: 600; color: var(--secondary-text); }
+        .form-row select, .form-row input { flex: 1; padding: 10px 12px; border: 1px solid var(--input-border); border-radius: 8px; background: var(--form-bg); }
+
+        .line-list { display: grid; gap: 10px; }
+
+        .btn-primary { background: var(--button-bg); color: var(--button-text); border: none; padding: 12px 16px; border-radius: 8px; font-size: 1rem; cursor: pointer; }
+        .btn-primary:disabled { opacity: 0.6; cursor: not-allowed; }
+
+        .summary-box { background: #eef2f7; padding: 12px; border-radius: 6px; }
+
+        @media (max-width: 768px) {
+            .wrap { padding: 0.75rem; }
+            .card { padding: 0.75rem; }
+            .form-row { flex-direction: column; align-items: stretch; }
+            .form-row label { width: 100%; margin-bottom: 6px; }
+        }
+    </style>
+</head>
+<body>
+{% include 'inventory-taskbar.html' %}
+
+<div class="page-content with-fixed-taskbar">
+    <div class="wrap">
+        <div class="card">
+            <header><h1>Stock Issue Wizard</h1></header>
+
+            <form id="stockIssueForm">
+
+                <!-- STEP 1 -->
+                <section id="step-1">
+                    <h3 style="margin-top:0;">Step 1 – Issue Details</h3>
+                    <div class="form-row">
+                        <label for="warehouse-select">Warehouse</label>
+                        <select id="warehouse-select"><option>Loading...</option></select>
+                    </div>
+                    <div class="form-row">
+                        <label for="project-select">Project</label>
+                        <select id="project-select"><option value="">Select project...</option></select>
+                    </div>
+                    <div class="form-row">
+                        <label for="issued-by">Issued By</label>
+                        <input type="text" id="issued-by" placeholder="Name">
+                    </div>
+                    <button type="button" id="step1-next" class="btn-primary">Next →</button>
+                </section>
+
+                <!-- STEP 2 -->
+                <section id="step-2" style="display:none; margin-top:12px;">
+                    <h3>Step 2 – Add Products</h3>
+                    <div id="ibt-lines" class="line-list"></div>
+                    <div style="margin-top:10px; display:flex; gap:8px;">
+                        <button type="button" id="add-line" class="btn-primary">+ Add Line</button>
+                        <button type="button" id="step2-next" class="btn-primary">Next →</button>
+                    </div>
+                </section>
+
+                <!-- STEP 3 -->
+                <section id="step-3" style="display:none; margin-top:12px;">
+                    <h3>Step 3 – Summary</h3>
+                    <div class="summary-box" id="summary-box"></div>
+                    <div style="margin-top:10px;"><button type="button" id="submit-issue" class="btn-primary">Submit Stock Issue</button></div>
+                </section>
+
+            </form>
+        </div>
+    </div>
+</div>
+
+<link href="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/css/select2.min.css" rel="stylesheet" />
+<script src="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/js/select2.min.js"></script>
+<script src="{{ url_for('inventory.static', filename='EvolutionSDK/stock_issue.js') }}"></script>
+</body>
+</html>

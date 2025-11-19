@@ -1,37 +1,41 @@
 <!-- taskbar.html -->
 <header class="taskbar">
+    <!-- Logo -->
     <div class="logo-container">
         <a href="/inventory/dashboard" class="logo-link">
             <img src="{{ url_for('static', filename='Image/HorizontalLogoAndText.svg') }}" alt="Fermesync Logo" class="taskbar-logo">
         </a>
     </div>
-    
+
     <!-- Desktop Navigation -->
     <nav class="desktop-nav">
         <ul>
-            <!-- <li class="dropdown-parent" style="position:relative;">
-                <a href="/market/create_entry" class="taskbar-link" id="delivery-note-link">Delivery Note <span style="font-size:0.8em;">&#9662;</span></a>
+            <li class="dropdown-parent">
+                <a href="#" class="taskbar-link">IBT <span>▼</span></a>
                 <ul class="dropdown-menu">
-                    <li><a href="/market/create_entry" class="dropdown-item">Create</a></li>
-                    <li><a href="/market/view_entries" class="dropdown-item">View</a></li>
+                    <li><a href="/inventory/SDK/IBT_issue" class="dropdown-item">Issue</a></li>
+                    <li><a href="/inventory/SDK/IBT_receive" class="dropdown-item">Receive</a></li>
                 </ul>
             </li>
-            <li><a href="/market/import/main" class="taskbar-link" id="import-link">Import</a></li> -->
+            <li><a href="/inventory/SDK/GRV" class="taskbar-link">GRV</a></li>
+            <li><a href="/inventory/SDK/stock_count" class="taskbar-link">Stock Count</a></li>
+            <li><a href="/inventory/SDK/stock_issue" class="taskbar-link">Stock Issue</a></li>
+            <li><a href="/inventory/barcode_scanner" class="taskbar-link">Barcode Scanner</a></li>
         </ul>
     </nav>
-    
-    <!-- Desktop User Section -->
+
+    <!-- Desktop User -->
     <div class="user-section desktop-user">
-        <div class="username" id="username">John Doe <span>&#9662;</span></div>
+        <div class="username" id="username">John Doe <span>▼</span></div>
         <div class="dropdown">
-            <a href="/market/dashboard">Fermesync Market</a>
+            <a href="/dashboard">Fermesync Market</a>
             <a href="{{ url_for('account.view_account') }}">View Account</a>
             <a href="{{ url_for('logout') }}">Logout</a>
         </div>
     </div>
-    
-    <!-- Mobile Menu Button -->
-    <button class="mobile-menu-toggle" id="mobile-menu-toggle" aria-label="Toggle menu">
+
+    <!-- Mobile Hamburger -->
+    <button class="mobile-menu-toggle" id="mobile-menu-toggle" aria-label="Menu">
         <span class="hamburger-line"></span>
         <span class="hamburger-line"></span>
         <span class="hamburger-line"></span>
@@ -43,16 +47,70 @@
     <nav class="mobile-nav">
         <div class="mobile-nav-header">
             <div class="mobile-username" id="mobile-username">John Doe</div>
-            <button class="mobile-menu-close" id="mobile-menu-close" aria-label="Close menu">×</button>
+            <button class="mobile-menu-close" id="mobile-menu-close">×</button>
         </div>
+
+        <ul class="mobile-nav-list">
+            <li class="mobile-nav-item">
+                <a href="#" class="mobile-nav-link">
+                    <div class="mobile-nav-content">
+                        <span class="mobile-nav-icon">↔️</span>
+                        <span>Inter-branch Transfer</span>
+                    </div>
+                    <span class="mobile-nav-chevron">›</span>
+                </a>
+                <ul class="mobile-submenu">
+                    <li><a href="/inventory/SDK/IBT_issue" class="mobile-submenu-link">Issue</a></li>
+                    <li><a href="/inventory/SDK/IBT_receive" class="mobile-submenu-link">Receive</a></li>
+                </ul>
+            </li>
+
+            <li class="mobile-nav-item">
+                <a href="/inventory/SDK/GRV" class="mobile-nav-link">
+                    <div class="mobile-nav-content">
+                        <span class="mobile-nav-icon">📦</span>
+                        <span>GRV</span>
+                    </div>
+                </a>
+            </li>
+
+            <li class="mobile-nav-item">
+                <a href="/inventory/SDK/stock_count" class="mobile-nav-link">
+                    <div class="mobile-nav-content">
+                        <span class="mobile-nav-icon">📋</span>
+                        <span>Stock Count</span>
+                    </div>
+                </a>
+            </li>
+
+            <li class="mobile-nav-item">
+                <a href="/inventory/SDK/stock_issue" class="mobile-nav-link">
+                    <div class="mobile-nav-content">
+                        <span class="mobile-nav-icon">🛠️</span>
+                        <span>Stock Issue</span>
+                    </div>
+                </a>
+            </li>
+            <li class="mobile-nav-item">
+                <a href="/inventory/barcode_scanner" class="mobile-nav-link">
+                    <div class="mobile-nav-content">
+                        <span class="mobile-nav-icon">📷</span>
+                        <span>Barcode Scanner</span>
+                    </div>
+                </a>
+            </li>
+        </ul>
+
         <div class="mobile-nav-footer">
-            <!-- <a href="{{ url_for('account.view_account') }}" class="mobile-nav-footer-link">View Account</a> -->
-             <a href="/dashboard">Fermesync Market</a>
+            <a href="/dashboard" class="mobile-nav-footer-link">Fermesync Market</a>
+            <a href="{{ url_for('account.view_account') }}" class="mobile-nav-footer-link">View Account</a>
             <a href="{{ url_for('logout') }}" class="mobile-nav-footer-link">Logout</a>
         </div>
     </nav>
 </div>
+
 <style>
+/* Base */
 @import url('../static/color-template.css');
 
 /* Reset default margins */
