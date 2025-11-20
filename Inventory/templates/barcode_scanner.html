@@ -167,89 +167,100 @@
       loadProducts();
 
       // ===== Camera and Scanner Functions =====
-
-      async function startScanner() {
+        async function startScanner() {
         if (isScanning) {
-          showInfoToast('Scanner already running');
-          return;
+            showInfoToast('Scanner already running');
+            return;
         }
 
         showLoadingToast('Starting camera...');
 
         try {
-          // Create code reader with formats
-          codeReader = new ZXing.BrowserMultiFormatReader();
-          
-          // First check camera permissions
-          const stream = await getCameraStream();
-          if (!stream) {
-            // Close the loading toast before showing permission request
+            // OPTIMIZATION: Create reader with specific formats and hints
+            codeReader = new ZXing.BrowserMultiFormatReader();
+            
+            const hints = new Map();
+            hints.set(ZXing.DecodeHintType.POSSIBLE_FORMATS, [
+            ZXing.BarcodeFormat.CODE_128,
+            ZXing.BarcodeFormat.CODE_39,
+            // Add only formats you actually need
+            ]);
+            hints.set(ZXing.DecodeHintType.TRY_HARDER, false);
+            codeReader.hints = hints;
+
+            // OPTIMIZATION: Lower resolution camera
+            const stream = await getCameraStream();
+            if (!stream) {
             Swal.close();
             showCameraPermissionRequest();
             return;
-          }
-
-          // start decoding from the video element
-          // start decoding without awaiting the returned promise so we don't block
-          // (awaiting here would prevent the loading toast from closing until
-          // the decoding loop finishes/stops)
-
-          // Log track settings and adjust preview mirroring depending on camera
-          try {
-            const track = stream.getVideoTracks && stream.getVideoTracks()[0];
-            const settings = track && track.getSettings ? track.getSettings() : {};
-            console.log('Camera track settings:', settings, 'label:', track && track.label);
-            // Mirror preview only for front-facing cameras
-            if (settings.facingMode === 'user' || /front/i.test(track && track.label || '')) {
-              videoElem.style.transform = 'scaleX(-1)';
-            } else {
-              videoElem.style.transform = '';
             }
-          } catch (e) {
-            console.warn('Could not read track settings for mirroring:', e);
-          }
 
-          let decodeStarted = false;
-          let fallbackTimer = setTimeout(() => {
-            if (!decodeStarted) {
-              console.warn('No detection after timeout — trying decodeFromVideoDevice fallback');
-              tryFallbackDecodeDevice(stream);
-            }
-          }, 6000);
+            // Use decodeFromVideoDevice to allow region specification
+            const track = stream.getVideoTracks()[0];
+            const settings = track.getSettings();
+            const deviceId = settings.deviceId;
 
-          codeReader.decodeFromVideoElement(videoElem, (result, error) => {
-            decodeStarted = true;
-            if (typeof fallbackTimer !== 'undefined' && fallbackTimer) {
-              clearTimeout(fallbackTimer);
-              fallbackTimer = null;
-            }
-            if (result) {
-              handleDetected(result.getText());
-            }
-            if (error && !(error instanceof ZXing.NotFoundException)) {
-              console.debug('Scan error:', error);
-            }
-          }).catch(err => {
-            // log any unexpected startup errors
-            console.error('decodeFromVideoElement error:', err);
-          });
+            // OPTIMIZATION: Define scan region (you'll need to adjust coordinates)
+            const scanRegion = getScanRegion(videoElem);
+            
+            codeReader.decodeFromVideoDevice(
+            deviceId, 
+            videoElem, 
+            (result, error) => {
+                if (result) {
+                handleDetected(result.getText());
+                }
+                if (error && !(error instanceof ZXing.NotFoundException)) {
+                console.debug('Scan error:', error);
+                }
+            },
+            scanRegion  // Pass the region here
+            );
 
-
-          isScanning = true;
-          updateUIForScanning();
-          
-          // CLOSE THE LOADING TOAST HERE
-          Swal.close();
-          showSuccessToast('Scanner started — point camera at barcode');
+            isScanning = true;
+            updateUIForScanning();
+            Swal.close();
+            showSuccessToast('Scanner started — point camera at barcode');
 
         } catch (err) {
-          console.error('Scanner error:', err);
-          // CLOSE THE LOADING TOAST ON ERROR TOO
-          Swal.close();
-          showErrorToast('Scanner error: ' + (err.message || err));
-          stopScanner();
+            console.error('Scanner error:', err);
+            Swal.close();
+            showErrorToast('Scanner error: ' + (err.message || err));
+            stopScanner();
         }
-      }
+        }
+
+        // OPTIMIZATION: Lower resolution camera
+        async function getCameraStream() {
+        try {
+            const constraints = {
+            video: {
+                facingMode: { ideal: "environment" },
+                width: { ideal: 640 },    // Lower resolution
+                height: { ideal: 480 },   // Lower resolution
+                frameRate: { ideal: 15 },  // Lower frame rate
+                focusMode: { ideal: ["continuous", "single-shot"] }
+            },
+            audio: false
+            };
+
+            const stream = await navigator.mediaDevices.getUserMedia(constraints);
+            activeStream = stream;
+            videoElem.srcObject = stream;
+            
+            await new Promise((resolve) => {
+            videoElem.onloadedmetadata = () => {
+                videoElem.play().then(resolve);
+            };
+            });
+
+            return stream;
+        } catch (err) {
+            console.warn('Camera access failed:', err);
+            return null;
+        }
+        }
 
         // Fallback: try decoding using explicit deviceId if decodeFromVideoElement
         // doesn't start producing results fast enough on some devices.
@@ -279,39 +290,6 @@
             console.error('Fallback decode failed:', e);
           }
         }
-
-      async function getCameraStream() {
-        try {
-          // Try to get camera stream with preferred constraints
-          const constraints = {
-            video: {
-              facingMode: { ideal: "environment" },
-              width: { ideal: 1280 },
-              height: { ideal: 720 }
-            },
-            audio: false
-          };
-
-          const stream = await navigator.mediaDevices.getUserMedia(constraints);
-          activeStream = stream;
-          videoElem.srcObject = stream;
-          
-          // Wait for video to be ready
-          await new Promise((resolve) => {
-            videoElem.onloadedmetadata = () => {
-              videoElem.play().then(() => {
-                console.log('Video metadata loaded. videoWidth=', videoElem.videoWidth, 'videoHeight=', videoElem.videoHeight);
-                resolve();
-              });
-            };
-          });
-
-          return stream;
-        } catch (err) {
-          console.warn('Camera access failed:', err);
-          return null;
-        }
-      }
 
       function showCameraPermissionRequest() {
         $('#camera-permission').show();
@@ -377,6 +355,26 @@
           console.warn('Cleanup error:', e);
         }
       }
+
+      // Add this function to define scan region
+        function getScanRegion(videoElem) {
+        const videoWidth = videoElem.videoWidth;
+        const videoHeight = videoElem.videoHeight;
+        
+        // Define region (center 60% of screen - adjust as needed)
+        const regionWidth = videoWidth * 0.6;
+        const regionHeight = videoHeight * 0.4;
+        const regionX = (videoWidth - regionWidth) / 2;
+        const regionY = (videoHeight - regionHeight) / 2;
+        
+        return {
+            x: Math.floor(regionX),
+            y: Math.floor(regionY),
+            width: Math.floor(regionWidth),
+            height: Math.floor(regionHeight)
+        };
+        }
+
 
       function updateUIForScanning() {
         $('#start-scanner').prop('disabled', true);
