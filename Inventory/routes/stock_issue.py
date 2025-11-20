@@ -55,7 +55,6 @@ def fetch_projects():
         }
         for row in rows
     ]
-    print("Products fetched:", projects_list)
     return jsonify({"prod_projects": projects_list})
 
 @inventory_bp.route("/fetch_products_in_whse", methods=["POST"])
@@ -85,6 +84,21 @@ def fetch_products_in__whse():
     ]
     print("Products fetched:", products_list)
     return jsonify({"products": products_list})
+
+@inventory_bp.route("/SDK/fetch_product_by_barcode", methods=["POST"])
+def fetch_product_by_barcode():
+    barcode = request.json.get("barcode")
+
+    conn = create_db_connection()
+    cursor = conn.cursor()
+
+    cursor.execute("SELECT StockCode, UOMID, cUnitCode FROM _uvProductBarcodes WHERE Barcode = ?", (barcode,))
+
+    product_id = cursor.fetchone()
+    conn.close()
+
+
+    return jsonify({"product_id": product_id})
 
 @inventory_bp.route("/SDK/submit_stock_issue", methods=["POST"])
 def submit_stock_issue():

@@ -102,6 +102,19 @@ def submit_barcode_scan():
         conn = create_db_connection()
         cursor = conn.cursor()
 
+        # check if barcode already exists
+        cursor.execute("""
+            SELECT COUNT(*)
+            FROM [UB_UITDRAAI_BDY].dbo.[_etblBarcodes]
+            WHERE Barcode = ?
+        """, (item["barcode"],))
+        exists = cursor.fetchone()[0]
+        if exists:
+            return jsonify({
+                "success": False,
+                "error": "Barcode already exists."
+            }), 400
+
         cursor.execute("""
             INSERT INTO [UB_UITDRAAI_BDY].dbo.[_etblBarcodes] (
                 Barcode, 

@@ -67,15 +67,17 @@ async function step1Next() {
     });
     const data = await res.json();
     productsInWhse = data.products;
-
+    console.log("Fetched Products in WHSE");
     if (!productsInWhse || productsInWhse.length === 0) {
         Swal.fire("No Products", "No products available in this warehouse.", "warning");
         return;
     }
 
     addLine(); // Add first line automatically
+    console.log("Line added");
     document.getElementById("step-1").classList.add("hidden");
     document.getElementById("step-2").classList.remove("hidden");
+    console.log("Moved to Step 2");
 }
 /* ============================================================
    ADD LINE USING HTML STRING
@@ -88,25 +90,28 @@ function addLine() {
 
     const container = document.getElementById("ibt-lines");
 
-    // Build options for select
-    let optionsHtml = '<option></option>'; // placeholder
+    let optionsHtml = '<option></option>';
     productsInWhse.forEach(p => {
-        optionsHtml += `<option value="${p.product_id}">${p.product_desc} — Available: ${p.qty_in_whse} ${p.uom}</option>`;
+        optionsHtml += `<option value="${p.product_id}">
+            ${p.product_desc} — Available: ${p.qty_in_whse} ${p.uom}
+        </option>`;
     });
 
-    // Build line HTML
     const lineHtml = `
-        <div class="line-row">
+        <div class="line-row" style="display:flex; gap:8px; align-items:center;">
             <select class="product-select" style="width:300px;">${optionsHtml}</select>
-            <input type="number" class="issue-qty" min="1" placeholder="Qty">
+
+            <button type="button" class="scan-btn btn-secondary" style="padding:8px 12px;">
+                📷 Scan
+            </button>
+
+            <input type="number" class="issue-qty" min="1" placeholder="Qty" style="width:100px;">
             <button type="button" class="btn-secondary remove-line">Remove</button>
         </div>
     `;
 
-    // Append line to container
     container.insertAdjacentHTML('beforeend', lineHtml);
 
-    // Initialize Select2 for the new select
     const newLine = container.lastElementChild;
     const selectEl = newLine.querySelector('.product-select');
     $(selectEl).select2({
@@ -116,12 +121,15 @@ function addLine() {
         dropdownParent: container
     });
 
-    // Add remove functionality
-    const removeBtn = newLine.querySelector(".remove-line");
-    removeBtn.onclick = () => {
-        $(selectEl).select2('destroy'); // destroy Select2 before removing
+    // REMOVE button
+    newLine.querySelector(".remove-line").onclick = () => {
+        $(selectEl).select2('destroy');
         newLine.remove();
     };
+
+    // SCAN button
+    const scanBtn = newLine.querySelector(".scan-btn");
+    scanBtn.onclick = () => scanProductIntoSelect(selectEl);
 }
 
 
@@ -211,5 +219,48 @@ async function submitIssue() {
         Swal.fire("Success", "Stock issue submitted!", "success").then(() => location.reload());
     } else {
         Swal.fire("Error", data.message, "error");
+    }
+}
+
+async function scanProductIntoSelect(selectEl) {
+    const scanner = document.getElementById("barcodeScanner");
+
+    try {
+        const barcode = await scanner.open();  // Opens overlay & waits for result
+
+        if (!barcode) {
+            Swal.fire("Scan Failed", "No barcode detected.", "warning");
+            return;
+        }
+        console.log("Scanned barcode:", barcode);
+        // CALL BACKEND
+        const res = await fetch("/inventory/SDK/fetch_product_by_barcode", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ barcode: barcode })
+        });
+
+        const data = await res.json();
+
+        if (!data || !data.product_id) {
+            Swal.fire("Not Found", "No product found for this barcode.", "error");
+            return;
+        }
+
+        // FIND PRODUCT IN CURRENT WAREHOUSE LIST
+        const product = productsInWhse.find(p => p.product_id == data.product_id);
+
+        if (!product) {
+            Swal.fire("Wrong Warehouse", "Product exists but not in this warehouse.", "error");
+            return;
+        }
+
+        // SELECT PRODUCT IN DROPDOWN
+        $(selectEl).val(product.product_id).trigger("change");
+
+        Swal.fire("Success", `Product selected: ${product.product_desc}`, "success");
+
+    } catch (err) {
+        console.warn("Scan cancelled or failed:", err);
     }
 }

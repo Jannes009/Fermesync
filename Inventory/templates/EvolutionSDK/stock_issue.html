@@ -6,6 +6,12 @@
     <link rel="stylesheet" href="{{ url_for('inventory.static', filename='color-template.css') }}">
     <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
     <script src="https://code.jquery.com/jquery-3.7.0.min.js"></script>
+    <!-- Import ZXing (UMD browser build) -->
+    <script src="https://unpkg.com/@zxing/library@0.19.1/umd/index.min.js"></script>
+
+    <!-- Import your overlay web component -->
+    <script type="module" src="{{ url_for('inventory.static', filename='barcode-scanner-overlay.js') }}"></script>
+
     <title>Stock Issue</title>
 
     <style>
@@ -38,7 +44,8 @@
 </head>
 <body>
 {% include 'inventory-taskbar.html' %}
-
+    <!-- Add scanner element to the page -->
+    <barcode-scanner-overlay id="barcodeScanner"></barcode-scanner-overlay>
 <div class="page-content with-fixed-taskbar">
     <div class="wrap">
         <div class="card">
@@ -65,7 +72,7 @@
                 </section>
 
                 <!-- STEP 2 -->
-                <section id="step-2" style="display:none; margin-top:12px;">
+                <section id="step-2" style=" margin-top:12px;">
                     <h3>Step 2 – Add Products</h3>
                     <div id="ibt-lines" class="line-list"></div>
                     <div style="margin-top:10px; display:flex; gap:8px;">

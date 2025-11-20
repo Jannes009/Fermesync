@@ -1,0 +1,99 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <script src="https://unpkg.com/@zxing/library@0.19.1/umd/index.min.js"></script>
+  <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
+<meta http-equiv="Pragma" content="no-cache">
+<meta http-equiv="Expires" content="0">
+  <style>
+    body { 
+      font-family: Arial, sans-serif; 
+      padding: 20px;
+      background: #f5f5f5;
+    }
+    .container {
+      max-width: 600px;
+      margin: 0 auto;
+      background: white;
+      padding: 30px;
+      border-radius: 10px;
+      box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+    }
+    .scan-btn {
+      background: #007bff;
+      color: white;
+      border: none;
+      padding: 12px 24px;
+      border-radius: 6px;
+      cursor: pointer;
+      font-size: 16px;
+      margin: 10px 0;
+    }
+    .result {
+      margin-top: 20px;
+      padding: 15px;
+      background: #e9f7ef;
+      border: 1px solid #28a745;
+      border-radius: 6px;
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <h1>Product Selection</h1>
+    <p>Select a product manually or scan its barcode:</p>
+    
+    <select id="product-select" style="width: 100%; padding: 10px; margin: 10px 0;">
+      <option value="">Select a product manually...</option>
+      <option value="1">Product 1</option>
+      <option value="2">Product 2</option>
+      <option value="3">Product 3</option>
+    </select>
+    
+    <div style="text-align: center; margin: 20px 0;">
+      <div style="margin: 10px 0;">OR</div>
+      <button class="scan-btn" id="scan-btn">📷 Scan Barcode</button>
+    </div>
+    
+    <div id="result" class="result" style="display: none;"></div>
+  </div>
+<script src="{{ url_for('inventory.static', filename='barcode-scanner-overlay.js') }}"></script>
+
+  <script>
+    // Create and add the scanner to the page
+    const scanner = document.createElement('barcode-scanner-overlay');
+    document.body.appendChild(scanner);
+
+    document.getElementById('scan-btn').addEventListener('click', async () => {
+      try {
+        const barcode = await scanner.open();
+        
+        // Display the result
+        const resultDiv = document.getElementById('result');
+        resultDiv.innerHTML = `
+          <h3>Scanned Barcode: ${barcode}</h3>
+          <p>Now searching for product with barcode: <strong>${barcode}</strong></p>
+          <p><em>In a real app, you would now search your database for this barcode and display matching products.</em></p>
+        `;
+        resultDiv.style.display = 'block';
+        
+        // You could also automatically search for the product here
+        // searchProductsByBarcode(barcode);
+        
+      } catch (error) {
+        if (error !== 'Scanner closed') {
+          console.error('Scanner error:', error);
+          alert('Scanner error: ' + error);
+        }
+      }
+    });
+
+    // Example function to search products (you would implement this)
+    function searchProductsByBarcode(barcode) {
+      console.log('Searching for product with barcode:', barcode);
+      // AJAX call to your backend to find products with this barcode
+    }
+  </script>
+
+</body>
+</html>
