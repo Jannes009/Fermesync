@@ -57,8 +57,7 @@
     
     <div id="result" class="result" style="display: none;"></div>
   </div>
-<script src="{{ url_for('inventory.static', filename='barcode-scanner-overlay.js') }}"></script>
-
+<script src="{{ url_for('inventory.static', filename='barcode-scanner-overlay.js') }}?{{ filemtime('inventory', 'barcode-scanner-overlay.js') }}"></script>
   <script>
     // Create and add the scanner to the page
     const scanner = document.createElement('barcode-scanner-overlay');

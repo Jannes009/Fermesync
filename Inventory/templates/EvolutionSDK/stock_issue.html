@@ -6,12 +6,8 @@
     <link rel="stylesheet" href="{{ url_for('inventory.static', filename='color-template.css') }}">
     <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
     <script src="https://code.jquery.com/jquery-3.7.0.min.js"></script>
-    <!-- Import ZXing (UMD browser build) -->
     <script src="https://unpkg.com/@zxing/library@0.19.1/umd/index.min.js"></script>
-
-    <!-- Import your overlay web component -->
     <script type="module" src="{{ url_for('inventory.static', filename='barcode-scanner-overlay.js') }}"></script>
-
     <title>Stock Issue</title>
 
     <style>
@@ -27,25 +23,99 @@
         .form-row label { width: 180px; font-weight: 600; color: var(--secondary-text); }
         .form-row select, .form-row input { flex: 1; padding: 10px 12px; border: 1px solid var(--input-border); border-radius: 8px; background: var(--form-bg); }
 
-        .line-list { display: grid; gap: 10px; }
+        .line-list { display: flex; flex-direction: column; gap: 10px; position: relative; z-index: 1; }
 
         .btn-primary { background: var(--button-bg); color: var(--button-text); border: none; padding: 12px 16px; border-radius: 8px; font-size: 1rem; cursor: pointer; }
         .btn-primary:disabled { opacity: 0.6; cursor: not-allowed; }
 
         .summary-box { background: #eef2f7; padding: 12px; border-radius: 6px; }
+        .hidden { display: none; }
 
-        @media (max-width: 768px) {
-            .wrap { padding: 0.75rem; }
-            .card { padding: 0.75rem; }
-            .form-row { flex-direction: column; align-items: stretch; }
-            .form-row label { width: 100%; margin-bottom: 6px; }
+        /* STEP 2 – Add Products */
+        .product-row {
+            display: grid;
+            grid-template-columns: minmax(0, 1fr) 80px auto auto;
+            align-items: center;
+            gap: 8px;
+            padding: 10px;
+            border: 1px solid var(--input-border);
+            border-radius: 8px;
+            background: var(--form-bg);
+            position: relative;
+            overflow: visible;
+        }
+
+        .product-select + .select2-container {
+            width: 100% !important;
+            position: relative;
+        }
+
+        /* Fix Select2 dropdown for mobile */
+        .select2-container--open .select2-dropdown {
+            position: fixed !important;
+            left: 10px !important;
+            right: 10px !important;
+            width: auto !important;
+            max-width: calc(100vw - 20px);
+            z-index: 9999;
+        }
+
+        /* Improve Select2 results for mobile */
+        .select2-results__option {
+            padding: 8px 6px;
+            font-size: 0.9rem;
+        }
+
+        .qty-wrapper { display: flex; align-items: center; gap: 4px; }
+        .qty-input {
+            width: 70px; padding: 6px 8px; border: 1px solid #ccc; border-radius: 4px; font-size: 0.95rem; text-align: center;
+        }
+        .uom-label {
+            background: #e9ecef; padding: 4px 8px; border-radius: 4px; font-size: 0.8rem; font-weight: bold; color: #495057;
+        }
+        .scan-btn {
+            background: #f0f0f0; color: #333; border: 1px solid #ccc; border-radius: 6px; font-size: 1rem;
+            cursor: pointer; padding: 6px 10px; transition: all 0.2s;
+        }
+        .scan-btn:hover { background: #e2e2e2; }
+        .remove-line {
+            background: #dc3545; color: #fff; border: none; border-radius: 6px; font-size: 0.9rem;
+            cursor: pointer; padding: 6px 10px;
+        }
+        .remove-line:hover { background: #c82333; }
+
+        @media (max-width: 480px) {
+            .product-row { 
+                grid-template-columns: minmax(0, 1fr) 70px auto auto;
+                gap: 6px;
+                padding: 8px;
+            }
+            .qty-input { 
+                width: 55px;
+                padding: 5px 6px;
+            }
+            .scan-btn, .remove-line {
+                padding: 5px 8px;
+                font-size: 0.85rem;
+            }
+            
+            /* Make Select2 more compact on mobile */
+            .select2-container--default .select2-selection--single {
+                height: 38px;
+                padding: 6px 8px;
+            }
+            
+            .select2-container--default .select2-selection--single .select2-selection__rendered {
+                font-size: 0.9rem;
+                line-height: 26px;
+            }
         }
     </style>
 </head>
 <body>
 {% include 'inventory-taskbar.html' %}
-    <!-- Add scanner element to the page -->
-    <barcode-scanner-overlay id="barcodeScanner"></barcode-scanner-overlay>
+<barcode-scanner-overlay id="barcodeScanner"></barcode-scanner-overlay>
+
 <div class="page-content with-fixed-taskbar">
     <div class="wrap">
         <div class="card">
@@ -72,20 +142,24 @@
                 </section>
 
                 <!-- STEP 2 -->
-                <section id="step-2" style=" margin-top:12px;">
+                <section id="step-2" class="hidden" style="margin-top:12px;">
                     <h3>Step 2 – Add Products</h3>
                     <div id="ibt-lines" class="line-list"></div>
                     <div style="margin-top:10px; display:flex; gap:8px;">
+                        <button type="button" id="back-to-step-1" class="btn-primary">← Back</button>
                         <button type="button" id="add-line" class="btn-primary">+ Add Line</button>
                         <button type="button" id="step2-next" class="btn-primary">Next →</button>
                     </div>
                 </section>
 
                 <!-- STEP 3 -->
-                <section id="step-3" style="display:none; margin-top:12px;">
+                <section id="step-3" class="hidden" style="margin-top:12px;">
                     <h3>Step 3 – Summary</h3>
                     <div class="summary-box" id="summary-box"></div>
-                    <div style="margin-top:10px;"><button type="button" id="submit-issue" class="btn-primary">Submit Stock Issue</button></div>
+                    <div style="margin-top:10px;">
+                        <button type="button" id="back-to-step-2" class="btn-secondary">← Back</button>
+                        <button type="button" id="submit-issue" class="btn-primary">Submit Stock Issue</button>
+                    </div>
                 </section>
 
             </form>
@@ -95,6 +169,6 @@
 
 <link href="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/css/select2.min.css" rel="stylesheet" />
 <script src="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/js/select2.min.js"></script>
-<script src="{{ url_for('inventory.static', filename='EvolutionSDK/stock_issue.js') }}"></script>
+<script src="{{ url_for('inventory.static', filename='EvolutionSDK/stock_issue.js') }}?{{ filemtime('inventory', 'EvolutionSDK/stock_issue.js') }}"></script>
 </body>
 </html>

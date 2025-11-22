@@ -15,8 +15,20 @@ def create_app():
     app_root = os.path.dirname(os.path.abspath(__file__))
     template_dir = os.path.join(app_root, 'main_templates')
     static_dir = os.path.join(app_root, 'Market', 'static')
+
     app = Flask(__name__, template_folder=template_dir, static_folder=static_dir)
 
+    @app.context_processor
+    def utility_processor():
+        def filemtime(bp_name, filename):
+            bp = app.blueprints.get(bp_name)
+            if bp and hasattr(bp, 'static_folder') and bp.static_folder:
+                path = os.path.join(bp.static_folder, filename)
+                if os.path.exists(path):
+                    return int(os.path.getmtime(path))
+            return "0"
+        return dict(filemtime=filemtime)
+        
     # Basic configuration
     app.secret_key = "secret_key"
     # app.config['EVOLUTION_SALES_ORDER_API'] = os.getenv(

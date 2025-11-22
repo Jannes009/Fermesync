@@ -3,58 +3,108 @@
 document.addEventListener("DOMContentLoaded", populateSupplierDropdown);
 
 function populateSupplierDropdown() {
-        fetch("/inventory/SDK/fetch_suppliers")
+    // Inside your populateSupplierDropdown(), after filling options:
+    const $supplier = $('#supplier');
+
+    // Show loading state
+    $supplier.select2({
+        placeholder: "Loading suppliers...",
+        allowClear: false,
+        width: '100%',
+        // Optional: custom template while loading
+        templateResult: function () {
+            return $('<span><i class="fa fa-spinner fa-spin"></i> Loading suppliers...</span>');
+        }
+    });
+
+    // First, show loading
+    $supplier.empty().append('<option></option>'); // clear + one empty option
+    $supplier.select2('open'); // optional: auto-open with spinner
+    $supplier.select2('close');
+    fetch("/inventory/SDK/fetch_suppliers")
         .then(res => res.json())
         .then(data => {
             const sup = document.getElementById("supplier");
-            sup.innerHTML = `<option value="">Select Supplier</option>`;
+            sup.innerHTML = `<option value="" disabled selected>Select Supplier</option>`;
             data.suppliers.forEach(s => {
                 sup.innerHTML += `<option value="${s.code}">${s.name}</option>`;
             });
+
+            // DESTROY any previous instance safely (this is the correct way)
+            if ($(sup).data('select2')) {
+                $(sup).select2('destroy');
+            }
+
+            // Re-create Select2 + attach event
+            $(sup).select2({
+                placeholder: "Select Supplier",
+                allowClear: false,
+                width: '100%'
+            }).on('select2:select', function (e) {
+                const supplierCode = e.params.data.id;
+
+                const wrapper = document.getElementById("poTableWrapper");
+                const tbody = document.getElementById("poTableBody");
+
+                wrapper.classList.remove("hidden");
+                tbody.innerHTML = "<tr><td colspan='4'>Loading...</td></tr>";
+
+                fetch("/inventory/get_po_numbers", {
+                    method: "POST",
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify({ supplier_code: supplierCode })
+                })
+                .then(res => res.json())
+                .then(data => {
+                    tbody.innerHTML = "";
+
+                    if (!data.po_list || data.po_list.length === 0) {
+                        tbody.innerHTML = `<tr><td class="no-data" colspan="4">No PO’s found</td></tr>`;
+                        return;
+                    }
+
+                    data.po_list.forEach(p => {
+                        const tr = document.createElement("tr");
+                        tr.classList.add("po-row");
+                        tr.dataset.poNumber = p.order_num;
+                        tr.innerHTML = `
+                            <td>${p.order_num}</td>
+                            <td>${formatDate(p.order_date)}</td>
+                            <td>${p.order_desc}</td>
+                            <td>${p.order_total}</td>
+                        `;
+                        tr.addEventListener("click", () => loadPOLines(p.order_num));
+                        tbody.appendChild(tr);
+                    });
+                })
+                .catch(err => {
+                    tbody.innerHTML = `<tr><td colspan="4">Error loading data</td></tr>`;
+                    console.error(err);
+                });
+            });
+
+            // Optional: hide table if nothing selected on load
+            document.getElementById("poTableWrapper").classList.add("hidden");
+        })
+        .catch(err => {
+            console.error("Failed to load suppliers:", err);
+            alert("Could not load suppliers");
         });
 }
+function formatDate(isoString) {
+    // If it's already a proper date string or Date object
+    const date = new Date(isoString);
+    
+    // Safety check
+    if (isNaN(date)) return "Invalid Date";
 
-// Load PO table when supplier changes
-document.getElementById("supplier").addEventListener("change", function () {
-    const supplierCode = this.value;
-    const wrapper = document.getElementById("poTableWrapper");
-    const tbody = document.getElementById("poTableBody");
+    const year = date.getFullYear();
+    const month = String(date.getMonth() + 1).padStart(2, '0');  // months are 0-based
+    const day = String(date.getDate()).padStart(2, '0');
 
-    if (!supplierCode) {
-        wrapper.classList.add("hidden");
-        return;
-    }
+    return `${year}-${month}-${day}`;  // → 2025-11-15
+}
 
-    fetch("/inventory/get_po_numbers", {
-        method: "POST",
-        headers: {"Content-Type": "application/json"},
-        body: JSON.stringify({ supplier_code: supplierCode })
-    })
-    .then(res => res.json())
-    .then(data => {
-        wrapper.classList.remove("hidden");
-        tbody.innerHTML = "";
-
-        if (!data.po_list || data.po_list.length === 0) {
-            tbody.innerHTML = `<tr><td class="no-data" colspan="4">No PO’s found</td></tr>`;
-            return;
-        }
-
-        data.po_list.forEach(p => {
-            const tr = document.createElement("tr");
-            tr.classList.add("po-row");
-            tr.dataset.poNumber = p.order_num;
-            tr.innerHTML = `
-                <td>${p.order_num}</td>
-                <td>${p.order_date}</td>
-                <td>${p.order_desc}</td>
-                <td>${p.order_total}</td>
-            `;
-            tr.addEventListener("click", () => loadPOLines(p.order_num));
-            tbody.appendChild(tr);
-        });
-    });
-});
 let currentPoNumber = null;  // global at the top of your script
 // Load PO lines
 async function loadPOLines(poNumber) {
@@ -158,6 +208,12 @@ async function loadPOLines(poNumber) {
     }
 
     poLinesSection.style.display = "block";
+
+    // Back button
+    document.getElementById("step-2-back").onclick = () => {
+        document.getElementById("po-lines-section").style.display = "none";
+        document.querySelector('section[data-step="1"]').classList.remove("hidden");
+    };
 
     // NEXT STEP – Summary
     document.getElementById("next-to-summary").onclick = () => {

@@ -63,7 +63,7 @@ label {
   font-size: 0.95rem;
 }
 
-/* ---------------- Dropdown and Inputs ---------------- */
+/* ---------------- Dropdowns & Inputs ---------------- */
 select, input[type="text"], input[type="number"], input[list] {
   width: 100%;
   padding: 12px 14px;
@@ -74,9 +74,7 @@ select, input[type="text"], input[type="number"], input[list] {
   transition: border-color 0.2s, box-shadow 0.2s;
 }
 
-input[list] {
-  padding-right: 40px; /* extra space for dropdown arrow if needed */
-}
+input[list] { padding-right: 40px; }
 
 select:focus, input:focus, input[list]:focus {
   outline: none;
@@ -135,34 +133,54 @@ button:active { transform: scale(0.98); }
 
 /* ---------------- IBT Lines ---------------- */
 .ibt-line {
-  background: var(--form-bg);
+  background: #f8f9fa;
   padding: 15px;
   margin-bottom: 12px;
   border-radius: 8px;
-  border-left: 4px solid var(--button-bg);
+  border-left: 4px solid #3498db;
 }
 
-.qty-send {
+.ibt-line-row {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+/* Product select (raw element) */
+.product-select {
+  flex: 1;
+  min-width: 0 !important;
+}
+
+/* Select2 wrapper - CRITICAL FIX */
+.ibt-line-row .select2-container {
+  flex: 1 !important;
+  min-width: 0 !important;
+}
+
+/* Qty input */
+.qty-input {
   width: 80px;
   padding: 6px;
-  border-radius: 4px;
-  border: 1px solid var(--input-border);
-  font-size: 0.9rem;
+  border-radius: 6px;
+  border: 1px solid #ccc;
   text-align: center;
+  flex-shrink: 0;
 }
 
-.qty-send:focus {
-  outline: none;
-  border-color: var(--input-focus);
-  box-shadow: 0 0 0 2px var(--input-shadow);
+/* Stocking unit */
+.stock-unit {
+  font-weight: bold;
+  color: #444;
+  min-width: 55px;
+  flex-shrink: 0;
+  white-space: nowrap;
 }
 
-.qty-warning {
-  font-size: 0.85rem;
-  margin-top: 8px;
-  color: #e74c3c;
-  display: none;
-}
+#ibt-lines-container { margin-top: 20px; }
+
+#add-line-btn,
+#step-2-next-btn { margin-top: 20px; }
 
 /* ---------------- Section Animation ---------------- */
 #ibt-step-2, #ibt-step-3 {
@@ -181,7 +199,7 @@ button:active { transform: scale(0.98); }
   font-size: 1.3rem;
 }
 
-/* ---------------- Summary Styles ---------------- */
+/* ---------------- Summary ---------------- */
 .summary-grid {
   display: grid;
   grid-template-columns: 1fr 1fr;
@@ -208,38 +226,215 @@ button:active { transform: scale(0.98); }
   font-size: 1rem;
 }
 
-.product-line {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  background: var(--form-bg);
-  padding: 12px;
-  border-radius: 8px;
-  border-left: 4px solid #3498db;
-  margin-bottom: 10px;
+/* ---------------- Add Line Button ---------------- */
+#add-line-btn {
+    background: #28a745;
+    color: white;
+    border: none;
+    padding: 12px 20px;
+    border-radius: 8px;
+    font-size: 1rem;
+    cursor: pointer;
+    font-weight: 600;
+    transition: background 0.2s, transform 0.1s;
+    margin: 20px 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    width: 100%;
 }
 
-.product-info {
-  flex: 1;
+#add-line-btn:hover {
+    background: #218838;
+    transform: translateY(-1px);
 }
 
-.product-info strong {
-  display: block;
-  margin-bottom: 4px;
+#add-line-btn:active {
+    transform: translateY(0);
 }
 
-.product-info small {
-  color: #7f8c8d;
-  font-size: 0.85rem;
+/* ---------------- Compact Summary Styles ---------------- */
+.compact-summary {
+    background: var(--form-bg);
+    border-radius: 8px;
+    padding: 0;
+    margin: 15px 0;
+    border: 1px solid var(--input-border);
 }
 
-.product-actions {
-  display: flex;
-  align-items: center;
-  gap: 10px;
+.compact-header {
+    background: var(--button-bg);
+    color: var(--button-text);
+    padding: 12px 15px;
+    margin: 0;
+    border-radius: 8px 8px 0 0;
+    font-size: 1rem;
+    font-weight: 600;
 }
 
-/* ---------------- Select2 Custom Styles ---------------- */
+/* Horizontal 2-column layouts */
+.compact-grid-tight {
+    padding: 15px;
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    gap: 12px 20px;
+}
+
+.compact-item-tight {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+}
+
+.compact-item-tight strong {
+    font-size: 0.8rem;
+    color: var(--secondary-text);
+    font-weight: 600;
+}
+
+.compact-item-tight span {
+    font-size: 0.9rem;
+    color: var(--primary-text);
+    font-weight: 500;
+}
+
+.compact-grid-inline {
+    padding: 15px;
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    gap: 8px 15px;
+}
+
+.compact-item-inline {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.compact-item-inline strong {
+    font-size: 0.8rem;
+    color: var(--secondary-text);
+    min-width: 85px;
+    flex-shrink: 0;
+}
+
+.compact-item-inline span {
+    font-size: 0.9rem;
+    color: var(--primary-text);
+    font-weight: 500;
+    flex: 1;
+}
+
+/* ---------------- Compact Product Lines ---------------- */
+.compact-products {
+    margin: 20px 0;
+}
+
+.compact-product-item {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 12px 15px;
+    border-bottom: 1px solid var(--input-border);
+    background: var(--form-bg);
+}
+
+.compact-product-item:last-child {
+    border-bottom: none;
+    border-radius: 0 0 8px 8px;
+}
+
+.compact-product-item:nth-child(even) {
+    background: #f8f9fa;
+}
+
+.product-details {
+    flex: 1;
+}
+
+.product-name {
+    font-weight: 600;
+    color: var(--primary-text);
+    margin-bottom: 4px;
+    font-size: 0.95rem;
+}
+
+.product-meta {
+    font-size: 0.8rem;
+    color: var(--secondary-text);
+}
+
+.product-qty {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    margin-left: 15px;
+}
+
+.qty-badge {
+    background: var(--button-bg);
+    color: var(--button-text);
+    padding: 6px 12px;
+    border-radius: 20px;
+    font-weight: 600;
+    font-size: 0.9rem;
+    min-width: 60px;
+    text-align: center;
+}
+
+/* ---------------- Step 2 Line Improvements ---------------- */
+.ibt-line {
+    background: #f8f9fa;
+    padding: 12px;
+    margin-bottom: 10px;
+    border-radius: 8px;
+    border-left: 4px solid #3498db;
+    position: relative;
+}
+
+.ibt-line-row {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+}
+
+/* Remove button styling */
+.ibt-remove-btn {
+    margin-top: 10px;       /* space from the row above */
+    align-self: flex-start;  /* aligns vertically with the line container */
+    padding: 4px 8px;
+    font-size: 0.85rem;
+    line-height: 1;
+    border-radius: 6px;
+    border: none;
+    cursor: pointer;
+    transition: background 0.2s, transform 0.1s;
+}
+
+.ibt-remove-btn:hover {
+    background: #c0392b;
+    color: white;
+}
+
+.ibt-line {
+    display: flex;
+    flex-direction: column; /* row + button below */
+    gap: 6px;
+}
+
+/* ---------------- Button Groups ---------------- */
+.button-group {
+    display: flex;
+    gap: 10px;
+    margin-top: 20px;
+}
+
+.button-group button {
+    flex: 1;
+}
+
+/* ---------------- Select2 Custom ---------------- */
 .select2-container--default .select2-selection--single {
   border: 1px solid var(--input-border);
   border-radius: 8px;
@@ -267,9 +462,43 @@ button:active { transform: scale(0.98); }
   .wrap { padding: 1rem; }
   .card { padding: 1rem; }
   header h1 { font-size: 1.5rem; }
-  .summary-grid { grid-template-columns: 1fr; }
-  .product-line { flex-direction: column; align-items: flex-start; gap: 10px; }
-  .product-actions { width: 100%; justify-content: space-between; }
+
+  .summary-grid, 
+  .compact-grid-tight,
+  .compact-grid-inline { 
+    grid-template-columns: 1fr; 
+  }
+
+  .ibt-line-row {
+    flex-direction: column;
+    align-items: flex-start;
+  }
+
+  .qty-input,
+  .stock-unit {
+    margin-left: 0;
+  }
+  
+  .compact-product-item {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 10px;
+  }
+  
+  .product-qty {
+    margin-left: 0;
+    align-self: flex-end;
+  }
+  
+  .ibt-line-row {
+    flex-wrap: wrap;
+  }
+  
+  .remove-line-btn {
+    position: absolute;
+    top: 8px;
+    right: 8px;
+  }
 }
 
 @media (max-width: 480px) {
@@ -281,8 +510,11 @@ button:active { transform: scale(0.98); }
     font-size: 0.95rem;
     padding: 10px 12px;
   }
+  
+  .button-group {
+    flex-direction: column;
+  }
 }
-
   </style>
 </head>
 
@@ -318,24 +550,32 @@ button:active { transform: scale(0.98); }
         </section>
 
         <!-- STEP 2 — LINES -->
-        <section id="ibt-step-2" class="hidden">
-          <h3>Select Products</h3>
+        <div id="ibt-step-2" class="hidden">
+            <h3>Step 2 – Select Products</h3>
 
-          <label for="product-select">Choose Product</label>
-          <select id="product-select" style="width: 100%;"></select>
+            <!-- Product Lines Container -->
+            <div id="ibt-lines-container"></div>
 
-          <label for="qty-input">Quantity to Send</label>
-          <input type="number" min="1" id="qty-input" placeholder="Enter quantity" />
+            <button id="add-line-btn" type="button">
+                <span>➕</span>
+                Add Product Line
+            </button>
 
-          <button type="button" id="ibt-add-product" class="btn-secondary">Add Another Product</button>
-          <button type="button" id="ibt-step-2-next" class="btn-primary">Next: Review IBT</button>
-        </section>
+            <div class="button-group">
+                <button id="step-2-back-btn" type="button" class="btn-secondary">← Back</button>
+                <button id="step-2-next-btn" type="button" class="btn-primary">Review →</button>
+            </div>
+        </div>
 
         <!-- STEP 3 — SUMMARY -->
         <section id="ibt-step-3" class="hidden">
-          <h3>Review IBT</h3>
-          <div id="ibt-summary"></div>
-          <button type="button" id="ibt-submit" class="btn-primary">Submit IBT</button>
+            <h3>Review IBT</h3>
+            <div id="ibt-summary"></div>
+            
+            <div class="button-group">
+                <button id="step-3-back-btn" type="button" class="btn-secondary">← Back to Products</button>
+                <button type="button" id="ibt-submit" class="btn-primary">Submit IBT</button>
+            </div>
         </section>
 
       </form>
@@ -345,6 +585,6 @@ button:active { transform: scale(0.98); }
 <!-- Select2 CSS & JS -->
 <link href="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/css/select2.min.css" rel="stylesheet" />
 <script src="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/js/select2.min.js"></script>
-<script src="{{ url_for('inventory.static', filename='EvolutionSDK/IBT.js') }}"></script>
+<script src="{{ url_for('inventory.static', filename='EvolutionSDK/IBT.js') }}?{{ filemtime('inventory', 'EvolutionSDK/IBT.js') }}"></script>
 </body>
 </html>

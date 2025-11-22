@@ -82,7 +82,6 @@ def fetch_products_in__whse():
         }
         for row in rows
     ]
-    print("Products fetched:", products_list)
     return jsonify({"products": products_list})
 
 @inventory_bp.route("/SDK/fetch_product_by_barcode", methods=["POST"])

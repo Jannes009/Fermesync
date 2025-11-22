@@ -333,8 +333,33 @@ header h1 {
         font-size: 16px; /* Prevents zoom on mobile */
     }
 }
-  </style>
+/* ---------------- Select2 Custom Styles ---------------- */
+.select2-container--default .select2-selection--single {
+  border: 1px solid var(--input-border);
+  border-radius: 8px;
+  height: auto;
+  padding: 12px 14px;
+  background: var(--form-bg);
+}
 
+.select2-container--default .select2-selection--single .select2-selection__rendered {
+  padding-left: 0;
+  color: var(--primary-text);
+  line-height: 1.5;
+}
+
+.select2-container--default .select2-selection--single .select2-selection__arrow {
+  height: 100%;
+}
+
+.select2-container--default .select2-results__option--highlighted[aria-selected] {
+  background-color: var(--button-bg);
+}
+
+  </style>
+  <script src="https://code.jquery.com/jquery-3.7.0.min.js"></script>
+<link href="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/css/select2.min.css" rel="stylesheet" />
+<script src="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/js/select2.min.js"></script>
 </head>
 <body>
 
@@ -378,6 +403,7 @@ header h1 {
                 <div id="po-lines-section" style="display:none;">
                     <h3>Outstanding Lines</h3>
                     <div id="po-lines"></div>
+                    <button type="button" id="step-2-back">Back</button>
                     <button type="button" id="next-to-summary">Next: Review</button>
                 </div>
 
@@ -391,7 +417,8 @@ header h1 {
             </div>
         </div>
     </div>
-
-    <script src="{{ url_for('inventory.static', filename='EvolutionSDK/GRV.js') }}"></script>
+<link href="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/css/select2.min.css" rel="stylesheet" />
+<script src="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/js/select2.min.js"></script>
+<script src="{{ url_for('inventory.static', filename='EvolutionSDK/GRV.js') }}?{{ filemtime('inventory', 'EvolutionSDK/GRV.js') }}"></script>
 </body>
 </html>
