@@ -9,14 +9,12 @@ document.addEventListener("DOMContentLoaded", async () => {
     // Fetch and populate warehouses
     const res = await fetch("/inventory/SDK/fetch_warehouses");
     const data = await res.json();
-    const warehouses = data.suppliers;
+    const warehouses = data.warehouses;
     whFrom.innerHTML = '<option disabled selected>Select warehouse</option>';
-    whTo.innerHTML = '<option disabled selected>Select warehouse</option>';
 
     // Initialize warehouse dropdowns with Select2
     warehouses.forEach(w => {
         whFrom.innerHTML += `<option value="${w.code}">${w.name}</option>`;
-        whTo.innerHTML += `<option value="${w.code}">${w.name}</option>`;
     });
 
     // Make warehouse dropdowns searchable
@@ -24,6 +22,16 @@ document.addEventListener("DOMContentLoaded", async () => {
         placeholder: "Select warehouse",
         allowClear: false,
         width: '100%'
+    });
+
+    const res2 = await fetch("/inventory/SDK/fetch_all_warehouses");
+    const data2 = await res2.json();
+    const warehouses2 = data2.warehouses;
+    whTo.innerHTML = '<option disabled selected>Select warehouse</option>';
+
+    // Initialize warehouse dropdowns with Select2
+    warehouses2.forEach(w => {
+        whTo.innerHTML += `<option value="${w.code}">${w.name}</option>`;
     });
 
     $('#wh-to').select2({
@@ -196,21 +204,28 @@ function addIbtLine() {
     lineDiv.id = lineId;
 
     lineDiv.innerHTML = `
-        <div class="ibt-line-row">
-            <!-- Product select -->
-            <select id="${selectId}" class="product-select">
-                <option></option>
-            </select>
-
-            <!-- Qty input -->
-            <input type="number" class="qty-input" min="0" placeholder="Qty" />
-
-            <!-- Stock unit -->
-            <span class="stock-unit">Unit</span>
+        <div class="ibt-line-header">
+            <label class="line-number">Line ${lineIndex}</label>
+            <button type="button" class="ibt-remove-btn btn-danger" title="Remove line">✕</button>
         </div>
-
-        <!-- Remove button outside the row -->
-        <button type="button" class="ibt-remove-btn btn-danger" title="Remove line">✕</button>
+        <div class="ibt-line-fields">
+            <div class="field-group product-field-group">
+                <label class="field-label">Product</label>
+                <select id="${selectId}" class="product-select">
+                    <option></option>
+                </select>
+            </div>
+            <div class="qty-group">
+                <div class="field-group">
+                    <label class="field-label">Quantity</label>
+                    <input type="number" class="qty-input" min="0" placeholder="0" />
+                </div>
+                <div class="field-group uom-display">
+                    <label class="field-label">Unit</label>
+                    <span class="stock-unit">—</span>
+                </div>
+            </div>
+        </div>
     `;
 
     document.getElementById("ibt-lines-container").appendChild(lineDiv);
@@ -247,9 +262,10 @@ function populateSelect(selectId, lineDiv) {
     });
 
     $(`#${selectId}`).select2({
-        placeholder: "Select product",
+        placeholder: "Search and select a product...",
         allowClear: true,
-        width: "100%"
+        width: "100%",
+        dropdownParent: document.body
     });
 
     // When a product is chosen → update the stocking unit

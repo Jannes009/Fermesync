@@ -3,7 +3,6 @@
 {% block body %}
 <style>
     @import url('../static/color-template.css');
-    /* General body styling */
     body {
         font-family: Arial, sans-serif;
         background-color: var(--primary-bg);
@@ -12,11 +11,10 @@
         align-items: center;
         min-height: 100vh;
         margin: 0;
-        padding: 20px 0; /* Add some vertical padding */
+        padding: 20px 0;
         box-sizing: border-box;
     }
 
-    /* Container styling */
     .login-container {
         background-color: var(--container-bg);
         border-radius: 8px;
@@ -32,7 +30,6 @@
         max-height: 140px;
         width: auto;
         margin-bottom: 10px;
-        height: auto;
         display: block;
         margin-left: auto;
         margin-right: auto;
@@ -44,7 +41,6 @@
         color: var(--primary-text);
     }
 
-    /* Form styling */
     form {
         display: flex;
         flex-direction: column;
@@ -63,8 +59,7 @@
     }
 
     input[type="text"],
-    input[type="password"],
-    select {
+    input[type="password"] {
         width: 100%;
         padding: 10px;
         font-size: 14px;
@@ -73,13 +68,8 @@
         box-sizing: border-box;
     }
 
-    select {
-        cursor: pointer;
-    }
-
     input[type="text"]:focus,
-    input[type="password"]:focus,
-    select:focus {
+    input[type="password"]:focus {
         outline: none;
         border-color: var(--button-bg);
     }
@@ -100,28 +90,12 @@
         background-color: var(--button-hover);
     }
 
-
-    .form-group:last-child {
-        margin-bottom: 0;
-    }
-
-    .form-group select {
-        background-color: var(--form-bg);
-        border: 1px solid var(--input-border);
-    }
-
-    /* Hide the register fields by default */
-    .register-fields {
-        display: none;
-    }
-
     .page-container {
         display: flex;
         flex-direction: column;
         align-items: center;
     }
 
-    /* Mobile adjustments for the login page */
     @media (max-width: 480px) {
         body { padding: 12px 8px; }
         .login-container { padding: 16px; margin: 0 8px; }
@@ -137,8 +111,8 @@
         {% if error %}
         <p class="error">{{ error }}</p>
         {% endif %}
-        <h2 id="form-title">Login</h2>
-        <form id="auth-form" method="POST">
+        <h2>Login</h2>
+        <form id="login-form" method="POST" action="{{ url_for('login') }}">
             <div class="form-group">
                 <label for="username">Username:</label>
                 <input type="text" id="username" name="username" required>
@@ -147,109 +121,10 @@
                 <label for="password">Password:</label>
                 <input type="password" id="password" name="password" required>
             </div>
-
-            <!-- Register Fields, initially hidden -->
-            <div class="register-fields">
-                <div class="form-group">
-                    <label for="role">Role:</label>
-                    <select id="role" name="role">
-                        <option value="user">User</option>
-                        <option value="admin">Admin</option>
-                    </select>
-                </div>           
-            </div>
             <input type="hidden" name="next" value="{{ next or request.args.get('next') }}">
-          
-            
-
-            <!-- Buttons for login and register actions -->
-            <button type="submit" id="submit-btn">Login</button>
-            <button type="button" id="toggle-btn" onclick="toggleForm()">Register</button>
+            <button type="submit">Login</button>
         </form>
     </div>
 </div>
-<script>
-    // Function to handle form submission
-    function handleFormSubmit(event) {
-        event.preventDefault(); // Prevent default form submission behavior
-
-        const form = document.getElementById('auth-form');
-        const formData = new FormData(form);
-        const isRegisterMode = document.querySelector('.register-fields').style.display === 'block';
-        
-        const actionUrl = isRegisterMode ? "{{ url_for('register') }}" : "{{ url_for('login') }}";
-
-        // Make a POST request to the appropriate backend route
-        fetch(actionUrl, {
-            method: 'POST',
-            body: formData,
-        })
-        .then(response => {
-            if (response.redirected) {
-                // Redirect if the server responds with a redirection
-                window.location.href = response.url;
-            } else {
-                // Handle form errors or responses
-                response.text().then(html => {
-                    document.body.innerHTML = html;
-                });
-            }
-        })
-        .catch(error => {
-            console.error('Error:', error);
-            alert('An error occurred while processing your request.');
-        });
-    }
-
-    // Add event listener to the form
-    document.getElementById('auth-form').addEventListener('submit', handleFormSubmit);
-</script>
-<script>
-    // Function to toggle between login and register form
-    function toggleForm() {
-        const formTitle = document.getElementById('form-title');
-        const submitBtn = document.getElementById('submit-btn');
-        const toggleBtn = document.getElementById('toggle-btn');
-        const registerFields = document.querySelector('.register-fields');
-        
-        if (registerFields.style.display === 'none' || registerFields.style.display === '') {
-            // Show register fields, change form title and button text
-            registerFields.style.display = 'block';
-            formTitle.textContent = 'Register';
-            submitBtn.textContent = 'Register';
-            setFormAction('register');  // Set the form action to register
-            toggleBtn.textContent = 'Back to Login';
-            enableRegisterFields(true);  // Enable the registration fields
-        } else {
-            // Hide register fields, change form title and button text
-            registerFields.style.display = 'none';
-            formTitle.textContent = 'Login';
-            submitBtn.textContent = 'Login';
-            setFormAction('login');  // Set the form action to login
-            toggleBtn.textContent = 'Register';
-            enableRegisterFields(false);  // Disable the registration fields
-        }
-    }
-
-    // Function to set the form action based on login or register
-    function setFormAction(action) {
-        const form = document.getElementById('auth-form');
-        form.action = action === 'login' ? "{{ url_for('login') }}" : "{{ url_for('register') }}";
-    }
-
-    // Function to enable/disable register fields dynamically
-    function enableRegisterFields(enable) {
-        const registerFields = document.querySelectorAll('.register-fields input, .register-fields select');
-        registerFields.forEach(field => {
-            if (enable) {
-                field.disabled = false;
-                field.required = true;  // Enable the required attribute for register fields
-            } else {
-                field.disabled = true;
-                field.required = false;  // Disable the required attribute for login mode
-            }
-        });
-    }
-</script>
 
 {% endblock %}

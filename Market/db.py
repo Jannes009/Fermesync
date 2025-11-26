@@ -1,17 +1,17 @@
 import pypyodbc as odbc
 import logging
-from models import UserDatabaseConfig
+from auth import connect, close_connection  # central DB helpers
+from key_manager import decrypt_password
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
-
 
 def create_db_connection(user=None, database_type="Market"):
     """
     Creates a database connection using:
     - current_user (interactive)
     - OR a supplied user snapshot dict (background thread)
-    - Pulls DB credentials from UserDatabaseConfig table.
+    - Pulls DB credentials from UserDatabaseConfig table in the Common database.
     """
 
     # -------------------------
@@ -23,21 +23,36 @@ def create_db_connection(user=None, database_type="Market"):
             logger.warning("No user is logged in.")
             return None
 
-        # Fetch DB config from DB
-        config = UserDatabaseConfig.query.filter_by(
-            user_id=current_user.id,
-            database_type=database_type
-        ).first()
+        # Connect to Common DB to fetch user's DB config
+        conn, cursor = connect()
+        try:
+            cursor.execute("""
+                SELECT ServerName, DatabaseName, SqlUsername, [EncryptedDbPassword]
+                FROM UserDatabaseConfig
+                WHERE UserId = ? AND DatabaseType = ?
+            """, (current_user.id, database_type))
+            row = cursor.fetchone()
+        finally:
+            close_connection(conn, cursor)
 
-        if not config:
+        if not row:
             logger.error(f"No DB config found for user {current_user.username} and type '{database_type}'")
             return None
 
-        server_name = config.server_name
-        database_name = config.database_name
-        db_username = config.db_username
-        db_password = config.get_db_password()
+        # Ensure it's bytes for Fernet
+        encrypted_password = row[3]
+        if isinstance(encrypted_password, memoryview):  # pypyodbc can return memoryview for VARBINARY
+            encrypted_password = encrypted_password.tobytes()
+        elif isinstance(encrypted_password, str):
+            encrypted_password = encrypted_password.encode()  # convert str -> bytes
+
+        db_password = decrypt_password(encrypted_password)
+
         username = current_user.username
+        server_name = row[0]
+        database_name = row[1]
+        db_username = row[2]
+
 
     # -------------------------
     # BACKGROUND THREAD MODE (dict snapshot)
@@ -56,12 +71,12 @@ def create_db_connection(user=None, database_type="Market"):
         db_username = user["db_username"]
         db_password = user["db_password"]
         username = user["username"]
-
+        print(server_name, database_name, db_username, db_password, username)
     # -------------------------
     # Build connection string
     # -------------------------
     connection_string = f"""
-        DRIVER={{SQL SERVER}};
+        DRIVER={{SQL Server}};
         SERVER={server_name};
         DATABASE={database_name};
         Trust_Connection=no;
@@ -71,7 +86,7 @@ def create_db_connection(user=None, database_type="Market"):
 
     try:
         connection = odbc.connect(connection_string)
-        logger.info(f"Connected to {database_name} on {server_name} as {username}")
+        logger.info(f"Connected to DB '{database_name}' as user '{username}'")
         return connection
 
     except odbc.DatabaseError as db_err:
@@ -81,7 +96,6 @@ def create_db_connection(user=None, database_type="Market"):
         logger.error(f"Unexpected error: {e}")
 
     return None
-
 
 
 def close_db_connection(cursor, connection):

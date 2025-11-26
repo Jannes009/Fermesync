@@ -2,12 +2,10 @@ from flask import render_template, request, jsonify
 import pypyodbc as odbc
 from Market.db import create_db_connection, close_db_connection
 from Market.routes.db_functions import agent_code_to_agent_name, get_stock_name, get_invoice_id, del_note_number_to_del_id
-from auth import role_required
 
 from Market.routes import market_bp
 
 @market_bp.route('/create_sales_order')
-@role_required()
 def invoice_page():
     return render_template('Invoice page/base.html')
 
@@ -120,7 +118,6 @@ def get_delivery_note_details(note_number):
 
 
 @market_bp.route('/get_delivery_note_lines', methods=['POST'])
-@role_required()
 def get_delivery_note_lines():
     # Get the delivery note number from the POST request
     data = request.get_json()  # For handling JSON data
@@ -139,7 +136,6 @@ def get_delivery_note_lines():
     
 
 @market_bp.route('/submit_invoice', methods=['POST'])
-@role_required()
 def submit_invoice():
     # try:
     data = request.json
@@ -225,7 +221,6 @@ def submit_invoice():
 
 
 @market_bp.route('/get-tax-rate', methods=['GET'])
-@role_required()
 def get_tax_rate():
     date_str = request.args.get('date')
     if not date_str:
@@ -355,7 +350,6 @@ def api_invoices_for_delivery_note(del_note_no):
     return jsonify(invoices)
 
 @market_bp.route('/api/refresh-invoices', methods=['POST'])
-@role_required()
 def refresh_invoices():
     try:
         conn = create_db_connection()
@@ -377,7 +371,6 @@ def refresh_invoices():
 # =========================
 
 @market_bp.route('/api/correct-invoice/agents')
-@role_required()
 def correct_invoice_agents():
     """List available agents (markets)."""
     conn = create_db_connection()
@@ -393,7 +386,6 @@ def correct_invoice_agents():
 
 
 @market_bp.route('/api/correct-invoice/old-prod-units-and-invoices/<del_note_no>')
-@role_required()
 def correct_invoice_old_prod_units_and_invoices(del_note_no):
     """
     Return production units currently used in delivery note and invoices for that delivery note.
@@ -432,7 +424,6 @@ def correct_invoice_old_prod_units_and_invoices(del_note_no):
 
 
 @market_bp.route('/api/correct-invoice/all-prod-units')
-@role_required()
 def correct_invoice_all_prod_units():
     """
     Return all available production units from _uvMarketProdUnit.
@@ -448,7 +439,6 @@ def correct_invoice_all_prod_units():
 
 
 @market_bp.route('/api/correct-invoice/lines-and-invoices')
-@role_required()
 def correct_invoice_lines_and_invoices():
     """
     Given del_note_no and old_prod_unit_id, return lines under that prod unit and the invoices
@@ -512,7 +502,6 @@ def correct_invoice_lines_and_invoices():
 
 
 @market_bp.route('/api/correct-invoice/submit-agent-change', methods=['POST'])
-@role_required()
 def submit_agent_change():
     data = request.get_json(force=True)
     del_note_no = data.get('del_note_no')
@@ -541,7 +530,6 @@ def submit_agent_change():
 
 
 @market_bp.route('/api/correct-invoice/submit-produnit-change', methods=['POST'])
-@role_required()
 def submit_produnit_change():
     data = request.get_json(force=True)
     del_note_no = data.get('del_note_no')

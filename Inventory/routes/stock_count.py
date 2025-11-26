@@ -1,13 +1,16 @@
 import requests
-from flask import request, jsonify, render_template
+from flask import request, jsonify, render_template, abort
 from . import inventory_bp
 from Inventory.db import create_db_connection
 from flask_login import current_user
 from flask_login import login_required
+from datetime import datetime
 
 @inventory_bp.route('/SDK/stock_count', methods=['GET'])
 @login_required
 def IBT_stock_count():
+    if "StockCount" not in current_user.permissions:
+        abort(403)  # Forbidden
     return render_template('EvolutionSDK/stock_count.html')
 
 @inventory_bp.route("/fetch_categories", methods=["POST"])
@@ -37,11 +40,11 @@ def fetch_categories():
     print("Products fetched:", categories_list)
     return jsonify({"products": categories_list})
 
-@inventory_bp.route("/create_inventory_count", methods=["POST"])
-def create_inventory_count():
+
+@inventory_bp.route("/fetch_inventory_count_products", methods=["POST"])
+def fetch_inventory_count_products():
     whse_code = request.json.get("whse_code")
     category_name = request.json.get("category_name")
-    count_storeman = request.json.get("count_storeman")
 
     conn = create_db_connection()
     cursor = conn.cursor()
@@ -64,47 +67,15 @@ def create_inventory_count():
         for row in rows
     ]
 
-    cursor.execute("""
-    INSERT INTO [InventoryCountHeaders] (
-        [InvCountWhseId]
-        ,[InvCountWhseCode]
-        ,[InvCountTimeCreated]
-        ,[InvCountUserId]
-        ,[InvCountUserName]
-        ,[InvCountStoreManName]
-        )
-    (
-    Select WhseLink, Code WhseCode, GETDATE() DateStmpCreated, (?), (?), (?)
-    from [UB_UITDRAAI_BDY].[dbo].[WhseMst] WH
-    where Wh.Code = ?
-    )
-
-    INSERT INTO [InventoryCountLines] (
-    [InvCountLineHeaderId] ,
-    [InvCountStockId],
-    [InvCountStockCode],
-    [InvCountStockDesc],
-    [InvCountQtyOnHand]
-    )
-    (
-    Select 
-        (
-        Select MAX([InvCountHeaderId]) from [InventoryCountHeaders]
-        where NOT EXISTS (Select * from [dbo].[InventoryCountLines] where InvCountLineHeaderId = [InvCountHeaderId])
-        )HeaderID
-        ,StockLInk, StockCode ,StockDescription ,QtyOnHand
-        
-    from [dbo].[_uvInventoryQty]
-    where WhseCode = ? and cCategoryName = ?
-    )
-    """, (current_user.id, current_user.username, count_storeman, whse_code, whse_code, category_name,))
-    conn.commit()
-    cursor.execute("Select MAX([InvCountHeaderId]) from [InventoryCountHeaders]")
-    stock_count_id = cursor.fetchone()[0]
-
-    print("Products fetched:", products_list)
     conn.close()
-    return jsonify({"products": products_list, "stock_count_id": stock_count_id})
+    
+    # Add current timestamp
+    current_time = datetime.now().isoformat()  # Returns ISO format like "2024-01-15T14:30:45.123456"
+    
+    return jsonify({
+        "products": products_list,
+        "opening_timestamp": current_time
+    })
 
 import sys
 from flask import request, jsonify
@@ -120,27 +91,59 @@ clr.AddReference("Pastel.Evolution")
 # Import classes
 from Pastel.Evolution import DatabaseContext
 from Pastel.Evolution import InventoryTransaction, InventoryItem, TransactionCode, InventoryOperation, Module, Warehouse
-
 @inventory_bp.route("/submit_stock_count", methods=["POST"])
 def submit_stock_count():
+    if "GRV" not in current_user.permissions:
+        abort(403)  # Forbidden
     data = request.get_json()
     
-
-    stock_count_id = data.get("stock_count_id")
     warehouse = data.get("warehouse")
     category = data.get("category")
     products = data.get("products", [])
+    counted_by = data.get("counted_by")
+    opening_timestamp = data.get("count_start_timestamp")
+
+    # Convert to SQL Server compatible format (YYYY-MM-DD HH:MM:SS)
+    try:
+        from datetime import datetime
+        dt = datetime.fromisoformat(opening_timestamp.replace('Z', '+00:00'))
+        sql_timestamp = dt.strftime("%Y-%m-%d %H:%M:%S")
+    except (ValueError, AttributeError):
+        # Fallback to current time if conversion fails
+        sql_timestamp = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
 
     conn = create_db_connection()
     cursor = conn.cursor()
-
-    cursor.execute("""
-    UPDATE [dbo].[InventoryCountHeaders]
-        SET InvCountTimeFinalised = GETDATE()
-    WHERE InvCountHeaderId = ?
-    """, (stock_count_id,))
-
+    
     try:
+        # First, get the warehouse ID
+        cursor.execute("SELECT WhseLink FROM _uvWarehouses WHERE WhseCode = ?", (warehouse,))
+        whse_result = cursor.fetchone()
+        if not whse_result:
+            return jsonify({"success": False, "error": "Warehouse not found"}), 400
+        whse_id = whse_result[0]
+
+        # Insert the header and get the stock_count_id in separate steps
+        cursor.execute("""
+            INSERT INTO [InventoryCountHeaders] (
+                [InvCountWhseId],
+                [InvCountWhseCode],
+                [InvCountUserId],
+                [InvCountUserName],
+                [InvCountCountedBy],
+                [InvCountCatName],
+                [InvCountTimeCreated]
+            ) VALUES (?, ?, ?, ?, ?, ?, ?)
+        """, (whse_id, warehouse, current_user.id, current_user.username, counted_by, category, sql_timestamp,))
+        
+        # Now get the SCOPE_IDENTITY() in a separate query
+        cursor.execute("""
+        Select MAX(InvCountHeaderId) InvCountHeaderId
+        from [dbo].[InventoryCountHeaders] HEA
+        WHERE NOT EXISTS (Select * from [InventoryCountLines] LIN where LIN.InvCountLineHeaderId = HEA.InvCountHeaderId)
+         """)
+        stock_count_id = cursor.fetchone()[0]
+        
         # -------------------------
         # Connect to Evolution
         # -------------------------
@@ -153,6 +156,7 @@ def submit_stock_count():
         )
 
         results = []
+        print(products)
 
         for item in products:
             product_code = item["product_code"]
@@ -160,11 +164,15 @@ def submit_stock_count():
             counted_qty = float(item["counted_qty"])
             difference = counted_qty - system_qty
 
+            # Fix: Correct column names in INSERT statement
             cursor.execute("""
-            UPDATE [dbo].[InventoryCountLines]
-                SET InvCountQtyCounted = ?
-            WHERE InvCountLineHeaderId = ? AND InvCountStockCode = ?
-            """, (counted_qty, stock_count_id, product_code,))
+                INSERT INTO [InventoryCountLines] (
+                    [InvCountLineHeaderId],
+                    [InvCountLineStockCode],
+                    [InvCountLineQtyOnHand],
+                    [InvCountLineQtyCounted]
+                ) VALUES (?, ?, ?, ?)
+            """, (stock_count_id, product_code, system_qty, counted_qty))
 
             if difference == 0:
                 continue  # No adjustment needed
@@ -192,7 +200,6 @@ def submit_stock_count():
 
             # Save into Evolution
             trans.Post()
-
             print(f"Posted adjustment for {product_code}: qty {difference}")
 
             results.append({
@@ -200,6 +207,8 @@ def submit_stock_count():
                 "adjusted_by": difference,
                 "status": "posted"
             })
+        
+        # Commit all the line items
         conn.commit()
         return jsonify({
             "success": True,
@@ -208,5 +217,9 @@ def submit_stock_count():
         })
 
     except Exception as ex:
+        conn.rollback()
         print("Stock Count Error:", str(ex))
         return jsonify({"success": False, "error": str(ex)}), 500
+    finally:
+        cursor.close()
+        conn.close()

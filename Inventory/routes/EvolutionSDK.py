@@ -1,7 +1,7 @@
 
 from flask_login import login_required, current_user
 import requests
-from flask import Blueprint, jsonify, current_app, request, render_template
+from flask import Blueprint, jsonify, current_app, request, render_template, abort
 from datetime import datetime, timedelta
 from Inventory.db import create_db_connection
 
@@ -16,7 +16,10 @@ def dashboard():
 @inventory_bp.route('/SDK/GRV', methods=['GET'])
 @login_required
 def GRV_page():
-    from flask import render_template
+    # Permission check
+    if "GRV" not in current_user.permissions:
+        abort(403)  # Forbidden
+
     return render_template('EvolutionSDK/GRV.html')
 
 
@@ -25,9 +28,18 @@ def po_page():
     conn = create_db_connection()
     cursor = conn.cursor()
 
-    cursor.execute("""
-    Select Distinct DCLink, SupplierName from _uvPO_Outstanding
-    """)
+    warehouses = current_user.warehouses
+    if len(warehouses) == 0:
+        return jsonify({"suppliers": []})
+    placeholders = ",".join(["?"] * len(warehouses))
+    query = f"""
+    SELECT DISTINCT DCLink, SupplierName
+    FROM _uvPO_Outstanding
+    WHERE WhseLink IN ({placeholders})
+    """
+
+    cursor.execute(query, warehouses)
+    print(f"Executed query: {query} with warehouses: {warehouses}")
     suppliers = [
         {"code": row[0], "name": row[1]}
         for row in cursor.fetchall()
@@ -45,11 +57,12 @@ def get_po_numbers():
     conn = create_db_connection()
     cursor = conn.cursor()
 
-    cursor.execute("""
-        SELECT DISTINCT OrderNum, OrderDate, OrderDesc, OrdTotIncl
-        FROM _uvPO_Outstanding
-        WHERE DcLink = ?
-    """, (supplier_code,))
+    query = f"""
+    SELECT DISTINCT OrderNum, OrderDate, OrderDesc, OrdTotIncl
+    FROM _uvPO_Outstanding
+    WHERE DcLink = ? and WhseLink IN ({','.join(['?'] * len(current_user.warehouses))})
+    """
+    cursor.execute(query, [supplier_code] + current_user.warehouses)
 
     rows = cursor.fetchall()
     conn.close()
@@ -71,12 +84,12 @@ def fetch_po_lines(po_number):
     conn = create_db_connection()
     cursor = conn.cursor()
 
-    cursor.execute("""
+    query = f"""
         SELECT iStockCodeID, StockDesc, WHName, QtyOutstanding, fUnitPriceExcl, UnitCode
         FROM _uvPO_Outstanding
-        WHERE OrderNum = ?
-    """, (po_number,))
-
+        WHERE OrderNum = ? and WhseLink IN ({','.join(['?'] * len(current_user.warehouses))})
+    """
+    cursor.execute(query, [po_number] + current_user.warehouses)
     rows = cursor.fetchall()
     conn.close()
 
@@ -113,10 +126,12 @@ from Pastel.Evolution import PurchaseOrder
 
 @inventory_bp.route("/submit_grv", methods=["POST"])
 def submit_grv():
+    if "GRV" not in current_user.permissions:
+        abort(403)  # Forbidden
     data = request.get_json()
-    print("Received GRV data:", data)
 
     po_number = data.get("poNumber")
+    receiver = data.get("receiverName")
     lines = data.get("lines")  # list of { ProductId, QtyReceived }
 
     # -------------------------
@@ -169,7 +184,18 @@ def submit_grv():
         # Process the GRV (same as C#: PO.ProcessStock())
         # -------------------------
         PO.ProcessStock()
-
+        # audit_trail = PO.GetAuditTrail()
+        grv_number = PO.Reference
+        audit_number = PO.Audit
+        
+        conn = create_db_connection()
+        cursor = conn.cursor()
+        cursor.execute("""
+            INSERT INTO GRV (GRVUserId, GRVReceivedBy, GRVPONumber, GRVNumber, GRVAuditNumber)
+            VALUES (?, ?, ?, ?, ?)
+        """, (current_user.id,  receiver, po_number, grv_number, audit_number))
+        conn.commit()
+        conn.close()
         return jsonify({
             "success": True,
             "message": "GRV submitted successfully"

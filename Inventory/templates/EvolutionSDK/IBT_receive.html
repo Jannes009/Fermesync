@@ -67,10 +67,37 @@
     .quantity-error { color:#e74c3c; font-size:0.75rem; margin-top:2px; display:none; }
 
     /* ==== ACTION BUTTONS ==== */
-    .action-buttons { display:flex; gap:8px; margin-top:16px; justify-content:flex-end; }
+    .acceptance-row {
+      margin-top:16px;
+      display:flex;
+      gap:12px;
+      align-items:flex-end;
+      flex-wrap:wrap;
+    }
+    .acceptance-row .input-group {
+      flex:1;
+      min-width:220px;
+      display:flex;
+      flex-direction:column;
+      gap:6px;
+    }
+    .acceptance-row label {
+      font-size:0.8rem;
+      font-weight:600;
+      color:var(--secondary-text);
+    }
+    .acceptance-row input {
+      padding:8px 10px;
+      border:1px solid var(--input-border);
+      border-radius:6px;
+      background:var(--form-bg);
+      font-size:0.9rem;
+    }
+    .action-buttons { display:flex; gap:8px; justify-content:flex-end; }
     @media (max-width:768px) {
       .ibt-detail-grid, .quantity-inputs { grid-template-columns:1fr; }
-      .action-buttons { flex-direction:column; }
+      .action-buttons { width:100%; justify-content:stretch; }
+      .action-buttons button { width:100%; }
       .product-line-header { flex-direction:column; gap:6px; }
     }
     .hidden { display:none; }
@@ -96,8 +123,14 @@
         <button type="button" id="back-to-list" class="btn-secondary">Back</button>
       </header>
       <div id="ibt-detail-container"><div class="loading">Loading details...</div></div>
-      <div class="action-buttons">
-        <button type="button" id="submit-receipt" class="btn-primary">Submit Receipt</button>
+      <div class="acceptance-row">
+        <div class="input-group">
+          <label for="returned-to-input">Returned To</label>
+          <input type="text" id="returned-to-input" placeholder="Who are the goods returned to?">
+        </div>
+        <div class="action-buttons">
+          <button type="button" id="submit-receipt" class="btn-primary">Submit Receipt</button>
+        </div>
       </div>
     </div>
 
@@ -236,8 +269,14 @@ document.addEventListener("DOMContentLoaded", async () => {
     };
 
     async function submitReceipt() {
+        const returnedTo = (document.getElementById("returned-to-input").value || "").trim();
+        if (!returnedTo) {
+            Swal.fire("Missing info", "Please enter who the stock was returned to.", "warning");
+            return;
+        }
+
         const lines = document.querySelectorAll('.product-line');
-        const payload = { ibt_number: currentIbt, lines: [] };
+        const payload = { ibt_number: currentIbt, returned_to: returnedTo, lines: [] };
         let valid = true;
 
         lines.forEach(line => {

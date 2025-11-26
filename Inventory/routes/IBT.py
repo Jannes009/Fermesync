@@ -2,12 +2,27 @@ import requests
 from flask import request, jsonify, render_template
 from . import inventory_bp
 from Inventory.db import create_db_connection
-from flask_login import login_required
+from flask_login import login_required, current_user
 
 @inventory_bp.route('/SDK/IBT_issue', methods=['GET'])
 @login_required
 def IBT_issue():
     return render_template('EvolutionSDK/IBT_issue.html')
+
+@inventory_bp.route("/SDK/fetch_all_warehouses") 
+def fetch_all_warehouses(): 
+    conn = create_db_connection() 
+    cursor = conn.cursor() 
+    query = f""" 
+    Select WhseLink, WhseCode, WhseDescription
+    from [_uvWarehouses] 
+    """ 
+    cursor.execute(query) 
+    warehouses = [ 
+        {"id": row[0], "code": row[1], "name": row[2]} 
+        for row in cursor.fetchall() ] 
+    conn.close() 
+    return jsonify({"warehouses": warehouses})
 
 
 @inventory_bp.route("/fetch_products_in_both_whses", methods=["POST"])
@@ -92,6 +107,21 @@ def submit_ibt():
 
         ibt.IssueStock()
 
+        conn = create_db_connection()
+        cursor = conn.cursor()
+
+        cursor.execute("""
+        INSERT INTO [IBT](
+        [IBTDispatchUserId],
+        [IBTDriverName],
+        [IBTDispatchTimeStamp],
+        [IBTNo],
+        [IBTDispatchAuditNo]
+        )VALUES(?,?,GETDATE(),?,?)
+        """, (current_user.id, data["Driver"], ibt.Number, ibt.AuditNumberIssued))
+        conn.commit()
+        conn.close()
+
         return jsonify({
             "success": True,
             "message": "IBT successfully created",
@@ -172,13 +202,16 @@ def display_ibt():
         }
         for row in rows
     ]
-
     return jsonify({"ibt_details": ibt_details})
+
 @inventory_bp.route("/submit_ibt_receive", methods=["POST"])
 def submit_ibt_receive():
     try:
         data = request.get_json()
         print("Received IBT receive data:", data)
+        returned_to = (data.get("returned_to") or "").strip()
+        if not returned_to:
+            return jsonify({"success": False, "message": "Returned To is required."}), 400
 
         # -------------------------
         # 1. Connect to Evolution DB
@@ -218,7 +251,16 @@ def submit_ibt_receive():
         # 4. Commit the receive
         # -------------------------
         ibt.ReceiveStock()
-        print("IBT received:", ibt.Number)
+        conn = create_db_connection()
+        cursor = conn.cursor()
+        cursor.execute("""
+        UPDATE [IBT]
+        SET [IBTRecUserId] = ?, [IBTRecBy] = ?, [IBTRecTimeStamp] = GETDATE(),
+        [IBTRecAuditNo] = ?
+        WHERE [IBTNo] = ?
+        """, (current_user.id, returned_to, ibt.AuditNumberReceived, data["ibt_number"]))
+        conn.commit()
+        conn.close()
 
         return jsonify({
             "success": True,

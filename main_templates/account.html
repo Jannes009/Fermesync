@@ -145,7 +145,6 @@
                 <table class="info-table">
                   <tbody>
                     <tr><th>Username</th><td>{{ user.username }}</td></tr>
-                    <tr><th>Role</th><td>{{ user.role }}</td></tr>
                   </tbody>
                 </table>
               </div>
@@ -156,7 +155,7 @@
               <div class="section-card">
                 <div class="section-title">Connected Services</div>
 
-                {% if user.connected_services %}
+                {% if connected_services %}
                   <div class="table-box">
                     <table class="styled-table">
                       <thead>
@@ -167,7 +166,7 @@
                         </tr>
                       </thead>
                       <tbody>
-                        {% for service in user.connected_services %}
+                        {% for service in connected_services %}
                           <tr>
                             <td>
                               <span class="service-badge {% if service.service_type == 'Technofresh' %}technofresh-badge{% elif service.service_type == 'FreshLinq' %}freshlinq-badge{% else %}bg-info{% endif %}">
@@ -177,7 +176,7 @@
                             <td>{{ service.username }}</td>
                             <td>
                               <form method="POST" action="{{ url_for('account.remove_service', service_id=service.id) }}" class="d-inline">
-                                <button type="submit" class="custom-btn btn-danger btn-sm">Remove</button>
+                                <button type="button" class="custom-btn btn-danger btn-sm remove-service-btn" data-id="{{ service.id }}">Remove</button>
                               </form>
                             </td>
                           </tr>
@@ -192,7 +191,7 @@
                 <!-- Add Service Form -->
                 <div class="table-box mt-3">
                   <div class="section-title" style="font-size:1rem;">Add New Service</div>
-                  <form method="POST" action="{{ url_for('account.add_service') }}">
+                  <form method="POST" id="add-service-form">
                     <div class="mb-3">
                       <label class="form-label">Service Type</label>
                       <select class="form-select" name="service_type" required>
@@ -214,7 +213,7 @@
                       <input type="password" class="form-control" name="account_password" required>
                       <small class="form-text">For security verification</small>
                     </div>
-                    <button type="submit" class="custom-btn btn-primary">Add Service</button>
+                    <button type="button" class="custom-btn btn-primary" id="add-service">Add Service</button>
                   </form>
                 </div>
               </div>
@@ -225,7 +224,7 @@
               <div class="section-card">
                 <div class="section-title">Database Configurations</div>
 
-                {% if user.database_configs %}
+                {% if database_configs %}
                   <div class="table-box">
                     <table class="styled-table">
                       <thead>
@@ -238,15 +237,15 @@
                         </tr>
                       </thead>
                       <tbody>
-                        {% for db in user.database_configs %}
+                        {% for db in database_configs %}
                           <tr>
-                            <td>{{ db.database_type }}</td>
+                            <td>{{ db.db_type }}</td>
                             <td>{{ db.server_name }}</td>
                             <td>{{ db.database_name }}</td>
                             <td>{{ db.db_username }}</td>
                             <td>
-                              <form method="POST" action="{{ url_for('account.remove_database', db_id=db.id) }}" class="d-inline">
-                                <button type="submit" class="custom-btn btn-danger btn-sm">Remove</button>
+                              <form method="POST" action="{{ url_for('account.remove_database', db_user_id=db.user_id, db_type=db_type) }}" class="d-inline">
+                                <button type="button" class="custom-btn btn-danger btn-sm remove-db-btn" data-id="{{ db.user_id }}" data-type="{{ db.db_type }}">Remove</button>
                               </form>
                             </td>
                           </tr>
@@ -261,7 +260,7 @@
                 <!-- Add Database Form -->
                 <div class="table-box mt-3">
                   <div class="section-title" style="font-size:1rem;">Add Database Config</div>
-                  <form method="POST" action="{{ url_for('account.add_database_config') }}">
+                  <form method="POST" id="add-database-form">
                     <div class="mb-3">
                       <label class="form-label">DB Type</label>
                       <select class="form-select" name="db_type" required>
@@ -286,7 +285,7 @@
                       <label class="form-label">SQL Password</label>
                       <input type="password" class="form-control" name="db_password" required>
                     </div>
-                    <button type="submit" class="custom-btn btn-primary">Add Database</button>
+                    <button type="button" class="custom-btn btn-primary" id="add-database">Add Database</button>
                   </form>
                 </div>
               </div>
@@ -325,5 +324,117 @@
       });
     });
   </script>
+  <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+
+<script>
+document.addEventListener("DOMContentLoaded", () => {
+
+    // ----------------------------
+    // ADD SERVICE
+    // ----------------------------
+    document.getElementById("add-service").addEventListener("click", async (e) => {
+
+        
+        const form = document.getElementById("add-service-form");
+
+        // Convert form values to an object
+        const data = Object.fromEntries(new FormData(form));
+        
+        const res = await fetch("/account/add_service", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify(data)
+        });
+
+        const json = await res.json();
+        Swal.fire({
+            icon: json.success ? "success" : "error",
+            title: json.message,
+        }).then(() => {
+            if (json.success) location.reload();
+        });
+    });
+
+
+    // ----------------------------
+    // REMOVE SERVICE
+    // ----------------------------
+    document.querySelectorAll(".remove-service-btn").forEach(btn => {
+        btn.addEventListener("click", async () => {
+
+            const res = await fetch("/account/remove_service", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ service_id: btn.dataset.id })
+            });
+
+            const json = await res.json();
+
+            Swal.fire({
+                icon: json.success ? "success" : "error",
+                title: json.message,
+            }).then(() => {
+                if (json.success) location.reload();
+            });
+        });
+    });
+
+
+    // ----------------------------
+    // ADD DATABASE
+    // ----------------------------
+    document.getElementById("add-database").addEventListener("click", async (e) => {
+
+        const form = document.getElementById("add-database-form");
+
+        // Convert form values to an object
+        const data = Object.fromEntries(new FormData(form));
+
+        const res = await fetch("/account/add_database", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify(data)
+        });
+
+        const json = await res.json();
+
+        Swal.fire({
+            icon: json.success ? "success" : "error",
+            title: json.message,
+        }).then(() => {
+            if (json.success) location.reload();
+        });
+    });
+
+
+    // ----------------------------
+    // REMOVE DATABASE
+    // ----------------------------
+    document.querySelectorAll(".remove-db-btn").forEach(btn => {
+        btn.addEventListener("click", async () => {
+            const db_id = btn.dataset.id;
+            const db_type = btn.dataset.type;
+
+            const res = await fetch("/account/remove_database", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ db_id, db_type })
+            });
+
+            const json = await res.json();
+
+            Swal.fire({
+                icon: json.success ? "success" : "error",
+                title: json.message,
+            }).then(() => {
+                if (json.success) location.reload();
+            });
+        });
+    });
+
+
+});
+</script>
+
 </body>
 </html>

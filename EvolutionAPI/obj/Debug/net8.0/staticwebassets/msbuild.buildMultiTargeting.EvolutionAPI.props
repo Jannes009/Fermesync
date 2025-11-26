@@ -1,3 +1,0 @@
-﻿<Project>
-  <Import Project="..\build\EvolutionAPI.props" />
-</Project>

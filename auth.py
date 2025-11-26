@@ -1,42 +1,169 @@
-from functools import wraps
-from flask import redirect, url_for, flash, request
-from flask_login import LoginManager, UserMixin, current_user
-from models import db, User
+
+import pyodbc as odbc
+from werkzeug.security import check_password_hash
+from flask_login import LoginManager, UserMixin
+from config import build_connection_string  # function that builds a conn string from dict
 
 login_manager = LoginManager()
-login_manager.login_view = 'login'  # Ensure this matches your login route
+login_manager.login_view = 'login'
 
 
+# -------------------------
+# User session class
+# -------------------------
 class UserLogin(UserMixin):
-    def __init__(self, id, username, role):
+    def __init__(self, id, username, db_config=None):
         self.id = id
         self.username = username
-        self.role = role
+        self.db_config = db_config  # per-user DB connection info
 
-    def load_user_data(self):
-        pass  # No longer needed
+    def get_db_connection_string(self):
+        """Return a connection string for this user (if db_config exists)."""
+        if not self.db_config:
+            return None
+        return build_connection_string(self.db_config)
 
 
+# -------------------------
+# DB helper
+# -------------------------
+def connect(db_config=None):
+    """
+    Return a tuple (conn, cursor) for a given config.
+    If db_config is None, defaults to common DB.
+    """
+    conn_str = build_connection_string(db_config)
+    conn = odbc.connect(conn_str)
+    cursor = conn.cursor()
+    return conn, cursor
+
+
+def close_connection(conn=None, cursor=None):
+    """Safely close cursor and connection."""
+    try:
+        if cursor:
+            cursor.close()
+    except:
+        pass
+    try:
+        if conn:
+            conn.close()
+    except:
+        pass
+
+
+# -------------------------
+# Common DB connection
+# -------------------------
+def get_common_db_connection():
+    """Return (conn, cursor) for the common database."""
+    return connect()  # defaults to config in config.py
+
+
+# -------------------------
+# Fetch per-user DB config
+# -------------------------
+def get_user_db_config(user_id):
+    """Fetch database connection info from UserDatabaseConfig table."""
+    conn, cursor = connect()
+    try:
+        cursor.execute("""
+            SELECT ServerName, DatabaseName, SqlUsername, [EncryptedDbPassword]
+            FROM UserDatabaseConfig
+            WHERE UserId = ?
+        """, (user_id,))
+        row = cursor.fetchone()
+        if row:
+            return {
+                "server": row[0],
+                "database": row[1],
+                "uid": row[2],
+                "pwd": row[3],
+                "driver": "SQL Server",
+                "trust_connection": "no"
+            }
+        return None
+    finally:
+        close_connection(conn, cursor)
+
+
+# -------------------------
+# Authenticate user
+# -------------------------
+def authenticate_user(username, password):
+    """Validate username/password against common Users table."""
+    conn, cursor = connect()
+    try:
+        cursor.execute("SELECT id, username, PasswordHash FROM Users WHERE username = ?", (username,))
+        row = cursor.fetchone()
+        if row and check_password_hash(row[2], password):
+            db_config = get_user_db_config(row[0])
+            user = UserLogin(id=row[0], username=row[1], db_config=db_config)
+            user.warehouses = get_user_warehouses(user.id)
+            user.permissions = get_user_permissions(user.id)
+            return user
+        return None
+    finally:
+        close_connection(conn, cursor)
+
+
+# -------------------------
+# Flask-Login loader
+# -------------------------
 @login_manager.user_loader
 def load_user(user_id):
-    user = User.query.get(int(user_id))
-    if user:
-        return UserLogin(user.id, user.username, user.role)
-    return None
+    """Flask-Login callback to load a user by ID."""
+    conn, cursor = connect()
+    try:
+        cursor.execute("SELECT id, username FROM Users WHERE id = ?", (user_id,))
+        row = cursor.fetchone()
+        if row:
+                db_config = get_user_db_config(row[0])
+                user = UserLogin(id=row[0], username=row[1], db_config=db_config)
+                user.warehouses = get_user_warehouses(user.id)
+                user.permissions = get_user_permissions(user.id)
+                return user
+        return None
+    finally:
+        close_connection(conn, cursor)
 
+def get_connected_services(user_id):
+    """Fetch connected services for a user from the common database."""
+    conn, cursor = connect()  # common DB
+    try:
+        cursor.execute("""
+            SELECT ServiceType
+            FROM ConnectedService
+            WHERE UserId = ?
+        """, (user_id,))
+        rows = cursor.fetchall()
+        return [row[0] for row in rows] if rows else []
+    finally:
+        close_connection(conn, cursor)
 
-def role_required(role=None):
-    def decorator(f):
-        @wraps(f)
-        def decorated_function(*args, **kwargs):
-            if not current_user.is_authenticated:
-                flash('Please log in to access this page.', 'warning')
-                return redirect(url_for('login', next=request.path))
+def get_user_warehouses(user_id):
+    conn, cursor = connect()  # common DB
+    try:
+        cursor.execute("""
+            SELECT WarehouseId 
+            FROM [WarehouseToUserLink]
+            WHERE UserId = ?
+        """, (user_id,))
+        rows = cursor.fetchall()
+        return [row[0] for row in rows] if rows else []
+    finally:
+        close_connection(conn, cursor)
 
-            if role and current_user.role != role:
-                flash('You do not have permission to access this page.', 'danger')
-                return redirect(url_for('dashboard'))
-
-            return f(*args, **kwargs)
-        return decorated_function
-    return decorator
+def get_user_permissions(user_id):
+    conn, cursor = connect()  # common DB
+    try:
+        cursor.execute("""
+        Select Code
+        from [dbo].[UserPermissions] LINK
+        JOIN [dbo].[Permissions] PERM on PERM.Id = LINK.PermissionId
+        Where UserId = ?
+        """, (user_id,))
+        rows = cursor.fetchall()
+        return [row[0] for row in rows] if rows else []
+    finally:
+        close_connection(conn, cursor)

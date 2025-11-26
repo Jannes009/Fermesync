@@ -89,18 +89,24 @@ function addLine() {
     let optionsHtml = '<option></option>';
     productsInWhse.forEach(p => {
         // note: we store both product_link (id) and product_code in data attributes for later use
-        optionsHtml += `<option value="${p.product_link}" data-uom="${p.uom_id}" data-available="${p.qty_in_whse}" data-code="${p.product_code}">${p.product_desc} — Available: ${p.qty_in_whse} ${p.uom_code}</option>`;
+        optionsHtml += `<option value="${p.product_link}" data-uom="${p.uom_code}" data-available="${p.qty_in_whse}" data-code="${p.product_code}">${p.product_desc} — Available: ${p.qty_in_whse} ${p.uom_code}</option>`;
     });
 
     const lineHtml = `
         <div class="product-row">
-            <select class="product-select">${optionsHtml}</select>
+            <div class="product-main">
+                <label class="field-label">Product</label>
+                <select class="product-select">${optionsHtml}</select>
+            </div>
             <div class="qty-wrapper">
+                <label>Quantity</label>
                 <input type="number" class="qty-input" min="1" placeholder="Qty">
                 <span class="uom-label">Unit</span>
             </div>
-            <button type="button" class="scan-btn" title="Optional: scan barcode">📷</button>
-            <button type="button" class="remove-line" title="Remove line">✕</button>
+            <div class="row-actions">
+                <button type="button" class="icon-btn scan-btn" title="Optional: scan barcode">📷</button>
+                <button type="button" class="icon-btn remove-line" title="Remove line">✕</button>
+            </div>
         </div>
     `;
 

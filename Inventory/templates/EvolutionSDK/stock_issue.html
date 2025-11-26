@@ -12,163 +12,429 @@
 
     <style>
         * { box-sizing: border-box; }
-        body { background: var(--primary-bg); color: var(--primary-text); font-size: 0.95rem; margin: 0; padding: 0; min-height: 100vh; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; }
-        .page-content { display: flex; flex-direction: column; flex: 1; }
-        .wrap { width: 100%; max-width: 1100px; margin: 0 auto; padding: 1rem; }
-        .wrap.with-fixed-taskbar { padding-top: 1rem; margin-top: 60px; }
-        .card { background: var(--container-bg); border-radius: 8px; box-shadow: 0 1px 6px rgba(44,62,80,0.08); padding: 1rem; margin-bottom: 1rem; }
-        header h1 { margin: 0; font-size: 1.4rem; color: var(--primary-text); }
+        body {
+            background: var(--primary-bg);
+            color: var(--primary-text);
+            font-size: 0.95rem;
+            margin: 0; padding: 0;
+            min-height: 100vh;
+            font-family: Segoe UI, Tahoma, Geneva, Verdana, sans-serif;
+        }
 
-        .form-row { display: flex; gap: 12px; margin-bottom: 12px; align-items: center; }
-        .form-row label { width: 180px; font-weight: 600; color: var(--secondary-text); }
-        .form-row select, .form-row input { flex: 1; padding: 10px 12px; border: 1px solid var(--input-border); border-radius: 8px; background: var(--form-bg); }
+        .wrap {
+            max-width: 1100px;
+            margin: 0 auto;
+            padding: 1rem;
+        }
 
-        .line-list { display: flex; flex-direction: column; gap: 10px; position: relative; z-index: 1; }
-
-        .btn-primary { background: var(--button-bg); color: var(--button-text); border: none; padding: 12px 16px; border-radius: 8px; font-size: 1rem; cursor: pointer; }
-        .btn-primary:disabled { opacity: 0.6; cursor: not-allowed; }
-
-        .summary-box { background: #eef2f7; padding: 12px; border-radius: 6px; }
-        .hidden { display: none; }
-
-        /* STEP 2 – Add Products */
-        .product-row {
-            display: grid;
-            grid-template-columns: minmax(0, 1fr) 80px auto auto;
-            align-items: center;
-            gap: 8px;
-            padding: 10px;
-            border: 1px solid var(--input-border);
+        .card {
+            background: var(--container-bg);
             border-radius: 8px;
-            background: var(--form-bg);
-            position: relative;
-            overflow: visible;
+            padding: 1rem;
+            margin-bottom: 1rem;
+            box-shadow: 0 1px 6px rgba(44,62,80,0.08);
         }
 
-        .product-select + .select2-container {
-            width: 100% !important;
-            position: relative;
+        .dashboard-panel {
+            padding: 1.5rem;
         }
 
-        /* Fix Select2 dropdown for mobile */
-        .select2-container--open .select2-dropdown {
-            position: fixed !important;
-            left: 10px !important;
-            right: 10px !important;
-            width: auto !important;
-            max-width: calc(100vw - 20px);
-            z-index: 9999;
+        .panel-header {
+            display: flex;
+            flex-direction: column;
+            gap: 0.5rem;
+            margin-bottom: 1.5rem;
         }
 
-        /* Improve Select2 results for mobile */
-        .select2-results__option {
-            padding: 8px 6px;
+        .panel-header h1 {
+            margin: 0;
+            font-size: 1.6rem;
+        }
+
+        .panel-header p {
+            margin: 0;
+            color: var(--muted-text, #7b8a99);
+            font-size: 0.95rem;
+        }
+
+        .panel-header-actions {
+            margin-top: 1rem;
+        }
+
+        @media(min-width:768px){
+            .panel-header {
+                flex-direction: row;
+                justify-content: space-between;
+                align-items: center;
+            }
+
+            .panel-header-actions {
+                margin-top: 0;
+            }
+        }
+
+        .btn-primary {
+            background: var(--button-bg); color: var(--button-text);
+            border: none; padding: 12px 16px;
+            border-radius: 8px; cursor: pointer; font-size: 1rem;
+        }
+
+        .btn-ghost {
+            background: transparent;
+            color: var(--button-bg);
+            border: 1px solid var(--button-bg);
+            padding: 8px 12px;
+            border-radius: 999px;
+            cursor: pointer;
             font-size: 0.9rem;
         }
 
-        .qty-wrapper { display: flex; align-items: center; gap: 4px; }
-        .qty-input {
-            width: 70px; padding: 6px 8px; border: 1px solid #ccc; border-radius: 4px; font-size: 0.95rem; text-align: center;
-        }
-        .uom-label {
-            background: #e9ecef; padding: 4px 8px; border-radius: 4px; font-size: 0.8rem; font-weight: bold; color: #495057;
-        }
-        .scan-btn {
-            background: #f0f0f0; color: #333; border: 1px solid #ccc; border-radius: 6px; font-size: 1rem;
-            cursor: pointer; padding: 6px 10px; transition: all 0.2s;
-        }
-        .scan-btn:hover { background: #e2e2e2; }
-        .remove-line {
-            background: #dc3545; color: #fff; border: none; border-radius: 6px; font-size: 0.9rem;
-            cursor: pointer; padding: 6px 10px;
-        }
-        .remove-line:hover { background: #c82333; }
+        .hidden { display: none; }
 
-        @media (max-width: 480px) {
-            .product-row { 
-                grid-template-columns: minmax(0, 1fr) 70px auto auto;
-                gap: 6px;
-                padding: 8px;
+        .panel-section + .panel-section {
+            margin-top: 1.5rem;
+            padding-top: 1.5rem;
+            border-top: 1px solid var(--input-border);
+        }
+
+        .section-title-row {
+            display: flex;
+            flex-wrap: wrap;
+            justify-content: space-between;
+            gap: 0.5rem;
+            align-items: baseline;
+            margin-bottom: 0.75rem;
+        }
+
+        .section-title-row h2 {
+            margin: 0;
+            font-size: 1.2rem;
+        }
+
+        .section-hint {
+            font-size: 0.85rem;
+            color: var(--muted-text, #7b8a99);
+        }
+
+        /***********************************
+         HORIZONTAL CARDS FOR MOBILE
+        ***********************************/
+        .horizontal-scroll {
+            display: grid;
+            grid-auto-flow: column;
+            grid-auto-columns: minmax(280px, 1fr);
+            gap: 16px;
+            padding-bottom: 6px;
+            overflow-x: auto;
+            scroll-snap-type: x proximity;
+        }
+
+        .horizontal-scroll::-webkit-scrollbar {
+            height: 6px;
+        }
+
+        .horizontal-scroll::-webkit-scrollbar-thumb {
+            background: rgba(123,138,153,0.5);
+            border-radius: 999px;
+        }
+
+        .issue-card {
+            min-width: 260px;
+            padding: 12px;
+            border-radius: 8px;
+            background: var(--form-bg);
+            border: 1px solid var(--input-border);
+            flex-shrink: 0;
+            scroll-snap-align: start;
+            display: flex;
+            flex-direction: column;
+            gap: 4px;
+        }
+
+        .issue-card h4 {
+            margin-top: 0; font-size: 1.1rem;
+        }
+
+        .issue-card button {
+            margin-top: 8px;
+            width: 100%;
+        }
+
+        /***********************************
+         WIZARD FIELDS
+        ***********************************/
+        .form-row {
+            display: flex;
+            gap: 12px;
+            align-items: center;
+            margin-bottom: 12px;
+        }
+
+        .form-row label { width: 140px; font-weight: 600; }
+        .form-row select, .form-row input {
+            flex: 1;
+            padding: 10px 12px;
+            border-radius: 8px;
+            border: 1px solid var(--input-border);
+            background: var(--form-bg);
+        }
+
+        .product-row {
+            display: grid;
+            grid-template-columns: minmax(0, 1.6fr) minmax(0, 0.8fr) auto;
+            gap: 12px;
+            align-items: stretch;
+            background: var(--form-bg);
+            border: 1px solid var(--input-border);
+            padding: 12px;
+            border-radius: 12px;
+            margin-bottom: 12px;
+        }
+
+        .product-main {
+            display: flex;
+            flex-direction: column;
+            gap: 6px;
+        }
+
+        .field-label {
+            font-size: 0.8rem;
+            text-transform: uppercase;
+            color: var(--muted-text, #7b8a99);
+            letter-spacing: 0.05em;
+        }
+
+        .product-main select,
+        .product-main .select2-container {
+            width: 100% !important;
+        }
+
+        .qty-wrapper {
+            display: flex;
+            flex-direction: column;
+            gap: 6px;
+        }
+
+        .qty-wrapper label {
+            font-size: 0.8rem;
+            text-transform: uppercase;
+            color: var(--muted-text, #7b8a99);
+            letter-spacing: 0.05em;
+        }
+
+        .qty-input {
+            width: 100%;
+            padding: 10px;
+            border-radius: 8px;
+            border: 1px solid var(--input-border);
+            background: #fff;
+        }
+
+        .uom-label {
+            font-size: 0.85rem;
+            color: var(--muted-text, #7b8a99);
+        }
+
+        .row-actions {
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+            align-items: stretch;
+        }
+
+        .icon-btn {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            border: 1px solid var(--input-border);
+            background: #fff;
+            border-radius: 10px;
+            padding: 10px;
+            font-size: 1.1rem;
+            cursor: pointer;
+            transition: background 0.2s;
+        }
+
+        .icon-btn:hover {
+            background: rgba(0,0,0,0.05);
+        }
+
+        @media(max-width:600px){
+            .product-row {
+                grid-template-columns: 1fr;
             }
-            .qty-input { 
-                width: 55px;
-                padding: 5px 6px;
-            }
-            .scan-btn, .remove-line {
-                padding: 5px 8px;
-                font-size: 0.85rem;
-            }
-            
-            /* Make Select2 more compact on mobile */
-            .select2-container--default .select2-selection--single {
-                height: 38px;
-                padding: 6px 8px;
-            }
-            
-            .select2-container--default .select2-selection--single .select2-selection__rendered {
-                font-size: 0.9rem;
-                line-height: 26px;
+
+            .row-actions {
+                flex-direction: row;
             }
         }
+
+        @media(max-width:767px){
+            .horizontal-scroll {
+                grid-auto-columns: 85%;
+            }
+        }
+
+        .wizard-card {
+            padding: 1.5rem;
+        }
+
+        .wizard-top-bar {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 1rem;
+            flex-wrap: wrap;
+            gap: 0.75rem;
+        }
+
+        .wizard-top-bar h2 {
+            margin: 0;
+            font-size: 1.4rem;
+        }
+
+        .wizard-actions {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 0.5rem;
+        }
+
     </style>
 </head>
+
 <body>
 {% include 'inventory-taskbar.html' %}
+
 <barcode-scanner-overlay id="barcodeScanner"></barcode-scanner-overlay>
 
-<div class="page-content with-fixed-taskbar">
-    <div class="wrap">
-        <div class="card">
-            <header><h1>Stock Issue Wizard</h1></header>
+<div class="wrap with-fixed-taskbar">
 
-            <form id="stockIssueForm">
+    <div id="overview-panel" class="card dashboard-panel">
+        <div class="panel-header">
+            <div>
+                <h1>Stock Issues</h1>
+                <p>Review outstanding issues, process returns, or start a new one.</p>
+            </div>
+            <div class="panel-header-actions">
+                <button id="new-issue-btn" class="btn-primary">
+                    + Start New Stock Issue
+                </button>
+            </div>
+        </div>
 
-                <!-- STEP 1 -->
-                <section id="step-1">
-                    <h3 style="margin-top:0;">Step 1 – Issue Details</h3>
-                    <div class="form-row">
-                        <label for="warehouse-select">Warehouse</label>
-                        <select id="warehouse-select"><option>Loading...</option></select>
-                    </div>
-                    <div class="form-row">
-                        <label for="project-select">Project</label>
-                        <select id="project-select"><option value="">Select project...</option></select>
-                    </div>
-                    <div class="form-row">
-                        <label for="issued-by">Issued By</label>
-                        <input type="text" id="issued-by" placeholder="Name">
-                    </div>
-                    <button type="button" id="step1-next" class="btn-primary">Next →</button>
-                </section>
-
-                <!-- STEP 2 -->
-                <section id="step-2" class="hidden" style="margin-top:12px;">
-                    <h3>Step 2 – Add Products</h3>
-                    <div id="ibt-lines" class="line-list"></div>
-                    <div style="margin-top:10px; display:flex; gap:8px;">
-                        <button type="button" id="back-to-step-1" class="btn-primary">← Back</button>
-                        <button type="button" id="add-line" class="btn-primary">+ Add Line</button>
-                        <button type="button" id="step2-next" class="btn-primary">Next →</button>
-                    </div>
-                </section>
-
-                <!-- STEP 3 -->
-                <section id="step-3" class="hidden" style="margin-top:12px;">
-                    <h3>Step 3 – Summary</h3>
-                    <div class="summary-box" id="summary-box"></div>
-                    <div style="margin-top:10px;">
-                        <button type="button" id="back-to-step-2" class="btn-secondary">← Back</button>
-                        <button type="button" id="submit-issue" class="btn-primary">Submit Stock Issue</button>
-                    </div>
-                </section>
-
-            </form>
+        <div class="panel-section">
+            <div class="section-title-row">
+                <h2>Incomplete Stock Issues</h2>
+                <span class="section-hint">Swipe horizontally on mobile to view all</span>
+            </div>
+            <div id="incomplete-issues-list" class="horizontal-scroll">
+                Loading…
+            </div>
         </div>
     </div>
+
+
+    <!-- ---------------------------------------------
+         WIZARD (INITIALLY HIDDEN)
+    ------------------------------------------------ -->
+    <form id="stockIssueForm" class="card wizard-card hidden">
+        <div class="wizard-top-bar">
+            <h2>New Stock Issue</h2>
+            <div class="wizard-actions">
+                <button type="button" id="exit-wizard" class="btn-ghost">← Back to Overview</button>
+            </div>
+        </div>
+
+        <!-- STEP 1 -->
+        <section id="step-1" class="card hidden">
+            <h3>Step 1 – Issue Details</h3>
+
+            <div class="form-row">
+                <label>Warehouse</label>
+                <select id="warehouse-select"><option>Loading…</option></select>
+            </div>
+
+            <div class="form-row">
+                <label>Project</label>
+                <select id="project-select"><option>Select…</option></select>
+            </div>
+
+            <div class="form-row">
+                <label>Issued To</label>
+                <input id="issued-to" type="text">
+            </div>
+
+            <button id="step1-next" type="button" class="btn-primary">
+                Next →
+            </button>
+        </section>
+
+
+        <!-- STEP 2 -->
+        <section id="step-2" class="card hidden">
+            <h3>Step 2 – Add Products</h3>
+
+            <div id="ibt-lines"></div>
+
+            <div style="margin-top:10px; display:flex; gap:8px;">
+                <button type="button" id="back-to-step-1" class="btn-primary">← Back</button>
+                <button type="button" id="add-line" class="btn-primary">+ Add Line</button>
+                <button type="button" id="step2-next" class="btn-primary">Next →</button>
+            </div>
+        </section>
+
+
+        <!-- STEP 3 -->
+        <section id="step-3" class="card hidden">
+            <h3>Step 3 – Summary</h3>
+
+            <div id="summary-box" class="summary-box"></div>
+
+            <div style="margin-top:10px;">
+                <button type="button" id="back-to-step-2" class="btn-primary">← Back</button>
+                <button type="button" id="create-issue" class="btn-primary">Create Issue</button>
+            </div>
+        </section>
+
+    </form>
+
 </div>
 
-<link href="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/css/select2.min.css" rel="stylesheet" />
+
+<!-- Select2 -->
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/css/select2.min.css"/>
 <script src="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/js/select2.min.js"></script>
-<script src="{{ url_for('inventory.static', filename='EvolutionSDK/stock_issue.js') }}?{{ filemtime('inventory', 'EvolutionSDK/stock_issue.js') }}"></script>
+
+<!-- Your JS -->
+<script src="{{ url_for('inventory.static', filename='stock_issue/stock_issue_wizard.js') }}?{{ filemtime('inventory','stock_issue/stock_issue_wizard.js') }}"></script>
+<script src="{{ url_for('inventory.static', filename='stock_issue/stock_issue_list.js') }}?{{ filemtime('inventory','stock_issue/stock_issue_list.js') }}"></script>
+
+<script>
+const overviewPanel = document.getElementById("overview-panel");
+const wizardForm = document.getElementById("stockIssueForm");
+const wizardSteps = ["step-1", "step-2", "step-3"].map(id => document.getElementById(id));
+
+function showWizard() {
+    overviewPanel.classList.add("hidden");
+    wizardForm.classList.remove("hidden");
+    wizardSteps.forEach((step, idx) => {
+        if (idx === 0) {
+            step.classList.remove("hidden");
+        } else {
+            step.classList.add("hidden");
+        }
+    });
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+}
+
+function hideWizard() {
+    wizardForm.classList.add("hidden");
+    overviewPanel.classList.remove("hidden");
+}
+
+document.getElementById("new-issue-btn").addEventListener("click", showWizard);
+document.getElementById("exit-wizard").addEventListener("click", hideWizard);
+</script>
+
 </body>
 </html>

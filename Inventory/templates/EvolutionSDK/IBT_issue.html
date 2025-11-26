@@ -133,48 +133,117 @@ button:active { transform: scale(0.98); }
 
 /* ---------------- IBT Lines ---------------- */
 .ibt-line {
-  background: #f8f9fa;
-  padding: 15px;
-  margin-bottom: 12px;
+  background: var(--form-bg);
+  padding: 16px;
+  margin-bottom: 16px;
   border-radius: 8px;
+  border: 1px solid var(--input-border);
   border-left: 4px solid #3498db;
+  box-shadow: 0 1px 3px rgba(0,0,0,0.05);
 }
 
-.ibt-line-row {
+.ibt-line-header {
   display: flex;
+  justify-content: space-between;
   align-items: center;
+  margin-bottom: 12px;
+  padding-bottom: 8px;
+  border-bottom: 1px solid var(--input-border);
+}
+
+.line-number {
+  font-weight: 600;
+  color: var(--secondary-text);
+  font-size: 0.85rem;
+  margin: 0;
+}
+
+.ibt-line-fields {
+  display: flex;
+  flex-direction: column;
   gap: 12px;
 }
 
-/* Product select (raw element) */
-.product-select {
+.field-group {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.field-label {
+  font-weight: 600;
+  color: var(--secondary-text);
+  font-size: 0.85rem;
+  margin: 0;
+}
+
+.product-field-group {
   flex: 1;
+}
+
+/* Product select - full width */
+.product-select {
+  width: 100% !important;
+}
+
+/* Select2 wrapper - ensure visibility */
+.ibt-line .select2-container {
+  width: 100% !important;
   min-width: 0 !important;
 }
 
-/* Select2 wrapper - CRITICAL FIX */
-.ibt-line-row .select2-container {
-  flex: 1 !important;
-  min-width: 0 !important;
-}
-
-/* Qty input */
-.qty-input {
-  width: 80px;
-  padding: 6px;
+.ibt-line .select2-container--default .select2-selection--single {
+  height: 42px;
+  border: 1px solid var(--input-border);
   border-radius: 6px;
-  border: 1px solid #ccc;
-  text-align: center;
-  flex-shrink: 0;
+  background: white;
 }
 
-/* Stocking unit */
+.ibt-line .select2-container--default .select2-selection--single .select2-selection__rendered {
+  line-height: 40px;
+  padding-left: 12px;
+  color: var(--primary-text);
+}
+
+.ibt-line .select2-container--default .select2-selection--single .select2-selection__arrow {
+  height: 40px;
+  right: 8px;
+}
+
+/* Quantity group - side by side on desktop */
+.qty-group {
+  display: grid;
+  grid-template-columns: 1fr auto;
+  gap: 12px;
+  align-items: end;
+}
+
+.qty-input {
+  width: 100%;
+  padding: 10px 12px;
+  border: 1px solid var(--input-border);
+  border-radius: 6px;
+  background: white;
+  font-size: 1rem;
+  text-align: center;
+}
+
+.uom-display {
+  min-width: 80px;
+}
+
 .stock-unit {
-  font-weight: bold;
-  color: #444;
-  min-width: 55px;
-  flex-shrink: 0;
-  white-space: nowrap;
+  display: block;
+  padding: 10px 12px;
+  background: #f8f9fa;
+  border: 1px solid var(--input-border);
+  border-radius: 6px;
+  text-align: center;
+  font-weight: 600;
+  color: var(--primary-text);
+  font-size: 0.9rem;
+  min-height: 42px;
+  line-height: 22px;
 }
 
 #ibt-lines-container { margin-top: 20px; }
@@ -401,26 +470,24 @@ button:active { transform: scale(0.98); }
 
 /* Remove button styling */
 .ibt-remove-btn {
-    margin-top: 10px;       /* space from the row above */
-    align-self: flex-start;  /* aligns vertically with the line container */
-    padding: 4px 8px;
+    padding: 6px 12px;
     font-size: 0.85rem;
     line-height: 1;
     border-radius: 6px;
     border: none;
     cursor: pointer;
     transition: background 0.2s, transform 0.1s;
+    background: #e74c3c;
+    color: white;
 }
 
 .ibt-remove-btn:hover {
     background: #c0392b;
-    color: white;
+    transform: scale(1.05);
 }
 
-.ibt-line {
-    display: flex;
-    flex-direction: column; /* row + button below */
-    gap: 6px;
+.ibt-remove-btn:active {
+    transform: scale(0.95);
 }
 
 /* ---------------- Button Groups ---------------- */
@@ -469,14 +536,13 @@ button:active { transform: scale(0.98); }
     grid-template-columns: 1fr; 
   }
 
-  .ibt-line-row {
-    flex-direction: column;
-    align-items: flex-start;
+  .qty-group {
+    grid-template-columns: 1fr;
+    gap: 8px;
   }
-
-  .qty-input,
-  .stock-unit {
-    margin-left: 0;
+  
+  .uom-display {
+    min-width: 100%;
   }
   
   .compact-product-item {
@@ -490,14 +556,13 @@ button:active { transform: scale(0.98); }
     align-self: flex-end;
   }
   
-  .ibt-line-row {
-    flex-wrap: wrap;
+  .ibt-line {
+    padding: 12px;
   }
   
-  .remove-line-btn {
-    position: absolute;
-    top: 8px;
-    right: 8px;
+  .ibt-line-header {
+    margin-bottom: 10px;
+    padding-bottom: 6px;
   }
 }
 

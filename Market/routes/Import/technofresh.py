@@ -1,9 +1,10 @@
-from models import ConnectedService
+
 from Market.db import create_db_connection
 import pandas as pd
 import os
 from playwright.sync_api import sync_playwright
 import tempfile
+from db_manager import get_service_details
 
 def Technofresh(current_user, start_date, end_date):
     def status(message):
@@ -17,13 +18,13 @@ def Technofresh(current_user, start_date, end_date):
             yield from status("ERROR: Current user object is missing user ID.")
             return
 
-        service = ConnectedService.query.filter_by(user_id=current_user.id, service_type="Technofresh").first()
+        service = get_service_details(current_user.id, "Technofresh")
         if not service:
-            yield from status(f"ERROR: No Technofresh credentials found for user '{current_user.username}' (ID: {current_user.id}).")
+            yield from status(f"ERROR: No FreshLinq credentials found for user '{current_user.username}'")
             return
 
-        technofresh_username = service.username
-        technofresh_password = service.get_password()
+        technofresh_username = service["username"]
+        technofresh_password = service["password"]
 
         yield from status("Logging into Technofresh CRM...")
         try:

@@ -1,4 +1,4 @@
-/* ====== stock_count.js — FINAL & BULLETPROOF VERSION ====== */
+/* ====== stock_count.js — UPDATED VERSION ====== */
 let selectedWarehouse = null;
 let selectedCategory = null;
 let storemanName = null;
@@ -6,7 +6,7 @@ let products = [];
 let countedProducts = [];
 let discrepancies = [];
 let recountedProducts = [];
-let currentStockCountId = null;
+let countStartTimestamp = null; // Add this to track when counting started
 
 document.addEventListener("DOMContentLoaded", init);
 
@@ -110,18 +110,19 @@ function updateStep1NextButton() {
 /* ---------------- Start Counting ---------------- */
 async function onStartCounting() {
     try {
-        const res = await fetch("/inventory/create_inventory_count", {
+        const res = await fetch("/inventory/fetch_inventory_count_products", {
             method: "POST",
             headers: { "Content-Type": "application/json" },
             body: JSON.stringify({
                 whse_code: selectedWarehouse,
-                category_name: selectedCategory,
-                count_storeman: storemanName
+                category_name: selectedCategory
             })
         });
         const data = await res.json();
         products = data.products || [];
-        currentStockCountId = data.stock_count_id;
+        
+        // Capture the timestamp from the backend response
+        countStartTimestamp = data.opening_timestamp || new Date().toISOString();
 
         if (!products.length) {
             Swal.fire("No Products", "No items in this category", "info");
@@ -171,7 +172,8 @@ function onCompleteCount() {
     }
     findDiscrepancies();
     if (discrepancies.length === 0) {
-        submitFinalCount();
+        // Pass countedProducts when there are no discrepancies
+        submitFinalCount(countedProducts);
     } else {
         displayRecounts();
         showStep(3);
@@ -247,7 +249,6 @@ function displayRecounts() {
         }
     });
 }
-
 /* ---------------- Finalize & Submit ---------------- */
 function onFinalizeClicked() {
     if (discrepancies.length > 0) {
@@ -259,25 +260,37 @@ function onFinalizeClicked() {
         }
     }
 
-    // Apply recount values
-    recountedProducts = countedProducts.map(p => ({ ...p }));
-    discrepancies.forEach((d, i) => {
-        const input = document.getElementById(`recount-${i}`);
-        if (input && input.value !== "") {
-            const idx = recountedProducts.findIndex(x => x.product_code === d.product_code);
-            if (idx !== -1) recountedProducts[idx].counted_qty = Number(input.value);
+    // Create final products array with all products
+    const finalProducts = countedProducts.map(product => {
+        // Check if this product was recounted
+        const discrepancy = discrepancies.find(d => d.product_code === product.product_code);
+        if (discrepancy) {
+            // Find the input by index (since we used id="recount-${i}")
+            const index = discrepancies.findIndex(d => d.product_code === product.product_code);
+            const input = document.getElementById(`recount-${index}`);
+            if (input && input.value !== "") {
+                return { ...product, counted_qty: Number(input.value) };
+            }
         }
+        return product;
     });
 
-    submitFinalCount();
+    submitFinalCount(finalProducts);
 }
+async function submitFinalCount(finalProducts) {
+    // Add safety check to ensure finalProducts is defined
+    if (!finalProducts || !Array.isArray(finalProducts)) {
+        console.error('finalProducts is undefined or not an array:', finalProducts);
+        Swal.fire("Error", "Unable to submit count data", "error");
+        return;
+    }
 
-async function submitFinalCount() {
     const payload = {
-        stock_count_id: currentStockCountId,
         warehouse: selectedWarehouse,
         category: selectedCategory,
-        products: recountedProducts.map(p => ({
+        counted_by: storemanName,
+        count_start_timestamp: countStartTimestamp,
+        products: finalProducts.map(p => ({
             product_code: p.product_code,
             system_qty: Number(p.qty_in_whse || 0),
             counted_qty: Number(p.counted_qty)

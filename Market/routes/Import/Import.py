@@ -2,24 +2,21 @@ from flask import render_template, request, jsonify, Response, stream_with_conte
 from Market.db import create_db_connection
 import logging
 from flask_login import current_user
-from models import ConnectedService
 from Market.routes.Import.freshlinq import Freshlinq
-from auth import role_required
 from Market.routes.Import.technofresh import Technofresh
 from flask_login import current_user
-
 from Market.routes import market_bp
+from db_manager import get_services_for_user
 
 @market_bp.route('/import/main', methods=['GET'])
-@role_required()
 def import_page():
-    connected_services = ConnectedService.query.filter_by(user_id=current_user.id).all()
-    return render_template("Import/import.html", services=[service.service_type for service in connected_services])
+    services = get_services_for_user(current_user.id)
+    print(services)
+    return render_template("Import/import.html", services=services['service_type'])
 
 logging.basicConfig(level=logging.INFO)
 
 @market_bp.route('/import/get_imported_results', methods=['GET'])
-@role_required()
 def get_import_results():
     conn = create_db_connection()
     cursor = conn.cursor()
@@ -42,7 +39,6 @@ def get_import_results():
 
 
 @market_bp.route('/import/get_dockets', methods=['GET'])
-@role_required()
 def get_dockets():
     consignment_id = request.args.get('consignment_id')
     print(f"Received consignment_id: {consignment_id}")
@@ -68,7 +64,6 @@ def get_dockets():
 
 
 @market_bp.route("/update_market_del_note_no", methods=["POST"])
-@role_required()
 def update_market_del_note_no():
     data = request.json  # Extract JSON data from the frontend
     new_del_note_no = data.get("newDelNoteNo")  # Ensure key matches frontend
@@ -125,7 +120,6 @@ def update_market_del_note_no():
 #         }), 500
 
 @market_bp.route('/import/auto_import', methods=['GET'])
-@role_required()
 def auto_import():
     def generate_status():
         def yield_status(message):
@@ -220,7 +214,6 @@ def get_consignment_details(consignment_id):
         conn.close()
 
 @market_bp.route("/get_consignment_details", methods=["GET"])
-@role_required()
 def fetch_consignment_details():
     consignment_id = request.args.get("consignment_id")
 
@@ -230,7 +223,6 @@ def fetch_consignment_details():
     return get_consignment_details(consignment_id)
 
 @market_bp.route("/match_consignment", methods=["POST"])
-@role_required()
 def match_consignment():
     data = request.get_json()
     
@@ -272,7 +264,6 @@ def match_consignment():
         conn.close()
 
 @market_bp.route("/discard_consignment", methods=["POST"])
-@role_required()
 def discard_consignment(consignment_id=None):
     # Try to get from JSON body first
     data = request.get_json()

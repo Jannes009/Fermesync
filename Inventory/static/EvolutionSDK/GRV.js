@@ -1,6 +1,7 @@
 
 // Load Suppliers
 document.addEventListener("DOMContentLoaded", populateSupplierDropdown);
+let currentReceiverName = '';
 
 function populateSupplierDropdown() {
     // Inside your populateSupplierDropdown(), after filling options:
@@ -215,10 +216,23 @@ async function loadPOLines(poNumber) {
         document.querySelector('section[data-step="1"]').classList.remove("hidden");
     };
 
-    // NEXT STEP – Summary
+    // Update the "NEXT STEP – Summary" section in loadPOLines function
     document.getElementById("next-to-summary").onclick = () => {
+        // Get receiver name
+        currentReceiverName = document.getElementById("receiver").value.trim();
+        
+        // Validate receiver name
+        if (!currentReceiverName) {
+            Swal.fire({
+                icon: 'error',
+                title: 'Validation Error',
+                text: 'Please enter a receiver name',
+                confirmButtonColor: 'var(--button-bg)'
+            });
+            return;
+        }
 
-        // Validate qtys
+        // Validate qtys (existing validation code)
         let hasErrors = false;
         let errorMessage = "";
 
@@ -247,6 +261,13 @@ async function loadPOLines(poNumber) {
         const lines = document.querySelectorAll("#po-lines .po-line");
         const summaryContainer = document.getElementById("po-summary");
         summaryContainer.innerHTML = "";
+
+        // Add receiver name to summary
+        summaryContainer.innerHTML += `
+            <div style="padding:10px; background:var(--form-bg); border-radius:6px; margin-bottom:15px;">
+                <strong>Receiver:</strong> ${currentReceiverName}
+            </div>
+        `;
 
         const summaryData = [];
         let totalQty = 0;
@@ -327,13 +348,14 @@ async function loadPOLines(poNumber) {
 
         poSummarySection.style.display = "block";
 
-        // Submit GRV
+        // Submit GRV - Updated to include receiver name
         document.getElementById("submit-grv").onclick = () => {
             fetch("/inventory/submit_grv", {
                 method: "POST",
                 headers: { "Content-Type": "application/json" },
                 body: JSON.stringify({
                     poNumber: poNumber,
+                    receiverName: currentReceiverName, // Add receiver name to backend
                     lines: summaryData.map(l => ({
                         ProductId: l.stockId,
                         QtyReceived: l.qtyReceived
@@ -349,6 +371,8 @@ async function loadPOLines(poNumber) {
                             text: 'GRV submitted.',
                             confirmButtonColor: 'var(--button-bg)'
                         }).then(() => {
+                            // Reset form including receiver name
+                            document.getElementById("receiver").value = "";
                             document.getElementById("supplier").value = "";
                             document.getElementById("poTableWrapper").classList.add("hidden");
                             document.getElementById("po-lines-section").style.display = "none";
@@ -356,6 +380,7 @@ async function loadPOLines(poNumber) {
                             document.querySelector(`section[data-step="1"]`).classList.remove("hidden");
                             document.getElementById("po-lines").innerHTML = "";
                             document.getElementById("po-summary").innerHTML = "";
+                            currentReceiverName = ''; // Reset receiver name
                         });
                     } else {
                         Swal.fire({

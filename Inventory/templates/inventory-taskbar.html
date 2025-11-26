@@ -17,9 +17,15 @@
                     <li><a href="/inventory/SDK/IBT_receive" class="dropdown-item">Receive</a></li>
                 </ul>
             </li>
-            <li><a href="/inventory/SDK/GRV" class="taskbar-link">GRV</a></li>
-            <li><a href="/inventory/SDK/stock_count" class="taskbar-link">Stock Count</a></li>
+            {% if "GRV" in current_user.permissions %}
+                <li><a href="/inventory/SDK/GRV" class="taskbar-link">GRV</a></li>
+            {% endif %}
+            {% if "StockCount" in current_user.permissions %}
+                <li><a href="/inventory/SDK/stock_count" class="taskbar-link">Stock Count</a></li>
+            {% endif %}
+            {% if "StockIssue" in current_user.permissions %}
             <li><a href="/inventory/SDK/stock_issue" class="taskbar-link">Stock Issue</a></li>
+            {% endif %}
             <li><a href="/inventory/barcode_scanner" class="taskbar-link">Barcode Scanner</a></li>
         </ul>
     </nav>
@@ -30,6 +36,7 @@
         <div class="dropdown">
             <a href="/dashboard">Fermesync Market</a>
             <a href="{{ url_for('account.view_account') }}">View Account</a>
+            <a href="{{ url_for('admin.manage_users') }}">Manage Users</a>
             <a href="{{ url_for('logout') }}">Logout</a>
         </div>
     </div>
@@ -64,7 +71,7 @@
                     <li><a href="/inventory/SDK/IBT_receive" class="mobile-submenu-link">Receive</a></li>
                 </ul>
             </li>
-
+            {% if "GRV" in current_user.permissions %}
             <li class="mobile-nav-item">
                 <a href="/inventory/SDK/GRV" class="mobile-nav-link">
                     <div class="mobile-nav-content">
@@ -73,7 +80,8 @@
                     </div>
                 </a>
             </li>
-
+            {% endif %}
+            {% if "StockCount" in current_user.permissions %}
             <li class="mobile-nav-item">
                 <a href="/inventory/SDK/stock_count" class="mobile-nav-link">
                     <div class="mobile-nav-content">
@@ -82,7 +90,8 @@
                     </div>
                 </a>
             </li>
-
+            {% endif %}
+            {% if "StockIssue" in current_user.permissions %}
             <li class="mobile-nav-item">
                 <a href="/inventory/SDK/stock_issue" class="mobile-nav-link">
                     <div class="mobile-nav-content">
@@ -91,6 +100,7 @@
                     </div>
                 </a>
             </li>
+            {% endif %}
             <li class="mobile-nav-item">
                 <a href="/inventory/barcode_scanner" class="mobile-nav-link">
                     <div class="mobile-nav-content">

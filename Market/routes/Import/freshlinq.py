@@ -5,8 +5,8 @@ import subprocess
 import pandas as pd
 from Market.db import create_db_connection
 from playwright.sync_api import sync_playwright
-from models import ConnectedService
 import re
+from db_manager import get_service_details
 
 def Freshlinq(current_user, start_date):
     def status(message):
@@ -16,13 +16,13 @@ def Freshlinq(current_user, start_date):
         yield from status("ERROR: Current user object is missing user ID.")
         return
 
-    service = ConnectedService.query.filter_by(user_id=current_user.id, service_type="FreshLinq").first()
+    service = get_service_details(current_user.id, "FreshLinq")
     if not service:
-        yield from status(f"ERROR: No Freshlinq credentials found for user '{current_user.username}' (ID: {current_user.id}).")
+        yield from status(f"ERROR: No FreshLinq credentials found for user '{current_user.username}'")
         return
 
-    username = service.username
-    password = service.get_password()
+    username = service["username"]
+    password = service["password"]
 
     yield from status("Attempting to connect to FreshLinq...")
     file_path = yield from download_freshlinq_report(username, password, start_date, status)
