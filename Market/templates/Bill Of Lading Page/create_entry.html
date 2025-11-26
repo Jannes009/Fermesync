@@ -4,8 +4,9 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    {% include '../../main_templates/__pwa_head.html' %}
     <title>{% block title %}Bill of Lading{% endblock %}</title>
-    <link rel="stylesheet" href="{{ url_for('static', filename='Bill Of Lading/styles.css') }}">
+    <link rel="stylesheet" href="{{ url_for('market.static', filename='Bill Of Lading/styles.css') }}">
 
 
 </head>
@@ -49,9 +50,9 @@
     <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/js/select2.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
-    <script src="{{ url_for('static', filename='Bill Of Lading/row.js') }}"></script>
-    <script src="{{ url_for('static', filename='Bill Of Lading/save-form.js') }}"></script>
-    <script src="{{ url_for('static', filename='Bill Of Lading/dropdown.js') }}"></script>
+    <script src="{{ url_for('market.static', filename='Bill Of Lading/row.js') }}?{{ filemtime('market', 'Bill Of Lading/row.js') }}"></script>
+    <script src="{{ url_for('market.static', filename='Bill Of Lading/save-form.js') }}?{{ filemtime('market', 'Bill Of Lading/save-form.js') }}"></script>
+    <script src="{{ url_for('market.static', filename='Bill Of Lading/dropdown.js') }}?{{ filemtime('market', 'Bill Of Lading/dropdown.js') }}"></script>
     <link href="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/css/select2.min.css" rel="stylesheet" />>
 
     <!-- Inject error message dynamically -->
@@ -64,7 +65,7 @@
     </script> 
     {% endif %}
     <script>
-        const recycleBinUrl = "{{ url_for('static', filename='recycle-bin.png') }}";
+        const recycleBinUrl = "/market/static/Image/recycle-bin.png";
         const productOptions = {{ product_options | tojson | safe }};
         const unitOptions = {{ production_unit_codes | tojson | safe }};
     </script>   

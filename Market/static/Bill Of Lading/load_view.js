@@ -22,7 +22,7 @@ function load_delivery_lines_table(delnoteno) {
                 const invoicedQty = line.totalqtyinvoiced || 0;
                 const ProdUnitButton = invoicedQty === 0
                     ? `<button class="icon-btn" onclick="changeProductionUnit('${line.dellineindex}', '${line.produnitname}', '${delnoteno}', '${line.totalqtyinvoiced}'); event.stopPropagation();">
-                            <img src="/static/Image/change.png" alt="Change Production Unit">
+                            <img src="/market/static/Image/change.png" alt="Change Production Unit">
                        </button>`
                     : '';
                 
@@ -34,7 +34,7 @@ function load_delivery_lines_table(delnoteno) {
                       <div style="display: flex; align-items: center; gap: 8px;">
                         <span>${line.productdescription}</span>
                             <button class="icon-btn" onclick="changeProduct('${line.dellineindex}', '${line.productdescription}', '${delnoteno}', '${line.totalqtyinvoiced}'); event.stopPropagation();">
-                                <img src="/static/Image/change.png" alt="Change Product">
+                                <img src="/market/static/Image/change.png" alt="Change Product">
                             </button>
                       </div>
                     </td>
@@ -114,10 +114,10 @@ function load_sales_lines_table(delnoteno) {
                         <td class="sales-row-actions">
                         ${!sale.invoice_no ? `
                         <button class="icon-btn" onclick="editRow('${delnoteno}', ${idx}, this)">
-                            <img src="/static/Image/edit.png" alt="Edit">
+                            <img src="/market/static/Image/edit.png" alt="Edit">
                         </button>
                         <button class="icon-btn" onclick="deleteRow('${delnoteno}', ${idx}, this)">
-                            <img src="/static/Image/recycle-bin.png" alt="Delete">
+                            <img src="/market/static/Image/recycle-bin.png" alt="Delete">
                         </button>
                         ` : ''}
                         </td>

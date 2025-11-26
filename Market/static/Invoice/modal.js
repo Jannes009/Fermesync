@@ -38,7 +38,7 @@ document.addEventListener("DOMContentLoaded", function () {
             </td>
             <td>
                 <button class="remove-line-btn" onclick="removeRow(this)">
-                    <img src="/static/Image/recycle-bin.png" alt="Delete" class="bin-icon">
+                    <img src="/market/static/Image/recycle-bin.png" alt="Delete" class="bin-icon">
                 </button>
             </td>
         `;
@@ -294,7 +294,7 @@ function check_delivery_note(){
     console.log("Checking DelNoteNo", delNoteNo);
 
     if (delNoteNo === '') {
-        noteNumberIcon.src = "/static/image/neutral.png"; // Reset icon
+        noteNumberIcon.src = "/market/static/Image/neutral.png"; // Reset icon
         deliveryNoteStatus = null;
         return;
     }
@@ -307,11 +307,11 @@ function check_delivery_note(){
     .then(response => response.json())
     .then(data => {
         if (data.exists) {
-            noteNumberIcon.src = "/static/image/check.png";
+            noteNumberIcon.src = "/market/static/Image/check.png";
             deliveryNoteStatus = "Delivery Note already exists!";
             fetch_delivery_note_sales()
         } else {
-            noteNumberIcon.src = "/static/image/incorrect.png"; 
+            noteNumberIcon.src = "/market/static/Image/incorrect.png"; 
             deliveryNoteStatus = "Delivery Note is available!";
             document.getElementById("pivot-table-container").innerHTML = '';
         }
@@ -326,7 +326,7 @@ function check_invoice_number(){
     let invoiceNo = inputField.value.trim();
 
     if (invoiceNo === '') {
-        invoiceNumberIcon.src = "/static/image/neutral.png"; // Reset icon
+        invoiceNumberIcon.src = "/market/static/Image/neutral.png"; // Reset icon
         invoiceStatus = null;
         return;
     }
@@ -339,10 +339,10 @@ function check_invoice_number(){
     .then(response => response.json())
     .then(data => {
         if (data.exists) {
-            invoiceNumberIcon.src = "/static/image/incorrect.png"; 
+            invoiceNumberIcon.src = "/market/static/Image/incorrect.png"; 
             invoiceStatus = "Sales Order already exists!";
         } else {
-            invoiceNumberIcon.src = "/static/image/check.png";
+            invoiceNumberIcon.src = "/market/static/Image/check.png";
             invoiceStatus = "This Sales Order Number doesn't exist.";
         }
     })

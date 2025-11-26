@@ -2,10 +2,12 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    {% include '../../main_templates/__pwa_head.html' %}
     <title>Bill Of Material</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css">
-    <link rel="stylesheet" href="{{ url_for('static', filename='color-template.css') }}">
+    <link rel="stylesheet" href="{{ url_for('market.static', filename='color-template.css') }}">
     <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
     <style>
         body { 
@@ -159,6 +161,6 @@
             </table>
         </div>
     </div>
-    <script src="/static/Bill%20Of%20Lading/bill_of_material.js"></script>
+    <script src="{{ url_for('market.static', filename='Bill Of Lading/bill_of_material.js') }}?{{ filemtime('market', 'Bill Of Lading/bill_of_material.js') }}"></script>
 </body>
 </html> 

@@ -1,5 +1,5 @@
 /* 1. General Reset (Optional, to ensure uniformity across browsers) */
-@import url('../color-template.css');
+@import url('/market/static/color-template.css');
 * {
     margin: 0;
     padding: 0;

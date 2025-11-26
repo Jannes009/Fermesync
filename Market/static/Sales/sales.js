@@ -64,7 +64,7 @@ window.showLinkedModal = function(delnoteNo) {
         Swal.fire('No linked lines found for this Delivery Note.');
         return;
       }
-      let linkedImg = '<img src="/static/Image/link.png" alt="Linked" style="height:24px;">';
+      let linkedImg = '<img src="/market/static/Image/link.png" alt="Linked" style="height:24px;">';
 
       // Sort lines: linked first, then only delivery, then only trn
       const sortedLines = [...lines].sort((a, b) => {
@@ -145,7 +145,7 @@ window.showLinkedModal = function(delnoteNo) {
                     <td style="background:var(--table-row-even);text-align:center;">
                       ${canUnlink ? `
                         <button class="icon-btn" onclick="unlinkConsignment('${line.trnconsignmentid}', '${delnoteNo}')" title="Remove Match">
-                          <img src="/static/Image/unlink.png" alt="Remove Match">
+                          <img src="/market/static/Image/unlink.png" alt="Remove Match">
                         </button>
                       ` : ''}
                     </td>
@@ -267,10 +267,10 @@ window.cancelEdit = function(delnoteNo, idx, btn) {
   const actionsCell = row.querySelector('.sales-row-actions');
   actionsCell.innerHTML = `
     <button class="icon-btn" onclick="editRow('${delnoteNo}', ${idx}, this)">
-      <img src="/static/Image/edit.png" alt="Edit">
+      <img src="/market/static/Image/edit.png" alt="Edit">
     </button>
     <button class="icon-btn" onclick="deleteRow('${delnoteNo}', ${idx}, this)">
-      <img src="/static/Image/recycle-bin.png" alt="Delete">
+      <img src="/market/static/Image/recycle-bin.png" alt="Delete">
     </button>
   `;
 
@@ -386,10 +386,10 @@ window.editRow = function(delnoteNo, idx, btn) {
   const actionsCell = row.querySelector('.sales-row-actions');
   actionsCell.innerHTML = `
     <button class="icon-btn icon-btn-edit" onclick="submitRow('${delnoteNo}', ${idx}, this, '${salesId}', '${lineId}')">
-      <img src="/static/Image/check.png" alt="Submit">
+      <img src="/market/static/Image/check.png" alt="Submit">
     </button>
     <button class="icon-btn icon-btn-edit" onclick="cancelEdit('${delnoteNo}', ${idx}, this)">
-      <img src="/static/Image/cancel.png" alt="Cancel">
+      <img src="/market/static/Image/cancel.png" alt="Cancel">
     </button>
   `;
   

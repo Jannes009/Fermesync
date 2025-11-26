@@ -112,7 +112,7 @@ document.addEventListener("DOMContentLoaded", () => {
                 </td>
                 <td>
                     <button type="button" class="delete-row-btn">
-                        <img src="/static/Image/recycle-bin.png" alt="Delete" class="bin-icon">
+                        <img src="/market/static/Image/recycle-bin.png" alt="Delete" class="bin-icon">
                     </button>
                 </td>
             </tr>

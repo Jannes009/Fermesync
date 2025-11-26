@@ -1,8 +1,8 @@
-<!-- taskbar.html -->
+<!-- taskbar.html -->    
 <header class="taskbar">
     <div class="logo-container">
         <a href="/dashboard" class="logo-link">
-            <img src="{{ url_for('static', filename='Image/HorizontalLogoAndText.svg') }}" alt="Fermesync Logo" class="taskbar-logo">
+            <img src="{{ url_for('market.static', filename='Image/HorizontalLogoAndText.svg') }}" alt="Fermesync Logo" class="taskbar-logo">
         </a>
     </div>
     
@@ -123,7 +123,7 @@
     </nav>
 </div>
 <style>
-@import url('../static/color-template.css');
+@import url('/market/static/color-template.css');
 
 /* Reset default margins */
 body, html {

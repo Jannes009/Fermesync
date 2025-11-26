@@ -3,8 +3,9 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    {% include '../../main_templates/__pwa_head.html' %}
     <title>{% block title %}Invoice{% endblock %}</title>
-    <link rel="stylesheet" href="{{ url_for('static', filename='Invoice/invoice.css') }}">
+    <link rel="stylesheet" href="{{ url_for('market.static', filename='Invoice/invoice.css') }}">
     
 </head>
 <body>
@@ -24,9 +25,9 @@
         {% include "Invoice page/adding_sales.html" %}
     </div>
     <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
-    <script src="{{ url_for('static', filename='Invoice/invoice.js') }}"></script>
-    <script src="{{ url_for('static', filename='Invoice/display.js') }}"></script>
-    <script src="{{ url_for('static', filename='Invoice/rules.js') }}"></script>
-    <script src="{{ url_for('static', filename='Invoice/modal.js') }}"></script>
+    <script src="{{ url_for('market.static', filename='Invoice/invoice.js') }}?{{ filemtime('market', 'Invoice/invoice.js') }}"></script>
+    <script src="{{ url_for('market.static', filename='Invoice/display.js') }}?{{ filemtime('market', 'Invoice/display.js') }}"></script>
+    <script src="{{ url_for('market.static', filename='Invoice/rules.js') }}?{{ filemtime('market', 'Invoice/rules.js') }}"></script>
+    <script src="{{ url_for('market.static', filename='Invoice/modal.js') }}?{{ filemtime('market', 'Invoice/modal.js') }}"></script>
 </body>
 </html>

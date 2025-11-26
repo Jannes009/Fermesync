@@ -286,7 +286,7 @@ function check_delivery_note(){
     console.log("Checking DelNoteNo", delNoteNo);
 
     if (delNoteNo === '') {
-        verifyIcon.src = "/static/image/neutral.png"; // Reset icon
+        verifyIcon.src = "/market/static/Image/neutral.png"; // Reset icon
         deliveryNoteStatus = null;
         return;
     }
@@ -299,10 +299,10 @@ function check_delivery_note(){
     .then(response => response.json())
     .then(data => {
         if (data.exists) {
-            verifyIcon.src = "/static/image/incorrect.png"; // Red cross
+            verifyIcon.src = "/market/static/Image/incorrect.png"; // Red cross
             deliveryNoteStatus = "Delivery Note already exists!";
         } else {
-            verifyIcon.src = "/static/image/check.png"; // Green check
+            verifyIcon.src = "/market/static/Image/check.png"; // Green check
             deliveryNoteStatus = "Delivery Note is available!";
         }
     })
@@ -383,7 +383,7 @@ function addCleanLine() {
             </td>
             <td>
                 <button type="button" class="delete-row-btn">
-                    <img src="/static/Image/recycle-bin.png" alt="Delete" class="bin-icon">
+                    <img src="/market/static/Image/recycle-bin.png" alt="Delete" class="bin-icon">
                 </button>
             </td>
         </tr>

@@ -3,7 +3,7 @@
     <!-- Logo -->
     <div class="logo-container">
         <a href="/inventory/dashboard" class="logo-link">
-            <img src="{{ url_for('static', filename='Image/HorizontalLogoAndText.svg') }}" alt="Fermesync Logo" class="taskbar-logo">
+            <img src="{{ url_for('inventory.static', filename='Image/HorizontalLogoAndText.svg') }}" alt="Fermesync Logo" class="taskbar-logo">
         </a>
     </div>
 
@@ -121,7 +121,7 @@
 
 <style>
 /* Base */
-@import url('../static/color-template.css');
+@import url('/inventory/static/color-template.css');
 
 /* Reset default margins */
 body, html {

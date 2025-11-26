@@ -1,11 +1,11 @@
-```html
 <!DOCTYPE html>
 <html lang="en">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    {% include '../../main_templates/__pwa_head.html' %}
     <title>Reports</title>
-    <link rel="stylesheet" href="/static/color-template.css">
+    <link rel="stylesheet" href="{{ url_for('market.static', filename='color-template.css') }}">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css">
     <link href="https://cdnjs.cloudflare.com/ajax/libs/select2/4.0.13/css/select2.min.css" rel="stylesheet" />
     <style>
@@ -933,7 +933,7 @@
                 });
         }
         async function loadReportDropdownOptions(){
-                    const data = await fetch("/static/report_templates.json");
+                    const data = await fetch("/market/static/report_templates.json");
                     if (!data.ok) throw new Error("Failed to load JSON data");
                     reportSelect.innerHTML = "";
 
@@ -958,7 +958,7 @@
                 document.getElementById("startDate").value = new Date(new Date().setDate(new Date().getDate() - 7)).toISOString().split('T')[0];
 
                 loadReportDropdownOptions()
-                const response = await fetch("/static/delivery_note_data.json");
+                const response = await fetch("/market/static/delivery_note_data.json");
                 if (!response.ok) throw new Error("Failed to load JSON data");
                 const responseData = await response.json();
                 window.originalData = responseData.data || responseData;
@@ -1012,9 +1012,8 @@
     <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/select2/4.0.13/js/select2.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
-    <script src="{{ url_for('static', filename='reports/template-report-loader.js') }}"></script>
-    <script src="{{ url_for('static', filename='reports/pdfGenerator.js') }}"></script>
-    <script src="{{ url_for('static', filename='reports/create-template.js') }}"></script>
+    <script src="{{ url_for('market.static', filename='reports/template-report-loader.js') }}?{{ filemtime('market', 'reports/template-report-loader.js') }}"></script>
+    <script src="{{ url_for('market.static', filename='reports/pdfGenerator.js') }}?{{ filemtime('market', 'reports/pdfGenerator.js') }}"></script>
+    <script src="{{ url_for('market.static', filename='reports/create-template.js') }}?{{ filemtime('market', 'reports/create-template.js') }}"></script>
 </body>
 </html>
-```

@@ -1,12 +1,13 @@
-{% include 'taskbar.html' %}
 <!DOCTYPE html>
 <html lang="en">
 <head>
     <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    {% include '../../main_templates/__pwa_head.html' %}
     <title>Purchase Order Summary</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css">
-    <link rel="stylesheet" href="{{ url_for('static', filename='color-template.css') }}">
+    <link rel="stylesheet" href="{{ url_for('market.static', filename='color-template.css') }}">
     <style>
         body { 
             background: var(--primary-bg); 
@@ -80,6 +81,7 @@
     </style>
 </head>
 <body>
+    {% include 'taskbar.html' %}
 <div class="main-content py-8 with-fixed-taskbar">
     <div class="container-wide mx-auto px-4" style="max-width: 1200px;">
         <div class="po-table-card">

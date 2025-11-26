@@ -83,7 +83,7 @@ function displayTable(data) {
             deleteButton += `
             <td>
                 <button class="btn btn-sm discard-consignment-btn" data-consignment="${row.consignmentid}" title="Discard">
-                    <img src="/static/Image/recycle-bin.png" alt="Discard" style="width:18px;height:18px;vertical-align:middle;" />
+                    <img src="/market/static/Image/recycle-bin.png" alt="Discard" style="width:18px;height:18px;vertical-align:middle;" />
                 </button>
             <td>
             `;
@@ -99,7 +99,7 @@ function displayTable(data) {
             deleteButton += `
             <td>
                 <button class="btn btn-sm discard-consignment-btn" data-consignment="${row.consignmentid}" title="Discard">
-                    <img src="/static/Image/recycle-bin.png" alt="Discard" style="width:18px;height:18px;vertical-align:middle;" />
+                    <img src="/market/static/Image/recycle-bin.png" alt="Discard" style="width:18px;height:18px;vertical-align:middle;" />
                 </button>
             </td>
             `;

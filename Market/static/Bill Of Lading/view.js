@@ -918,7 +918,7 @@ function addDeleteButtonsToLines() {
             btn.style.border = 'none';
             btn.style.cursor = 'pointer';
             btn.title = 'Delete Line';
-            btn.innerHTML = '<img src="/static/Image/recycle-bin.png" alt="Delete" style="width:22px;">';
+            btn.innerHTML = '<img src="/market/static/Image/recycle-bin.png" alt="Delete" style="width:22px;">';
             btn.onclick = function(e) {
                 e.stopPropagation();
                 const lineId = row.dataset.lineId;

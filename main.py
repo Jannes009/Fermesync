@@ -1,33 +1,14 @@
-from flask import Flask, render_template, request, redirect, session, url_for, make_response
+from flask import Flask, render_template, request, redirect, session, url_for, make_response, send_from_directory
 from flask_login import login_user, logout_user, current_user, login_required
-from auth import login_manager, UserLogin, authenticate_user
-from cryptography.fernet import Fernet
+from auth import login_manager, authenticate_user
 import os
-from werkzeug.security import check_password_hash
-
-# -----------------------------
-# Load Encryption Key
-# -----------------------------
-KEY_FILE = "encryption.key"
-
-def load_encryption_key():
-    if os.path.exists(KEY_FILE):
-        with open(KEY_FILE, "rb") as f:
-            return f.read()
-    key = Fernet.generate_key()
-    with open(KEY_FILE, "wb") as f:
-        f.write(key)
-    return key
-
-SECRET_KEY = load_encryption_key()
-cipher = Fernet(SECRET_KEY)
 
 
 # -----------------------------
 # Flask App
 # -----------------------------
 def create_app():
-    app = Flask(__name__, template_folder='main_templates', static_folder='Market/static')
+    app = Flask(__name__, template_folder='main_templates', static_folder='main_static')
     app.secret_key = "secret_key"
 
     login_manager.init_app(app)

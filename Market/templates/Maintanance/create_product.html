@@ -3,9 +3,10 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    {% include '../main_templates/__pwa_head.html' %}
     <title>Create Product</title>
-    <link rel="stylesheet" href="{{ url_for('static', filename='Maintanance/product.css') }}">
-    <link rel="stylesheet" href="{{ url_for('static', filename='Maintanance/modal.css') }}">
+    <link rel="stylesheet" href="{{ url_for('market.static', filename='Maintanance/product.css') }}">
+    <link rel="stylesheet" href="{{ url_for('market.static', filename='Maintanance/modal.css') }}">
 </head>
 <body>
     {% include 'taskbar.html' %}
@@ -28,7 +29,7 @@
                             <option value="">Select Product Description</option>
                         </select>
                         <button type="button" class="open-modal" data-target="#product">
-                            <img src="{{ url_for('static', filename='image/add.png') }}" alt="Add" class="add-icon">
+                            <img src="/market/static/Image/add.png" alt="Add" class="add-icon">
                         </button>
                     </div>
                 </div>
@@ -50,7 +51,7 @@
                             <option value="">Select {{ field }} Description</option>
                         </select>
                         <button type="button" class="open-modal" data-target="#{{ field.lower() }}">
-                            <img src="{{ url_for('static', filename='image/add.png') }}" alt="Add" class="add-icon">
+                            <img src="/market/static/Image/add.png" alt="Add" class="add-icon">
                         </button>
                     </div>
                 </div>
@@ -88,6 +89,6 @@
 
     {% include "Maintanance/modal.html" %}
     <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
-    <script src="{{ url_for('static', filename='Maintanance/product.js') }}"></script>
+    <script src="{{ url_for('market.static', filename='Maintanance/product.js') }}?{{ filemtime('market', 'Maintanance/product.js') }}"></script>
 </body>
 </html>

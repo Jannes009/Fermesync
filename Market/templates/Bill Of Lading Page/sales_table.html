@@ -34,10 +34,10 @@
         <td class="sales-row-actions">
           {% if not sale.invoice_no %}
           <button class="icon-btn" onclick="editRow('{{ header.delnoteno }}', {{ loop.index0 }}, this)">
-            <img src="/static/Image/edit.png" alt="Edit">
+            <img src="/market/static/Image/edit.png" alt="Edit">
           </button>
           <button class="icon-btn" onclick="deleteRow('{{ header.delnoteno }}', {{ loop.index0 }}, this)">
-            <img src="/static/Image/recycle-bin.png" alt="Delete">
+            <img src="/market/static/Image/recycle-bin.png" alt="Delete">
           </button>
           {% endif %}
         </td>
