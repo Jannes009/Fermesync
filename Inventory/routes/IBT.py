@@ -41,7 +41,7 @@ def fetch_products_in_both_whses():
         FROM _uvInventoryQty TOQTY
         where TOQTY.WhseCode = ? and TOQTY.StockLink = FROMQTY.StockLink
     )
-    And FROMQTY.QtyOnHand > 0 And FROMQTY.WhseCode = ?
+    And FROMQTY.QtyOnHand > 0 And FROMQTY.WhseCode = ? And FROMQty.ItemActive = 1
     """, (whse_to_code, whse_from_code,))
 
     rows = cursor.fetchall()

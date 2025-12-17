@@ -1,3 +1,6 @@
+import { db, fetchWithOffline, flushOutbox } from '/main_static/offline/db.js';
+
+
 let selectedWarehouse = null;
 let selectedProject = null;
 let issuedTo = null;
@@ -28,25 +31,40 @@ document.addEventListener("DOMContentLoaded", async () => {
 });
 
 async function loadWarehouses() {
-    const res = await fetch("/inventory/SDK/fetch_warehouses");
-    const data = await res.json();
-    const whSelect = document.getElementById("warehouse-select");
-    whSelect.innerHTML = `<option></option>`;
-    (data.warehouses || []).forEach(wh => {
-        // keep id as Stock/WhseLink etc (int or string)
-        whSelect.innerHTML += `<option value="${wh.id}">${wh.name}</option>`;
-    });
+  const warehouses = await fetchWithOffline({
+    url: '/inventory/SDK/fetch_warehouses',
+    store: 'warehouses',
+    transform: d => d.warehouses
+  });
+
+  const select = document.getElementById('warehouse-select');
+  select.innerHTML = '<option></option>';
+
+  warehouses.forEach(w =>
+    select.insertAdjacentHTML(
+      'beforeend',
+      `<option value="${w.id}">${w.name}</option>`
+    )
+  );
 }
 
 async function loadProjects() {
-    // Match backend route (POST)
-    const res = await fetch("/inventory/fetch_projects", { method: "POST", headers: {"Content-Type": "application/json"} });
-    const data = await res.json();
-    const projSelect = document.getElementById("project-select");
-    projSelect.innerHTML = `<option></option>`;
-    (data.prod_projects || []).forEach(p => {
-        projSelect.innerHTML += `<option value="${p.id}">${p.name}</option>`;
-    });
+  const projects = await fetchWithOffline({
+    url: '/inventory/fetch_projects',
+    method: 'POST',
+    store: 'projects',
+    transform: d => d.prod_projects
+  });
+
+  const select = document.getElementById('project-select');
+  select.innerHTML = '<option></option>';
+
+  projects.forEach(p =>
+    select.insertAdjacentHTML(
+      'beforeend',
+      `<option value="${p.id}">${p.name}</option>`
+    )
+  );
 }
 
 async function step1Next() {
@@ -58,14 +76,26 @@ async function step1Next() {
         Swal.fire("Missing Information", "Please complete all fields.", "warning");
         return;
     }
+    try {
+        const products = await fetch('/inventory/fetch_products_in_whse', {
+            method: 'GET',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ whse_link: selectedWarehouse })
+        }).then(r => r.json()).then(d => d.products);
 
-    const res = await fetch("/inventory/fetch_products_in_whse", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ whse_link: selectedWarehouse })
-    });
-    const data = await res.json();
-    productsInWhse = data.products || [];
+        // Store manually with warehouse key
+        await db.products.bulkPut(
+            products.map(p => ({ ...p, whse: selectedWarehouse }))
+        );
+        productsInWhse = products;
+    } catch (e) {
+        // Fallback to cached data
+        productsInWhse = await db.products
+            .where('whse')
+            .equals(selectedWarehouse)
+            .toArray();
+    }
+
 
     if (!productsInWhse || productsInWhse.length === 0) {
         Swal.fire("No Products", "No products available in this warehouse.", "warning");
@@ -172,14 +202,13 @@ function step2Next() {
     document.getElementById("step-2").classList.add("hidden");
     document.getElementById("step-3").classList.remove("hidden");
 }
-
 async function submitIssue() {
+    const isOffline = !navigator.onLine;
     if (lines.length === 0) { 
         Swal.fire("No Lines", "No product lines to submit.", "warning"); 
         return; 
     }
 
-    // Ask about returns — use isConfirmed/isDenied pattern
     const result = await Swal.fire({
         title: 'Finalize Order',
         text: 'Could products be returned at a later time?',
@@ -194,17 +223,15 @@ async function submitIssue() {
         }
     });
 
-    // If user dismissed
     if (result.isDismissed) return;
 
-    // backend expects order_final = true when final (no returns)
     const orderFinal = result.isDenied === true;
 
     const payload = { 
         warehouse: selectedWarehouse, 
         project: selectedProject, 
         issued_to: issuedTo, 
-        order_final: orderFinal,            // correct field name
+        order_final: orderFinal,
         lines: lines.map(l => ({ 
             product_link: l.product_link, 
             product_code: l.product_code,
@@ -215,27 +242,41 @@ async function submitIssue() {
     };
 
     Swal.fire({ 
-        title: "Submitting...", 
-        text: "Please wait.", 
+        title: isOffline ? "Queued Offline" : "Submitting...", 
+        text: isOffline 
+            ? "You are offline. The issue will be submitted automatically when back online." 
+            : "Please wait.", 
         allowOutsideClick: false, 
         didOpen: () => Swal.showLoading() 
     });
-    
-    try {
-        const res = await fetch("/inventory/SDK/create_stock_issue", { 
-            method: "POST", 
-            headers: {"Content-Type": "application/json"}, 
-            body: JSON.stringify(payload) 
-        });
-        const data = await res.json();
 
-        if (res.ok && data.status === "success") {
-            const message = orderFinal
-                ? "Stock issue created! This is a final issue."
-                : "Stock issue created! Returns are allowed.";
-            Swal.fire("Success", message, "success").then(() => location.reload());
+    try {
+        if (isOffline) {
+            // Save to outbox for later processing
+            await db.outbox.add({
+                type: 'stock_issue',
+                payload: payload,
+                created_at: new Date().toISOString()
+            });
+            Swal.fire("Queued", "Stock issue saved for offline submission.", "info")
+                 .then(() => location.reload());
         } else {
-            Swal.fire("Error", data.message || "Unknown error", "error");
+            // Online → normal fetch
+            const res = await fetch("/inventory/SDK/create_stock_issue", { 
+                method: "POST", 
+                headers: {"Content-Type": "application/json"}, 
+                body: JSON.stringify(payload) 
+            });
+            const data = await res.json();
+
+            if (res.ok && data.status === "success") {
+                const message = orderFinal
+                    ? "Stock issue created! This is a final issue."
+                    : "Stock issue created! Returns are allowed.";
+                Swal.fire("Success", message, "success").then(() => location.reload());
+            } else {
+                Swal.fire("Error", data.message || "Unknown error", "error");
+            }
         }
     } catch (err) {
         console.error("Submit error", err);

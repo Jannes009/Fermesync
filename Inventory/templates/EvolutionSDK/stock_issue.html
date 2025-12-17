@@ -396,8 +396,9 @@
 </div>
 
 <!-- Your JS -->
-<script src="{{ url_for('inventory.static', filename='stock_issue/stock_issue_wizard.js') }}?{{ filemtime('inventory','stock_issue/stock_issue_wizard.js') }}"></script>
-<script src="{{ url_for('inventory.static', filename='stock_issue/stock_issue_list.js') }}?{{ filemtime('inventory','stock_issue/stock_issue_list.js') }}"></script>
+<script type="module" src="{{ url_for('inventory.static',
+  filename='stock_issue/stock_issue_wizard.js') }}"></script>
+<script type="module" src="{{ url_for('inventory.static', filename='stock_issue/stock_issue_list.js') }}"></script>
 
 <script>
 const overviewPanel = document.getElementById("overview-panel");

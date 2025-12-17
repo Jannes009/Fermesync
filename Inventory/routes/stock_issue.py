@@ -62,7 +62,7 @@ def fetch_projects():
 # -------------------------
 # Fetch products in warehouse (route name matches frontend)
 # -------------------------
-@inventory_bp.route("/fetch_products_in_whse", methods=["POST"])
+@inventory_bp.route("/fetch_products_in_whse", methods=["GET"])
 @login_required
 def fetch_products_in_whse():
     whse_link = request.json.get("whse_link")

@@ -24,7 +24,6 @@
     <!-- Apple icons -->
     <link rel="apple-touch-icon" href="/main_static/icons/icon-192.png">
     <link rel="apple-touch-icon" sizes="512x512" href="/main_static/icons/icon-512.png">
-
     {% block head %}{% endblock %}
 </head>
 <body>
@@ -39,6 +38,11 @@
             .then(() => console.log("SW registered"))
             .catch(err => console.error("SW failed", err));
     }
+    window.addEventListener('online', async () => {
+        console.log("Back online — flushing outbox");
+        await flushOutbox();
+    });
+
     </script>
 
 </body>

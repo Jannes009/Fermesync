@@ -38,7 +38,9 @@
                 <a href="/market/dashboard">Fermesync Market</a>
             {% endif %}
             <a href="{{ url_for('account.view_account') }}">View Account</a>
-            <a href="{{ url_for('admin.manage_users') }}">Manage Users</a>
+            {% if "ManageUsers" in current_user.permissions %}
+                <a href="{{ url_for('admin.manage_users') }}">Manage Users</a>
+            {% endif %}
             <a href="{{ url_for('logout') }}">Logout</a>
         </div>
     </div>
@@ -338,6 +340,7 @@ main {
     cursor: pointer;
     padding: 0;
     z-index: 1001;
+    margin: 0;
 }
 
 .hamburger-line {
