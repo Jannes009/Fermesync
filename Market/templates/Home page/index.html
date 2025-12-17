@@ -18,10 +18,6 @@
       <h1 class="text-4xl font-bold">Dashboard</h1>
       <div class="flex flex-col sm:flex-row sm:items-center gap-3">
         <div id="invoice-feedback" class="hidden text-sm px-3 py-2 rounded-md border"></div>
-        <button id="createInvoiceBtn"
-          class="inline-flex items-center justify-center px-4 py-2 bg-blue-600 text-white font-medium rounded-lg shadow hover:bg-blue-700 transition disabled:opacity-60 disabled:cursor-not-allowed">
-          Create Invoice
-        </button>
       </div>
     </div>
 
@@ -142,41 +138,6 @@
 
   <script>
 $(document).ready(function () {
-  const $createInvoiceBtn = $('#createInvoiceBtn');
-  const $invoiceFeedback = $('#invoice-feedback');
-
-  function showFeedback(message, isSuccess) {
-    $invoiceFeedback
-      .removeClass('hidden text-green-600 border-green-200 bg-green-50 text-red-600 border-red-200 bg-red-50')
-      .addClass(isSuccess ? 'text-green-600 border-green-200 bg-green-50' : 'text-red-600 border-red-200 bg-red-50')
-      .text(message)
-      .removeClass('hidden');
-  }
-
-  $createInvoiceBtn.on('click', async function () {
-    $createInvoiceBtn.prop('disabled', true).text('Creating...');
-    showFeedback('Creating invoice...', true);
-
-    try {
-      const response = await fetch('/dashboard/create-invoice', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({})
-      });
-      const data = await response.json();
-
-      if (response.ok && data.success) {
-        showFeedback(data.message || 'Invoice created successfully.', true);
-      } else {
-        showFeedback(data.message || 'Failed to create invoice.', false);
-      }
-    } catch (error) {
-      showFeedback(error.message || 'Unexpected error while creating invoice.', false);
-    } finally {
-      $createInvoiceBtn.prop('disabled', false).text('Create Invoice');
-    }
-  });
-
   // Load summary first
   $.getJSON("/market/dashboard/summary", function (data) {
     $('#summary-cards').html(`

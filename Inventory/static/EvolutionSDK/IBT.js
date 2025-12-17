@@ -1,6 +1,8 @@
 let ibtLines = [];
 let lineIndex = 0;  
 let products = [];
+let selectedProducts = new Set();
+
 
 document.addEventListener("DOMContentLoaded", async () => {
     const whFrom = document.getElementById("wh-from");
@@ -244,6 +246,27 @@ function addIbtLine() {
     populateSelect(selectId, lineDiv);
 }
 
+function formatProductOption (state) {
+    if (!state.id) return state.text;
+
+    const isDisabled = $(state.element).prop("disabled");
+
+    if (isDisabled) {
+        return $(`
+            <span style="
+                color:#999 !important;
+                opacity:0.6;
+                text-decoration: line-through;
+            ">
+                ${state.text} (already used)
+            </span>
+        `);
+    }
+
+    return state.text;
+}
+
+
 function populateSelect(selectId, lineDiv) {
     const select = document.getElementById(selectId);
 
@@ -253,10 +276,10 @@ function populateSelect(selectId, lineDiv) {
         $(opt).data("qty", p.qty_in_whse);
 
         // Disable the option if it is already in ibtLines
-        if (ibtLines.some(line => line.product_id == p.product_id)) {
+        if (selectedProducts.has(p.product_id)) {
             opt.disabled = true;
-            opt.text += " (Already added)";
         }
+
 
         select.appendChild(opt);
     });
@@ -265,13 +288,28 @@ function populateSelect(selectId, lineDiv) {
         placeholder: "Search and select a product...",
         allowClear: true,
         width: "100%",
-        dropdownParent: document.body
+        dropdownParent: document.body,
+        templateResult: formatProductOption,
+        templateSelection: formatProductOption
     });
+
 
     // When a product is chosen → update the stocking unit
     $(`#${selectId}`).on("select2:select", function (e) {
         const selected = $(this).find(":selected").data();
         lineDiv.querySelector(".stock-unit").textContent = selected.unit || "";
+
+        const val = this.value;
+        selectedProducts.add(val);
+
+        // Disable this product in all other dropdowns
+        document.querySelectorAll(".product-select").forEach(otherSelect => {
+            if (otherSelect.id !== selectId) {
+                $(otherSelect).find(`option[value="${val}"]`).prop("disabled", true);
+                $(otherSelect).trigger("change.select2");
+            }
+        });
+
 
         // Disable the selected product in other dropdowns
         document.querySelectorAll(".product-select").forEach(otherSelect => {
@@ -284,6 +322,15 @@ function populateSelect(selectId, lineDiv) {
 
     // When a product is cleared → re-enable in other dropdowns
     $(`#${selectId}`).on("select2:clear", function () {
+        const val = $(this).val();
+        selectedProducts.delete(val);
+
+        // Re-enable everywhere
+        document.querySelectorAll(".product-select").forEach(otherSelect => {
+            $(otherSelect).find(`option[value="${val}"]`).prop("disabled", false);
+            $(otherSelect).trigger("change.select2");
+        });
+
         lineDiv.querySelector(".stock-unit").textContent = "";
         document.querySelectorAll(".product-select").forEach(otherSelect => {
             if (otherSelect.id !== selectId) {

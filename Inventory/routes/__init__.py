@@ -1,6 +1,6 @@
 # inventory/__init__.py
 import os
-from flask import Blueprint
+from flask import Blueprint, render_template
 
 inventory_bp = Blueprint(
     'inventory',
@@ -10,8 +10,14 @@ inventory_bp = Blueprint(
 )
 
 # Your existing imports
-from . import EvolutionSDK
+from . import GRV
 from . import IBT
 from . import stock_count
 from . import stock_issue
 from . import Barcode
+from flask_login import login_required
+
+@inventory_bp.route('/dashboard', methods=['GET'])
+@login_required
+def dashboard():
+    return render_template('inventory_dashboard.html')

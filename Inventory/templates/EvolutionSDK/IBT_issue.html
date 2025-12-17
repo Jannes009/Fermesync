@@ -1,14 +1,5 @@
-<!doctype html>
-<html lang="en">
-<head>
-  <meta charset="utf-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <link rel="stylesheet" href="{{ url_for('inventory.static', filename='color-template.css') }}">
-  <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
-  <!-- jQuery (required by Select2) -->
-  <script src="https://code.jquery.com/jquery-3.7.0.min.js"></script>
-  <title>Create IBT — Mobile Stepper</title>
-
+{% extends 'inventory_base.html' %}
+{% block content %}
   <style>
 /* ----------- General Styles ----------- */
 * { box-sizing: border-box; }
@@ -27,7 +18,7 @@ body {
 
 .wrap {
   width: 100%;
-  max-width: 900px;
+  max-width: 1100px;
   margin: 0 auto;
   padding: 1.5rem;
 }
@@ -70,7 +61,7 @@ select, input[type="text"], input[type="number"], input[list] {
   border: 1px solid var(--input-border);
   border-radius: 8px;
   background: var(--form-bg);
-  font-size: 1rem;
+  font-size: 16px;
   transition: border-color 0.2s, box-shadow 0.2s;
 }
 
@@ -224,7 +215,7 @@ button:active { transform: scale(0.98); }
   border: 1px solid var(--input-border);
   border-radius: 6px;
   background: white;
-  font-size: 1rem;
+  font-size: 16px;
   text-align: center;
 }
 
@@ -524,6 +515,11 @@ button:active { transform: scale(0.98); }
   background-color: var(--button-bg);
 }
 
+.select2-container--default .select2-selection--single .select2-selection__rendered,
+.select2-container--default .select2-selection--single .select2-selection__arrow {
+    font-size: 16px !important;
+    line-height: 30px !important; 
+}
 /* ---------------- Responsive ---------------- */
 @media (max-width: 768px) {
   .wrap { padding: 1rem; }
@@ -572,7 +568,7 @@ button:active { transform: scale(0.98); }
   header h1 { font-size: 1.3rem; }
 
   input[list], input[type="number"] {
-    font-size: 0.95rem;
+    font-size: 0.16px;
     padding: 10px 12px;
   }
   
@@ -580,13 +576,12 @@ button:active { transform: scale(0.98); }
     flex-direction: column;
   }
 }
+/* Prevent iPhone input zoom */
+input, select, textarea, .select2-container--default .select2-selection--single {
+    font-size: 16px !important;
+}
   </style>
-</head>
-
-<body>
-{% include 'inventory-taskbar.html' %}
-
-<div class="page-content with-fixed-taskbar">
+<div class="page-content">
   <div class="wrap">
     <div class="card">
 
@@ -647,9 +642,5 @@ button:active { transform: scale(0.98); }
     </div>
   </div>
 </div>
-<!-- Select2 CSS & JS -->
-<link href="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/css/select2.min.css" rel="stylesheet" />
-<script src="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/js/select2.min.js"></script>
 <script src="{{ url_for('inventory.static', filename='EvolutionSDK/IBT.js') }}?{{ filemtime('inventory', 'EvolutionSDK/IBT.js') }}"></script>
-</body>
-</html>
+{% endblock %}

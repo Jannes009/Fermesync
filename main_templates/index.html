@@ -106,7 +106,7 @@
 </style>
 
 <div class="page-container">
-    <img src="{{ url_for('static', filename='Image/LogoAndText.svg') }}" alt="Fermesync Logo" class="login-logo">
+    <img src="{{ url_for('market.static', filename='Image/LogoAndText.svg') }}" alt="Fermesync Logo" class="login-logo">
     <div class="login-container">
         {% if error %}
         <p class="error">{{ error }}</p>

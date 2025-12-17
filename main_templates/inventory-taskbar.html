@@ -32,9 +32,11 @@
 
     <!-- Desktop User -->
     <div class="user-section desktop-user">
-        <div class="username" id="username">John Doe <span>▼</span></div>
+        <div class="username" id="username">{{ current_user.username }}<span>▼</span></div>
         <div class="dropdown">
-            <a href="/dashboard">Fermesync Market</a>
+            {% if current_user.market_module %}
+                <a href="/market/dashboard">Fermesync Market</a>
+            {% endif %}
             <a href="{{ url_for('account.view_account') }}">View Account</a>
             <a href="{{ url_for('admin.manage_users') }}">Manage Users</a>
             <a href="{{ url_for('logout') }}">Logout</a>
@@ -53,7 +55,7 @@
 <div class="mobile-menu-overlay" id="mobile-menu-overlay">
     <nav class="mobile-nav">
         <div class="mobile-nav-header">
-            <div class="mobile-username" id="mobile-username">John Doe</div>
+            <div class="mobile-username" id="mobile-username">{{ current_user.username }}</div>
             <button class="mobile-menu-close" id="mobile-menu-close">×</button>
         </div>
 
@@ -112,7 +114,9 @@
         </ul>
 
         <div class="mobile-nav-footer">
-            <a href="/dashboard" class="mobile-nav-footer-link">Fermesync Market</a>
+            {% if current_user.market_module %}
+                <a href="/market/dashboard" class="mobile-nav-footer-link">Fermesync Market</a>
+            {% endif %}
             <a href="{{ url_for('account.view_account') }}" class="mobile-nav-footer-link">View Account</a>
             <a href="{{ url_for('logout') }}" class="mobile-nav-footer-link">Logout</a>
         </div>
@@ -132,6 +136,10 @@ body, html {
 
 body {
     display: block !important;
+}
+
+*, *::before, *::after {
+    box-sizing: border-box;
 }
 
 .logo-container {
@@ -167,6 +175,7 @@ body {
     font-family: 'Arial', sans-serif;
     height: 60px;
     border-radius: 0;
+    box-sizing: border-box;
 }
 
 /* Utility class for content that needs to be pushed below the fixed taskbar */
@@ -608,24 +617,6 @@ main {
                 }
             });
         }
-
-        // Fetch username for both desktop and mobile
-        fetch('/get_username')
-            .then(response => response.json())
-            .then(data => {
-                const desktopUsername = document.getElementById('username');
-                const mobileUsername = document.getElementById('mobile-username');
-                if (desktopUsername) {
-                    desktopUsername.textContent = data.username + " ▼";
-                }
-                if (mobileUsername) {
-                    mobileUsername.textContent = data.username;
-                }
-            })
-            .catch(error => {
-                console.error('Error fetching username:', error);
-            });
-
         // Desktop: Dropdown handling for nav (hover)
         document.querySelectorAll('.dropdown-parent').forEach(function(parent) {
             parent.addEventListener('mouseenter', function() {

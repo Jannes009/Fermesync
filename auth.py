@@ -101,6 +101,8 @@ def authenticate_user(username, password):
             user = UserLogin(id=row[0], username=row[1], db_config=db_config)
             user.warehouses = get_user_warehouses(user.id)
             user.permissions = get_user_permissions(user.id)
+            user.market_module = market_module(user.id)
+            user.inventory_module = inventory_module(user.id)
             return user
         return None
     finally:
@@ -118,11 +120,13 @@ def load_user(user_id):
         cursor.execute("SELECT id, username FROM Users WHERE id = ?", (user_id,))
         row = cursor.fetchone()
         if row:
-                db_config = get_user_db_config(row[0])
-                user = UserLogin(id=row[0], username=row[1], db_config=db_config)
-                user.warehouses = get_user_warehouses(user.id)
-                user.permissions = get_user_permissions(user.id)
-                return user
+            db_config = get_user_db_config(row[0])
+            user = UserLogin(id=row[0], username=row[1], db_config=db_config)
+            user.warehouses = get_user_warehouses(user.id)
+            user.permissions = get_user_permissions(user.id)
+            user.market_module = market_module(user.id)
+            user.inventory_module = inventory_module(user.id)
+            return user
         return None
     finally:
         close_connection(conn, cursor)
@@ -167,3 +171,27 @@ def get_user_permissions(user_id):
         return [row[0] for row in rows] if rows else []
     finally:
         close_connection(conn, cursor)
+
+def market_module(user_id):
+    conn, cursor = connect()  # common DB
+    try:
+        cursor.execute("""
+        Select Count(DatabaseName) from [dbo].[UserDatabaseConfig]
+        Where UserId = ? and DatabaseType = 'Market'
+        """, (user_id,))
+        exists = cursor.fetchone()
+        return exists[0] > 0
+    finally:
+        close_connection(conn, cursor)     
+
+def inventory_module(user_id):
+    conn, cursor = connect()  # common DB
+    try:
+        cursor.execute("""
+        Select Count(DatabaseName) from [dbo].[UserDatabaseConfig]
+        Where UserId = ? and DatabaseType = 'Inventory'
+        """, (user_id,))
+        exists = cursor.fetchone()
+        return exists[0] > 0
+    finally:
+        close_connection(conn, cursor)     

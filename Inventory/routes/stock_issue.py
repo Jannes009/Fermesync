@@ -34,7 +34,7 @@ def fetch_warehouses():
     from [_uvWarehouses] 
     WHERE WhseLink IN ({','.join(['?'] * len(current_user.warehouses))}) 
     """ 
-    cursor.execute(query, current_user.warehouses) 
+    cursor.execute(query, current_user.warehouses)
     warehouses = [ 
         {"id": row[0], "code": row[1], "name": row[2]} 
         for row in cursor.fetchall() ] 
@@ -260,7 +260,7 @@ def submit_stock_issue(warehouse_code, project_code, lines, issued_to, returned_
     # -------------------------
     conn = None
     cursor = None
-    description = f"Issue Issued to - {issued_to}, returned by {returned_to}" if returned_to else f"Issue Issued to - {issued_to}"
+    description = f"{issued_to}, {returned_to}" if returned_to else f"{issued_to}"
     try:
         evo.DatabaseContext.CreateCommonDBConnection(
             "SIGMAFIN-RDS\\EVOLUTION", "SageCommon", "sa", "@Evolution", False
@@ -403,7 +403,6 @@ def process_return():
     returned_to = data.get("returned_to")
     lines = data.get("returns") or []
     submission_lines = []
-    print("Processing return for issue:", issue_id, "returned to:", returned_to, "lines:", lines)
 
     conn = None
     cursor = None
@@ -421,10 +420,8 @@ def process_return():
                 IssueFinalisedByUserId = ?, IssueFinalisedTimeStamp = GETDATE()
             WHERE IssueId = ?
         """, (returned_to, current_user.id, issue_id))
-        print("Header updated")
         for line in lines:
             qty_finalised = line.get("qty_issued") - line.get("qty_returned")
-            print("Processing line:", line.get("line_id"), "Qty finalised:", qty_finalised)
             # fetch stock link for submission
             cursor.execute("""
                 Select IssLineStockLink
@@ -448,8 +445,6 @@ def process_return():
                 SET IssLineQtyReceived = ?, IssLineQtyFinalised = ?
                 WHERE IssLineId = ?
             """, (line.get("qty_returned"), qty_finalised, line.get("line_id")))
-        print("Lines updated")
-
         # get Issue details
         cursor.execute("""
             Select IssueWhseId, IssueProjectId, IssueReturnedToName, IssueToName
@@ -460,9 +455,7 @@ def process_return():
         if not issue:
             raise Exception(f"Issue {issue_id} not found.")
 
-        print("Submitting return to Evolution")
         order_number = submit_stock_issue(issue.IssueWhseId, issue.IssueProjectId, submission_lines, issue.IssueToName, issue.IssueReturnedToName)
-        print("Return submitted, order number:", order_number)
         cursor.execute("""
             UPDATE IssueHeader
             SET IssueInvoiceNo = ?

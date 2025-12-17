@@ -1,18 +1,10 @@
-<!doctype html>
-<html lang="en">
-<head>
-  <meta charset="utf-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <link rel="stylesheet" href="{{ url_for('inventory.static', filename='color-template.css') }}">
-  <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
-  <script src="https://code.jquery.com/jquery-3.7.0.min.js"></script>
-  <title>Stock Count</title>
-
+{% extends 'inventory_base.html' %}
+{% block content %}
   <style>
     * { box-sizing: border-box; }
     body { background: var(--primary-bg); color: var(--primary-text); font-size: 0.9rem; margin: 0; padding: 0; min-height: 100vh; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; }
     .page-content { display: flex; flex-direction: column; flex: 1; }
-    .wrap { width: 100%; max-width: 100%; margin: 0 auto; padding: 1rem; }
+    .wrap { width: 100%; margin: 0 auto; padding: 1rem; max-width: 1100px; }
     .wrap.with-fixed-taskbar { padding-top: 1rem; margin-top: 60px; }
     .card { background: var(--container-bg); border-radius: 8px; box-shadow: 0 1px 6px rgba(44,62,80,0.08); padding: 1rem; margin-bottom: 1rem; }
     header h1 { margin: 0; font-size: 1.4rem; color: var(--primary-text); }
@@ -126,12 +118,19 @@
       header h1 { font-size: 1.2rem; }
       .product-row { grid-template-columns: 1fr 80px auto; gap: 8px; padding: 8px; }
     }
+    /* Prevent iPhone input zoom */
+input, select, textarea, .select2-container--default .select2-selection--single {
+    font-size: 16px !important;
+}
+.select2-container--default .select2-selection--single .select2-selection__rendered,
+.select2-container--default .select2-selection--single .select2-selection__arrow {
+    font-size: 16px !important;
+    line-height: 30px !important; 
+}
   </style>
-</head>
-<body>
-{% include 'inventory-taskbar.html' %}
 
-<div class="page-content with-fixed-taskbar">
+
+<div class="page-content">
   <div class="wrap">
     <div class="card">
       <header><h1>Stock Count</h1></header>
@@ -175,9 +174,5 @@
     </div>
   </div>
 </div>
-
-<link href="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/css/select2.min.css" rel="stylesheet" />
-<script src="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/js/select2.min.js"></script>
 <script src="{{ url_for('inventory.static', filename='EvolutionSDK/stock_count.js') }}?{{ filemtime('inventory', 'EvolutionSDK/stock_count.js') }}"></script>
-</body>
-</html>
+{% endblock %}

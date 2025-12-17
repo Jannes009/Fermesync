@@ -1,0 +1,132 @@
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Fermesync Dashboard</title>
+
+    <link rel="stylesheet" href="/inventory/static/color-template.css">
+
+    <style>
+        body {
+            margin: 0;
+            min-height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-family: Georgia, 'Times New Roman', Times, serif;
+            background: linear-gradient(135deg, #f4f6f8, #eef1f5);
+            color: var(--primary-text, #222);
+        }
+
+        .dashboard-wrapper {
+            width: 100%;
+            max-width: 900px;
+            padding: 20px;
+            text-align: center;
+        }
+
+        .dashboard-title {
+            font-size: 2rem;
+            margin-bottom: 10px;
+            color: var(--logo-color);
+        }
+
+        .dashboard-subtitle {
+            font-size: 1rem;
+            color: var(--secondary-text, #666);
+            margin-bottom: 40px;
+        }
+
+        .dashboard-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+            gap: 30px;
+        }
+
+        .dashboard-card {
+            background: var(--container-bg, #fff);
+            border-radius: 20px;
+            padding: 40px 30px;
+            text-decoration: none;
+            color: inherit;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.1);
+            transition: transform 0.25s ease, box-shadow 0.25s ease;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .dashboard-card:hover {
+            transform: translateY(-6px);
+            box-shadow: 0 16px 40px rgba(0,0,0,0.15);
+        }
+
+        .card-icon {
+            font-size: 3.2rem;
+            margin-bottom: 20px;
+        }
+
+        .card-title {
+            font-size: 1.4rem;
+            margin-bottom: 10px;
+        }
+
+        .card-description {
+            font-size: 0.95rem;
+            color: var(--secondary-text, #666);
+            max-width: 260px;
+        }
+
+        .accent-market {
+            border-top: 6px solid #2b6cb0;
+        }
+
+        .accent-inventory {
+            border-top: 6px solid #2f855a;
+        }
+
+        @media (max-width: 600px) {
+            .dashboard-title {
+                font-size: 1.6rem;
+            }
+
+            .dashboard-card {
+                padding: 30px 20px;
+            }
+        }
+    </style>
+</head>
+<body>
+
+    <div class="dashboard-wrapper">
+        <h1 class="dashboard-title">Fermesync</h1>
+        <p class="dashboard-subtitle">Choose a module to continue</p>
+
+        <div class="dashboard-grid">
+
+            <!-- Market Module -->
+            <a href="/market/dashboard" class="dashboard-card accent-market">
+                <div class="card-icon">🏬</div>
+                <div class="card-title">Market</div>
+                <div class="card-description">
+                    Access deliveries, sales, invoices, and market operations.
+                </div>
+            </a>
+
+            <!-- Inventory Module -->
+            <a href="/inventory/dashboard" class="dashboard-card accent-inventory">
+                <div class="card-icon">📦</div>
+                <div class="card-title">Inventory</div>
+                <div class="card-description">
+                    Manage stock, GRVs, IBTs, counts, and barcode scanning.
+                </div>
+            </a>
+
+        </div>
+    </div>
+
+</body>
+</html>

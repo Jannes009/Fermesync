@@ -1,16 +1,8 @@
 
 from flask_login import login_required, current_user
-import requests
-from flask import Blueprint, jsonify, current_app, request, render_template, abort
-from datetime import datetime, timedelta
+from flask import jsonify, request, render_template, abort
 from Inventory.db import create_db_connection
-
 from Inventory.routes import inventory_bp
-
-@inventory_bp.route('/dashboard', methods=['GET'])
-@login_required
-def dashboard():
-    return render_template('dashboard.html')
 
 
 @inventory_bp.route('/SDK/GRV', methods=['GET'])
@@ -19,12 +11,12 @@ def GRV_page():
     # Permission check
     if "GRV" not in current_user.permissions:
         abort(403)  # Forbidden
-
+    print(current_user.username)
     return render_template('EvolutionSDK/GRV.html')
 
 
 @inventory_bp.route("/SDK/fetch_suppliers")
-def po_page():
+def fetch_suppliers():
     conn = create_db_connection()
     cursor = conn.cursor()
 
@@ -39,7 +31,6 @@ def po_page():
     """
 
     cursor.execute(query, warehouses)
-    print(f"Executed query: {query} with warehouses: {warehouses}")
     suppliers = [
         {"code": row[0], "name": row[1]}
         for row in cursor.fetchall()

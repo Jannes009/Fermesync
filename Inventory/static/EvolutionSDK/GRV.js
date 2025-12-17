@@ -184,7 +184,7 @@ async function loadPOLines(poNumber) {
                         placeholder="0"
                         min="0" step="0.01"
                         data-outstanding="${qtyOutstanding}"
-                        style="width:100%; padding:4px; border:1px solid var(--input-border); border-radius:4px; font-size:0.8rem;">
+                        style="width:100%; padding:4px; border:1px solid var(--input-border); border-radius:4px; font-size:16px;">
                     <small class="qty-warning" style="display:none; color:#ff6b6b; font-size:0.7rem;"></small>
                 </div>
             `;

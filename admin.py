@@ -40,11 +40,11 @@ def manage_users():
         users = cursor.fetchall()
 
         # Fetch all permissions
-        cursor.execute("SELECT Id, Code FROM Permissions")
+        cursor.execute("SELECT Id, Code FROM Permissions ORDER BY Code")
         permissions = cursor.fetchall()
 
         # Fetch all warehouses
-        cursor.execute("SELECT WhseLink, Name FROM _uvWhseMst")
+        cursor.execute("SELECT WhseLink, Name FROM _uvWhseMst Order BY Name")
         warehouses = cursor.fetchall()
 
         if request.method == "POST":

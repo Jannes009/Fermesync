@@ -72,13 +72,24 @@ def create_app():
     @app.route("/dashboard")
     @login_required
     def dashboard():
-        return render_template('permissions.html', username=current_user.username)
-    
-    @app.route("/get_username")
-    def get_username():
-        if current_user.is_authenticated:
-            return {"username": current_user.username}
-        return {"username": None}
+        if current_user.market_module and current_user.inventory_module:
+            return render_template('dashboard.html')
+        elif current_user.market_module:
+            return redirect(url_for('market.dashboard'))
+        elif current_user.inventory_module:
+            return redirect(url_for('inventory.dashboard'))
+        else:
+            return render_template('no_modules.html')
+        
+    # Serve manifest.json at root
+    @app.route("/manifest.json")
+    def manifest():
+        return send_from_directory(app.static_folder, "manifest.json")
+
+    # Serve service worker at root
+    @app.route("/sw.js")
+    def service_worker():
+        return send_from_directory(app.static_folder, "sw.js")
 
     # -----------------------------
     # ERROR HANDLERS

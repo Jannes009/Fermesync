@@ -1,0 +1,183 @@
+{% extends 'inventory_base.html' %}
+{% block content %}
+
+<style>
+    body {
+        margin: 0;
+        font-family: Georgia, 'Times New Roman', Times, serif;
+        background: var(--page-bg, #f4f6f8);
+        color: var(--primary-text, #222);
+    }
+
+    .with-fixed-taskbar {
+        padding-top: 80px; /* accounts for your fixed taskbar */
+    }
+
+    .dashboard-container {
+        max-width: 1200px;
+        margin: 0 auto;
+        padding: 20px;
+    }
+
+    .dashboard-header {
+        margin-bottom: 30px;
+    }
+
+    .dashboard-header h1 {
+        font-size: 1.8rem;
+        margin: 0 0 8px 0;
+        color: var(--logo-color);
+    }
+
+    .dashboard-header p {
+        margin: 0;
+        color: var(--secondary-text, #666);
+        font-size: 1rem;
+    }
+
+    /* Card grid */
+    .dashboard-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+        gap: 20px;
+    }
+
+    .dashboard-card {
+        background: var(--container-bg, #fff);
+        border-radius: 16px;
+        padding: 24px 20px;
+        text-decoration: none;
+        color: inherit;
+        box-shadow: 0 6px 20px rgba(0,0,0,0.08);
+        transition: transform 0.2s ease, box-shadow 0.2s ease;
+        display: flex;
+        flex-direction: column;
+        justify-content: space-between;
+        min-height: 150px;
+    }
+
+    .dashboard-card:hover {
+        transform: translateY(-4px);
+        box-shadow: 0 10px 28px rgba(0,0,0,0.12);
+    }
+
+    .card-icon {
+        font-size: 2.2rem;
+        margin-bottom: 15px;
+    }
+
+    .card-title {
+        font-size: 1.2rem;
+        margin: 0 0 6px 0;
+        color: var(--primary-text);
+    }
+
+    .card-description {
+        font-size: 0.95rem;
+        color: var(--secondary-text, #666);
+        line-height: 1.4;
+    }
+
+    .card-footer {
+        margin-top: 15px;
+        font-size: 0.9rem;
+        color: var(--logo-color);
+        font-weight: 600;
+    }
+
+    /* Subtle accent bars per card */
+    .accent-ibt { border-top: 4px solid #4c7cff; }
+    .accent-grv { border-top: 4px solid #38a169; }
+    .accent-stock-count { border-top: 4px solid #d69e2e; }
+    .accent-stock-issue { border-top: 4px solid #e53e3e; }
+    .accent-barcode { border-top: 4px solid #805ad5; }
+
+    /* Mobile refinements */
+    @media (max-width: 768px) {
+        .dashboard-header h1 {
+            font-size: 1.5rem;
+        }
+
+        .dashboard-card {
+            padding: 20px;
+        }
+    }
+</style>
+<div class="dashboard-container">
+
+    <div class="dashboard-header">
+        <h1>Inventory Dashboard</h1>
+        <p>Select a task to continue</p>
+    </div>
+
+    <div class="dashboard-grid">
+
+        <!-- IBT -->
+        <a href="/inventory/SDK/IBT_issue" class="dashboard-card accent-ibt">
+            <div>
+                <div class="card-icon">↔️</div>
+                <h2 class="card-title">Inter-branch Transfer</h2>
+                <p class="card-description">
+                    Issue or receive stock between branches.
+                </p>
+            </div>
+            <div class="card-footer">Open IBT →</div>
+        </a>
+
+        {% if "GRV" in current_user.permissions %}
+        <!-- GRV -->
+        <a href="/inventory/SDK/GRV" class="dashboard-card accent-grv">
+            <div>
+                <div class="card-icon">📦</div>
+                <h2 class="card-title">Goods Received Voucher</h2>
+                <p class="card-description">
+                    Receive supplier stock into inventory.
+                </p>
+            </div>
+            <div class="card-footer">Open GRV →</div>
+        </a>
+        {% endif %}
+
+        {% if "StockCount" in current_user.permissions %}
+        <!-- Stock Count -->
+        <a href="/inventory/SDK/stock_count" class="dashboard-card accent-stock-count">
+            <div>
+                <div class="card-icon">📋</div>
+                <h2 class="card-title">Stock Count</h2>
+                <p class="card-description">
+                    Perform physical stock counts and reconciliations.
+                </p>
+            </div>
+            <div class="card-footer">Open Stock Count →</div>
+        </a>
+        {% endif %}
+
+        {% if "StockIssue" in current_user.permissions %}
+        <!-- Stock Issue -->
+        <a href="/inventory/SDK/stock_issue" class="dashboard-card accent-stock-issue">
+            <div>
+                <div class="card-icon">🛠️</div>
+                <h2 class="card-title">Stock Issue</h2>
+                <p class="card-description">
+                    Issue stock to projects or departments.
+                </p>
+            </div>
+            <div class="card-footer">Open Stock Issue →</div>
+        </a>
+        {% endif %}
+
+        <!-- Barcode Scanner -->
+        <a href="/inventory/barcode_scanner" class="dashboard-card accent-barcode">
+            <div>
+                <div class="card-icon">📷</div>
+                <h2 class="card-title">Barcode Scanner</h2>
+                <p class="card-description">
+                    Scan items quickly using your device camera.
+                </p>
+            </div>
+            <div class="card-footer">Open Scanner →</div>
+        </a>
+
+    </div>
+</div>
+{% endblock %}

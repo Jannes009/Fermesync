@@ -31,10 +31,10 @@ async function loadWarehouses() {
 
     try {
         const res = await fetch("/inventory/SDK/fetch_warehouses");
-        const { suppliers = [] } = await res.json();
+        const { warehouses = [] } = await res.json();
 
         select.innerHTML = "<option value=''>Select warehouse</option>";
-        suppliers.forEach(wh => {
+        warehouses.forEach(wh => {
             select.innerHTML += `<option value="${wh.code}">${wh.name}</option>`;
         });
 

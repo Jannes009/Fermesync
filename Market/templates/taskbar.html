@@ -32,9 +32,11 @@
     
     <!-- Desktop User Section -->
     <div class="user-section desktop-user">
-        <div class="username" id="username">John Doe <span>&#9662;</span></div>
+        <div class="username" id="username">{{ current_user.username }} <span>&#9662;</span></div>
         <div class="dropdown">
-            <a href="/inventory/dashboard">Fermesync Inventory</a>
+            {% if current_user.inventory_module %}
+                <a href="/inventory/dashboard">Fermesync Inventory</a>
+            {% endif %}
             <a href="{{ url_for('account.view_account') }}">View Account</a>
             <a href="{{ url_for('logout') }}">Logout</a>
         </div>
@@ -52,7 +54,7 @@
 <div class="mobile-menu-overlay" id="mobile-menu-overlay">
     <nav class="mobile-nav">
         <div class="mobile-nav-header">
-            <div class="mobile-username" id="mobile-username">John Doe</div>
+            <div class="mobile-username" id="mobile-username">{{ current_user.username }}</div>
             <button class="mobile-menu-close" id="mobile-menu-close" aria-label="Close menu">×</button>
         </div>
         <ul class="mobile-nav-list">
@@ -116,7 +118,9 @@
             </li>
         </ul>
         <div class="mobile-nav-footer">
-            <a href="{{ url_for('inventory.dashboard') }}" class="mobile-nav-footer-link">Fermesync Inventory</a>
+            {% if current_user.inventory_module %}
+                <a href="{{ url_for('inventory.dashboard') }}" class="mobile-nav-footer-link">Fermesync Inventory</a>
+            {% endif %}
             <a href="{{ url_for('account.view_account') }}" class="mobile-nav-footer-link">View Account</a>
             <a href="{{ url_for('logout') }}" class="mobile-nav-footer-link">Logout</a>
         </div>
@@ -169,6 +173,7 @@ body {
     font-family: 'Arial', sans-serif;
     height: 60px;
     border-radius: 0;
+    box-sizing: border-box;
 }
 
 /* Utility class for content that needs to be pushed below the fixed taskbar */
@@ -610,23 +615,6 @@ main {
                 }
             });
         }
-
-        // Fetch username for both desktop and mobile
-        fetch('/get_username')
-            .then(response => response.json())
-            .then(data => {
-                const desktopUsername = document.getElementById('username');
-                const mobileUsername = document.getElementById('mobile-username');
-                if (desktopUsername) {
-                    desktopUsername.textContent = data.username + " ▼";
-                }
-                if (mobileUsername) {
-                    mobileUsername.textContent = data.username;
-                }
-            })
-            .catch(error => {
-                console.error('Error fetching username:', error);
-            });
 
         // Desktop: Dropdown handling for nav (hover)
         document.querySelectorAll('.dropdown-parent').forEach(function(parent) {

@@ -1,16 +1,7 @@
-<!doctype html>
-<html lang="en">
-<head>
-    <meta charset="utf-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1" />
-    {% include '../main_templates/__pwa_head.html' %}
-    <link rel="stylesheet" href="{{ url_for('inventory.static', filename='color-template.css') }}">
-    <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
-    <script src="https://code.jquery.com/jquery-3.7.0.min.js"></script>
+{% extends 'inventory_base.html' %}
+{% block content %}
     <script src="https://unpkg.com/@zxing/library@0.19.1/umd/index.min.js"></script>
     <script type="module" src="{{ url_for('inventory.static', filename='barcode-scanner-overlay.js') }}"></script>
-    <title>Stock Issue</title>
-
     <style>
         * { box-sizing: border-box; }
         body {
@@ -299,12 +290,15 @@
             flex-wrap: wrap;
             gap: 0.5rem;
         }
-
+        input, select, textarea, .select2-container--default .select2-selection--single {
+    font-size: 16px !important;
+}
+.select2-container--default .select2-selection--single .select2-selection__rendered,
+.select2-container--default .select2-selection--single .select2-selection__arrow {
+    font-size: 16px !important;
+    line-height: 30px !important; 
+}
     </style>
-</head>
-
-<body>
-{% include 'inventory-taskbar.html' %}
 
 <barcode-scanner-overlay id="barcodeScanner"></barcode-scanner-overlay>
 
@@ -401,11 +395,6 @@
 
 </div>
 
-
-<!-- Select2 -->
-<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/css/select2.min.css"/>
-<script src="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/js/select2.min.js"></script>
-
 <!-- Your JS -->
 <script src="{{ url_for('inventory.static', filename='stock_issue/stock_issue_wizard.js') }}?{{ filemtime('inventory','stock_issue/stock_issue_wizard.js') }}"></script>
 <script src="{{ url_for('inventory.static', filename='stock_issue/stock_issue_list.js') }}?{{ filemtime('inventory','stock_issue/stock_issue_list.js') }}"></script>
@@ -436,6 +425,4 @@ function hideWizard() {
 document.getElementById("new-issue-btn").addEventListener("click", showWizard);
 document.getElementById("exit-wizard").addEventListener("click", hideWizard);
 </script>
-
-</body>
-</html>
+{% endblock %}
