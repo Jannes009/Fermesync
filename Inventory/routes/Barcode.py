@@ -15,39 +15,6 @@ def barcode_scanner():
 
 
 # ============================
-#   FETCH PRODUCTS
-# ============================
-@inventory_bp.route("/fetch_products", methods=["POST"])
-def fetch_products():
-    try:
-        conn = create_db_connection()
-        cursor = conn.cursor()
-
-        cursor.execute("""
-            SELECT DISTINCT StockLink, StockDescription, PurchaseUnitCode, UOMCategoryId
-            FROM _uvInventoryQty
-        """)
-
-        rows = cursor.fetchall()
-        conn.close()
-
-        products_list = [
-            {
-                "product_id": row[0],
-                "product_desc": row[1],
-                "purchase_uom": row[2],
-                "uom_cat_id": row[3],
-            }
-            for row in rows
-        ]
-
-        return jsonify({"success": True, "products": products_list})
-
-    except Exception as e:
-        return jsonify({"success": False, "error": str(e)}), 500
-
-
-# ============================
 #   FETCH PRODUCT UOMs
 # ============================
 @inventory_bp.route("/fetch_product_uoms", methods=["POST"])

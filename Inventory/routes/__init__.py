@@ -15,6 +15,8 @@ from . import IBT
 from . import stock_count
 from . import stock_issue
 from . import Barcode
+from . import notifications
+from . import offline
 from flask_login import login_required
 
 @inventory_bp.route('/dashboard', methods=['GET'])

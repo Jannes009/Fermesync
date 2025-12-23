@@ -1,15 +1,25 @@
 // db.js
-import Dexie from 'https://unpkg.com/dexie@3.2.2/dist/dexie.mjs';
+import Dexie from 'https://unpkg.com/dexie@4.2.1/dist/dexie.mjs';
 
-export const db = new Dexie('fermesync-db');
+export const db = new Dexie('fermesync-db-v13');
 
-db.version(2).stores({
+db.version(13).stores({
   meta: 'key',
   warehouses: 'id',
   projects: 'id',
-  products: '[product_link+whse], product_link, whse',
-  stockIssues: '++local_id, status, created_at',
-  outbox: '++id, type, created_at',
+  products: '[product_link+whse], product_link, whse, qty_in_whse',
+
+  // OFFLINE data (client-generated)
+  offlineIssues: '++local_id, client_issue_id, status',
+  offlineIssueLines: '++id, client_issue_id, product_link', // Simple structure
+
+  offlineReturns: '++local_id, client_issue_id, status',
+  
+  // SERVER data (downloaded)
+  serverIssues: 'IssueId',
+  serverIssueLines: 'line_id, header_id, product_link', // Server structure
+  
+  outbox: '++id, created_at, retry_count',
   notifications: 'id, created_at, read'
 });
 
@@ -47,24 +57,6 @@ export async function fetchWithOffline({
   return db[store].toArray();
 }
 
-// in db.js
-export async function flushOutbox() {
-    const items = await db.outbox.toArray();
-    for (let item of items) {
-        try {
-            const res = await fetch(`/inventory/SDK/create_stock_issue`, {
-                method: "POST",
-                headers: { "Content-Type": "application/json" },
-                body: JSON.stringify(item.payload)
-            });
-            const data = await res.json();
-            if (res.ok && data.status === "success") {
-                await db.outbox.delete(item.id); // remove from outbox
-            } else {
-                console.warn("Failed to flush outbox item", item, data);
-            }
-        } catch (err) {
-            console.warn("Error flushing outbox item", item, err);
-        }
-    }
-}
+/**
+ * Flush outbox items when online
+ */

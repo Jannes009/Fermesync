@@ -1,0 +1,12 @@
+{% extends "inventory_base.html" %}
+{% block content %}
+<h1>Notifications</h1>
+<ul>
+    {% for n in notifications %}
+    <li>
+        <a href="{{ n.ActionURL }}">{{ n.Title }} - {{ n.Message }}</a>
+        <span style="font-size:0.8em;color:#666;">{{ n.CreatedAt }}</span>
+    </li>
+    {% endfor %}
+</ul>
+{% endblock %}

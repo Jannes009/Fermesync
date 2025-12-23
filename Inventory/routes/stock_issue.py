@@ -4,6 +4,10 @@ import clr  # pythonnet
 from Inventory.routes import inventory_bp
 from Inventory.db import create_db_connection
 from flask_login import login_required, current_user
+from auth import get_common_db_connection, close_connection
+from Inventory.routes.db_conversions import warehouse_code_to_link, project_code_to_link, stock_link_to_code
+from datetime import datetime
+
 
 # Add the path to your Evolution DLLs
 sys.path.append(r"C:\Program Files (x86)\Sage Evolution")
@@ -23,129 +27,6 @@ def stock_issue():
         abort(403)
 
 # -------------------------
-# Fetch warehouses (path matches frontend)
-# -------------------------
-@inventory_bp.route("/SDK/fetch_warehouses") 
-def fetch_warehouses(): 
-    conn = create_db_connection() 
-    cursor = conn.cursor() 
-    query = f""" 
-    Select WhseLink, WhseCode, WhseDescription
-    from [_uvWarehouses] 
-    WHERE WhseLink IN ({','.join(['?'] * len(current_user.warehouses))}) 
-    """ 
-    cursor.execute(query, current_user.warehouses)
-    warehouses = [ 
-        {"id": row[0], "code": row[1], "name": row[2]} 
-        for row in cursor.fetchall() ] 
-    conn.close() 
-    return jsonify({"warehouses": warehouses})
-
-# -------------------------
-# Fetch projects (match frontend path)
-# -------------------------
-@inventory_bp.route("/fetch_projects", methods=["POST"])
-@login_required
-def fetch_projects():
-    conn = create_db_connection()
-    cursor = conn.cursor()
-    cursor.execute("SELECT ProjectLink, ProjectName FROM _uvProject")
-    rows = cursor.fetchall()
-    conn.close()
-
-    projects_list = [
-        {"id": row[0], "name": row[1]}
-        for row in rows
-    ]
-    return jsonify({"prod_projects": projects_list})
-
-# -------------------------
-# Fetch products in warehouse (route name matches frontend)
-# -------------------------
-@inventory_bp.route("/fetch_products_in_whse", methods=["GET"])
-@login_required
-def fetch_products_in_whse():
-    whse_link = request.json.get("whse_link")
-    if not whse_link:
-        return jsonify({"products": []})
-
-    conn = create_db_connection()
-    cursor = conn.cursor()
-    cursor.execute("""
-        SELECT StockLink, StockCode, StockDescription, QtyOnHand, StockingUnitId, StockingUnitCode
-        FROM _uvInventoryQty 
-        WHERE QtyOnHand > 0 AND WhseLink = ?
-    """, (whse_link,))
-    rows = cursor.fetchall()
-    conn.close()
-
-    products_list = [
-        {
-            "product_link": row[0],
-            "product_code": row[1],
-            "product_desc": row[2],
-            "qty_in_whse": row[3],
-            "uom_id": row[4],
-            "uom_code": row[5],
-        }
-        for row in rows
-    ]
-    return jsonify({"products": products_list})
-
-# -------------------------
-# Fetch product by barcode (returns product_code + product_link if available in whse)
-# -------------------------
-@inventory_bp.route("/SDK/fetch_product_by_barcode", methods=["POST"])
-@login_required
-def fetch_product_by_barcode():
-    barcode = request.json.get("barcode")
-    whse_link = request.json.get("whse_link", None)  # optional
-
-    if not barcode:
-        return jsonify({}), 400
-
-    conn = create_db_connection()
-    cursor = conn.cursor()
-
-    # First find the StockCode from barcodes table
-    cursor.execute("SELECT StockCode, UOMID, cUnitCode FROM _uvProductBarcodes WHERE Barcode = ?", (barcode,))
-    row = cursor.fetchone()
-    if not row:
-        conn.close()
-        return jsonify({})  # not found
-
-    stock_code = row[0]
-    uom_id = row[1]
-    uom_code = row[2]
-
-    # Try to find StockLink for that StockCode in the requested warehouse (if provided),
-    # otherwise return any stocklink for that code.
-    if whse_link:
-        cursor.execute("""
-            SELECT TOP 1 StockLink
-            FROM _uvInventoryQty
-            WHERE StockCode = ? AND WhseLink = ?
-        """, (stock_code, whse_link))
-        inv_row = cursor.fetchone()
-    else:
-        cursor.execute("""
-            SELECT TOP 1 StockLink
-            FROM _uvInventoryQty
-            WHERE StockCode = ?
-        """, (stock_code,))
-        inv_row = cursor.fetchone()
-
-    product_link = inv_row[0] if inv_row else None
-    conn.close()
-
-    return jsonify({
-        "product_code": stock_code,
-        "product_link": product_link,
-        "uom_id": uom_id,
-        "uom_code": uom_code
-    })
-
-# -------------------------
 # Create stock issue (fixed SQL inserts, SCOPE_IDENTITY usage)
 # -------------------------
 @inventory_bp.route("/SDK/create_stock_issue", methods=["POST"])
@@ -158,95 +39,108 @@ def create_stock_issue():
         return jsonify({"status": "error", "message": "No data provided"}), 400
 
     warehouse_code = data.get("warehouse")
-    project_code = data.get("project")
-    issued_to = data.get("issued_to")
-    order_final = data.get("order_final", False)
-    lines_payload = data.get("lines", [])
-    submission_lines = []
+    try: 
+        project_code = data.get("project")
+        issued_to = data.get("issued_to")
+        order_final = data.get("order_final", False)
+        created_at = data.get("created_at", datetime.now().isoformat())
+        lines_payload = data.get("lines", [])
+        submission_lines = []
+        print(data)
 
-    if not warehouse_code or not project_code or not issued_to or not lines_payload:
-        return jsonify({"status": "error", "message": "Missing required data"}), 400
+        if not warehouse_code or not project_code or not issued_to or not lines_payload:
+            return jsonify({"status": "error", "message": "Missing required data"}), 400
 
-    conn = create_db_connection()
-    cursor = conn.cursor()
+        conn = create_db_connection()
+        cursor = conn.cursor()
+        whse_link = warehouse_code_to_link(warehouse_code, cursor)
+        project_link = project_code_to_link(project_code, cursor)
 
-    cursor.execute("""
-    INSERT INTO IssueHeader( 
-    IssueWhseId, IssueProjectId, IssueByUserId, IssueToName, [IssueTimeStamp]) 
-    VALUES (?, ?, ?, ?, GETDATE()) """, 
-    (warehouse_code, project_code, current_user.id, issued_to))
-            # Now get the SCOPE_IDENTITY() in a separate query
-    cursor.execute("""
-    Select MAX([IssueId]) [IssueId]
-    from [dbo].[IssueHeader] HEA
-    WHERE NOT EXISTS (Select * from IssueLines LIN where LIN.IssLineHeaderId = HEA.IssueId)
-        """)
-    stock_issue_id = cursor.fetchone()[0] 
-
-    # If order is final, mark header final now
-    if order_final:
         cursor.execute("""
-            UPDATE IssueHeader
-            SET IssueFinalised = 1, IssueFinalisedByUserId = ?, IssueFinalisedTimeStamp = GETDATE()
-            WHERE IssueId = ?
-        """, (current_user.id, stock_issue_id))
+        INSERT INTO IssueHeader( 
+        IssueWhseId, IssueProjectId, IssueByUserId, IssueToName, [IssueTimeStamp])
+        OUTPUT INSERTED.IssueId 
+        VALUES (?, ?, ?, ?, ?) """, 
+        (whse_link, project_link, current_user.id, issued_to, created_at))
 
-    # Insert each line (six columns -> six placeholders)
-    for line in lines_payload:
-        cursor.execute("""
-            INSERT INTO IssueLines(
-                IssLineHeaderId, IssLineStockLink, IssLineStockCode, IssLineQtyIssued, IssLineUOMId, IssLineUOMCode
-            )
-            VALUES (?, ?, ?, ?, ?, ?)
-        """, (
-            stock_issue_id,
-            line.get("product_link"),
-            line.get("product_code"),
-            line.get("qty_to_issue"),
-            line.get("uom_id"),
-            line.get("uom_code"),
-        ))
-        # If final, set IssLineQtyFinalised for that newly-inserted line
+        stock_issue_id = cursor.fetchone()[0]
+
+        # If order is final, mark header final now
         if order_final:
-            cursor.execute("SELECT MAX(IssLineId) FROM IssueLines")
-            last_line_id = cursor.fetchone()[0]
-            cursor.execute("""
-                UPDATE IssueLines
-                SET IssLineQtyFinalised = ?
-                WHERE IssLineId = ?
-            """, (line.get("qty_to_issue"), last_line_id))
-            submission_line = {
-                "line_id": last_line_id,
-                "product_link": line.get("product_link"),
-                "finalised_qty": line.get("qty_to_issue")
-            }
-            submission_lines.append(submission_line)
-
-    conn.commit()
-
-    # If order_final we can attempt to submit to Evolution in the background call;
-    # keep it synchronous here for simplicity. If submit_stock_issue raises, log it but do not fail DB insert.
-    if order_final:
-        try:
-            order_number = submit_stock_issue(warehouse_code, project_code, submission_lines, issued_to)
             cursor.execute("""
                 UPDATE IssueHeader
-                SET IssueInvoiceNo = ?
+                SET IssueFinalised = 1, IssueFinalisedByUserId = ?, IssueFinalisedTimeStamp = GETDATE()
                 WHERE IssueId = ?
-            """, (order_number, stock_issue_id))
-            conn.commit()
-        except Exception as ex:
-            # Log and continue. The DB already has the header/lines and finalised flags.
-            print("submit_stock_issue failed:", ex)
+            """, (current_user.id, stock_issue_id))
 
-    return jsonify({"status": "success", "message": "Stock issue created.", "issue_id": stock_issue_id}), 200
+        # Insert each line (six columns -> six placeholders)
+        for line in lines_payload:
+            print(line)
+            cursor.execute("""
+                INSERT INTO IssueLines(
+                    IssLineHeaderId, IssLineStockLink, IssLineStockCode, IssLineQtyIssued, IssLineUOMId, IssLineUOMCode
+                )
+                VALUES (?, ?, ?, ?, ?, ?)
+            """, (
+                stock_issue_id,
+                line.get("product_link"),
+                line.get("product_code"),
+                line.get("qty_to_issue"),
+                line.get("uom_id"),
+                line.get("uom_code"),
+            ))
+            # If final, set IssLineQtyFinalised for that newly-inserted line
+            if order_final:
+                cursor.execute("SELECT MAX(IssLineId) FROM IssueLines")
+                last_line_id = cursor.fetchone()[0]
+                cursor.execute("""
+                    UPDATE IssueLines
+                    SET IssLineQtyFinalised = ?
+                    WHERE IssLineId = ?
+                """, (line.get("qty_to_issue"), last_line_id))
+                submission_line = {
+                    "line_id": last_line_id,
+                    "product_link": line.get("product_link"),
+                    "finalised_qty": line.get("qty_to_issue")
+                }
+                submission_lines.append(submission_line)
 
-    # except Exception as ex:
-    #     conn.rollback()
-    #     print("Stock Issue Error:", str(ex))
-    #     return jsonify({"status": "error", "message": "Stock Issue Error: " + str(ex)}), 500
-    # finally:
-    #     conn.close()
+        # If order_final we can attempt to submit to Evolution in the background call;
+        # keep it synchronous here for simplicity. If submit_stock_issue raises, log it but do not fail DB insert.
+        if order_final:
+            try:
+                order_number = submit_stock_issue(warehouse_code, project_code, submission_lines, issued_to)
+                print(order_number,stock_issue_id)
+                cursor.execute("""
+                    UPDATE IssueHeader
+                    SET IssueInvoiceNo = ?
+                    WHERE IssueId = ?
+                """, (order_number, stock_issue_id))
+                conn.commit()
+            except Exception as ex:
+                conn.rollback()
+                return jsonify({
+                    "status": "error",
+                    "message": str(ex)
+                }), 400
+
+        complete_stock_issue(stock_issue_id, complete=order_final)
+        cursor.execute("""
+        Select IssLineId, IssLineStockLink from [dbo].[IssueLines]
+        Where IssLineHeaderId = ?
+        """, (stock_issue_id,))
+        issue_lines = cursor.fetchall()
+        conn.commit()
+        return jsonify({"status": "success", "message": "Stock issue created.", "issue_id": stock_issue_id, 
+            "issue_lines": [{"issue_line_id": issue_line[0], "issue_product_link": issue_line[1]} for issue_line in issue_lines]}), 200
+
+    except Exception as ex:
+        conn.rollback()
+        print("Stock Issue Error:", str(ex))
+        return jsonify({"status": "error", "message": "Stock Issue Error: " + str(ex)}), 500
+    finally:
+        if conn:
+            conn.close()
 
 
 def submit_stock_issue(warehouse_code, project_code, lines, issued_to, returned_to=None):
@@ -273,6 +167,7 @@ def submit_stock_issue(warehouse_code, project_code, lines, issued_to, returned_
         # -------------------------
         # Create Sales Order (Stock Issue)
         # -------------------------
+        print(project_code, description)
         SO = evo.SalesOrder()
         SO.Customer = evo.Customer("ZZZ001")  # Always the same customer
         SO.Project = evo.Project(project_code)  # From frontend
@@ -283,14 +178,11 @@ def submit_stock_issue(warehouse_code, project_code, lines, issued_to, returned_
 
         # Add each line (use product_link as the inventory key)
         for line in lines:
+            print(warehouse_code, line.get("finalised_qty"))
             OD = evo.OrderDetail()
             SO.Detail.Add(OD)
 
-            # fetch product code from product_link
-            cursor.execute("""
-                SELECT StockCode FROM _uvStockItems WHERE StockLink = ?
-            """, (line.get("product_link"),))
-            stock_code = cursor.fetchone()[0]
+            stock_code = stock_link_to_code(line.get("product_link"), cursor)
             # product_link expected to be usable by Evolution InventoryItem constructor
             OD.InventoryItem = evo.InventoryItem(stock_code)
             OD.Quantity = float(line.get("finalised_qty") or 0)
@@ -317,83 +209,6 @@ def submit_stock_issue(warehouse_code, project_code, lines, issued_to, returned_
         except Exception:
             pass
 
-@inventory_bp.route("/SDK/incomplete_issues", methods=["GET"])
-def incomplete_issues():
-    conn = create_db_connection()
-    cur = conn.cursor()
-
-    sql = """
-        SELECT Distinct IssueId, IssueTimeStamp, ProjectName, IssueToName
-        FROM [dbo].[_uvStockIssue]
-        WHERE IssueFinalised = 0
-        ORDER BY IssueId, IssueTimeStamp, ProjectName, IssueToName
-    """
-
-    cur.execute(sql)
-    rows = cur.fetchall()
-
-    # build grouped structure: one issue → many lines
-    issues = [{
-        "IssueId": r.IssueId,
-        "IssueTimeStamp": r.IssueTimeStamp,
-        "ProjectName": r.ProjectName,
-        "IssueToName": r.IssueToName,
-        "lines": []
-    } for r in rows
-    ]
-
-    return jsonify({"issues": issues})
-
-
-@inventory_bp.route("/fetch_products_for_return", methods=["POST"])
-def fetch_products_for_return():
-    if "StockIssue" not in current_user.permissions:
-        abort(403)  # Forbidden
-    data = request.json
-    issue_id = data.get("issue_id")
-
-    results = []
-    conn = None
-    cursor = None
-
-    try:
-        conn = create_db_connection()
-        if conn is None:
-            return jsonify([]), 500
-
-        cursor = conn.cursor()
-        cursor.execute("""  
-            Select IssLineId, IssLineStockLink, StockDescription, 
-                   IssLineUOMID, ISSLineUOMCode, ISSLineQtyIssued 
-            from [_uvStockIssue]
-            where IssueId = ?
-        """, (issue_id,))
-
-        rows = cursor.fetchall()
-        results = [{
-            "line_id": r.IssLineId,
-            "stock_link": r.IssLineStockLink,
-            "stock_description": r.StockDescription,
-            "uom_id": r.IssLineUOMID,
-            "uom_code": r.ISSLineUOMCode,
-            "qty_issued": r.ISSLineQtyIssued
-        } for r in rows]
-    except Exception as e:
-        print("fetch_products_for_return error:", e)
-    finally:
-        if cursor:
-            try:
-                cursor.close()
-            except Exception:
-                pass
-        if conn:
-            try:
-                conn.close()
-            except Exception:
-                pass
-
-    return jsonify(results)
-
 
 @inventory_bp.route("/process_return", methods=["POST"])
 @login_required
@@ -401,12 +216,18 @@ def process_return():
     data = request.json
     issue_id = data.get("issue_id")
     returned_to = data.get("returned_to")
+    created_at = data.get("created_at")
+    if created_at:
+        created_at = datetime.fromisoformat(created_at.replace("Z", ""))
+    else:
+        print("No created_at provided, using current time.")
+        created_at = datetime.now()
     lines = data.get("returns") or []
     submission_lines = []
 
     conn = None
     cursor = None
-
+    print("Processing return:", data)
     try:
         conn = create_db_connection()
         if conn is None:
@@ -417,9 +238,9 @@ def process_return():
         cursor.execute("""
             Update IssueHeader
             SET IssueReturnedToName = ?, IssueFinalised = 1, 
-                IssueFinalisedByUserId = ?, IssueFinalisedTimeStamp = GETDATE()
+                IssueFinalisedByUserId = ?, IssueFinalisedTimeStamp = ?
             WHERE IssueId = ?
-        """, (returned_to, current_user.id, issue_id))
+        """, (returned_to, current_user.id, created_at, issue_id))
         for line in lines:
             qty_finalised = line.get("qty_issued") - line.get("qty_returned")
             # fetch stock link for submission
@@ -463,9 +284,12 @@ def process_return():
         """, (order_number, issue_id))
 
         conn.commit()
+        complete_stock_issue(issue_id, complete=True)
+        print("Return processed, order number:", order_number)
         return jsonify({"success": True, "order_number": order_number})
 
     except Exception as e:
+        print("process_return error:", e)
         if conn:
             try:
                 conn.rollback()
@@ -484,4 +308,40 @@ def process_return():
                 conn.close()
             except Exception:
                 pass
+
+def complete_stock_issue(issue_id, complete):
+    conn, cursor = get_common_db_connection()
+    
+    # 1. Find users who want notifications, SubmitStockIssue has EventId 6
+    cursor.execute("""
+        SELECT UserId 
+        FROM [dbo].[NotificationPreferences]
+        WHERE EventId = 6
+    """)
+    users = cursor.fetchall()
+
+    # 2. Determine message based on `complete`
+    if complete:
+        message = f"Stock issue #{issue_id} has been finalised."
+    else:
+        message = f"Stock issue #{issue_id} is pending returns."
+
+    # 3. Create notification per user
+    for (user_id,) in users:
+        if user_id == current_user.id:
+            continue  # skip notifying the current user
+        cursor.execute("""
+            INSERT INTO Notifications (UserID, EventCode, Title, Message, EntityID, ActionURL)
+            VALUES (?, ?, ?, ?, ?, ?)
+        """, (
+            user_id,
+            'StockIssue',
+            f'Stock issue #{issue_id} completed by {current_user.username}',
+            message,  # <-- Use dynamic message here
+            issue_id,
+            f'/inventory/stock_issue/{issue_id}'
+        ))
+
+    conn.commit()
+    close_connection(conn, cursor)
 

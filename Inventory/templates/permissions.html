@@ -77,10 +77,10 @@
                 <h3>Permissions</h3>
                 <input type="text" class="filter-input" placeholder="Search..." onkeyup="filterList(this, 'permissions')">
                 <div id="permissions-list">
-                    {% for perm in permissions %}
+                    {% for event in events %}
                         <label>
-                            <input type="checkbox" name="permissions" value="{{ perm[0] }}">
-                            {{ perm[1] }}
+                            <input type="checkbox" name="permissions" value="{{ event[0] }}">
+                            {{ event[1] }}
                         </label><br>
                     {% endfor %}
                 </div>
@@ -94,6 +94,18 @@
                         <label>
                             <input type="checkbox" name="warehouses" value="{{ wh[0] }}">
                             {{ wh[1] }}
+                        </label><br>
+                    {% endfor %}
+                </div>
+            </div>
+            <div class="box">
+                <h3>Notification Preferences</h3>
+                <input type="text" class="filter-input" placeholder="Search..." onkeyup="filterList(this, 'not_prefs')">
+                <div id="not_prefs-list">
+                    {% for event in events %}
+                        <label>
+                            <input type="checkbox" name="not_prefs" value="{{ event[0] }}">
+                            {{ event[1] }}
                         </label><br>
                     {% endfor %}
                 </div>
@@ -131,7 +143,7 @@
         fetch(`/admin/get_user_settings/${userId}`)
             .then(r => r.json())
             .then(data => {
-                const { permissions, warehouses } = data;
+                const { permissions, warehouses, not_prefs } = data;
 
                 // Tick permissions
                 permissions.forEach(id => {
@@ -142,6 +154,11 @@
                 // Tick warehouses
                 warehouses.forEach(id => {
                     const cb = document.querySelector(`input[name='warehouses'][value='${id}']`);
+                    if (cb) cb.checked = true;
+                });
+
+                not_prefs.forEach(id => {
+                    const cb = document.querySelector(`input[name='not_prefs'][value='${id}']`);
                     if (cb) cb.checked = true;
                 });
             });

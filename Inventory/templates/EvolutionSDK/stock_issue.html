@@ -1,7 +1,6 @@
 {% extends 'inventory_base.html' %}
 {% block content %}
     <script src="https://unpkg.com/@zxing/library@0.19.1/umd/index.min.js"></script>
-    <script type="module" src="{{ url_for('inventory.static', filename='barcode-scanner-overlay.js') }}"></script>
     <style>
         * { box-sizing: border-box; }
         body {
@@ -395,10 +394,19 @@
 
 </div>
 
-<!-- Your JS -->
-<script type="module" src="{{ url_for('inventory.static',
-  filename='stock_issue/stock_issue_wizard.js') }}"></script>
-<script type="module" src="{{ url_for('inventory.static', filename='stock_issue/stock_issue_list.js') }}"></script>
+<script type="module"
+  src="{{ url_for('inventory.static',
+    filename='stock_issue/offline.js') }}?v={{ filemtime('inventory','stock_issue/offline.js') }}">
+</script>
+<script type="module"
+  src="{{ url_for('inventory.static',
+    filename='stock_issue/stock_issue_wizard.js') }}?v={{ filemtime('inventory','stock_issue/stock_issue_wizard.js') }}">
+</script>
+
+<script type="module"
+  src="{{ url_for('inventory.static',
+    filename='stock_issue/stock_issue_list.js') }}?v={{ filemtime('inventory','stock_issue/stock_issue_list.js') }}">
+</script>
 
 <script>
 const overviewPanel = document.getElementById("overview-panel");

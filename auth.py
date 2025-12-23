@@ -164,7 +164,7 @@ def get_user_permissions(user_id):
         cursor.execute("""
         Select Code
         from [dbo].[UserPermissions] LINK
-        JOIN [dbo].[Permissions] PERM on PERM.Id = LINK.PermissionId
+        JOIN [dbo].[Events] EVE on EVE.Id = LINK.EventId
         Where UserId = ?
         """, (user_id,))
         rows = cursor.fetchall()

@@ -1,128 +1,189 @@
 <!-- taskbar.html -->
 <header class="taskbar">
-    <!-- Logo -->
-    <div class="logo-container">
-        <a href="/inventory/dashboard" class="logo-link">
-            <img src="{{ url_for('inventory.static', filename='Image/HorizontalLogoAndText.svg') }}" alt="Fermesync Logo" class="taskbar-logo">
-        </a>
-    </div>
+  <!-- Logo -->
+  <div class="logo-container">
+    <a href="/inventory/dashboard" class="logo-link">
+      <img src="{{ url_for('inventory.static', filename='Image/HorizontalLogoAndText.svg') }}" alt="Fermesync Logo" class="taskbar-logo">
+      <!-- Mobile-only status indicators -->
+      <div class="mobile-status-indicators">
+        <div class="connection-indicator mobile-only" id="connection-indicator-mobile">
+          <span class="dot"></span>
+        </div>
+        <div class="pending-indicator mobile-only" id="pending-indicator-mobile">
+          <span id="pending-count-mobile">0</span>
+        </div>
+      </div>
+    </a>
+  </div>
 
-    <!-- Desktop Navigation -->
-    <nav class="desktop-nav">
-        <ul>
-            <li class="dropdown-parent">
-                <a href="#" class="taskbar-link">IBT <span>▼</span></a>
-                <ul class="dropdown-menu">
-                    <li><a href="/inventory/SDK/IBT_issue" class="dropdown-item">Issue</a></li>
-                    <li><a href="/inventory/SDK/IBT_receive" class="dropdown-item">Receive</a></li>
-                </ul>
-            </li>
-            {% if "GRV" in current_user.permissions %}
-                <li><a href="/inventory/SDK/GRV" class="taskbar-link">GRV</a></li>
-            {% endif %}
-            {% if "StockCount" in current_user.permissions %}
-                <li><a href="/inventory/SDK/stock_count" class="taskbar-link">Stock Count</a></li>
-            {% endif %}
-            {% if "StockIssue" in current_user.permissions %}
-            <li><a href="/inventory/SDK/stock_issue" class="taskbar-link">Stock Issue</a></li>
-            {% endif %}
-            <li><a href="/inventory/barcode_scanner" class="taskbar-link">Barcode Scanner</a></li>
+  <!-- Desktop Navigation -->
+  <nav class="desktop-nav">
+    <ul>
+      <li class="dropdown-parent">
+        <a href="#" class="taskbar-link">IBT <span>▼</span></a>
+        <ul class="dropdown-menu">
+          <li><a href="/inventory/SDK/IBT_issue" class="dropdown-item">Issue</a></li>
+          <li><a href="/inventory/SDK/IBT_receive" class="dropdown-item">Receive</a></li>
         </ul>
-    </nav>
+      </li>
+      {% if "GRV" in current_user.permissions %}
+      <li><a href="/inventory/SDK/GRV" class="taskbar-link">GRV</a></li>
+      {% endif %}
+      {% if "StockCount" in current_user.permissions %}
+      <li><a href="/inventory/SDK/stock_count" class="taskbar-link">Stock Count</a></li>
+      {% endif %}
+      {% if "StockIssue" in current_user.permissions %}
+      <li><a href="/inventory/SDK/stock_issue" class="taskbar-link">Stock Issue</a></li>
+      {% endif %}
+      <li><a href="/inventory/barcode_scanner" class="taskbar-link">Barcode Scanner</a></li>
+    </ul>
+  </nav>
+
+  <!-- Desktop Status & User Section -->
+  <div class="desktop-actions">
+    <!-- Status Indicators -->
+    <div class="status-indicators">
+      <div class="connection-indicator desktop-only" id="connection-indicator">
+        <span class="dot"></span>
+        <span class="status-text">Online</span>
+      </div>
+      
+      <div class="pending-indicator desktop-only" id="pending-indicator">
+        <div class="pending-icon">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <path d="M12 2v4m0 12v4M4.93 4.93l2.83 2.83m8.48 8.48l2.83 2.83M2 12h4m12 0h4M4.93 19.07l2.83-2.83m8.48-8.48l2.83-2.83"/>
+          </svg>
+        </div>
+        <span id="pending-count">0</span>
+      </div>
+
+      <!-- Notifications Icon -->
+      <div class="notifications-icon desktop-only" id="notifications-icon">
+        <div class="notifications-bell">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <path d="M18 8A6 6 0 006 8c0 7-3 9-3 9h18s-3-2-3-9M13.73 21a2 2 0 01-3.46 0"/>
+          </svg>
+        </div>
+        <span class="notifications-count" id="notifications-count">0</span>
+      </div>
+    </div>
 
     <!-- Desktop User -->
     <div class="user-section desktop-user">
-        <div class="username" id="username">{{ current_user.username }}<span>▼</span></div>
-        <div class="dropdown">
-            {% if current_user.market_module %}
-                <a href="/market/dashboard">Fermesync Market</a>
-            {% endif %}
-            <a href="{{ url_for('account.view_account') }}">View Account</a>
-            {% if "ManageUsers" in current_user.permissions %}
-                <a href="{{ url_for('admin.manage_users') }}">Manage Users</a>
-            {% endif %}
-            <a href="{{ url_for('logout') }}">Logout</a>
-        </div>
+      <div class="username" id="username">{{ current_user.username }}<span>▼</span></div>
+      <div class="dropdown">
+        {% if current_user.market_module %}
+        <a href="/market/dashboard">Fermesync Market</a>
+        {% endif %}
+        <a href="{{ url_for('account.view_account') }}">View Account</a>
+        {% if "ManageUsers" in current_user.permissions %}
+        <a href="{{ url_for('admin.manage_users') }}">Manage Users</a>
+        {% endif %}
+        <a href="{{ url_for('logout') }}">Logout</a>
+      </div>
     </div>
+  </div>
 
-    <!-- Mobile Hamburger -->
-    <button class="mobile-menu-toggle" id="mobile-menu-toggle" aria-label="Menu">
-        <span class="hamburger-line"></span>
-        <span class="hamburger-line"></span>
-        <span class="hamburger-line"></span>
-    </button>
+  <!-- Mobile Hamburger -->
+  <button class="mobile-menu-toggle" id="mobile-menu-toggle" aria-label="Menu">
+    <span class="hamburger-line"></span>
+    <span class="hamburger-line"></span>
+    <span class="hamburger-line"></span>
+  </button>
 </header>
 
 <!-- Mobile Menu Overlay -->
 <div class="mobile-menu-overlay" id="mobile-menu-overlay">
-    <nav class="mobile-nav">
-        <div class="mobile-nav-header">
-            <div class="mobile-username" id="mobile-username">{{ current_user.username }}</div>
-            <button class="mobile-menu-close" id="mobile-menu-close">×</button>
+  <nav class="mobile-nav">
+    <div class="mobile-nav-header">
+      <div class="mobile-user-info">
+        <div class="mobile-username" id="mobile-username">{{ current_user.username }}</div>
+        <div class="mobile-status">
+          <div class="connection-indicator mobile-inline" id="mobile-connection-text">
+            <span class="dot"></span>
+            <span class="status-text">Online</span>
+          </div>
+          <div class="pending-indicator mobile-inline" id="mobile-pending-text">
+            <span class="pending-icon">⏳</span>
+            <span id="pending-count-text">0</span> pending
+          </div>
         </div>
-
-        <ul class="mobile-nav-list">
-            <li class="mobile-nav-item">
-                <a href="#" class="mobile-nav-link">
-                    <div class="mobile-nav-content">
-                        <span class="mobile-nav-icon">↔️</span>
-                        <span>Inter-branch Transfer</span>
-                    </div>
-                    <span class="mobile-nav-chevron">›</span>
-                </a>
-                <ul class="mobile-submenu">
-                    <li><a href="/inventory/SDK/IBT_issue" class="mobile-submenu-link">Issue</a></li>
-                    <li><a href="/inventory/SDK/IBT_receive" class="mobile-submenu-link">Receive</a></li>
-                </ul>
-            </li>
-            {% if "GRV" in current_user.permissions %}
-            <li class="mobile-nav-item">
-                <a href="/inventory/SDK/GRV" class="mobile-nav-link">
-                    <div class="mobile-nav-content">
-                        <span class="mobile-nav-icon">📦</span>
-                        <span>GRV</span>
-                    </div>
-                </a>
-            </li>
-            {% endif %}
-            {% if "StockCount" in current_user.permissions %}
-            <li class="mobile-nav-item">
-                <a href="/inventory/SDK/stock_count" class="mobile-nav-link">
-                    <div class="mobile-nav-content">
-                        <span class="mobile-nav-icon">📋</span>
-                        <span>Stock Count</span>
-                    </div>
-                </a>
-            </li>
-            {% endif %}
-            {% if "StockIssue" in current_user.permissions %}
-            <li class="mobile-nav-item">
-                <a href="/inventory/SDK/stock_issue" class="mobile-nav-link">
-                    <div class="mobile-nav-content">
-                        <span class="mobile-nav-icon">🛠️</span>
-                        <span>Stock Issue</span>
-                    </div>
-                </a>
-            </li>
-            {% endif %}
-            <li class="mobile-nav-item">
-                <a href="/inventory/barcode_scanner" class="mobile-nav-link">
-                    <div class="mobile-nav-content">
-                        <span class="mobile-nav-icon">📷</span>
-                        <span>Barcode Scanner</span>
-                    </div>
-                </a>
-            </li>
+      </div>
+      <button class="mobile-menu-close" id="mobile-menu-close">×</button>
+    </div>
+    
+    <!-- Mobile Notifications -->
+    <a href="/inventory/notifications" class="mobile-notifications-link">
+      <div class="mobile-notifications">
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <path d="M18 8A6 6 0 006 8c0 7-3 9-3 9h18s-3-2-3-9M13.73 21a2 2 0 01-3.46 0"/>
+        </svg>
+        <span>Notifications</span>
+        <span class="mobile-notifications-count" id="mobile-notifications-count">0</span>
+      </div>
+    </a>
+    
+    <ul class="mobile-nav-list">
+      <li class="mobile-nav-item">
+        <a href="#" class="mobile-nav-link">
+          <div class="mobile-nav-content">
+            <span class="mobile-nav-icon">↔️</span>
+            <span>Inter-branch Transfer</span>
+          </div>
+          <span class="mobile-nav-chevron">›</span>
+        </a>
+        <ul class="mobile-submenu">
+          <li><a href="/inventory/SDK/IBT_issue" class="mobile-submenu-link">Issue</a></li>
+          <li><a href="/inventory/SDK/IBT_receive" class="mobile-submenu-link">Receive</a></li>
         </ul>
-
-        <div class="mobile-nav-footer">
-            {% if current_user.market_module %}
-                <a href="/market/dashboard" class="mobile-nav-footer-link">Fermesync Market</a>
-            {% endif %}
-            <a href="{{ url_for('account.view_account') }}" class="mobile-nav-footer-link">View Account</a>
-            <a href="{{ url_for('logout') }}" class="mobile-nav-footer-link">Logout</a>
-        </div>
-    </nav>
+      </li>
+      {% if "GRV" in current_user.permissions %}
+      <li class="mobile-nav-item">
+        <a href="/inventory/SDK/GRV" class="mobile-nav-link">
+          <div class="mobile-nav-content">
+            <span class="mobile-nav-icon">📦</span>
+            <span>GRV</span>
+          </div>
+        </a>
+      </li>
+      {% endif %}
+      {% if "StockCount" in current_user.permissions %}
+      <li class="mobile-nav-item">
+        <a href="/inventory/SDK/stock_count" class="mobile-nav-link">
+          <div class="mobile-nav-content">
+            <span class="mobile-nav-icon">📋</span>
+            <span>Stock Count</span>
+          </div>
+        </a>
+      </li>
+      {% endif %}
+      {% if "StockIssue" in current_user.permissions %}
+      <li class="mobile-nav-item">
+        <a href="/inventory/SDK/stock_issue" class="mobile-nav-link">
+          <div class="mobile-nav-content">
+            <span class="mobile-nav-icon">🛠️</span>
+            <span>Stock Issue</span>
+          </div>
+        </a>
+      </li>
+      {% endif %}
+      <li class="mobile-nav-item">
+        <a href="/inventory/barcode_scanner" class="mobile-nav-link">
+          <div class="mobile-nav-content">
+            <span class="mobile-nav-icon">📷</span>
+            <span>Barcode Scanner</span>
+          </div>
+        </a>
+      </li>
+    </ul>
+    <div class="mobile-nav-footer">
+      {% if current_user.market_module %}
+      <a href="/market/dashboard" class="mobile-nav-footer-link">Fermesync Market</a>
+      {% endif %}
+      <a href="{{ url_for('account.view_account') }}" class="mobile-nav-footer-link">View Account</a>
+      <a href="{{ url_for('logout') }}" class="mobile-nav-footer-link">Logout</a>
+    </div>
+  </nav>
 </div>
 
 <style>
@@ -131,616 +192,964 @@
 
 /* Reset default margins */
 body, html {
-    margin: 0;
-    padding: 0;
-    font-family: 'Arial', sans-serif;
+  margin: 0;
+  padding: 0;
+  font-family: 'Arial', sans-serif;
 }
 
 body {
-    display: block !important;
+  display: block !important;
 }
 
 *, *::before, *::after {
-    box-sizing: border-box;
+  box-sizing: border-box;
 }
 
 .logo-container {
-    display: flex;
-    align-items: center;
-    height: 100%;
+  display: flex;
+  align-items: center;
+  height: 100%;
+  position: relative;
 }
 
 .logo-link {
-    display: flex;
-    align-items: center;
-    text-decoration: none;
+  display: flex;
+  align-items: center;
+  text-decoration: none;
+  position: relative;
 }
 
 .taskbar-logo {
-    height: 40px;
-    width: auto;
+  height: 40px;
+  width: auto;
 }
 
 .taskbar {
-    position: fixed;
-    top: 0;
-    left: 0;
-    width: 100%;
-    background-color: var(--taskbar-bg);
-    color: var(--taskbar-text);
-    z-index: 1000;
-    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    padding: 0 20px;
-    font-family: 'Arial', sans-serif;
-    height: 60px;
-    border-radius: 0;
-    box-sizing: border-box;
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  background-color: var(--taskbar-bg);
+  color: var(--taskbar-text);
+  z-index: 1000;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 0 20px;
+  font-family: 'Arial', sans-serif;
+  height: 60px;
+  border-radius: 0;
+  box-sizing: border-box;
 }
 
 /* Utility class for content that needs to be pushed below the fixed taskbar */
 .with-fixed-taskbar {
-    padding-top: 70px;
+  padding-top: 70px;
 }
 
 /* Ensure content starts after taskbar */
 main {
-    padding: 20px;
-    flex-grow: 1;
+  padding: 20px;
+  flex-grow: 1;
+}
+
+/* Desktop Actions Container */
+.desktop-actions {
+  display: flex;
+  align-items: center;
+  gap: 20px;
+}
+
+/* Status Indicators Container */
+.status-indicators {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-right: 10px;
 }
 
 /* Navigation - Desktop Only */
 .taskbar .desktop-nav {
-    position: absolute;
-    left: 50%;
-    transform: translateX(-50%);
+  position: absolute;
+  left: 50%;
+  transform: translateX(-50%);
 }
 
 .taskbar .desktop-nav ul {
-    display: flex;
-    list-style: none;
-    padding: 0;
-    margin: 0;
+  display: flex;
+  list-style: none;
+  padding: 0;
+  margin: 0;
 }
 
 .taskbar-link {
-    text-decoration: none;
-    color: var(--taskbar-text);
-    font-size: 1rem;
-    font-family: Georgia, 'Times New Roman', Times, serif;
-    padding: 12px 20px;
-    display: inline-block;
-    transition: background 0.3s ease, color 0.3s ease;
-    border-radius: 4px;
+  text-decoration: none;
+  color: var(--taskbar-text);
+  font-size: 1rem;
+  font-family: Georgia, 'Times New Roman', Times, serif;
+  padding: 12px 20px;
+  display: inline-block;
+  transition: background 0.3s ease, color 0.3s ease;
+  border-radius: 4px;
 }
 
-.taskbar-link:hover,
-.taskbar-link.active {
-    background-color: var(--taskbar-hover);
-    color: var(--container-bg);
+.taskbar-link:hover, .taskbar-link.active {
+  background-color: var(--taskbar-hover);
+  color: var(--container-bg);
 }
 
 /* User Section - Desktop Only */
 .user-section.desktop-user {
-    position: relative;
-    display: flex;
-    align-items: center;
-    cursor: pointer;
+  position: relative;
+  display: flex;
+  align-items: center;
+  cursor: pointer;
 }
 
 .username {
-    font-size: 1rem;
-    padding: 12px 15px;
-    background-color: var(--taskbar-user-bg);
-    border-radius: 4px;
-    transition: background 0.3s ease;
-    color: var(--taskbar-text);
+  font-size: 1rem;
+  padding: 12px 15px;
+  background-color: var(--taskbar-user-bg);
+  border-radius: 4px;
+  transition: background 0.3s ease;
+  color: var(--taskbar-text);
 }
 
 .username:hover {
-    background-color: var(--taskbar-user-hover);
+  background-color: var(--taskbar-user-hover);
 }
 
 /* Dropdown */
 .dropdown {
-    display: none;
-    position: absolute;
-    top: 45px;
-    right: 0;
-    background-color: var(--taskbar-dropdown-bg);
-    border-radius: 4px;
-    min-width: 150px;
-    box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2);
-    padding: 5px 0;
+  display: none;
+  position: absolute;
+  top: 45px;
+  right: 0;
+  background-color: var(--taskbar-dropdown-bg);
+  border-radius: 4px;
+  min-width: 150px;
+  box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2);
+  padding: 5px 0;
 }
 
 .dropdown a {
-    color: var(--taskbar-text);
-    padding: 10px 20px;
-    display: block;
-    text-decoration: none;
-    transition: background 0.2s ease;
+  color: var(--taskbar-text);
+  padding: 10px 20px;
+  display: block;
+  text-decoration: none;
+  transition: background 0.2s ease;
 }
 
 .dropdown a:hover {
-    background-color: var(--taskbar-dropdown-hover);
+  background-color: var(--taskbar-dropdown-hover);
 }
 
 .user-section:hover .dropdown {
-    display: block;
+  display: block;
 }
 
 .dropdown-parent:hover .dropdown-menu,
 .dropdown-parent:focus-within .dropdown-menu {
-    display: block !important;
+  display: block !important;
 }
 
 /* CSS Reset for taskbar elements to prevent page style interference */
-.taskbar *,
-.taskbar *::before,
-.taskbar *::after {
-    box-sizing: border-box;
+.taskbar *, .taskbar *::before, .taskbar *::after {
+  box-sizing: border-box;
 }
 
-.taskbar ul,
-.taskbar li {
-    margin: 0;
-    padding: 0;
-    list-style: none;
+.taskbar ul, .taskbar li {
+  margin: 0;
+  padding: 0;
+  list-style: none;
 }
 
 .taskbar a {
-    text-decoration: none;
-    color: inherit;
+  text-decoration: none;
+  color: inherit;
 }
 
 /* Taskbar-specific dropdown styles - isolated from page styles */
 .taskbar .dropdown-menu {
-    display: none;
-    position: absolute;
-    left: 0;
-    top: 100%;
-    background: var(--container-bg);
-    min-width: 180px;
-    box-shadow: 0 4px 12px rgba(0,0,0,0.12);
-    border-radius: 0 0 8px 8px;
-    z-index: 1001;
-    padding: 0.5em 0;
-    margin: 0;
-    list-style: none;
-    border: 1px solid var(--table-border);
+  display: none;
+  position: absolute;
+  left: 0;
+  top: 100%;
+  background: var(--container-bg);
+  min-width: 180px;
+  box-shadow: 0 4px 12px rgba(0,0,0,0.12);
+  border-radius: 0 0 8px 8px;
+  z-index: 1001;
+  padding: 0.5em 0;
+  margin: 0;
+  list-style: none;
+  border: 1px solid var(--table-border);
 }
 
 .taskbar .dropdown-item {
-    display: block;
-    padding: 0.7em 1.2em;
-    color: var(--primary-text);
-    text-decoration: none;
-    font-size: 1em;
-    transition: background 0.18s, color 0.18s;
-    background: transparent;
+  display: block;
+  padding: 0.7em 1.2em;
+  color: var(--primary-text);
+  text-decoration: none;
+  font-size: 1em;
+  transition: background 0.18s, color 0.18s;
+  background: transparent;
 }
 
 .taskbar .dropdown-item:hover {
-    background: var(--table-row-hover);
-    color: var(--logo-color);
+  background: var(--table-row-hover);
+  color: var(--logo-color);
 }
 
 /* Mobile Menu Toggle Button (Hamburger) */
 .mobile-menu-toggle {
-    display: none;
-    flex-direction: column;
-    justify-content: space-around;
-    width: 30px;
-    height: 30px;
-    background: transparent;
-    border: none;
-    cursor: pointer;
-    padding: 0;
-    z-index: 1001;
-    margin: 0;
+  display: none;
+  flex-direction: column;
+  justify-content: space-around;
+  width: 30px;
+  height: 30px;
+  background: transparent;
+  border: none;
+  cursor: pointer;
+  padding: 0;
+  z-index: 1001;
+  margin: 0;
 }
 
 .hamburger-line {
-    width: 100%;
-    height: 3px;
-    background-color: var(--taskbar-text);
-    border-radius: 3px;
-    transition: all 0.3s ease;
+  width: 100%;
+  height: 3px;
+  background-color: var(--taskbar-text);
+  border-radius: 3px;
+  transition: all 0.3s ease;
 }
 
 .mobile-menu-toggle.active .hamburger-line:nth-child(1) {
-    transform: rotate(45deg) translate(8px, 8px);
+  transform: rotate(45deg) translate(8px, 8px);
 }
 
 .mobile-menu-toggle.active .hamburger-line:nth-child(2) {
-    opacity: 0;
+  opacity: 0;
 }
 
 .mobile-menu-toggle.active .hamburger-line:nth-child(3) {
-    transform: rotate(-45deg) translate(7px, -7px);
+  transform: rotate(-45deg) translate(7px, -7px);
 }
 
 /* Mobile Menu Overlay */
 .mobile-menu-overlay {
-    display: none;
-    position: fixed;
-    top: 0;
-    left: 0;
-    width: 100%;
-    height: 100vh;
-    background-color: rgba(0, 0, 0, 0.5);
-    z-index: 9999;
-    opacity: 0;
-    transition: opacity 0.3s ease;
+  display: none;
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100vh;
+  background-color: rgba(0, 0, 0, 0.5);
+  z-index: 9999;
+  opacity: 0;
+  transition: opacity 0.3s ease;
 }
 
 .mobile-menu-overlay.active {
-    display: block;
-    opacity: 1;
+  display: block;
+  opacity: 1;
 }
 
 .mobile-nav {
-    position: fixed;
-    top: 0;
-    right: -100%;
-    width: 85%;
-    max-width: 320px;
-    height: 100vh;
-    background-color: var(--taskbar-bg);
-    box-shadow: -2px 0 10px rgba(0, 0, 0, 0.3);
-    transition: right 0.3s ease;
-    display: flex;
-    flex-direction: column;
-    overflow-y: auto;
+  position: fixed;
+  top: 0;
+  right: -100%;
+  width: 85%;
+  max-width: 320px;
+  height: 100vh;
+  background-color: var(--taskbar-bg);
+  box-shadow: -2px 0 10px rgba(0, 0, 0, 0.3);
+  transition: right 0.3s ease;
+  display: flex;
+  flex-direction: column;
+  overflow-y: auto;
 }
 
 .mobile-menu-overlay.active .mobile-nav {
-    right: 0;
+  right: 0;
 }
 
 .mobile-nav-header {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    padding: 20px;
-    border-bottom: 1px solid rgba(255, 255, 255, 0.1);
-    background-color: var(--taskbar-user-bg);
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  padding: 20px;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+  background-color: var(--taskbar-user-bg);
+}
+
+.mobile-user-info {
+  flex: 1;
 }
 
 .mobile-username {
-    color: var(--taskbar-text);
-    font-size: 1.1rem;
-    font-weight: 600;
+  color: var(--taskbar-text);
+  font-size: 1.2rem;
+  font-weight: 600;
+  margin-bottom: 8px;
+}
+
+.mobile-status {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
 }
 
 .mobile-menu-close {
-    background: none;
-    border: none;
-    color: var(--taskbar-text);
-    font-size: 2rem;
-    cursor: pointer;
-    padding: 0;
-    width: 30px;
-    height: 30px;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    line-height: 1;
-    transition: transform 0.2s ease;
+  background: none;
+  border: none;
+  color: var(--taskbar-text);
+  font-size: 2rem;
+  cursor: pointer;
+  padding: 0;
+  width: 30px;
+  height: 30px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  line-height: 1;
+  transition: transform 0.2s ease;
+  margin-top: -5px;
 }
 
 .mobile-menu-close:hover {
-    transform: scale(1.2);
+  transform: scale(1.2);
 }
 
 .mobile-nav-list {
-    list-style: none;
-    padding: 0;
-    margin: 0;
-    flex: 1;
-    overflow-y: auto;
+  list-style: none;
+  padding: 0;
+  margin: 0;
+  flex: 1;
+  overflow-y: auto;
 }
 
 .mobile-nav-item {
-    border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+  border-bottom: 1px solid rgba(255, 255, 255, 0.05);
 }
 
 .mobile-nav-link {
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    padding: 18px 20px;
-    color: var(--taskbar-text);
-    text-decoration: none;
-    font-size: 1rem;
-    transition: background-color 0.2s ease;
-    width: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 18px 20px;
+  color: var(--taskbar-text);
+  text-decoration: none;
+  font-size: 1rem;
+  transition: background-color 0.2s ease;
+  width: 100%;
 }
 
 .mobile-nav-content {
-    display: flex;
-    align-items: center;
-    gap: 15px;
-    flex: 1;
+  display: flex;
+  align-items: center;
+  gap: 15px;
+  flex: 1;
 }
 
 .mobile-nav-chevron {
-    font-size: 1.5rem;
-    color: var(--taskbar-text);
-    opacity: 0.7;
-    transition: transform 0.2s ease;
+  font-size: 1.5rem;
+  color: var(--taskbar-text);
+  opacity: 0.7;
+  transition: transform 0.2s ease;
 }
 
 .mobile-nav-item.active .mobile-nav-chevron {
-    transform: rotate(90deg);
+  transform: rotate(90deg);
 }
 
-.mobile-nav-link:hover,
-.mobile-nav-link.active {
-    background-color: var(--taskbar-hover);
+.mobile-nav-link:hover, .mobile-nav-link.active {
+  background-color: var(--taskbar-hover);
 }
 
 .mobile-nav-icon {
-    font-size: 1.3rem;
-    width: 24px;
-    text-align: center;
+  font-size: 1.3rem;
+  width: 24px;
+  text-align: center;
 }
 
 .mobile-submenu {
-    list-style: none;
-    padding: 0;
-    margin: 0;
-    background-color: rgba(0, 0, 0, 0.2);
-    display: none;
+  list-style: none;
+  padding: 0;
+  margin: 0;
+  background-color: rgba(0, 0, 0, 0.2);
+  display: none;
 }
 
 .mobile-nav-item.active .mobile-submenu {
-    display: block;
+  display: block;
 }
 
 .mobile-submenu-link {
-    display: block;
-    padding: 14px 20px 14px 55px;
-    color: var(--taskbar-text);
-    text-decoration: none;
-    font-size: 0.9rem;
-    transition: background-color 0.2s ease;
-    border-top: 1px solid rgba(255, 255, 255, 0.05);
+  display: block;
+  padding: 14px 20px 14px 55px;
+  color: var(--taskbar-text);
+  text-decoration: none;
+  font-size: 0.9rem;
+  transition: background-color 0.2s ease;
+  border-top: 1px solid rgba(255, 255, 255, 0.05);
 }
 
 .mobile-submenu-link:hover {
-    background-color: var(--taskbar-hover);
-    padding-left: 60px;
+  background-color: var(--taskbar-hover);
+  padding-left: 60px;
 }
 
 .mobile-nav-footer {
-    border-top: 1px solid rgba(255, 255, 255, 0.1);
-    padding: 15px 20px;
-    display: flex;
-    flex-direction: column;
-    gap: 10px;
+  border-top: 1px solid rgba(255, 255, 255, 0.1);
+  padding: 15px 20px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
 }
 
 .mobile-nav-footer-link {
-    color: var(--taskbar-text);
-    text-decoration: none;
-    padding: 12px;
-    border-radius: 4px;
-    transition: background-color 0.2s ease;
-    text-align: center;
-    font-size: 0.95rem;
+  color: var(--taskbar-text);
+  text-decoration: none;
+  padding: 12px;
+  border-radius: 4px;
+  transition: background-color 0.2s ease;
+  text-align: center;
+  font-size: 0.95rem;
 }
 
 .mobile-nav-footer-link:hover {
-    background-color: var(--taskbar-hover);
+  background-color: var(--taskbar-hover);
+}
+
+/* Connection Indicator */
+.connection-indicator {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 10px;
+  border-radius: 20px;
+  font-size: 0.8rem;
+  font-weight: 600;
+  background: #2e7d32;
+  color: #fff;
+  box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+  transition: all 0.3s ease;
+  white-space: nowrap;
+}
+
+.connection-indicator.offline {
+  background: #c62828;
+}
+
+.connection-indicator .dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: #fff;
+  box-shadow: 0 0 4px rgba(255,255,255,0.5);
+}
+
+/* Pending Sync Indicator */
+.pending-indicator {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 10px;
+  border-radius: 20px;
+  font-size: 0.85rem;
+  font-weight: 600;
+  background: #ff9800;
+  color: #fff;
+  box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+  transition: all 0.3s ease;
+  white-space: nowrap;
+}
+
+.pending-icon {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.pending-indicator.active {
+  background: #ff5722;
+}
+
+/* Notifications Icon */
+.notifications-icon {
+  position: relative;
+  display: flex;
+  align-items: center;
+  cursor: pointer;
+  padding: 8px;
+  border-radius: 50%;
+  transition: background-color 0.2s ease;
+}
+
+.notifications-icon:hover {
+  background-color: rgba(255, 255, 255, 0.1);
+}
+
+.notifications-bell {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 24px;
+  height: 24px;
+}
+
+.notifications-icon .notifications-count {
+  position: absolute;
+  top: 0;
+  right: 0;
+  background: #f44336;
+  color: white;
+  font-size: 0.7rem;
+  min-width: 16px;
+  height: 16px;
+  border-radius: 8px;
+  font-weight: bold;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0 4px;
+  box-shadow: 0 2px 4px rgba(0,0,0,0.2);
+}
+
+/* Mobile Status Indicators (on logo) */
+.mobile-status-indicators {
+  position: absolute;
+  bottom: -8px;
+  right: -8px;
+  display: flex;
+  gap: 4px;
+}
+
+.mobile-status-indicators .connection-indicator,
+.mobile-status-indicators .pending-indicator {
+  padding: 4px 6px;
+  font-size: 0.7rem;
+  min-width: 20px;
+  height: 20px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.mobile-status-indicators .status-text {
+  display: none;
+}
+
+/* Mobile Notifications in Menu */
+.mobile-notifications-link {
+  display: block;
+  text-decoration: none;
+  color: inherit;
+}
+
+.mobile-notifications {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 16px 20px;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+  background-color: rgba(255, 255, 255, 0.05);
+  transition: background-color 0.2s ease;
+}
+
+.mobile-notifications:hover {
+  background-color: var(--taskbar-hover);
+}
+
+.mobile-notifications svg {
+  width: 20px;
+  height: 20px;
+}
+
+.mobile-notifications span:not(.mobile-notifications-count) {
+  flex: 1;
+  font-size: 1rem;
+}
+
+.mobile-notifications-count {
+  background: #f44336;
+  color: white;
+  font-size: 0.8rem;
+  min-width: 20px;
+  height: 20px;
+  border-radius: 10px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0 6px;
+  font-weight: bold;
+}
+
+/* Show/Hide based on device */
+.desktop-only {
+  display: flex;
+}
+
+.mobile-only {
+  display: none !important;
+}
+
+.mobile-inline {
+  display: flex !important;
+  font-size: 0.75rem;
+  padding: 4px 8px;
+  background: rgba(255, 255, 255, 0.1);
+  border-radius: 12px;
+  margin-top: 2px;
 }
 
 /* Mobile Responsive Styles */
 @media (max-width: 768px) {
-    /* Hide desktop navigation and user section on mobile */
-    .desktop-nav,
-    .desktop-user {
-        display: none !important;
-    }
-
-    /* Show mobile menu toggle */
-    .mobile-menu-toggle {
-        display: flex;
-    }
-
-    /* Adjust taskbar for mobile */
-    .taskbar {
-        padding: 10px 15px;
-        height: 60px;
-        justify-content: space-between;
-    }
-
-    /* Smaller logo on mobile */
-    .taskbar-logo {
-        height: 40px !important;
-        width: auto;
-        transform: translateY(0);
-    }
-
-    .logo-container {
-        flex: 0 0 auto;
-    }
-
-    /* Adjust padding for content below taskbar */
-    .with-fixed-taskbar {
-        padding-top: 70px;
-    }
+  /* Hide desktop navigation and actions on mobile */
+  .desktop-nav, .desktop-actions {
+    display: none !important;
+  }
+  
+  /* Show mobile menu toggle */
+  .mobile-menu-toggle {
+    display: flex;
+  }
+  
+  /* Adjust taskbar for mobile */
+  .taskbar {
+    padding: 10px 15px;
+    height: 60px;
+    justify-content: space-between;
+  }
+  
+  /* Smaller logo on mobile */
+  .taskbar-logo {
+    height: 40px !important;
+    width: auto;
+  }
+  
+  /* Show mobile-only indicators */
+  .mobile-only {
+    display: flex !important;
+  }
+  
+  .desktop-only {
+    display: none !important;
+  }
+  
+  /* Adjust padding for content below taskbar */
+  .with-fixed-taskbar {
+    padding-top: 70px;
+  }
+  
+  /* Mobile status in menu */
+  .mobile-inline {
+    font-size: 0.7rem;
+    padding: 3px 6px;
+  }
 }
 
 /* Desktop styles - ensure desktop nav is visible */
 @media (min-width: 769px) {
-    .mobile-menu-toggle {
-        display: none !important;
-    }
+  .mobile-menu-toggle,
+  .mobile-menu-overlay,
+  .mobile-only,
+  .mobile-inline {
+    display: none !important;
+  }
+  
+  .desktop-nav,
+  .desktop-actions {
+    display: flex;
+  }
+  
+  .desktop-only {
+    display: flex;
+  }
+}
+</style>
 
-    .mobile-menu-overlay {
-        display: none !important;
+<script>
+document.addEventListener("DOMContentLoaded", function () {
+  const path = window.location.pathname;
+  
+  // Desktop: Active link highlighting
+  document.querySelectorAll(".taskbar-link").forEach((link) => {
+    if (path.includes(link.getAttribute("href"))) {
+      link.classList.add("active");
     }
+  });
+  
+  // Mobile: Active link highlighting
+  document.querySelectorAll(".mobile-nav-link").forEach((link) => {
+    if (path === link.getAttribute("href") || path.includes(link.getAttribute("href"))) {
+      link.classList.add("active");
+    }
+  });
+  
+  // Desktop: Dropdown handling for user
+  const usernameEl = document.getElementById("username");
+  if (usernameEl) {
+    usernameEl.addEventListener("click", function () {
+      const dropdown = document.querySelector(".user-section .dropdown");
+      if (dropdown) {
+        dropdown.style.display = dropdown.style.display === "block" ? "none" : "block";
+      }
+    });
+  }
+  
+  // Desktop: Dropdown handling for nav (hover)
+  document.querySelectorAll('.dropdown-parent').forEach(function(parent) {
+    parent.addEventListener('mouseenter', function() {
+      const menu = this.querySelector('.dropdown-menu');
+      if (menu) {
+        menu.style.display = 'block';
+      }
+    });
+    parent.addEventListener('mouseleave', function() {
+      const menu = this.querySelector('.dropdown-menu');
+      if (menu) {
+        menu.style.display = 'none';
+      }
+    });
+  });
+  
+  // Mobile Menu Toggle
+  const mobileMenuToggle = document.getElementById('mobile-menu-toggle');
+  const mobileMenuOverlay = document.getElementById('mobile-menu-overlay');
+  const mobileMenuClose = document.getElementById('mobile-menu-close');
+  const mobileNav = document.querySelector('.mobile-nav');
+  
+  function openMobileMenu() {
+    if (mobileMenuToggle && mobileMenuOverlay) {
+      mobileMenuToggle.classList.add('active');
+      mobileMenuOverlay.classList.add('active');
+      document.body.style.overflow = 'hidden';
+    }
+  }
+  
+  function closeMobileMenu() {
+    if (mobileMenuToggle && mobileMenuOverlay) {
+      mobileMenuToggle.classList.remove('active');
+      mobileMenuOverlay.classList.remove('active');
+      document.body.style.overflow = '';
+      
+      // Close any open submenus
+      document.querySelectorAll('.mobile-nav-item').forEach(item => {
+        item.classList.remove('active');
+      });
+    }
+  }
+  
+  // Toggle menu when hamburger is clicked
+  if (mobileMenuToggle) {
+    mobileMenuToggle.addEventListener('click', function(e) {
+      e.stopPropagation();
+      if (mobileMenuOverlay.classList.contains('active')) {
+        closeMobileMenu();
+      } else {
+        openMobileMenu();
+      }
+    });
+  }
+  
+  // Close menu when close button is clicked
+  if (mobileMenuClose) {
+    mobileMenuClose.addEventListener('click', closeMobileMenu);
+  }
+  
+  // Close menu when clicking overlay (but not the menu itself)
+  if (mobileMenuOverlay) {
+    mobileMenuOverlay.addEventListener('click', function(e) {
+      if (e.target === mobileMenuOverlay) {
+        closeMobileMenu();
+      }
+    });
+  }
+  
+  // Prevent menu from closing when clicking inside it
+  if (mobileNav) {
+    mobileNav.addEventListener('click', function(e) {
+      e.stopPropagation();
+    });
+  }
+  
+  // Mobile: Handle submenu expansion
+  document.querySelectorAll('.mobile-nav-item').forEach(function(item) {
+    const link = item.querySelector('.mobile-nav-link');
+    const submenu = item.querySelector('.mobile-submenu');
+    
+    if (link && submenu) {
+      // Parent link with submenu - toggle submenu on click
+      link.addEventListener('click', function(e) {
+        e.preventDefault();
+        e.stopPropagation();
+        item.classList.toggle('active');
+      });
+    } else if (link) {
+      // Regular link without submenu - navigate and close menu
+      link.addEventListener('click', function(e) {
+        setTimeout(closeMobileMenu, 100);
+      });
+    }
+  });
+  
+  // Close mobile menu when a submenu link is clicked
+  document.querySelectorAll('.mobile-submenu-link').forEach(function(link) {
+    link.addEventListener('click', function(e) {
+      setTimeout(closeMobileMenu, 100);
+    });
+  });
+  
+  // Close mobile menu on window resize if it becomes desktop size
+  window.addEventListener('resize', function() {
+    if (window.innerWidth > 768) {
+      closeMobileMenu();
+    }
+  });
+  
+  // Close mobile menu on ESC key press
+  document.addEventListener('keydown', function(e) {
+    if (e.key === 'Escape' && mobileMenuOverlay && mobileMenuOverlay.classList.contains('active')) {
+      closeMobileMenu();
+    }
+  });
+  
+  // Hide dropdown menus initially (desktop)
+  document.querySelectorAll('.dropdown-menu').forEach(menu => {
+    menu.style.display = 'none';
+  });
+  
+  // Notifications icon click
+  const notificationsIcon = document.getElementById('notifications-icon');
+  if (notificationsIcon) {
+    notificationsIcon.addEventListener('click', () => {
+      window.location.href = '/inventory/notifications';
+    });
+  }
+});
 
-    .desktop-nav,
-    .desktop-user {
-        display: flex;
+// Notifications count update
+async function updateNotificationsCount() {
+  try {
+    const response = await fetch('/inventory/notifications/count');
+    const data = await response.json();
+    const count = data.count || 0;
+    
+    // Update desktop icon
+    const desktopIcon = document.getElementById('notifications-icon');
+    const desktopBadge = document.getElementById('notifications-count');
+    if (desktopIcon && desktopBadge) {
+      desktopBadge.textContent = count;
+      desktopIcon.classList.toggle('active', count > 0);
     }
+    
+    // Update mobile badge
+    const mobileBadge = document.getElementById('mobile-notifications-count');
+    if (mobileBadge) {
+      mobileBadge.textContent = count;
+    }
+  } catch (err) {
+    console.error("Failed to fetch notifications count:", err);
+  }
 }
 
-</style>
-<script>
-    document.addEventListener("DOMContentLoaded", function () {
-        const path = window.location.pathname;
-        
-        // Desktop: Active link highlighting
-        document.querySelectorAll(".taskbar-link").forEach((link) => {
-            if (path.includes(link.getAttribute("href"))) {
-                link.classList.add("active");
-            }
-        });
+// Initial load
+document.addEventListener("DOMContentLoaded", updateNotificationsCount);
+// Update periodically
+setInterval(updateNotificationsCount, 30000);
 
-        // Mobile: Active link highlighting
-        document.querySelectorAll(".mobile-nav-link").forEach((link) => {
-            if (path === link.getAttribute("href") || path.includes(link.getAttribute("href"))) {
-                link.classList.add("active");
-            }
-        });
+// Connection status update
+function updateConnectionStatus() {
+  const isOnline = navigator.onLine;
+  
+  // Update desktop indicator
+  const desktopEl = document.getElementById("connection-indicator");
+  if (desktopEl) {
+    const text = desktopEl.querySelector(".status-text");
+    if (text) {
+      text.textContent = isOnline ? "Online" : "Offline";
+    }
+    desktopEl.classList.toggle("offline", !isOnline);
+  }
+  
+  // Update mobile indicator on logo
+  const mobileEl = document.getElementById("connection-indicator-mobile");
+  if (mobileEl) {
+    mobileEl.classList.toggle("offline", !isOnline);
+  }
+  
+  // Update mobile text in menu
+  const mobileTextEl = document.getElementById("mobile-connection-text");
+  if (mobileTextEl) {
+    const text = mobileTextEl.querySelector(".status-text");
+    if (text) {
+      text.textContent = isOnline ? "Online" : "Offline";
+    }
+    mobileTextEl.classList.toggle("offline", !isOnline);
+  }
+}
 
-        // Desktop: Dropdown handling for user
-        const usernameEl = document.getElementById("username");
-        if (usernameEl) {
-            usernameEl.addEventListener("click", function () {
-                const dropdown = document.querySelector(".user-section .dropdown");
-                if (dropdown) {
-                    dropdown.style.display = dropdown.style.display === "block" ? "none" : "block";
-                }
-            });
-        }
-        // Desktop: Dropdown handling for nav (hover)
-        document.querySelectorAll('.dropdown-parent').forEach(function(parent) {
-            parent.addEventListener('mouseenter', function() {
-                const menu = this.querySelector('.dropdown-menu');
-                if (menu) {
-                    menu.style.display = 'block';
-                }
-            });
-            parent.addEventListener('mouseleave', function() {
-                const menu = this.querySelector('.dropdown-menu');
-                if (menu) {
-                    menu.style.display = 'none';
-                }
-            });
-        });
+// Pending indicator update
+async function updatePendingIndicator() {
+  try {
+    const dbModule = await import('/main_static/offline/db.js?v=40');
+    const count = await dbModule.db.outbox.count();
+    
+    // Update desktop indicator
+    const desktop = document.getElementById("pending-indicator");
+    if (desktop) {
+      const countEl = desktop.querySelector("#pending-count");
+      if (countEl) {
+        countEl.textContent = count;
+      }
+      desktop.classList.toggle("active", count > 0);
+    }
+    
+    // Update mobile indicator on logo
+    const mobile = document.getElementById("pending-indicator-mobile");
+    if (mobile) {
+      const countEl = mobile.querySelector("#pending-count-mobile");
+      if (countEl) {
+        countEl.textContent = count;
+      }
+      mobile.classList.toggle("active", count > 0);
+    }
+    
+    // Update mobile text in menu
+    const mobileText = document.getElementById("mobile-pending-text");
+    if (mobileText) {
+      const countEl = mobileText.querySelector("#pending-count-text");
+      if (countEl) {
+        countEl.textContent = count;
+      }
+      mobileText.classList.toggle("active", count > 0);
+    }
+  } catch (error) {
+    console.error("Error updating pending indicator:", error);
+  }
+}
 
-        // Mobile Menu Toggle
-        const mobileMenuToggle = document.getElementById('mobile-menu-toggle');
-        const mobileMenuOverlay = document.getElementById('mobile-menu-overlay');
-        const mobileMenuClose = document.getElementById('mobile-menu-close');
-        const mobileNav = document.querySelector('.mobile-nav');
+// Initial state
+document.addEventListener("DOMContentLoaded", function() {
+  updateConnectionStatus();
+  updatePendingIndicator();
+  updateNotificationsCount();
+});
 
-        function openMobileMenu() {
-            if (mobileMenuToggle && mobileMenuOverlay) {
-                mobileMenuToggle.classList.add('active');
-                mobileMenuOverlay.classList.add('active');
-                document.body.style.overflow = 'hidden'; // Prevent background scrolling
-            }
-        }
+// React to connection changes
+window.addEventListener("online", function() {
+  updateConnectionStatus();
+  updatePendingIndicator();
+});
 
-        function closeMobileMenu() {
-            if (mobileMenuToggle && mobileMenuOverlay) {
-                mobileMenuToggle.classList.remove('active');
-                mobileMenuOverlay.classList.remove('active');
-                document.body.style.overflow = ''; // Restore scrolling
-                
-                // Close any open submenus
-                document.querySelectorAll('.mobile-nav-item').forEach(item => {
-                    item.classList.remove('active');
-                });
-            }
-        }
+window.addEventListener("offline", function() {
+  updateConnectionStatus();
+});
 
-        // Toggle menu when hamburger is clicked
-        if (mobileMenuToggle) {
-            mobileMenuToggle.addEventListener('click', function(e) {
-                e.stopPropagation();
-                if (mobileMenuOverlay.classList.contains('active')) {
-                    closeMobileMenu();
-                } else {
-                    openMobileMenu();
-                }
-            });
-        }
-
-        // Close menu when close button is clicked
-        if (mobileMenuClose) {
-            mobileMenuClose.addEventListener('click', closeMobileMenu);
-        }
-
-        // Close menu when clicking overlay (but not the menu itself)
-        if (mobileMenuOverlay) {
-            mobileMenuOverlay.addEventListener('click', function(e) {
-                if (e.target === mobileMenuOverlay) {
-                    closeMobileMenu();
-                }
-            });
-        }
-
-        // Prevent menu from closing when clicking inside it
-        if (mobileNav) {
-            mobileNav.addEventListener('click', function(e) {
-                e.stopPropagation();
-            });
-        }
-
-        // Mobile: Handle submenu expansion
-        document.querySelectorAll('.mobile-nav-item').forEach(function(item) {
-            const link = item.querySelector('.mobile-nav-link');
-            const submenu = item.querySelector('.mobile-submenu');
-            
-            if (link && submenu) {
-                // Parent link with submenu - toggle submenu on click
-                link.addEventListener('click', function(e) {
-                    e.preventDefault();
-                    e.stopPropagation();
-                    item.classList.toggle('active');
-                });
-            } else if (link) {
-                // Regular link without submenu - navigate and close menu
-                link.addEventListener('click', function(e) {
-                    setTimeout(closeMobileMenu, 100);
-                });
-            }
-        });
-
-        // Close mobile menu when a submenu link is clicked
-        document.querySelectorAll('.mobile-submenu-link').forEach(function(link) {
-            link.addEventListener('click', function(e) {
-                // Small delay to allow navigation to start
-                setTimeout(closeMobileMenu, 100);
-            });
-        });
-
-        // Close mobile menu on window resize if it becomes desktop size
-        window.addEventListener('resize', function() {
-            if (window.innerWidth > 768) {
-                closeMobileMenu();
-            }
-        });
-
-        // Close mobile menu on ESC key press
-        document.addEventListener('keydown', function(e) {
-            if (e.key === 'Escape' && mobileMenuOverlay && mobileMenuOverlay.classList.contains('active')) {
-                closeMobileMenu();
-            }
-        });
-
-        // Hide dropdown menus initially (desktop)
-        document.querySelectorAll('.dropdown-menu').forEach(menu => {
-            menu.style.display = 'none';
-        });
-    });
+// Expose functions globally for other scripts
+window.updatePendingIndicator = updatePendingIndicator;
+window.updateNotificationsCount = updateNotificationsCount;
 </script>
