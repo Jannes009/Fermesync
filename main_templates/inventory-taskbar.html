@@ -1033,6 +1033,7 @@ document.addEventListener("DOMContentLoaded", function () {
 
 // Notifications count update
 async function updateNotificationsCount() {
+  if (!navigator.onLine) return;
   try {
     const response = await fetch('/inventory/notifications/count');
     const data = await response.json();
@@ -1095,8 +1096,16 @@ function updateConnectionStatus() {
 // Pending indicator update
 async function updatePendingIndicator() {
   try {
-    const dbModule = await import('/main_static/offline/db.js?v=40');
-    const count = await dbModule.db.outbox.count();
+    const dbModule = await import('/main_static/offline/db.js?v=43');
+    const [outboxCount, returnsCount] = await Promise.all([
+      dbModule.db.outbox.count(),
+      dbModule.db.offlineReturns
+        .where('status')
+        .equals('queued')
+        .count()
+    ]);
+
+    const count = outboxCount + returnsCount;
     
     // Update desktop indicator
     const desktop = document.getElementById("pending-indicator");

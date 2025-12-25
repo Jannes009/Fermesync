@@ -1,66 +1,102 @@
 import {
-  db, fetchWithOffline
-} from '/main_static/offline/db.js?v=40';
+  db,
+  fetchWithOffline,
+  generateNotification
+} from '/main_static/offline/db.js?v=43';
 
-window.addEventListener("online", async () => {
-  console.log("Back online");
-  await flushOutbox();
-  await submitUnsyncedReturns();
-  await fetchOfflineData();
+// -----------------------------
+// Run when page loads
+// -----------------------------
+document.addEventListener('DOMContentLoaded', async () => {
+  if (navigator.onLine) {
+    await syncIssues();
+  }
 });
+
+// -----------------------------
+// Run when connection returns
+// -----------------------------
+window.addEventListener('online', async () => {
+  console.log('Back online');
+  await syncIssues();
+});
+
+// -----------------------------
+// Central sync logic
+// -----------------------------
+async function syncIssues() {
+  try {
+    await flushOutbox();
+    await submitUnsyncedReturns();
+    window.updateNotificationsCount();
+    window.updatePendingIndicator();
+  } catch (err) {
+    console.warn('Sync failed:', err);
+  }
+}
+
 
 document.addEventListener("DOMContentLoaded", async () => {
-    await fetchOfflineData();
+    if (navigator.onLine) {
+        await fetchWarehouses();
+        await fetchProjects();
+        await fetchProducts();
+        await fetchIncompleteIssues();
+    }
 });
 
-async function fetchOfflineData(){
+async function fetchWarehouses(){
+  await fetchWithOffline({
+      url: '/inventory/SDK/fetch_warehouses',
+      store: 'warehouses',
+      transform: d => d.warehouses
+  });
+}
 
-    await fetchWithOffline({
-        url: '/inventory/SDK/fetch_warehouses',
-        store: 'warehouses',
-        transform: d => d.warehouses
-    });
-    await fetchWithOffline({
-      url: '/inventory/fetch_projects',
-      method: 'POST',
-      store: 'projects',
-      transform: d => d.prod_projects
-    });
+async function fetchProjects(){
+  await fetchWithOffline({
+    url: '/inventory/fetch_projects',
+    method: 'POST',
+    store: 'projects',
+    transform: d => d.prod_projects
+  });
+}
 
-    // --------------- Fetch products --------------- //
-    const products = await fetch(`/inventory/fetch_products`)
-    .then(r => r.json())
-    .then(d => d.products.map(p => ({
-        product_link: p.product_link,
-        whse: p.WhseCode,        // 👈 REQUIRED
-        qty_in_whse: p.qty_in_whse,
+export async function fetchProducts(){
+  const products = await fetch(`/inventory/fetch_products`)
+  .then(r => r.json())
+  .then(d => d.products.map(p => ({
+      product_link: p.product_link,
+      whse: p.WhseCode,        // 👈 REQUIRED
+      qty_in_whse: p.qty_in_whse,
 
-        product_code: p.product_code,
-        product_desc: p.product_desc,
+      product_code: p.product_code,
+      product_desc: p.product_desc,
 
-        whse_link: p.WhseLink,
-        whse_name: p.WhseName,
+      whse_link: p.WhseLink,
+      whse_name: p.WhseName,
 
-        stocking_uom_id: p.stocking_uom_id,
-        stocking_uom_code: p.stocking_uom_code,
-        purchase_uom_id: p.purchase_uom_id,
-        purchase_uom_code: p.purchase_uom_code,
-        uom_cat_id: p.uom_cat_id
-    })));
+      stocking_uom_id: p.stocking_uom_id,
+      stocking_uom_code: p.stocking_uom_code,
+      purchase_uom_id: p.purchase_uom_id,
+      purchase_uom_code: p.purchase_uom_code,
+      uom_cat_id: p.uom_cat_id
+  })));
+  await db.products.bulkPut(products);
+}
 
-    await db.products.bulkPut(products);
-    // --------------- Fetch issues --------------- //
-    await fetchWithOffline({
-      url: "/inventory/SDK/incomplete_issues",
-      store: "serverIssues",
-      transform: d => d.issues
-    });
-    await fetchWithOffline({
-      url: "/inventory/SDK/incomplete_issue_lines",
-      store: "serverIssueLines",
-      transform: d => d.issue_lines
-    });
-    console.log("Offline data fetch complete");
+export async function fetchIncompleteIssues(){
+  // --------------- Fetch issues --------------- //
+  await fetchWithOffline({
+    url: "/inventory/SDK/incomplete_issues",
+    store: "serverIssues",
+    transform: d => d.issues
+  });
+  await fetchWithOffline({
+    url: "/inventory/SDK/incomplete_issue_lines",
+    store: "serverIssueLines",
+    transform: d => d.issue_lines
+  });
 }
 
 export async function flushOutbox() {
@@ -80,7 +116,7 @@ export async function flushOutbox() {
 
       const data = await res.json();
       console.log("Outbox item synced", item, data);
-      if (data.success !== "success" && data.status !== "success") {
+      if (!data.success && data.status !== "success") {
         console.log(data)
         throw new Error("Server rejected request");
       }
@@ -137,10 +173,12 @@ export async function flushOutbox() {
             issue_id: data.issue_id
           });
         }
+        await generateNotification(issue.created_by_user_id, "Stock Issue Synced", `Your offline stock issue has been synced successfully.`, data.issue_id);
       }
       await db.outbox.delete(item.id);
-
+      
     } catch (err) {
+      await generateNotification(window.FERMESYNC.userId, "Outbox Sync Failed", `An item in your outbox could not be synced.`, null);
       console.warn("Outbox flush failed", item, err);
       await db.outbox.update(item.id, {
         retry_count: (item.retry_count || 0) + 1
@@ -230,13 +268,15 @@ async function submitUnsyncedReturns() {
       body: JSON.stringify({
         issue_id: serverIssueId,
         returned_to: issueReturn.returned_to,
+        created_at: issueReturn.created_at,
         returns: mappedReturns
       })
     });
-
+    console.log(res)
     if (!res.ok) {
+      generateNotification(issueReturn.created_by_user_id, "Return Sync Failed", `Your offline stock issue return could not be synced.`, serverIssueId);
       console.warn("Return submission failed", issueReturn);
-      continue;
+      return;
     }
 
     console.log("Return submission response", res);
@@ -245,5 +285,6 @@ async function submitUnsyncedReturns() {
     await db.offlineReturns.update(issueReturn.local_id, {
       status: "synced"
     });
+    generateNotification(issueReturn.created_by_user_id, "Return Synced", `Your offline stock issue return has been synced successfully.`, serverIssueId);
   }
 }

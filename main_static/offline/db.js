@@ -53,10 +53,26 @@ export async function fetchWithOffline({
   }
 
   // OFFLINE FALLBACK
-  if (!store) throw new Error('Offline fetch requires store');
-  return db[store].toArray();
+  return await db[store].toArray();
+
 }
 
-/**
- * Flush outbox items when online
- */
+export async function generateNotification(UserId, Title, Message, EntityId, action_url = null) {
+    fetch('/inventory/notifications/create_notification', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+            UserId,
+            Title,
+            Message,
+            EntityId,
+            action_url
+        })
+    }).then(res => res.json())
+      .then(data => {
+          console.log("Notification generated", data);
+      })
+      .catch(err => {
+          console.error("Failed to generate notification", err);
+      });
+}

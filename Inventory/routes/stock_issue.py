@@ -8,14 +8,8 @@ from auth import get_common_db_connection, close_connection
 from Inventory.routes.db_conversions import warehouse_code_to_link, project_code_to_link, stock_link_to_code
 from datetime import datetime
 
-
-# Add the path to your Evolution DLLs
-sys.path.append(r"C:\Program Files (x86)\Sage Evolution")
-
-# Load Evolution DLLs
-clr.AddReference("Pastel.Evolution.Common")
-clr.AddReference("Pastel.Evolution")
-import Pastel.Evolution as evo
+from Inventory.routes.sdk_connection import EvolutionConnection
+import Pastel.Evolution as Evo
 
 @inventory_bp.route("/SDK/stock_issue", methods=["GET"])
 @login_required
@@ -144,71 +138,31 @@ def create_stock_issue():
 
 
 def submit_stock_issue(warehouse_code, project_code, lines, issued_to, returned_to=None):
-    """
-    Submits the issue to Evolution as a SalesOrder. This function should
-    raise exceptions on failure (caller handles logging).
-    NOTE: we rely on product_link being the Evolution InventoryItem identifier (StockLink).
-    """
-    # -------------------------
-    # Connect to Evolution
-    # -------------------------
-    conn = None
-    cursor = None
     description = f"{issued_to}, {returned_to}" if returned_to else f"{issued_to}"
     try:
-        evo.DatabaseContext.CreateCommonDBConnection(
-            "SIGMAFIN-RDS\\EVOLUTION", "SageCommon", "sa", "@Evolution", False
-        )
-        evo.DatabaseContext.SetLicense("DE12111082", "9824607")
-        evo.DatabaseContext.CreateConnection(
-            "SIGMAFIN-RDS\\EVOLUTION", "UB_UITDRAAI_BDY", "sa", "@Evolution", False
-        )
+        with EvolutionConnection():
+            SO = Evo.SalesOrder()
+            SO.Customer = Evo.Customer("ZZZ001")
+            SO.Project = Evo.Project(project_code)
+            SO.Description = description
 
-        # -------------------------
-        # Create Sales Order (Stock Issue)
-        # -------------------------
-        print(project_code, description)
-        SO = evo.SalesOrder()
-        SO.Customer = evo.Customer("ZZZ001")  # Always the same customer
-        SO.Project = evo.Project(project_code)  # From frontend
-        SO.Description = description
+            conn = create_db_connection()
+            cursor = conn.cursor()
 
-        conn = create_db_connection()
-        cursor = conn.cursor()
+            for line in lines:
+                OD = Evo.OrderDetail()
+                SO.Detail.Add(OD)
 
-        # Add each line (use product_link as the inventory key)
-        for line in lines:
-            print(warehouse_code, line.get("finalised_qty"))
-            OD = evo.OrderDetail()
-            SO.Detail.Add(OD)
+                stock_code = stock_link_to_code(line["product_link"], cursor)
+                OD.InventoryItem = Evo.InventoryItem(stock_code)
+                OD.Quantity = float(line.get("finalised_qty") or 0)
+                OD.Warehouse = Evo.Warehouse(warehouse_code)
 
-            stock_code = stock_link_to_code(line.get("product_link"), cursor)
-            # product_link expected to be usable by Evolution InventoryItem constructor
-            OD.InventoryItem = evo.InventoryItem(stock_code)
-            OD.Quantity = float(line.get("finalised_qty") or 0)
-            OD.Warehouse = evo.Warehouse(warehouse_code)
-
-        # Complete the Sales Order
-        SO.Complete()
-        order_number = SO.OrderNo
-
-
-        return order_number
+            SO.Complete()
+            return SO.OrderNo
     except Exception as ex:
         print("Stock Issue Submission Error:", str(ex))
         raise ex
-    finally:
-        try:
-            if cursor:
-                cursor.close()
-        except Exception:
-            pass
-        try:
-            if conn:
-                conn.close()
-        except Exception:
-            pass
-
 
 @inventory_bp.route("/process_return", methods=["POST"])
 @login_required
@@ -344,4 +298,3 @@ def complete_stock_issue(issue_id, complete):
 
     conn.commit()
     close_connection(conn, cursor)
-

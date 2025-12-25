@@ -37,3 +37,25 @@ def notifications_page():
     cursor.commit()
     close_connection(conn, cursor)
     return render_template("notifications.html", notifications=notifications)
+
+@inventory_bp.route("/notifications/create_notification", methods=["POST"])
+def create_notification():
+    data = request.get_json()
+    user_id = data.get("UserId")
+    title = data.get("Title")
+    message = data.get("Message")
+    entity_id = data.get("EntityId", None)
+    action_url = data.get("action_url", "")
+    
+    if not user_id or not title or not message:
+        return jsonify({"success": False, "error": "Missing required fields"}), 400
+
+    conn, cursor = get_common_db_connection()
+    cursor.execute("""
+        INSERT INTO Notifications (UserID, Title, Message, EntityId, ActionURL, CreatedAt, IsRead)
+        VALUES (?, ?, ?, ?, ?, GETDATE(), 0)
+    """, (user_id, title, message, entity_id, action_url))
+    conn.commit()
+    close_connection(conn, cursor)
+    
+    return jsonify({"success": True})

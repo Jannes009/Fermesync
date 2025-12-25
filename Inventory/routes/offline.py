@@ -133,7 +133,6 @@ def incomplete_issue_lines():
             "uom_code": r.ISSLineUOMCode,
             "qty_issued": r.ISSLineQtyIssued
         } for r in rows]
-        print("Fetched products for return:", results)
     except Exception as e:
         print("fetch_products_for_return error:", e)
     finally:

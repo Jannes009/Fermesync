@@ -1,5 +1,8 @@
-import { db, fetchWithOffline } from '/main_static/offline/db.js?v=40';
+import { db, fetchWithOffline } from '/main_static/offline/db.js?v=43';
+import { fetchProducts, fetchIncompleteIssues } from './offline.js';
+import { ensureStockAvailable } from "../stock_adjustment.js?v=1";
 
+console.log(window.FERMESYNC.userId);
 let selectedWarehouse = null;
 let selectedProject = null;
 let issuedTo = null;
@@ -110,7 +113,7 @@ function addLine() {
   newLine.querySelector(".remove-line").onclick = () => { $(selectEl).select2('destroy'); newLine.remove(); };
 }
 
-function step2Next() {
+async function step2Next() {
   lines = [];
   const allLines = document.querySelectorAll("#ibt-lines .product-row");
   if (!allLines.length) { Swal.fire("No Lines", "Add at least one product line.", "warning"); return; }
@@ -127,10 +130,23 @@ function step2Next() {
 
     const product = productsInWhse.find(p => String(p.product_link) === String(selectEl.value));
     if (!product) { Swal.fire("Product Error", "Selected product not found.", "error"); return; }
-    if (parseFloat(qtyInput.value) > parseFloat(product.qty_in_whse || 0)) {
-      Swal.fire("Quantity Error", `Issued quantity for ${selectEl.selectedOptions[0].dataset.code} exceeds available stock.`, "error");
-      return;
-    }
+
+    const qtyRequested = parseFloat(qtyInput.value);
+
+    const ok = await ensureStockAvailable({
+        product_link: product.product_link,
+        whse: selectedWarehouse,
+        qtyNeeded: qtyRequested,
+        onUpdated: async () => {
+            productsInWhse = await db.products
+                .where("whse")
+                .equals(selectedWarehouse)
+                .toArray();
+        }
+    });
+
+    if (!ok) return;
+
 
     lines.push({
       product_link: product.product_link,
@@ -148,7 +164,7 @@ function step2Next() {
                    <p><strong>Project:</strong> ${selectedProject}</p>
                    <p><strong>Issued To:</strong> ${issuedTo}</p>
                    <hr><h4>Products</h4>`;
-  lines.forEach(l => box.innerHTML += `<div class="line-row"><div>${l.product_desc}</div><div>Issue: ${l.qty_issued} ${l.stocking_uom_code}</div></div>`);
+  lines.forEach(l => box.innerHTML += `<div class="line-row"><div>${l.product_desc}</div><div>Issue: ${l.qty_issued} ${l.uom_code}</div></div>`);
 
   document.getElementById("step-2").classList.add("hidden");
   document.getElementById("step-3").classList.remove("hidden");
@@ -204,7 +220,8 @@ async function submitIssue() {
     );
     return;
     }
-
+    fetchProducts(); // Refresh local products
+    fetchIncompleteIssues(); // Refresh incomplete issues
     await Swal.fire("Success", "Stock issue created", "success");
     location.reload();
 
@@ -216,6 +233,7 @@ async function offlineSubmit(clientIssueId, orderFinal) {
     await db.offlineIssues.add({
       client_issue_id: clientIssueId,
       server_issue_id: null, // Will be filled later
+      created_by_user_id: window.FERMESYNC.userId,
       warehouse: selectedWarehouse,
       project: selectedProject,
       issued_to: issuedTo,

@@ -1,6 +1,7 @@
 import {
   db, fetchWithOffline
-} from '/main_static/offline/db.js?v=40';
+} from '/main_static/offline/db.js?v=43';
+import { fetchProducts } from './offline.js';
 
 document.addEventListener("DOMContentLoaded", async () => {
     loadIncompleteIssues();
@@ -19,13 +20,15 @@ async function loadIncompleteIssues() {
     });
 
     // Normalize into one shape
-    const normalizedOnline = onlineIssues.map(i => ({
-    issue_id: i.IssueId,
-    whse_id: i.WhseId,
-    project: i.ProjectName,
-    issued_to: i.IssueToName,
-    timestamp: i.IssueTimeStamp,
-    isOffline: false
+  const normalizedOnline = onlineIssues
+    .filter(i => i.isReturned === false) // or !i.isReturned
+    .map(i => ({
+      issue_id: i.IssueId,
+      whse_id: i.WhseId,
+      project: i.ProjectName,
+      issued_to: i.IssueToName,
+      timestamp: i.IssueTimeStamp,
+      isOffline: false
     }));
 
     // only fetch offline issues if we are offline
@@ -241,7 +244,7 @@ async function startReturnWizard(issueId) {
             return lines;
         }
     });
-
+    if (!qtyEntry.value) return;
     const returnLines = qtyEntry.value;
 
     // STEP 4: CONFIRMATION
@@ -313,14 +316,15 @@ async function startReturnWizard(issueId) {
                     .first();
 
                 if (issue) {
-                    await db.offlineIssues.update(issue.local_id, {
-                        isReturned: true
-                    });
+                  await db.offlineIssues.update(issue.local_id, {
+                      isReturned: true
+                  });
                 }
             } else {
                 await db.offlineReturns.add({
                     server_issue_id: issueId,
                     issue_id: issueId,
+                    created_by_user_id: window.FERMESYNC.userId,
                     returned_to: returnedBy,
                     returns: returnLines,
                     status: "queued",
@@ -330,6 +334,7 @@ async function startReturnWizard(issueId) {
                 await db.serverIssues.update(parseInt(issueId), {
                     isReturned: true
                 });
+
             }
 
             // ✅ NOW we close the offline block
@@ -369,6 +374,7 @@ async function startReturnWizard(issueId) {
             } else {
                 Swal.fire("Error", submitRes.message || "Return failed with no message from server.", "error");
             }
+            fetchProducts(); // Refresh local products
         }
 
     } catch (err) {

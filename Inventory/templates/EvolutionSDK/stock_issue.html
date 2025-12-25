@@ -393,6 +393,12 @@
     </form>
 
 </div>
+<script>
+  window.FERMESYNC = {
+    userId: {{ current_user.id | tojson }},
+    permissions: {{ current_user.permissions | tojson }}
+  };
+</script>
 
 <script type="module"
   src="{{ url_for('inventory.static',

@@ -2,7 +2,7 @@ from flask import Flask, render_template, request, redirect, session, url_for, m
 from flask_login import login_user, logout_user, current_user, login_required
 from auth import login_manager, authenticate_user
 import os
-
+from datetime import timedelta
 
 # -----------------------------
 # Flask App
@@ -11,8 +11,16 @@ def create_app():
     app = Flask(__name__, template_folder='main_templates', static_folder='main_static')
     app.secret_key = "secret_key"
 
+    app.config.update(
+        SECRET_KEY="secret_key",
+        SESSION_COOKIE_HTTPONLY=True,
+        SESSION_COOKIE_SAMESITE="Lax",
+        SESSION_COOKIE_SECURE=False,  # True if HTTPS
+        PERMANENT_SESSION_LIFETIME=timedelta(days=30)
+    )
+
     login_manager.init_app(app)
-    login_manager.session_protection = "strong"
+    login_manager.session_protection = "basic"
 
     from admin import admin_bp
     from Market.routes import market_bp
@@ -55,7 +63,8 @@ def create_app():
             password = request.form.get('password')
             user = authenticate_user(username, password)
             if user:
-                login_user(user)
+                login_user(user, remember=True)
+                session.permanent = True
                 return redirect(url_for('dashboard'))
         return render_template('index.html')
 
@@ -64,10 +73,8 @@ def create_app():
     def logout():
         logout_user()
         session.clear()
-        resp = make_response(redirect(url_for('index')))
-        resp.set_cookie('session', '', expires=0)
-        resp.set_cookie('remember_token', '', expires=0)
-        return resp
+        return redirect(url_for('index'))
+
 
     @app.route("/dashboard")
     @login_required
