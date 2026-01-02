@@ -43,7 +43,7 @@ async function loadProjects() {
 
   const select = document.getElementById('project-select');
   select.innerHTML = '<option></option>';
-  projects.forEach(p => select.insertAdjacentHTML('beforeend', `<option value="${p.id}">${p.name}</option>`));
+  projects.forEach(p => select.insertAdjacentHTML('beforeend', `<option value="${p.code}">${p.name}</option>`));
 }
 
 async function step1Next() {

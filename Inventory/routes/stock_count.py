@@ -16,7 +16,7 @@ def IBT_stock_count():
 @inventory_bp.route("/fetch_categories", methods=["POST"])
 def fetch_categories():
     whse_code = request.json.get("whse_code")
-
+    print(whse_code)
     conn = create_db_connection()
     cursor = conn.cursor()
 

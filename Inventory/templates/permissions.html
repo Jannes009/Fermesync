@@ -90,6 +90,10 @@
                 <h3>Warehouses</h3>
                 <input type="text" class="filter-input" placeholder="Search..." onkeyup="filterList(this, 'warehouses')">
                 <div id="warehouses-list">
+                    <label>
+                            <input type="checkbox" name="warehouses" value="0">
+                            Non-Warehouse Items
+                    </label><br>
                     {% for wh in warehouses %}
                         <label>
                             <input type="checkbox" name="warehouses" value="{{ wh[0] }}">

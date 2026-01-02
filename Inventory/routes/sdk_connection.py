@@ -1,5 +1,4 @@
-import sys
-import clr
+import sys, os, clr
 
 # Ensure DLL path exists once
 sys.path.append(r"C:\Program Files (x86)\Sage Evolution")
@@ -14,10 +13,10 @@ class EvolutionConnection:
         server="SIGMAFIN-RDS\\EVOLUTION",
         common_db="SageCommon",
         company_db="UB_UITDRAAI_BDY",
-        username="sa",
-        password="@Evolution",
-        license_key="DE12111082",
-        license_serial="9824607",
+        username=os.getenv("DB_USERNAME"),
+        password=os.getenv("DB_PASSWORD"),
+        license_key=os.getenv("DB_LICENCE_KEY"),
+        license_serial=os.getenv("DB_LICENCE_SERIAL"),
         trusted=False
     ):
         self.server = server

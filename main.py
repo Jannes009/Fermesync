@@ -2,22 +2,26 @@ from flask import Flask, render_template, request, redirect, session, url_for, m
 from flask_login import login_user, logout_user, current_user, login_required
 from auth import login_manager, authenticate_user
 import os
-from datetime import timedelta
+from config import DevelopmentConfig, ProductionConfig, TestingConfig
 
 # -----------------------------
 # Flask App
 # -----------------------------
 def create_app():
-    app = Flask(__name__, template_folder='main_templates', static_folder='main_static')
-    app.secret_key = "secret_key"
-
-    app.config.update(
-        SECRET_KEY="secret_key",
-        SESSION_COOKIE_HTTPONLY=True,
-        SESSION_COOKIE_SAMESITE="Lax",
-        SESSION_COOKIE_SECURE=False,  # True if HTTPS
-        PERMANENT_SESSION_LIFETIME=timedelta(days=30)
+    app = Flask(
+        __name__,
+        template_folder='main_templates',
+        static_folder='main_static'
     )
+
+    env = os.getenv("FLASK_ENV", "development")
+
+    if env == "production":
+        app.config.from_object(ProductionConfig)
+    elif env == "testing":
+        app.config.from_object(TestingConfig)
+    else:
+        app.config.from_object(DevelopmentConfig)
 
     login_manager.init_app(app)
     login_manager.session_protection = "basic"
@@ -47,6 +51,12 @@ def create_app():
 
         # ⚠️ Must return a dictionary
         return dict(filemtime=filemtime)
+    
+    @app.context_processor
+    def inject_vapid_key():
+        return {
+            "vapid_public_key": app.config.get("VAPID_PUBLIC_KEY")
+        }
 
     @app.route("/")
     def index():
@@ -72,7 +82,6 @@ def create_app():
     @login_required
     def logout():
         logout_user()
-        session.clear()
         return redirect(url_for('index'))
 
 
@@ -97,6 +106,10 @@ def create_app():
     @app.route("/sw.js")
     def service_worker():
         return send_from_directory(app.static_folder, "sw.js")
+    
+    @app.route("/onesignal/OneSignalSDKWorker.js")
+    def onesignal_worker():
+        return send_from_directory("onesignal", "OneSignalSDKWorker.js")
 
     # -----------------------------
     # ERROR HANDLERS

@@ -24,7 +24,16 @@ window.addEventListener('online', async () => {
 // -----------------------------
 // Central sync logic
 // -----------------------------
+let isSyncing = false;
+
 async function syncIssues() {
+  if (isSyncing) {
+    console.log("Sync already in progress, skipping");
+    return;
+  }
+
+  isSyncing = true;
+
   try {
     await flushOutbox();
     await submitUnsyncedReturns();
@@ -32,6 +41,8 @@ async function syncIssues() {
     window.updatePendingIndicator();
   } catch (err) {
     console.warn('Sync failed:', err);
+  } finally {
+    isSyncing = false;
   }
 }
 
@@ -47,7 +58,7 @@ document.addEventListener("DOMContentLoaded", async () => {
 
 async function fetchWarehouses(){
   await fetchWithOffline({
-      url: '/inventory/SDK/fetch_warehouses',
+      url: '/inventory/fetch_warehouses',
       store: 'warehouses',
       transform: d => d.warehouses
   });

@@ -40,7 +40,6 @@ def create_stock_issue():
         created_at = data.get("created_at", datetime.now().isoformat())
         lines_payload = data.get("lines", [])
         submission_lines = []
-        print(data)
 
         if not warehouse_code or not project_code or not issued_to or not lines_payload:
             return jsonify({"status": "error", "message": "Missing required data"}), 400
@@ -178,10 +177,10 @@ def process_return():
         created_at = datetime.now()
     lines = data.get("returns") or []
     submission_lines = []
+    containsQty = False
 
     conn = None
     cursor = None
-    print("Processing return:", data)
     try:
         conn = create_db_connection()
         if conn is None:
@@ -189,6 +188,12 @@ def process_return():
 
         cursor = conn.cursor()
 
+        # check if issue was already processed
+        cursor.execute("Select IssueFinalised from IssueHeader where IssueId = ?", (issue_id,))
+        order_finalised = int(cursor.fetchone()[0]) > 0
+        if order_finalised:
+            return jsonify({"success": False, "message": "This issue was already finalised. Please refresh page."})
+        
         cursor.execute("""
             Update IssueHeader
             SET IssueReturnedToName = ?, IssueFinalised = 1, 
@@ -197,6 +202,8 @@ def process_return():
         """, (returned_to, current_user.id, created_at, issue_id))
         for line in lines:
             qty_finalised = line.get("qty_issued") - line.get("qty_returned")
+            if qty_finalised > 0:
+                containsQty = True
             # fetch stock link for submission
             cursor.execute("""
                 Select IssLineStockLink
@@ -230,7 +237,10 @@ def process_return():
         if not issue:
             raise Exception(f"Issue {issue_id} not found.")
 
-        order_number = submit_stock_issue(issue.IssueWhseId, issue.IssueProjectId, submission_lines, issue.IssueToName, issue.IssueReturnedToName)
+        if containsQty:
+            order_number = submit_stock_issue(issue.IssueWhseId, issue.IssueProjectId, submission_lines, issue.IssueToName, issue.IssueReturnedToName)
+        else:
+            order_number = "No Order Created"
         cursor.execute("""
             UPDATE IssueHeader
             SET IssueInvoiceNo = ?
@@ -238,6 +248,7 @@ def process_return():
         """, (order_number, issue_id))
 
         conn.commit()
+
         complete_stock_issue(issue_id, complete=True)
         print("Return processed, order number:", order_number)
         return jsonify({"success": True, "order_number": order_number})

@@ -1,0 +1,365 @@
+{% extends 'inventory_base.html' %}
+{% block content %}
+
+  <style>
+    * { box-sizing: border-box; }
+    body { background: var(--primary-bg); color: var(--primary-text); font-size: 0.9rem; margin: 0; padding: 0; min-height: 100vh; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; }
+    .page-content { display: flex; flex-direction: column; flex: 1; }
+    .wrap { width: 100%; margin: 0 auto; padding: 1rem; max-width: 1600px; }
+    .wrap.with-fixed-taskbar { padding-top: 1rem; margin-top: 60px; }
+    .card { background: var(--container-bg); border-radius: 8px; box-shadow: 0 1px 6px rgba(44,62,80,0.08); padding: 1rem; margin-bottom: 1rem; }
+    header h1 { margin: 0; font-size: 1.4rem; color: var(--primary-text); }
+
+    /* Form */
+    .form-group { margin-bottom: 1rem; }
+    .form-group label { font-weight: 600; color: var(--secondary-text); display: block; margin-bottom: 6px; font-size: 0.9rem; }
+    .form-group select, .form-group input { width: 100%; padding: 12px 14px; border: 1px solid var(--input-border); border-radius: 8px; background: var(--form-bg); font-size: 1rem; }
+    .form-group select:focus, .form-group input:focus { outline: none; border-color: var(--input-focus); box-shadow: 0 0 0 2px var(--input-shadow); }
+
+    /* Buttons */
+    .btn { padding: 6px 12px; font-size: 13px; border-radius: 4px; border: none; cursor: pointer; }
+    .btn-primary { background: var(--button-bg); color: var(--button-text); }
+    .btn-primary:hover { background: var(--button-hover); }
+    .btn-icon { background: none; border: none; cursor: pointer; font-size: 14px; }
+    .btn-icon.danger { color: #dc2626; }
+    .btn-icon.danger:hover { color: #b91c1c; }
+    .hidden { display: none; }
+
+    /* Progress */
+    .progress-info, .completed-info { padding: 0.75rem; border-radius: 6px; text-align: center; font-size: 0.9rem; margin-bottom: 1rem; }
+    .progress-info { background: #e8f4fd; color: #2980b9; }
+    .completed-info { background: #d4edda; color: #155724; }
+
+    /* Product Row — Compact & Beautiful */
+    .product-row {
+      display: grid;
+      grid-template-columns: 1fr 90px auto;
+      align-items: center;
+      gap: 10px;
+      padding: 10px;
+      background: var(--form-bg);
+      border: 1px solid var(--input-border);
+      border-radius: 8px;
+      margin-bottom: 8px;
+    }
+    .product-desc {
+      font-size: 0.95rem;
+      font-weight: 500;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+    .qty-input {
+      height: 40px;
+      font-size: 1.1rem;
+      font-weight: bold;
+      text-align: center;
+      border: 2px solid var(--input-border);
+      border-radius: 6px;
+      background: white;
+      -moz-appearance: textfield;
+      appearance: textfield;
+    }
+    .qty-input::-webkit-inner-spin-button,
+    .qty-input::-webkit-outer-spin-button {
+      -webkit-appearance: none;
+      margin: 0;
+    }
+    .qty-input:focus {
+      outline: none;
+      border-color: var(--button-bg);
+      box-shadow: 0 0 0 3px rgba(0,123,255,0.2);
+    }
+    .uom-label {
+      background: #e9ecef;
+      padding: 4px 10px;
+      border-radius: 6px;
+      font-size: 0.8rem;
+      font-weight: bold;
+      color: #495057;
+    }
+
+    /* Recount Card */
+    .recount-card {
+      background: #fff3cd;
+      border: 2px solid #ffeaa7;
+      border-radius: 8px;
+      padding: 1rem;
+      margin-bottom: 1rem;
+    }
+    .recount-title { font-weight: bold; color: #856404; font-size: 1rem; }
+    .recount-badge { background: #f39c12; color: white; padding: 4px 10px; border-radius: 4px; font-size: 0.8rem; font-weight: bold; }
+    .recount-input {
+      width: 100%;
+      height: 48px;
+      font-size: 1.3rem;
+      font-weight: bold;
+      text-align: center;
+      border: 2px solid #f39c12;
+      border-radius: 6px;
+      background: white;
+      -moz-appearance: textfield;
+      appearance: textfield;
+    }
+    .recount-input:focus {
+      outline: none;
+      border-color: #e67e22;
+      box-shadow: 0 0 0 3px rgba(243,156,18,0.3);
+    }
+
+    /* Step Header */
+    .step-header {
+      margin: 0 0 1rem 0;
+      color: var(--primary-text);
+      font-size: 1.1rem;
+      border-bottom: 2px solid var(--button-bg);
+      padding-bottom: 0.5rem;
+    }
+
+    /* --- PO Create Specific --- */
+    .card h3 {
+      margin: 0 0 1rem 0;
+      font-size: 1.1rem;
+      color: var(--primary-text);
+      border-bottom: 1px solid var(--input-border);
+      padding-bottom: 0.5rem;
+    }
+
+    .form-grid {
+      display: grid;
+      grid-template-columns: 180px 1fr;
+      column-gap: 16px;
+      row-gap: 12px;
+      align-items: center;
+    }
+
+    .form-grid label {
+      font-size: 13px;
+      font-weight: 500;
+      color: var(--secondary-text);
+    }
+
+    .form-grid input,
+    .form-grid select {
+      height: 34px;
+      padding: 6px 8px;
+      border-radius: 4px;
+      border: 1px solid var(--input-border);
+      background: var(--form-bg);
+      font-size: 13px;
+      color: var(--primary-text);
+    }
+
+    .form-grid input:focus,
+    .form-grid select:focus {
+      outline: none;
+      border-color: var(--input-focus);
+      box-shadow: 0 0 0 1px rgba(37, 99, 235, 0.2);
+    }
+
+    .udf-tabs {
+      display: flex;
+      gap: 6px;
+      margin-bottom: 12px;
+    }
+
+    .udf-tab {
+      padding: 6px 12px;
+      font-size: 12px;
+      border-radius: 4px;
+      border: 1px solid var(--input-border);
+      background: var(--form-bg);
+      cursor: pointer;
+      color: var(--primary-text);
+    }
+
+    .udf-tab:hover {
+      background: var(--muted-bg);
+    }
+
+    .udf-tab.active {
+      background: var(--button-bg);
+      border-color: var(--button-bg);
+      color: var(--button-text);
+    }
+
+    #po-lines {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: 13px;
+      background: var(--container-bg);
+      border-radius: 8px;
+      overflow: hidden;
+    }
+
+    #po-lines th {
+      background: var(--form-bg);
+      font-weight: 600;
+      text-align: left;
+      padding: 8px;
+      border-bottom: 1px solid var(--input-border);
+      white-space: nowrap;
+      color: var(--secondary-text);
+    }
+
+    #po-lines td {
+      padding: 6px;
+      border-bottom: 1px solid var(--input-border);
+    }
+
+    #po-lines input {
+      width: 100%;
+      height: 30px;
+      padding: 4px 6px;
+      font-size: 12px;
+      border-radius: 4px;
+      border: 1px solid var(--input-border);
+      background: var(--form-bg);
+      color: var(--primary-text);
+    }
+
+    #po-lines input:focus {
+      outline: none;
+      border-color: var(--input-focus);
+    }
+
+    .table-actions {
+      margin-top: 10px;
+    }
+
+    .udf-error {
+    border: 2px solid #dc2626 !important;
+    background: #fff5f5;
+    }
+
+
+    @media (max-width: 900px) {
+      .form-grid {
+        grid-template-columns: 1fr;
+      }
+
+      #po-lines {
+        font-size: 12px;
+      }
+
+      #po-lines th,
+      #po-lines td {
+        padding: 6px;
+      }
+    }
+
+    @media (max-width: 480px) {
+      .wrap { padding: 0.75rem; }
+      .card { padding: 0.75rem; }
+      header h1 { font-size: 1.2rem; }
+      .product-row { grid-template-columns: 1fr 80px auto; gap: 8px; padding: 8px; }
+    }
+    /* Prevent iPhone input zoom */
+input, select, textarea, .select2-container--default .select2-selection--single {
+    font-size: 16px !important;
+}
+.select2-container--default .select2-selection--single .select2-selection__rendered,
+.select2-container--default .select2-selection--single .select2-selection__arrow {
+    font-size: 16px !important;
+    line-height: 30px !important; 
+}
+  </style>
+
+<div class="page-content">
+  <div class="wrap">
+    <div class="card">
+    <form id="po-form">
+      <header><h1>Create Purchase Order</h1></header>
+
+      <!-- ================= HEADER FIELDS ================= -->
+      <section class="card">
+        <h3>Header</h3>
+
+        <div class="form-grid">
+          <label>Supplier</label>
+          <select id="supplier" name="supplier" required></select>
+
+          <label>Order Date</label>
+          <input id="order-date" type="date" name="order_date" required>
+
+          <label>Due Date</label>
+          <input id="due-date" type="date" name="due_date" required>
+
+          <label>Description</label>
+          <input type="text" name="description" required>
+        </div>
+      </section>
+
+        <!-- ================= HEADER UDFS ================= -->
+        <section class="card">
+        <h3>User Defined Fields</h3>
+
+        <div class="udf-tabs">
+            {% for page in header_udfs.keys() %}
+            <button type="button"
+                    class="udf-tab"
+                    onclick="showUdfPage('{{ page }}')">
+                {{ page }}
+            </button>
+            {% endfor %}
+        </div>
+
+        {% for page in header_udfs.keys() %}
+            <div class="udf-page"
+                id="udf-page-{{ page }}"
+                data-page="{{ page }}"
+                style="display:none">
+
+            <div class="form-grid"></div>
+
+            </div>
+        {% endfor %}
+        </section>
+
+
+  <!-- ================= LINES ================= -->
+  <section class="card">
+    <h3>Lines</h3>
+
+    <table id="po-lines">
+      <thead>
+        <tr>
+          <th>Item</th>
+          <th>UOM</th>
+          <th>Warehouse</th>
+          <th>Qty</th>
+          <th>Price</th>
+          <th>Project</th>
+
+
+          {% for udf in line_udfs %}
+            <th>{{ udf.label }}</th>
+          {% endfor %}
+
+          <th></th>
+        </tr>
+      </thead>
+
+      <tbody></tbody>
+    </table>
+
+    <button type="button" onclick="addLine()" class="btn btn-primary">+ Add Line</button>
+  </section>
+  <div style="display:flex; justify-content:flex-end; gap:8px; margin-top:16px;">
+  <button type="button"
+          class="btn btn-primary"
+          onclick="saveRequisition()">
+    💾 Save Requisition
+  </button>
+</div>
+
+  </form>
+</div>
+
+<script>
+  const LINE_UDFS = {{ line_udfs | tojson }};
+  const HEADER_UDFS = {{ header_udfs | tojson }};
+</script>
+<script src="{{ url_for('inventory.static', filename='purchase_order/udf.js') }}?{{ filemtime('inventory', 'purchase_order/udf.js') }}"></script>
+<script src="{{ url_for('inventory.static', filename='purchase_order/po_create.js') }}?{{ filemtime('inventory', 'purchase_order/po_create.js') }}"></script>
+{% endblock %}

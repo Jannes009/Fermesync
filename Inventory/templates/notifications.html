@@ -1,12 +1,96 @@
 {% extends "inventory_base.html" %}
 {% block content %}
-<h1>Notifications</h1>
-<ul>
-    {% for n in notifications %}
-    <li>
-        <a href="{{ n.ActionURL }}">{{ n.Title }} - {{ n.Message }}</a>
-        <span style="font-size:0.8em;color:#666;">{{ n.CreatedAt }}</span>
-    </li>
-    {% endfor %}
-</ul>
+<section class="notifications-page">
+  <header class="page-header">
+    <h1>Notifications</h1>
+  </header>
+
+  {% if notifications %}
+    <ul class="notifications-list">
+      {% for n in notifications %}
+        <li class="notification-item">
+          <a href="{{ n.ActionURL }}" class="notification-link">
+            <div class="notification-text">
+              <div class="notification-title">{{ n.Title }}</div>
+              <div class="notification-message">{{ n.Message }}</div>
+            </div>
+            <time class="notification-time">
+              {{ n.CreatedAt }}
+            </time>
+          </a>
+        </li>
+      {% endfor %}
+    </ul>
+  {% else %}
+    <div class="empty-state">
+      <p>No notifications yet 🎉</p>
+    </div>
+  {% endif %}
+</section>
+<style>
+    .notifications-page {
+  max-width: 800px;
+  margin: 0 auto;
+  padding: 1rem;
+}
+
+.page-header h1 {
+  margin-bottom: 1rem;
+}
+
+.notifications-list {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+}
+
+.notification-item + .notification-item {
+  margin-top: 0.75rem;
+}
+
+.notification-link {
+  display: flex;
+  justify-content: space-between;
+  gap: 1rem;
+  padding: 0.75rem 1rem;
+  background: #fff;
+  border: 1px solid #e5e7eb;
+  border-radius: 8px;
+  text-decoration: none;
+  color: inherit;
+  transition: background 0.15s ease, box-shadow 0.15s ease;
+}
+
+.notification-link:hover {
+  background: #f9fafb;
+  box-shadow: 0 2px 6px rgba(0,0,0,0.05);
+}
+
+.notification-text {
+  flex: 1;
+}
+
+.notification-title {
+  font-weight: 600;
+  margin-bottom: 0.25rem;
+}
+
+.notification-message {
+  font-size: 0.95rem;
+  color: #555;
+}
+
+.notification-time {
+  font-size: 0.8rem;
+  color: #888;
+  white-space: nowrap;
+}
+
+.empty-state {
+  padding: 2rem;
+  text-align: center;
+  color: #666;
+}
+
+</style>
 {% endblock %}

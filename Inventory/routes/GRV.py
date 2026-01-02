@@ -3,20 +3,30 @@ from flask_login import login_required, current_user
 from flask import jsonify, request, render_template, abort
 from Inventory.db import create_db_connection
 from Inventory.routes import inventory_bp
+from Inventory.routes.sdk_connection import EvolutionConnection
+import Pastel.Evolution as Evo
+from Inventory.routes.notifications import notify_user
 
-
-@inventory_bp.route('/SDK/GRV', methods=['GET'])
+@inventory_bp.route("/grv")
 @login_required
-def GRV_page():
-    # Permission check
-    if "GRV" not in current_user.permissions:
-        abort(403)  # Forbidden
-    print(current_user.username)
-    return render_template('EvolutionSDK/GRV.html')
+def grv_summary():
+    return render_template(
+        "EvolutionSDK/grv_summary.html"
+    )
 
 
-@inventory_bp.route("/SDK/fetch_suppliers")
-def fetch_suppliers():
+@inventory_bp.route("/grv/<po_number>")
+@login_required
+def grv_details(po_number):
+    return render_template(
+        "EvolutionSDK/grv_details.html",
+        po_number=po_number
+    )
+
+
+
+@inventory_bp.route("/SDK/fetch_outstanding_po_suppliers")
+def fetch_outstanding_po_suppliers():
     conn = create_db_connection()
     cursor = conn.cursor()
 
@@ -76,7 +86,7 @@ def fetch_po_lines(po_number):
     cursor = conn.cursor()
 
     query = f"""
-        SELECT iStockCodeID, StockDesc, WHName, QtyOutstanding, fUnitPriceExcl, UnitCode
+        SELECT iLineID, iStockCodeID, StockDesc, WHName, QtyOutstanding, fUnitPriceExcl, UnitCode
         FROM _uvPO_Outstanding
         WHERE OrderNum = ? and WhseLink IN ({','.join(['?'] * len(current_user.warehouses))})
     """
@@ -86,16 +96,16 @@ def fetch_po_lines(po_number):
 
     po_lines = [
         {
-            "iStockCodeID": row[0],
-            "StockDesc": row[1],
-            "WHName": row[2],
-            "QtyOutstanding": float(row[3]),
-            "Price": float(row[4]),
-            "UOM": row[5]
+            "LineId": row[0],
+            "StockId": row[1],
+            "StockDesc": row[2],
+            "WHName": row[3],
+            "QtyOutstanding": float(row[4]),
+            "Price": float(row[5]),
+            "UOM": row[6]
         }
         for row in rows
     ]
-
     return jsonify({"po_lines": po_lines})
 
 
@@ -123,6 +133,7 @@ def submit_grv():
 
     po_number = data.get("poNumber")
     receiver = data.get("receiverName")
+    supplierRef = data.get("supplierRef")
     lines = data.get("lines")  # list of { ProductId, QtyReceived }
 
     # -------------------------
@@ -135,7 +146,7 @@ def submit_grv():
         return jsonify({"success": False, "error": "Lines collection required"}), 400
 
     for l in lines:
-        if "ProductId" not in l or "QtyReceived" not in l:
+        if "stockId" not in l or "qty" not in l:
             return jsonify({
                 "success": False,
                 "error": "Each line must contain ProductId and QtyReceived"
@@ -157,17 +168,19 @@ def submit_grv():
         # Load Purchase Order
         # -------------------------
         PO = PurchaseOrder(po_number)
-
+        PO.SupplierInvoiceNo = supplierRef
         # -------------------------
         # Match lines to PO.Detail
         # -------------------------
         for line in lines:
-            pid = str(line["ProductId"])
-            qty_received = float(line["QtyReceived"])
+            pid = str(line["stockId"])
+            uom = str(line["UOM"])
+            qty_received = float(line["qty"])
 
             # Loop through Evolution PO Lines
             for detail in PO.Detail:
-                if str(detail.InventoryItemID) == pid:
+                print(str(detail.Index), str(line["lineId"]), detail.InventoryItemID, pid, uom, detail.Unit)
+                if str(detail.Index) == str(line["lineId"]):
                     detail.ToProcess = qty_received
                     break
 
@@ -182,9 +195,9 @@ def submit_grv():
         conn = create_db_connection()
         cursor = conn.cursor()
         cursor.execute("""
-            INSERT INTO GRV (GRVUserId, GRVReceivedBy, GRVPONumber, GRVNumber, GRVAuditNumber)
-            VALUES (?, ?, ?, ?, ?)
-        """, (current_user.id,  receiver, po_number, grv_number, audit_number))
+            INSERT INTO GRV (GRVUserId, GRVReceivedBy, GRVPONumber, GRVNumber, GRVAuditNumber, GRVSuppRef)
+            VALUES (?, ?, ?, ?, ?, ?)
+        """, (current_user.id,  receiver, po_number, grv_number, audit_number, supplierRef))
         conn.commit()
         conn.close()
         return jsonify({
@@ -198,3 +211,4 @@ def submit_grv():
             "success": False,
             "error": str(ex)
         }), 400
+    

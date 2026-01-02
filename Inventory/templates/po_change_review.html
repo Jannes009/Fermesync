@@ -1,7 +1,7 @@
-{% extends 'inventory_base.html' %}
+{% extends "inventory_base.html" %}
 {% block content %}
 
-  <style>
+<style>
 * {
     box-sizing: border-box;
 }
@@ -93,7 +93,6 @@ button:active {
     align-items: center;
     margin-bottom: 1.5rem;
 }
-
 
 header h1 {
     margin: 0;
@@ -350,64 +349,233 @@ header h1 {
   background-color: var(--button-bg);
 }
 
-  </style>
-    <div class="page-content\">
-        <div class="wrap ">
-            <div class="card">
-                <header>
-                    <h1>Create GRV</h1>
-                </header>
+/* ---------- Status Banner ---------- */
+.status-banner {
+    padding: 14px 16px;
+    border-radius: 10px;
+    font-weight: 700;
+    margin-bottom: 20px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
 
-                <form id="poForm">
-                <section data-step="1">
+.status-pending {
+    background: rgba(243, 156, 18, 0.15);
+    color: #f39c12;
+}
 
-                    <!-- Add Receiver Name Input -->
-                    <label for="receiver">Receiver Name</label>
-                    <input type="text" id="receiver" name="receiver" placeholder="Enter receiver name" style="width: 100%; padding: 8px; margin-bottom: 15px; font-size: 16px; border: 1px solid var(--input-border); border-radius: 4px;">
+.status-applied {
+    background: rgba(46, 204, 113, 0.15);
+    color: #2ecc71;
+}
 
-                    <label for="supplier">Supplier Name</label>
-                    <select id="supplier">
-                        <option value="">Select Supplier</option>
-                    </select>
+.status-rejected {
+    background: rgba(231, 76, 60, 0.15);
+    color: #e74c3c;
+}
 
-                    <!-- PO TABLE -->
-                    <div id="poTableWrapper" class="hidden">
-                        <table id="poTable">
-                            <thead>
-                                <tr>
-                                    <th>PO Number</th>
-                                    <th>Date</th>
-                                    <th>Description</th>
-                                    <th>Total Incl</th>
-                                </tr>
-                            </thead>
-                            <tbody id="poTableBody">
-                                <tr><td class="no-data" colspan="4">Select a supplier</td></tr>
-                            </tbody>
-                        </table>
-                    </div>
+/* ---------- Meta Grid ---------- */
+.meta-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+    gap: 12px;
+    margin-bottom: 20px;
+}
 
-                </section>
+.meta-card {
+    background: var(--form-bg);
+    padding: 12px 14px;
+    border-radius: 8px;
+    border-left: 4px solid var(--button-bg);
+}
 
-                <!-- PO lines section -->
-                <div id="po-lines-section" style="display:none;">
-                    <h3>Outstanding Lines</h3>
-                    <div id="po-lines"></div>
-                    <button type="button" id="step-2-back">Back</button>
-                    <button type="button" id="next-to-summary">Next: Review</button>
-                </div>
+.meta-card strong {
+    display: block;
+    font-size: 0.85rem;
+    color: var(--secondary-text);
+    margin-bottom: 4px;
+}
 
-                <!-- Summary Section -->
-                <div id="po-summary-section" style="display:none;">
-                    <h3>Review GRV</h3>
-                    <div id="po-summary"></div>
-                    <button type="button" id="submit-grv">Submit GRV</button>
-                </div>
-                </form>
+/* ---------- Table ---------- */
+.table-wrap {
+    overflow-x: auto;
+}
+
+.change-table {
+    width: 100%;
+    border-collapse: collapse;
+}
+
+.change-table th,
+.change-table td {
+    padding: 10px 12px;
+    border-bottom: 1px solid var(--input-border);
+    text-align: left;
+    white-space: nowrap;
+}
+
+.change-table th {
+    background: var(--form-bg);
+    font-size: 0.85rem;
+    text-transform: uppercase;
+    color: var(--secondary-text);
+}
+
+.change-table td strong {
+    color: var(--button-bg);
+}
+
+/* ---------- Actions ---------- */
+.action-bar {
+    margin-top: 24px;
+    display: flex;
+    gap: 12px;
+    flex-wrap: wrap;
+}
+
+.action-bar button {
+    flex: 1;
+    min-width: 160px;
+}
+
+.reject-btn {
+    background: #e74c3c;
+}
+</style>
+
+<div class="page-content">
+<div class="wrap">
+    <div class="card">
+
+        <header><h1>PO Change Request</h1></header>
+
+        <!-- STATUS BANNER -->
+        <div class="status-banner
+            {% if request.Status == 'PENDING' %}status-pending{% endif %}
+            {% if request.Status == 'APPLIED' %}status-applied{% endif %}
+            {% if request.Status == 'REJECTED' %}status-rejected{% endif %}
+        ">
+            <span>
+                {% if request.Status == 'PENDING' %}🕒 Pending Approval{% endif %}
+                {% if request.Status == 'APPLIED' %}✅ Applied to Purchase Order{% endif %}
+                {% if request.Status == 'REJECTED' %}❌ Rejected{% endif %}
+            </span>
+
+            {% if request.Status != 'PENDING' %}
+                <small>
+                    Processed by User {{ request.ReviewedByUserId }}
+                    on {{ request.ReviewedAt }}
+                </small>
+            {% endif %}
+        </div>
+
+        <!-- META INFO -->
+        <div class="meta-grid">
+            <div class="meta-card">
+                <strong>PO Number</strong>
+                {{ request.PONumber }}
+            </div>
+
+            <div class="meta-card">
+                <strong>Supplier Ref</strong>
+                {{ request.SupplierRef or "-" }}
+            </div>
+
+            <div class="meta-card">
+                <strong>Receiver</strong>
+                {{ request.ReceiverName }}
+            </div>
+
+            <div class="meta-card">
+                <strong>Requested At</strong>
+                {{ request.RequestedAt }}
+            </div>
+
+            <div class="meta-card">
+                <strong>Requested By (User ID)</strong>
+                {{ request.RequestedByUserId }}
             </div>
         </div>
+
+        <!-- LINE CHANGES -->
+        <h3>Requested Changes</h3>
+
+        <div class="table-wrap">
+            <table class="change-table">
+                <thead>
+                    <tr>
+                        <th>Stock ID</th>
+                        <th>Original Qty</th>
+                        <th>New Qty</th>
+                        <th>Original Price</th>
+                        <th>New Price</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for l in lines %}
+                    <tr>
+                        <td>{{ l.StockId }}</td>
+                        <td>{{ l.OriginalQty }}</td>
+                        <td><strong>{{ l.NewQty }}</strong></td>
+                        <td>{{ l.OriginalPrice }}</td>
+                        <td><strong>{{ l.NewPrice }}</strong></td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+
+        <!-- ACTIONS -->
+        {% if request.Status == 'PENDING' %}
+        <div class="action-bar">
+            <button id="approveBtn">Approve & Apply</button>
+            <button id="rejectBtn" class="reject-btn">Reject</button>
+        </div>
+        {% else %}
+        <p style="margin-top:20px; color:var(--secondary-text); font-style:italic;">
+            This request has already been processed and can no longer be changed.
+        </p>
+        {% endif %}
     </div>
-<link href="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/css/select2.min.css" rel="stylesheet" />
-<script src="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/js/select2.min.js"></script>
-<script src="{{ url_for('inventory.static', filename='EvolutionSDK/GRV.js') }}?{{ filemtime('inventory', 'EvolutionSDK/GRV.js') }}"></script>
+</div>
+</div>
+
+{% if request.Status == 'PENDING' %}
+<script>
+const requestId = {{ request.Id }};
+
+document.getElementById("approveBtn").onclick = () => {
+    fetch(`/inventory/po-change/${requestId}/approve`, { method: "POST" })
+        .then(r => r.json())
+        .then(res => {
+            if (res.success) {
+                Swal.fire("Approved", "PO updated successfully", "success")
+                    .then(() => location.reload());
+            } else {
+                Swal.fire("Error", res.message, "error");
+            }
+        });
+};
+
+document.getElementById("rejectBtn").onclick = () => {
+    Swal.fire({
+        title: "Reject request?",
+        text: "This change will not be applied to the PO.",
+        icon: "warning",
+        showCancelButton: true,
+        confirmButtonText: "Reject"
+    }).then(r => {
+        if (!r.isConfirmed) return;
+
+        fetch(`/inventory/po-change/${requestId}/reject`, { method: "POST" })
+            .then(() => {
+                Swal.fire("Rejected", "Request rejected", "info")
+                    .then(() => location.reload());
+            });
+    });
+};
+</script>
+{% endif %}
+
 {% endblock %}

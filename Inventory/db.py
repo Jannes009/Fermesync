@@ -71,7 +71,6 @@ def create_db_connection(user=None, database_type="Inventory"):
         db_username = user["db_username"]
         db_password = user["db_password"]
         username = user["username"]
-        print(server_name, database_name, db_username, db_password, username)
     # -------------------------
     # Build connection string
     # -------------------------

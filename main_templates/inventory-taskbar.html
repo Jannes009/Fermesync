@@ -27,7 +27,7 @@
         </ul>
       </li>
       {% if "GRV" in current_user.permissions %}
-      <li><a href="/inventory/SDK/GRV" class="taskbar-link">GRV</a></li>
+      <li><a href="/inventory/grv" class="taskbar-link">GRV</a></li>
       {% endif %}
       {% if "StockCount" in current_user.permissions %}
       <li><a href="/inventory/SDK/stock_count" class="taskbar-link">Stock Count</a></li>
@@ -58,14 +58,26 @@
       </div>
 
       <!-- Notifications Icon -->
-      <div class="notifications-icon desktop-only" id="notifications-icon">
+      <div class="notifications-icon desktop-only" 
+          id="notifications-icon"
+          title="Enable notifications">
+        
         <div class="notifications-bell">
-          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none"
+              stroke="currentColor" stroke-width="2">
             <path d="M18 8A6 6 0 006 8c0 7-3 9-3 9h18s-3-2-3-9M13.73 21a2 2 0 01-3.46 0"/>
           </svg>
         </div>
+
+        <!-- Badge OR enable dot -->
         <span class="notifications-count" id="notifications-count">0</span>
+
+        <!-- Enable hint (hidden by default) -->
+        <span class="notifications-enable-hint" id="notifications-enable-hint">
+          Enable
+        </span>
       </div>
+
     </div>
 
     <!-- Desktop User -->
@@ -113,15 +125,21 @@
     </div>
     
     <!-- Mobile Notifications -->
-    <a href="/inventory/notifications" class="mobile-notifications-link">
+    <!-- <div class="mobile-notifications-link">
+      <button
+        class="mobile-enable-notifications"
+        id="mobile-enable-notifications"
+        type="button">
+        🔔 Enable notifications
+      </button>
+
       <div class="mobile-notifications">
-        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-          <path d="M18 8A6 6 0 006 8c0 7-3 9-3 9h18s-3-2-3-9M13.73 21a2 2 0 01-3.46 0"/>
-        </svg>
+        <svg ...></svg>
         <span>Notifications</span>
         <span class="mobile-notifications-count" id="mobile-notifications-count">0</span>
       </div>
-    </a>
+    </div> -->
+
     
     <ul class="mobile-nav-list">
       <li class="mobile-nav-item">
@@ -139,7 +157,7 @@
       </li>
       {% if "GRV" in current_user.permissions %}
       <li class="mobile-nav-item">
-        <a href="/inventory/SDK/GRV" class="mobile-nav-link">
+        <a href="/inventory/grv" class="mobile-nav-link">
           <div class="mobile-nav-content">
             <span class="mobile-nav-icon">📦</span>
             <span>GRV</span>
@@ -805,6 +823,43 @@ main {
   margin-top: 2px;
 }
 
+.notifications-enable-hint {
+  position: absolute;
+  top: 100%;
+  right: 50%;
+  transform: translateX(50%);
+  margin-top: 6px;
+  background: #1976d2;
+  color: #fff;
+  font-size: 0.7rem;
+  padding: 4px 8px;
+  border-radius: 10px;
+  white-space: nowrap;
+  display: none;
+}
+
+.notifications-icon.enableable:hover .notifications-enable-hint {
+  display: block;
+}
+
+.mobile-enable-notifications {
+  margin: 12px 20px;
+  padding: 12px;
+  border-radius: 8px;
+  border: none;
+  background: #1976d2;
+  color: white;
+  font-size: 0.95rem;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.mobile-enable-notifications:disabled {
+  background: #4caf50;
+  cursor: default;
+}
+
+
 /* Mobile Responsive Styles */
 @media (max-width: 768px) {
   /* Hide desktop navigation and actions on mobile */
@@ -872,7 +927,18 @@ main {
 </style>
 
 <script>
+  window.VAPID_PUBLIC_KEY = "{{ vapid_public_key }}";
+  
+</script>
+
+<script>
+  console.log(window.VAPID_PUBLIC_KEY)
 document.addEventListener("DOMContentLoaded", function () {
+  initNotificationButtons()
+  document.querySelector('.mobile-notifications')
+  ?.addEventListener('click', () => {
+    window.location.href = '/inventory/notifications';
+  });
   const path = window.location.pathname;
   
   // Desktop: Active link highlighting
@@ -1021,14 +1087,7 @@ document.addEventListener("DOMContentLoaded", function () {
   document.querySelectorAll('.dropdown-menu').forEach(menu => {
     menu.style.display = 'none';
   });
-  
-  // Notifications icon click
-  const notificationsIcon = document.getElementById('notifications-icon');
-  if (notificationsIcon) {
-    notificationsIcon.addEventListener('click', () => {
-      window.location.href = '/inventory/notifications';
-    });
-  }
+
 });
 
 // Notifications count update
@@ -1161,4 +1220,132 @@ window.addEventListener("offline", function() {
 // Expose functions globally for other scripts
 window.updatePendingIndicator = updatePendingIndicator;
 window.updateNotificationsCount = updateNotificationsCount;
+
+function urlBase64ToUint8Array(base64String) {
+  // Remove any padding that might already be there
+  const base64 = base64String.replace(/=+$/, '');
+  
+  // Convert URL-safe to standard base64
+  const standardBase64 = base64.replace(/-/g, '+').replace(/_/g, '/');
+  
+  // Add padding back
+  const padded = standardBase64.padEnd(standardBase64.length + (4 - standardBase64.length % 4) % 4, '=');
+  
+  const rawData = atob(padded);
+  const outputArray = new Uint8Array(rawData.length);
+  
+  for (let i = 0; i < rawData.length; i++) {
+    outputArray[i] = rawData.charCodeAt(i);
+  }
+  
+  return outputArray;
+}
+
+async function subscribeToPush() {
+  try {
+    if (!window.VAPID_PUBLIC_KEY) {
+      console.error('VAPID public key missing');
+      return;
+    }
+
+    console.log('VAPID Key length:', window.VAPID_PUBLIC_KEY.length);
+    console.log('VAPID Key:', window.VAPID_PUBLIC_KEY);
+    
+    const reg = await navigator.serviceWorker.ready;
+    console.log('Service Worker registered:', !!reg);
+    console.log('Service Worker scope:', reg.scope);
+
+    const permission = await Notification.requestPermission();
+    console.log('Notification permission:', permission);
+    if (permission !== 'granted') {
+      console.error('Notification permission not granted');
+      return;
+    }
+
+    const convertedKey = urlBase64ToUint8Array(window.VAPID_PUBLIC_KEY);
+    console.log('Converted key length:', convertedKey.length);
+    console.log('Converted key first 5 bytes:', Array.from(convertedKey.slice(0, 5)));
+    
+    // Try subscribing without the key first to test service worker
+    console.log('Testing pushManager availability:', !!reg.pushManager);
+    
+    const sub = await reg.pushManager.subscribe({
+      userVisibleOnly: true,
+      applicationServerKey: convertedKey
+    });
+
+    console.log('Push subscription successful:', sub);
+    console.log('Endpoint:', sub.endpoint);
+
+    const response = await fetch('/inventory/push/subscribe', {
+      method: 'POST',
+      headers: {'Content-Type': 'application/json'},
+      body: JSON.stringify(sub)
+    });
+    
+    console.log('Server response status:', response.status);
+    
+  } catch (error) {
+    console.error('Error in subscribeToPush:', error);
+    console.error('Error name:', error.name);
+    console.error('Error message:', error.message);
+    console.error('Error stack:', error.stack);
+  }
+}
+
+async function initNotificationButtons() {
+  if (!('Notification' in window) || !('serviceWorker' in navigator)) return;
+
+  const permission = Notification.permission;
+
+  const desktopIcon = document.getElementById('notifications-icon');
+  const desktopHint = document.getElementById('notifications-enable-hint');
+  const mobileBtn = document.getElementById('mobile-enable-notifications');
+
+  const subscribed = await hasPushSubscription();
+  console.log(subscribed)
+  if (subscribed) {
+    desktopHint?.remove();
+    if (mobileBtn) {
+      mobileBtn.textContent = '✅ Notifications enabled';
+      mobileBtn.disabled = true;
+    }
+    return;
+  }
+
+  // Desktop click
+  if (desktopIcon) {
+    console.log(desktopIcon)
+    desktopIcon.classList.add('enableable');
+    desktopIcon.addEventListener('click', async (e) => {
+      const subscribed = await hasPushSubscription();
+      if (!subscribed) {
+        e.preventDefault();
+        e.stopPropagation();
+        await subscribeToPush();
+        location.reload();
+      } else {
+        window.location.href = '/inventory/notifications';
+      }
+    });
+  }
+  // Mobile click
+  if (mobileBtn) {
+    mobileBtn.addEventListener('click', async () => {
+      console.log("BUtton pushed")
+      await subscribeToPush();
+      mobileBtn.textContent = '✅ Notifications enabled';
+      mobileBtn.disabled = true;
+    });
+  }
+}
+async function hasPushSubscription() {
+  if (!('serviceWorker' in navigator)) return false;
+
+  const reg = await navigator.serviceWorker.ready;
+  const sub = await reg.pushManager.getSubscription();
+  return !!sub;
+}
+
+
 </script>

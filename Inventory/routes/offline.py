@@ -3,7 +3,7 @@ from Inventory.db import create_db_connection
 from flask_login import login_required, current_user
 from flask import request, jsonify, render_template, abort
 
-@inventory_bp.route("/SDK/fetch_warehouses") 
+@inventory_bp.route("/fetch_warehouses") 
 def fetch_warehouses(): 
     conn = create_db_connection() 
     cursor = conn.cursor() 
@@ -19,17 +19,17 @@ def fetch_warehouses():
     conn.close() 
     return jsonify({"warehouses": warehouses})
 
-@inventory_bp.route("/fetch_projects", methods=["POST"])
+@inventory_bp.route("/fetch_projects", methods=["POST", "GET"])
 @login_required
 def fetch_projects():
     conn = create_db_connection()
     cursor = conn.cursor()
-    cursor.execute("SELECT ProjectCode, ProjectName FROM _uvProject")
+    cursor.execute("SELECT ProjectLink, ProjectCode, ProjectName FROM _uvProject")
     rows = cursor.fetchall()
     conn.close()
 
     projects_list = [
-        {"id": row[0], "name": row[1]}
+        {"id": row[0], "code": row[1], "name": row[2]}
         for row in rows
     ]
     return jsonify({"prod_projects": projects_list})
@@ -45,7 +45,7 @@ def fetch_products():
         WhseLink, WhseCode, WhseName, QtyOnHand
         ,StockingUnitId, StockingUnitCode
         ,PurchaseUnitId, PurchaseUnitCode
-        ,UOMCategoryId
+        ,PurchaseUnitCatId
         FROM _uvInventoryQty 
         WHERE WhseLink IN ({','.join(['?'] * len(current_user.warehouses))}) 
     """, current_user.warehouses)
@@ -65,7 +65,7 @@ def fetch_products():
             "stocking_uom_code": row.StockingUnitCode,
             "purchase_uom_id": row.PurchaseUnitId,
             "purchase_uom_code": row.PurchaseUnitCode,
-            "uom_cat_id": row.UOMCategoryId,
+            "uom_cat_id": row.PurchaseUnitCatId,
         }
         for row in rows
     ]

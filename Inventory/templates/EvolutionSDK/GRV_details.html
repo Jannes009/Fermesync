@@ -1,0 +1,365 @@
+{% extends 'inventory_base.html' %}
+{% block content %}
+
+  <style>
+    * { box-sizing: border-box; }
+    body { background: var(--primary-bg); color: var(--primary-text); font-size: 0.9rem; margin: 0; padding: 0; min-height: 100vh; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; }
+    .page-content { display: flex; flex-direction: column; flex: 1; }
+    .wrap { width: 100%; margin: 0 auto; padding: 1rem; max-width: 1100px; }
+    .wrap.with-fixed-taskbar { padding-top: 1rem; margin-top: 60px; }
+    .card { background: var(--container-bg); border-radius: 8px; box-shadow: 0 1px 6px rgba(44,62,80,0.08); padding: 1.5rem; margin-bottom: 1rem; }
+    header h1 { margin: 0 0 1.5rem 0; font-size: 1.4rem; color: var(--primary-text); }
+
+    /* Form */
+    .form-group { margin-bottom: 1.25rem; }
+    .form-group label { font-weight: 600; color: var(--secondary-text); display: block; margin-bottom: 8px; font-size: 0.9rem; }
+    .form-group select, 
+    .form-group input[type="text"],
+    .form-group input[type="number"] { 
+      width: 100%; 
+      padding: 12px 14px; 
+      border: 1px solid var(--input-border); 
+      border-radius: 8px; 
+      background: var(--form-bg); 
+      font-size: 1rem; 
+      text-align: left; /* Ensure normal left-aligned text */
+    }
+    .form-group select:focus, 
+    .form-group input:focus { 
+      outline: none; 
+      border-color: var(--input-focus); 
+      box-shadow: 0 0 0 2px var(--input-shadow); 
+    }
+
+    /* Remove centering from placeholders */
+    .form-group input::placeholder {
+      text-align: left;
+      opacity: 1;
+      color: var(--secondary-text);
+    }
+
+    /* Buttons */
+    .btn-primary { 
+      background: var(--button-bg); 
+      color: var(--button-text); 
+      border: none; 
+      padding: 14px 24px; 
+      border-radius: 8px; 
+      font-size: 1rem; 
+      cursor: pointer; 
+      font-weight: 600; 
+      min-width: 160px;
+    }
+    .btn-primary:hover { background: var(--button-hover); }
+    .btn-primary:disabled { opacity: 0.6; cursor: not-allowed; }
+    .hidden { display: none; }
+
+    /* Progress */
+    .progress-info, .completed-info { padding: 0.75rem; border-radius: 6px; text-align: center; font-size: 0.9rem; margin-bottom: 1rem; }
+    .progress-info { background: #e8f4fd; color: #2980b9; }
+    .completed-info { background: #d4edda; color: #155724; }
+
+    /* Product Row — Compact & Beautiful */
+    .product-row {
+      display: grid;
+      grid-template-columns: 1fr 100px auto;
+      align-items: center;
+      gap: 12px;
+      padding: 12px;
+      background: var(--form-bg);
+      border: 1px solid var(--input-border);
+      border-radius: 8px;
+      margin-bottom: 10px;
+    }
+    .product-desc {
+      font-size: 0.95rem;
+      font-weight: 500;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+    .qty-input {
+      height: 44px;
+      font-size: 1.1rem;
+      font-weight: bold;
+      text-align: center;
+      border: 2px solid var(--input-border);
+      border-radius: 6px;
+      background: white;
+      -moz-appearance: textfield;
+      appearance: textfield;
+    }
+    .qty-input::-webkit-inner-spin-button,
+    .qty-input::-webkit-outer-spin-button {
+      -webkit-appearance: none;
+      margin: 0;
+    }
+    .qty-input:focus {
+      outline: none;
+      border-color: var(--button-bg);
+      box-shadow: 0 0 0 3px rgba(0,123,255,0.2);
+    }
+    .uom-label {
+      background: #e9ecef;
+      padding: 6px 12px;
+      border-radius: 6px;
+      font-size: 0.85rem;
+      font-weight: bold;
+      color: #495057;
+      text-align: center;
+    }
+
+    /* Recount Card */
+    .recount-card {
+      background: #fff3cd;
+      border: 2px solid #ffeaa7;
+      border-radius: 8px;
+      padding: 1rem;
+      margin-bottom: 1rem;
+    }
+    .recount-title { font-weight: bold; color: #856404; font-size: 1rem; }
+    .recount-badge { background: #f39c12; color: white; padding: 4px 10px; border-radius: 4px; font-size: 0.8rem; font-weight: bold; }
+    .recount-input {
+      width: 100%;
+      height: 48px;
+      font-size: 1.3rem;
+      font-weight: bold;
+      text-align: center;
+      border: 2px solid #f39c12;
+      border-radius: 6px;
+      background: white;
+      -moz-appearance: textfield;
+      appearance: textfield;
+    }
+    .recount-input:focus {
+      outline: none;
+      border-color: #e67e22;
+      box-shadow: 0 0 0 3px rgba(243,156,18,0.3);
+    }
+
+    /* Step Header */
+    .step-header {
+      margin: 0 0 1rem 0;
+      color: var(--primary-text);
+      font-size: 1.1rem;
+      border-bottom: 2px solid var(--button-bg);
+      padding-bottom: 0.5rem;
+    }
+
+    /* --- Meta block --- */
+    .po-meta {
+      background: var(--form-bg);
+      border-radius: 8px;
+      padding: 14px 16px;
+      margin-bottom: 2rem;
+    }
+
+    .po-meta-row {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+
+    .po-meta .label {
+      font-size: 0.85rem;
+      color: var(--secondary-text);
+      font-weight: 600;
+    }
+
+    .po-meta .value {
+      font-size: 1.1rem;
+      font-weight: 700;
+      color: var(--primary-text);
+    }
+
+    /* --- Form sections --- */
+    .form-section {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 20px;
+      margin-bottom: 2rem;
+    }
+
+    /* --- Lines --- */
+    .lines-section h3 {
+      margin: 0 0 1.25rem 0;
+      font-size: 1.15rem;
+      color: var(--primary-text);
+    }
+
+    .po-line {
+      background: var(--form-bg);
+      padding: 15px;
+      margin-bottom: 12px;
+      border-radius: 8px;
+      border-left: 4px solid var(--button-bg);
+      transition: box-shadow 0.2s;
+    }
+
+    .po-line:hover {
+      box-shadow: 0 2px 8px rgba(44, 62, 80, 0.1);
+    }
+
+    .po-line strong {
+      display: block;
+      margin-bottom: 10px;
+      font-size: 1rem;
+      color: var(--primary-text);
+    }
+
+    .po-line > div {
+      display: flex;
+      align-items: center;
+      margin-bottom: 8px;
+      gap: 8px;
+    }
+
+    .po-line > div:last-child {
+      margin-bottom: 0;
+    }
+
+    .price-input {
+      height: 44px;
+      font-size: 1.1rem;
+      font-weight: bold;
+      text-align: center;
+      border: 2px solid var(--input-border);
+      border-radius: 6px;
+      background: white;
+      -moz-appearance: textfield;
+      appearance: textfield;
+      flex: 1;
+      max-width: 120px;
+    }
+
+    .price-input::-webkit-inner-spin-button,
+    .price-input::-webkit-outer-spin-button {
+      -webkit-appearance: none;
+      margin: 0;
+    }
+
+    .price-input:focus {
+      outline: none;
+      border-color: var(--button-bg);
+      box-shadow: 0 0 0 3px rgba(0,123,255,0.2);
+    }
+
+    .po-line .warning {
+      margin-top: 8px;
+      display: block;
+      font-size: 0.85rem;
+    }
+
+    /* --- Actions --- */
+    .actions {
+      margin-top: 2rem;
+      display: flex;
+      justify-content: flex-end;
+    }
+
+    @media (max-width: 768px) {
+      .form-section {
+        grid-template-columns: 1fr;
+        gap: 16px;
+      }
+
+      .actions {
+        justify-content: stretch;
+      }
+
+      .actions button {
+        width: 100%;
+      }
+
+      .product-row {
+        grid-template-columns: 1fr 90px auto;
+      }
+    }
+
+    @media (max-width: 480px) {
+      .wrap { padding: 0.75rem; }
+      .card { padding: 1rem; }
+      header h1 { font-size: 1.2rem; }
+      .product-row { 
+        grid-template-columns: 1fr 80px auto; 
+        gap: 8px; 
+        padding: 10px; 
+      }
+      .uom-label { padding: 4px 8px; font-size: 0.8rem; }
+    }
+
+    /* Prevent iPhone input zoom */
+    input, select, textarea, .select2-container--default .select2-selection--single {
+        font-size: 16px !important;
+    }
+    .select2-container--default .select2-selection--single .select2-selection__rendered,
+    .select2-container--default .select2-selection--single .select2-selection__arrow {
+        font-size: 16px !important;
+        line-height: 30px !important; 
+    }
+  </style>
+
+  <div class="page-content">
+    <div class="wrap">
+      <div class="card">
+
+        <!-- Header -->
+        <header>
+          <h1>Process GRV</h1>
+        </header>
+
+        <!-- PO Meta -->
+        <div class="po-meta">
+          <div class="po-meta-row">
+            <span class="label">Purchase Order</span>
+            <span class="value">{{ po_number }}</span>
+          </div>
+        </div>
+
+        <!-- Receiver & Supplier Ref -->
+        <div class="form-section">
+          <div class="form-group">
+            <label for="receiver">Receiver Name</label>
+            <input
+              id="receiver"
+              type="text"
+              placeholder="Enter receiver name"
+            >
+          </div>
+
+          <div class="form-group">
+            <label for="SupplierRef">Supplier Reference</label>
+            <input
+              id="SupplierRef"
+              type="text"
+              placeholder="Enter supplier reference"
+            >
+          </div>
+        </div>
+
+        <hr style="margin: 2rem 0; border: none; border-top: 1px solid var(--input-border);">
+
+        <!-- PO Lines -->
+        <section class="lines-section">
+          <h3>Outstanding Lines</h3>
+          <div id="po-lines"></div>
+        </section>
+
+        <!-- Actions -->
+        <div class="actions">
+          <button id="next-to-summary" class="btn-primary">
+            Review GRV
+          </button>
+        </div>
+
+      </div>
+    </div>
+  </div>
+
+  <script>
+    const currentPoNumber = "{{ po_number }}";
+  </script>
+
+  <script src="{{ url_for('inventory.static', filename='EvolutionSDK/GRV_details.js') }}"></script>
+
+{% endblock %}

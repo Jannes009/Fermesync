@@ -1,42 +1,85 @@
-<!doctype html>
-<html lang="en">
-<head>
-    <meta charset="utf-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1">
-    <title>{% block title %}Fermesync{% endblock %}</title>
-    <!-- PWA -->
-    <link rel="manifest"
-      href="/main_static/manifest.json?{{ filemtime('main_static', 'manifest.json') }}">
+<!doctype html> <html lang="en"> 
+    <head> 
+        <meta charset="utf-8"> 
+        <meta name="viewport" content="width=device-width, initial-scale=1"> 
+        <title>{% block title %}Fermesync{% endblock %}</title> 
+        <!-- PWA --> 
+         <link rel="manifest" href="/main_static/manifest.json?{{ filemtime('main_static', 'manifest.json') }}"> 
+         <meta name="theme-color" content="#0d6efd"> 
 
-    <meta name="theme-color" content="#0d6efd">
-    <link rel="stylesheet" href="{{ url_for('inventory.static', filename='color-template.css') }}?{{ filemtime('inventory', 'color-template.css') }}">
+         <link rel="stylesheet" href="{{ url_for('inventory.static', filename='color-template.css') }}?{{ filemtime('inventory', 'color-template.css') }}"> 
+         <script src="https://code.jquery.com/jquery-3.7.0.min.js"></script> 
+         <link href="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/css/select2.min.css" rel="stylesheet" /> 
+         <script src="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/js/select2.min.js"></script> 
+         <link href="https://cdn.jsdelivr.net/npm/sweetalert2@11/dist/sweetalert2.min.css" rel="stylesheet"> 
+         <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script> 
+         <!-- Enable PWA mode on iOS --> 
+         <meta name="mobile-web-app-capable" content="yes"> <meta name="apple-mobile-web-app-status-bar-style" content="default" /> 
+         <meta name="apple-mobile-web-app-title" content="Fermesync" /> 
+         <!-- Apple icons --> 
+          <link rel="apple-touch-icon" href="/main_static/icons/icon-192.png"> 
+          <link rel="apple-touch-icon" sizes="512x512" href="/main_static/icons/icon-512.png">
 
-    <script src="https://code.jquery.com/jquery-3.7.0.min.js"></script>
-    <link href="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/css/select2.min.css" rel="stylesheet" />
-    <script src="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/js/select2.min.js"></script>
-    <link href="https://cdn.jsdelivr.net/npm/sweetalert2@11/dist/sweetalert2.min.css" rel="stylesheet">
-    <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
-    <!-- Enable PWA mode on iOS -->
-    <meta name="mobile-web-app-capable" content="yes">
-    <meta name="apple-mobile-web-app-status-bar-style" content="default" />
-    <meta name="apple-mobile-web-app-title" content="Fermesync" />
+        <script> 
+            if ('serviceWorker' in navigator) { 
+                navigator.serviceWorker.register('/sw.js', { scope: '/' }) 
+                .then(() => console.log("Custom SW registered")) .catch(err => console.error("SW failed", err)); 
+            } 
+        </script> 
 
-    <!-- Apple icons -->
-    <link rel="apple-touch-icon" href="/main_static/icons/icon-192.png">
-    <link rel="apple-touch-icon" sizes="512x512" href="/main_static/icons/icon-512.png">
-    {% block head %}{% endblock %}
-</head>
-<body>
-    {% include "inventory-taskbar.html" %}
-    <div class="with-fixed-taskbar">
-        {% block content %}{% endblock %}
-    </div>
-    <script>
-        if ('serviceWorker' in navigator) {
-            navigator.serviceWorker.register('/sw.js')
-                .then(() => console.log("SW registered"))
-                .catch(err => console.error("SW failed", err));
-        }
-    </script>
-</body>
+        <script src="https://cdn.onesignal.com/sdks/web/v16/OneSignalSDK.page.js" defer></script>
+        <script>
+        window.OneSignalDeferred = window.OneSignalDeferred || [];
+        OneSignalDeferred.push(async function(OneSignal) {
+
+            await OneSignal.init({
+                appId: "9b12fab0-085d-4c2b-a7d1-8f7886038d68",
+                allowLocalhostAsSecureOrigin: true,
+                
+                serviceWorkerPath: "/onesignal/OneSignalSDKWorker.js",
+                serviceWorkerParam: { scope: "/onesignal/" },
+
+                notifyButton: { enable: true }
+            });
+
+            async function linkUser() {
+                const subscription = OneSignal.User.PushSubscription;
+
+                if (subscription?.id && subscription.optedIn) {
+                    console.log("Storing subscription ID:", subscription.id);
+
+                    await fetch('/inventory/link_user_and_subscription', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({
+                            user_id: "{{ current_user.id }}",
+                            subscription_id: subscription.id
+                        })
+                    });
+                }
+            }
+
+            const subscription = OneSignal.User.PushSubscription;
+            if (subscription && subscription.optedIn) {
+            await linkUser();
+            }
+
+            OneSignal.User.PushSubscription.addEventListener("change", async (event) => {
+            if (event.current?.optedIn === true) {
+                await linkUser();
+            }
+            });
+
+        });
+        </script>
+
+
+        {% block head %}{% endblock %} 
+    </head> 
+    <body> 
+        {% include "inventory-taskbar.html" %}
+         <div class="with-fixed-taskbar"> 
+            {% block content %}{% endblock %} 
+        </div> 
+    </body> 
 </html>
