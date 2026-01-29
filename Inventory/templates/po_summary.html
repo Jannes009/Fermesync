@@ -1,0 +1,264 @@
+{% extends "inventory_base.html" %}
+{% block content %}
+
+<div class="main-content py-8">
+  <!-- CENTERING WRAPPER -->
+  <div class="page-center">
+    <div class="requisition-list-card">
+
+      <!-- Header -->
+      <div class="header-row">
+        <h1 class="page-title">Purchase Orders</h1>
+        <a
+          href="{{ url_for('inventory.create_po') }}"
+          class="primary-action-btn"
+        >
+          <i class="fas fa-plus"></i>
+          <span><i class="fas fa-plus"></i> Create Requisition</span>
+        </a>
+
+      </div>
+
+      <!-- Toolbar -->
+      <div class="table-toolbar">
+        <div class="table-search">
+          <input
+            type="text"
+            id="searchInput"
+            placeholder="Search by ID or Description…"
+            class="form-control"
+          />
+        </div>
+      </div>
+
+      <!-- Table -->
+      <div class="table-scroll">
+        <table class="requisition-table" id="requisition-table">
+          <thead>
+            <tr>
+              <th>ID</th>
+              <th>Supplier</th>
+              <th>Order Date</th>
+              <th>Due Date</th>
+              <th>Description</th>
+              <th>Status</th>
+              <th>PO Number</th>
+            </tr>
+          </thead>
+          <tbody>
+            {% for r in requisitions %}
+            <tr
+              class="requisition-row"
+              data-href="{{ url_for('inventory.view_po_requisition', requisition_id=r.id) }}"
+            >
+              <td>{{ r.id }}</td>
+              <td>{{ r.supplier }}</td>
+              <td>{{ r.order_date or "—" }}</td>
+              <td>{{ r.due_date or "—" }}</td>
+              <td>{{ r.description }}</td>
+              <td>
+                <span class="status-badge {{ r.status|lower|replace(' ', '-') }}">
+                  {{ r.status }}
+                </span>
+              </td>
+              <td>{{ r.po_number or "—" }}</td>
+            </tr>
+            {% else %}
+            <tr>
+              <td colspan="8" class="empty-state">No requisitions found</td>
+            </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+
+    </div>
+  </div>
+</div>
+
+<script>
+document.addEventListener("DOMContentLoaded", () => {
+  // Clickable rows
+  document.querySelectorAll(".requisition-row").forEach(row => {
+    row.addEventListener("click", () => {
+      window.location.href = row.dataset.href;
+    });
+  });
+
+  // Search
+  const searchInput = document.getElementById("searchInput");
+  const rows = document.querySelectorAll(".requisition-row");
+
+  function applyStriping() {
+    const visible = [...rows].filter(r => r.style.display !== "none");
+    visible.forEach((row, i) => row.classList.toggle("striped", i % 2 === 1));
+  }
+
+  function filterTable() {
+    const q = searchInput.value.toLowerCase().trim();
+    rows.forEach(row => {
+      const id = row.cells[0].textContent.toLowerCase();
+      const desc = row.cells[4].textContent.toLowerCase();
+      row.style.display = id.includes(q) || desc.includes(q) ? "" : "none";
+    });
+    applyStriping();
+  }
+
+  searchInput.addEventListener("input", filterTable);
+  applyStriping();
+});
+</script>
+
+<style>
+/* ---------- Page layout ---------- */
+.page-center {
+  max-width: 1200px;
+  margin: 0 auto;
+  padding: 0 1rem;
+}
+
+/* ---------- Card ---------- */
+.requisition-list-card {
+  background: var(--container-bg);
+  border-radius: 14px;
+  box-shadow: 0 4px 24px rgba(44, 62, 80, 0.08);
+  padding: 1.5rem 2rem 1.8rem;
+}
+
+/* ---------- Header ---------- */
+.header-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 1.2rem;
+}
+
+/* ---------- Toolbar ---------- */
+.table-toolbar {
+  display: flex;
+  justify-content: flex-start;
+  margin-bottom: 1rem;
+}
+
+/* ---------- Table ---------- */
+.table-scroll {
+  overflow-x: auto;
+}
+
+.requisition-table {
+  width: 100%;
+  border-collapse: collapse;
+}
+
+.requisition-table th,
+.requisition-table td {
+  padding: 0.75rem 1rem;
+  border: none;
+}
+
+.requisition-table th {
+  background: var(--table-header-bg);
+  color: var(--table-header-text);
+  font-weight: 700;
+}
+
+.requisition-row {
+  background: var(--table-row-uneven);
+  cursor: pointer;
+  transition: background 0.15s ease;
+}
+
+.requisition-row.striped {
+  background: var(--table-row-even);
+}
+
+.requisition-row:hover td {
+  background: var(--table-row-hover);
+}
+
+/* ---------- Status badge ---------- */
+.status-badge {
+  padding: 0.3em 1em;
+  border-radius: 999px;
+  font-weight: 600;
+  font-size: 0.9em;
+}
+
+.status-badge.pending-approval {
+  background: var(--muted-bg);
+  color: var(--logo-color);
+}
+
+.status-badge.posted {
+  background: #d1fae5;
+  color: #059669;
+}
+
+.status-badge.rejected {
+  background: #fee2e2;
+  color: #dc2626;
+}
+
+/* ---------- Empty ---------- */
+.empty-state {
+  text-align: center;
+  color: var(--muted-text);
+  padding: 2rem;
+}
+
+/* ---------- Search ---------- */
+#searchInput.form-control {
+  height: 36px;
+  width: 260px;
+  border-radius: 18px;
+  padding: 0 14px;
+  border: 1.2px solid var(--input-border);
+  background: var(--input-bg);
+  color: var(--primary-text);
+}
+.primary-action-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.55rem;
+
+  padding: 0.55rem 1.2rem;
+  border-radius: 999px;
+
+  font-weight: 700;
+  font-size: 0.95rem;
+  letter-spacing: 0.02em;
+
+  background: var(--button-bg);
+  color: var(--button-text);
+  border: 1px solid var(--button-bg);
+
+  text-decoration: none;
+  cursor: pointer;
+
+  transition:
+    background-color 0.2s ease,
+    box-shadow 0.2s ease,
+    transform 0.15s ease;
+}
+
+.primary-action-btn i {
+  font-size: 0.9rem;
+}
+
+.primary-action-btn:hover {
+  background: var(--button-hover);
+  border-color: var(--button-hover);
+  color: var(--primary-text);
+
+  box-shadow: 0 6px 18px rgba(0, 0, 0, 0.12);
+  transform: translateY(-1px);
+}
+
+.primary-action-btn:active {
+  transform: translateY(0);
+  box-shadow: 0 3px 10px rgba(0, 0, 0, 0.15);
+}
+
+</style>
+
+{% endblock %}

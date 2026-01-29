@@ -9,7 +9,7 @@ document.addEventListener("DOMContentLoaded", async () => {
     const whTo = document.getElementById("wh-to");
 
     // Fetch and populate warehouses
-    const res = await fetch("/inventory/SDK/fetch_warehouses");
+    const res = await fetch("/inventory/fetch_warehouses");
     const data = await res.json();
     const warehouses = data.warehouses;
     whFrom.innerHTML = '<option disabled selected>Select warehouse</option>';

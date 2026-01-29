@@ -5,7 +5,7 @@ from Inventory.db import create_db_connection
 from Inventory.routes import inventory_bp
 from Inventory.routes.sdk_connection import EvolutionConnection
 import Pastel.Evolution as Evo
-from Inventory.routes.notifications import notify_user
+from Inventory.routes.notifications import emit_event, send_notification
 
 @inventory_bp.route("/po-change/<int:request_id>", methods=["GET"])
 @login_required
@@ -29,11 +29,10 @@ def po_change_review(request_id):
     # Lines
     lines = cursor.execute("""
         SELECT
+            POLineId,
             StockId,
-            OriginalQty,
-            NewQty,
-            OriginalPrice,
-            NewPrice
+            OrderedQty,
+            DeliveredQty
         FROM POChangeRequestLine
         WHERE RequestId = ?
     """, (request_id,)).fetchall()
@@ -63,7 +62,7 @@ def approve_po_change(request_id):
             raise Exception("Request not pending")
 
         lines = cursor.execute("""
-            SELECT StockId, NewQty, NewPrice
+            SELECT POLineId, DeliveredQty
             FROM POChangeRequestLine
             WHERE RequestId = ?
         """, (request_id,)).fetchall()
@@ -74,9 +73,10 @@ def approve_po_change(request_id):
 
             for detail in PO.Detail:
                 for l in lines:
-                    if detail.InventoryItemID == l.StockId:
-                        detail.Quantity = float(l.NewQty) + detail.Processed
-                        detail.UnitSellingPrice = float(l.NewPrice)
+                    print(f"Checking line {detail.Index} against {l.POLineId}")
+                    if detail.Index == l.POLineId:
+                        detail.Quantity = float(l.DeliveredQty) + detail.Processed
+                        print(f"Updating line {detail.Index} to qty {detail.Quantity}")
 
             PO.Save()
 
@@ -89,11 +89,20 @@ def approve_po_change(request_id):
         """, (current_user.id, request_id))
 
         conn.commit()
-        notify_user(
-            user_id=req.RequestedByUserId, 
-            title="Requested PO change applied",
-            body=f"The change requested for {req.PONumber} was approved and applied.",
-            relative_url=f"/inventory/grv/{req.PONumber}")
+        
+        if current_user.id != req.RequestedByUserId:
+            send_notification(
+                user_id=req.RequestedByUserId,
+                title="GRV Change Request Aprroved",
+                message=f"The change requested for {req.PONumber} was approved and applied.",
+                relative_url=f"/inventory/grv/{request_id}",
+                push_mode="batched"
+            )
+        emit_event(
+            event_code="GRV_EDIT",
+            entity_id=req.PONumber,
+            entity_desc="Purchase Order"
+        )
         return {"success": True}
 
     except Exception as ex:
@@ -118,11 +127,12 @@ def reject_po_change(request_id):
     """, (current_user.id, request_id))
 
     conn.commit()
-    notify_user(
+    send_notification(
         user_id=req.RequestedByUserId,
         title="Requested PO change rejected",
-        body=f"The change requested for {req.PONumber} was approved and applied.",
-        relative_url=f"/inventory/po-change/{request_id}")
+        message=f"The change requested for {req.PONumber} was approved and applied.",
+        relative_url=f"/inventory/po-change/{request_id}",
+        push_mode="batched")
     return {"success": True}
 
 
@@ -130,60 +140,56 @@ def reject_po_change(request_id):
 @login_required
 def incorrect_po():
     data = request.json
+    print(data)
 
     po_number = data["poNumber"]
     receiver = data["receiverName"]
     supplier_ref = data.get("supplierRef")
-    mismatches = data["mismatches"]
+    overQtys = data["overQtys"]
 
     conn = create_db_connection()
     cursor = conn.cursor()
 
-    try:
-        # 1️⃣ Insert header
+    # try:
+    # 1️⃣ Insert header
+    cursor.execute("""
+        INSERT INTO POChangeRequest
+        (PONumber, SupplierRef, ReceiverName, RequestedByUserId)
+        OUTPUT INSERTED.Id
+        VALUES (?, ?, ?, ?)
+    """, (
+        po_number,
+        supplier_ref,
+        receiver,
+        current_user.id
+    ))
+
+    request_id = cursor.fetchone()[0]
+
+    # 2️⃣ Insert lines
+    for q in overQtys:
         cursor.execute("""
-            INSERT INTO POChangeRequest
-            (PONumber, SupplierRef, ReceiverName, RequestedByUserId)
-            OUTPUT INSERTED.Id
-            VALUES (?, ?, ?, ?)
+            INSERT INTO POChangeRequestLine
+            (RequestId, StockId, [POLineId], [OrderedQty], [DeliveredQty])
+            VALUES (?, ?, ?, ?, ?)
         """, (
-            po_number,
-            supplier_ref,
-            receiver,
-            current_user.id
+            request_id,
+            q["StockId"],
+            q["LineId"],
+            q["QtyOrdered"],
+            q["QtyDelivered"]
         ))
 
-        request_id = cursor.fetchone()[0]
+    conn.commit()
 
-        # 2️⃣ Insert lines
-        for m in mismatches:
-            cursor.execute("""
-                INSERT INTO POChangeRequestLine
-                (RequestId, StockId, OriginalQty, NewQty, OriginalPrice, NewPrice)
-                VALUES (?, ?, ?, ?, ?, ?)
-            """, (
-                request_id,
-                m["ProductId"],
-                m["OriginalQty"],
-                m["QtyReceived"],
-                m["OriginalPrice"],
-                m["PriceReceived"]
-            ))
+    emit_event(
+        event_code="GRV_CHANGE_REQUEST",
+        entity_id=request_id,
+        entity_desc="Purchase Order"
+    )
 
-        conn.commit()
+    return {"success": True}
 
-        # 3️⃣ Notify supervisor
-        supervisor_id = 1 # replace with role lookup if you have it
-
-        notify_user(
-            supervisor_id,
-            title="PO Change Request",
-            body=f"PO {po_number} requires approval",
-            relative_url=f"/inventory/po-change/{request_id}"
-        )
-
-        return {"success": True}
-
-    except Exception as ex:
-        conn.rollback()
-        return {"success": False, "message": str(ex)}, 400
+    # except Exception as ex:
+    #     conn.rollback()
+    #     return {"success": False, "message": str(ex)}, 400

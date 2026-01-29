@@ -4,6 +4,9 @@ from . import inventory_bp
 from Inventory.db import create_db_connection
 from flask_login import login_required, current_user
 
+from Inventory.routes.sdk_connection import EvolutionConnection
+import Pastel.Evolution as Evo
+
 @inventory_bp.route('/SDK/IBT_issue', methods=['GET'])
 @login_required
 def IBT_issue():
@@ -62,50 +65,26 @@ import sys
 from flask import request, jsonify
 import clr  # pythonnet
 
-# Add the path to your Evolution DLLs
-sys.path.append(r"C:\Program Files (x86)\Sage Evolution")  # <-- replace with your DLL folder
-
-# Load Evolution DLLs
-clr.AddReference("Pastel.Evolution.Common")
-clr.AddReference("Pastel.Evolution")
-
-# Import classes
-from Pastel.Evolution import DatabaseContext
-from Pastel.Evolution import WarehouseIBT, WarehouseIBTLine, Warehouse, InventoryItem
-
 @inventory_bp.route("/submit_ibt", methods=["POST"])
 def submit_ibt():
     data = request.get_json()
 
     try:
-        # -------------------------
-        # 1. Connect to Evolution DB
-        # -------------------------
-        DatabaseContext.CreateCommonDBConnection(
-            "SIGMAFIN-RDS\\EVOLUTION", "SageCommon", "sa", "@Evolution", False
-        )
-        DatabaseContext.SetLicense("DE12111082", "9824607")
-        DatabaseContext.CreateConnection(
-            "SIGMAFIN-RDS\\EVOLUTION", "UB_UITDRAAI_BDY", "sa", "@Evolution", False
-        )
+        with EvolutionConnection():
+            ibt = Evo.WarehouseIBT()
+            ibt.WarehouseFrom = Evo.Warehouse((data["WarehouseFrom"]))
+            ibt.WarehouseTo = Evo.Warehouse(data["WarehouseTo"])
+            ibt.Description = data.get("RequestedBy", "")
 
-        # -------------------------
-        # 2. Create IBT
-        # -------------------------
-        ibt = WarehouseIBT()
-        ibt.WarehouseFrom = Warehouse((data["WarehouseFrom"]))
-        ibt.WarehouseTo = Warehouse(data["WarehouseTo"])
-        ibt.Description = data.get("RequestedBy", "")
+            for l in data["Lines"]:
+                line = Evo.WarehouseIBTLine()
+                line.InventoryItem = Evo.InventoryItem(l["ProductId"])
+                line.QuantityIssued = l["QtyIssued"]
+                line.Description = data.get("Dispatcher", "")
+                line.Reference = data.get("Driver", "")
+                ibt.Detail.Add(line)
 
-        for l in data["Lines"]:
-            line = WarehouseIBTLine()
-            line.InventoryItem = InventoryItem(l["ProductId"])
-            line.QuantityIssued = l["QtyIssued"]
-            line.Description = data.get("Dispatcher", "")
-            line.Reference = data.get("Driver", "")
-            ibt.Detail.Add(line)
-
-        ibt.IssueStock()
+            ibt.IssueStock()
 
         conn = create_db_connection()
         cursor = conn.cursor()
@@ -213,44 +192,25 @@ def submit_ibt_receive():
         if not returned_to:
             return jsonify({"success": False, "message": "Returned To is required."}), 400
 
-        # -------------------------
-        # 1. Connect to Evolution DB
-        # -------------------------
-        DatabaseContext.CreateCommonDBConnection(
-            "SIGMAFIN-RDS\\EVOLUTION", "SageCommon", "sa", "@Evolution", False
-        )
-        DatabaseContext.SetLicense("DE12111082", "9824607")
-        DatabaseContext.CreateConnection(
-            "SIGMAFIN-RDS\\EVOLUTION", "UB_UITDRAAI_BDY", "sa", "@Evolution", False
-        )
+        with EvolutionConnection():
+            ibt = Evo.WarehouseIBT(data["ibt_number"])
 
-        # -------------------------
-        # 2. Load IBT to receive
-        # -------------------------
-        ibt = WarehouseIBT(data["ibt_number"])
+            for line_data in data.get("lines", []):
+                matched = False
+                for ibt_line in ibt.Detail:
+                    if ibt_line.InventoryItemID == int(line_data["InventoryItemID"]):
+                        ibt_line.QuantityReceived = line_data.get("QuantityReceived")
+                        ibt_line.QuantityDamaged = line_data.get("QuantityDamaged")
+                        ibt_line.QuantityVariance = line_data.get("QuantityVariance")
+                        ibt_line.Description = line_data.get("Description", "")
+                        ibt_line.Reference = line_data.get("Reference", "")
+                        matched = True
+                        print("Updated IBT line:", ibt_line.InventoryItemID, ibt_line.QuantityReceived, ibt_line.QuantityDamaged, ibt_line.QuantityVariance)
+                        break
+                if not matched:
+                    return jsonify({"success": False, "message": f"IBT line not found for InventoryItemID {line_data['InventoryItemID']}"}), 400
 
-        # -------------------------
-        # 3. Update lines from JSON
-        # -------------------------
-        for line_data in data.get("lines", []):
-            matched = False
-            for ibt_line in ibt.Detail:
-                if ibt_line.InventoryItemID == int(line_data["InventoryItemID"]):
-                    ibt_line.QuantityReceived = line_data.get("QuantityReceived")
-                    ibt_line.QuantityDamaged = line_data.get("QuantityDamaged")
-                    ibt_line.QuantityVariance = line_data.get("QuantityVariance")
-                    ibt_line.Description = line_data.get("Description", "")
-                    ibt_line.Reference = line_data.get("Reference", "")
-                    matched = True
-                    print("Updated IBT line:", ibt_line.InventoryItemID, ibt_line.QuantityReceived, ibt_line.QuantityDamaged, ibt_line.QuantityVariance)
-                    break
-            if not matched:
-                return jsonify({"success": False, "message": f"IBT line not found for InventoryItemID {line_data['InventoryItemID']}"}), 400
-
-        # -------------------------
-        # 4. Commit the receive
-        # -------------------------
-        ibt.ReceiveStock()
+            ibt.ReceiveStock()
         conn = create_db_connection()
         cursor = conn.cursor()
         cursor.execute("""

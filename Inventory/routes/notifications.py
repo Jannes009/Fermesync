@@ -26,42 +26,24 @@ def notifications_count():
 @login_required
 def notifications_page():
     conn, cursor = get_common_db_connection()
+
     cursor.execute("""
-        SELECT Id, Title, Message, ActionURL, CreatedAt 
+        SELECT Id, Title, Message, ActionURL, CreatedAt
         FROM Notifications
-        WHERE UserID = ? AND IsRead = 0
+        WHERE UserId = ?
         ORDER BY CreatedAt DESC
+    """, (current_user.id,))
+    notifications = cursor.fetchall()
+
+    cursor.execute("""
         UPDATE Notifications
         SET IsRead = 1
-        WHERE UserID = ? AND IsRead = 0
-    """, (current_user.id, current_user.id))
-    notifications = cursor.fetchall()
-    print(notifications)
-    cursor.commit()
+        WHERE UserId = ? AND IsRead = 0
+    """, (current_user.id,))
+    conn.commit()
+
     close_connection(conn, cursor)
     return render_template("notifications.html", notifications=notifications)
-
-@inventory_bp.route("/notifications/create_notification", methods=["POST"])
-def create_notification():
-    data = request.get_json()
-    user_id = data.get("UserId")
-    title = data.get("Title")
-    message = data.get("Message")
-    entity_id = data.get("EntityId", None)
-    action_url = data.get("action_url", "")
-    
-    if not user_id or not title or not message:
-        return jsonify({"success": False, "error": "Missing required fields"}), 400
-
-    conn, cursor = get_common_db_connection()
-    cursor.execute("""
-        INSERT INTO Notifications (UserID, Title, Message, EntityId, ActionURL, CreatedAt, IsRead)
-        VALUES (?, ?, ?, ?, ?, GETDATE(), 0)
-    """, (user_id, title, message, entity_id, action_url))
-    conn.commit()
-    close_connection(conn, cursor)
-    
-    return jsonify({"success": True})
 
 
 @inventory_bp.route("/link_user_and_subscription", methods=["POST"])
@@ -99,55 +81,209 @@ def link_user_and_subscription():
 ONESIGNAL_APP_ID = os.getenv("ONESIGNAL_APP_ID")
 ONESIGNAL_REST_API_KEY = os.getenv("REST_API_KEY")
 BASE_URL = os.getenv("BASE_URL")
-def notify_user(user_id, title, body, relative_url):
-    if not user_id:
-        return {"success": False, "error": "Missing user_id"}
+from jinja2 import Template
 
+def send_notification(
+    *,
+    user_id: int,
+    title: str,
+    message: str,
+    notification_type_id: int = None,
+    entity_id: int = None,
+    relative_url: str = None,
+    push_mode: str = "none"  # none | immediate | batched
+):
     conn, cursor = get_common_db_connection()
-    cursor.execute("SELECT OnesignalId FROM PushSubscriptions WHERE UserId = ?", (user_id,))
-    rows = cursor.fetchall()
-    conn.close()
+    print(user_id, title, message, notification_type_id, entity_id, relative_url, push_mode)
+    # 1️⃣ Create in-app notification
+    cursor.execute("""
+        INSERT INTO Notifications
+            (UserId, EntityType, Title, Message,
+             EntityId, ActionURL, CreatedAt, IsRead)
+        OUTPUT INSERTED.Id
+        VALUES (?, ?, ?, ?, ?, ?, GETDATE(), 0)
+    """, (
+        user_id,
+        notification_type_id,
+        title,
+        message,
+        entity_id,
+        relative_url
+    ))
 
-    if not rows:
-        return {"success": False, "error": "No subscriptions found for this user"}
+    notification_id = cursor.fetchone()[0]
+    conn.commit()
 
-    onesignal_ids = [row[0] for row in rows]
+    # 2️⃣ Push handling
+    if push_mode == "immediate":
+        send_immediate_push(user_id, title, message, relative_url)
+
+    elif push_mode == "batched":
+        send_batched_push(user_id)
+
+    close_connection(conn, cursor)
+
+    return notification_id
+
+def send_immediate_push(user_id: int, title: str, message: str, relative_url: str = None):
+    conn, cursor = get_common_db_connection()
+
+    cursor.execute("""
+        SELECT OnesignalId FROM PushSubscriptions
+        WHERE UserId = ?
+    """, (user_id,))
+    subs = [r[0] for r in cursor.fetchall()]
+
+    close_connection(conn, cursor)
+
+    if not subs:
+        return
 
     payload = {
         "app_id": ONESIGNAL_APP_ID,
-        "include_player_ids": onesignal_ids,          # ← FIXED: was include_subscription_ids
-
-        "data": {"relative_url": relative_url},        # Good — helps Android background handling
-
+        "include_subscription_ids": subs,
         "headings": {"en": title},
-        "contents": {"en": body},
-
-        "url": f"{BASE_URL}{relative_url}",           # Click opens your site
-
-        # Better Android reliability
-        "visibility": 1,                              # ← FIXED: shows on lock screen (1 = public)
-        "priority": 10,                             # Optional — remove if causing issues
-
-        # apple configuration
-        "ios_priority": 10,
-        "apns_expiration": 86400
-
+        "contents": {"en": message},
+        "url": f"{BASE_URL}{relative_url}" if relative_url else None,
+        "priority": 10,
+        "ios_priority": 10
     }
 
-    headers = {
-        "Content-Type": "application/json",
-        "Authorization": f"Basic {ONESIGNAL_REST_API_KEY}"
+    requests.post(
+        "https://onesignal.com/api/v1/notifications",
+        json=payload,
+        headers={
+            "Content-Type": "application/json",
+            "Authorization": f"Basic {ONESIGNAL_REST_API_KEY}"
+        },
+        timeout=5
+    )
+
+def send_batched_push(user_id: int):
+    conn, cursor = get_common_db_connection()
+
+    cursor.execute("""
+        SELECT COUNT(*) FROM Notifications
+        WHERE UserId = ? AND IsRead = 0
+    """, (user_id,))
+    unread_count = cursor.fetchone()[0]
+
+    if unread_count == 0:
+        close_connection(conn, cursor)
+        return
+
+    cursor.execute("""
+        SELECT TOP 3 Title
+        FROM Notifications
+        WHERE UserId = ? AND IsRead = 0
+        ORDER BY CreatedAt DESC
+    """, (user_id,))
+    titles = [r[0] for r in cursor.fetchall()]
+
+    cursor.execute("""
+        SELECT OnesignalId FROM PushSubscriptions
+        WHERE UserId = ?
+    """, (user_id,))
+    subs = [r[0] for r in cursor.fetchall()]
+
+    close_connection(conn, cursor)
+
+    if not subs:
+        return
+
+    summary = ", ".join(titles)
+    if unread_count > len(titles):
+        summary += f" and {unread_count - len(titles)} more"
+
+    payload = {
+        "app_id": ONESIGNAL_APP_ID,
+        "include_subscription_ids": subs,
+        "headings": {"en": f"{unread_count} new notifications"},
+        "contents": {"en": summary},
+        "url": f"{BASE_URL}/inventory/notifications",
+        "priority": 10,
+        "ios_priority": 10
     }
 
-    try:
-        response = requests.post(
-            "https://onesignal.com/api/v1/notifications",
-            json=payload,
-            headers=headers
+    requests.post(
+        "https://onesignal.com/api/v1/notifications",
+        json=payload,
+        headers={
+            "Content-Type": "application/json",
+            "Authorization": f"Basic {ONESIGNAL_REST_API_KEY}"
+        },
+        timeout=5
+    )
+
+def emit_event(
+    *,
+    event_code: str,
+    entity_id: int,
+    entity_desc: str = ""
+):
+    print("Emitting event:", event_code, entity_id, entity_desc)
+
+    conn, cursor = get_common_db_connection()
+    actor_user_id = current_user.id
+
+    # 1️⃣ Load notification type
+    cursor.execute("""
+        SELECT
+            NotificationTypeId,
+            DefaultTitle,
+            DefaultTemplate,
+            RedirectUrl,
+            PushEnabled
+        FROM NotificationType
+        WHERE EventCode = ? AND IsActive = 1
+    """, (event_code,))
+    nt = cursor.fetchone()
+
+    if not nt:
+        close_connection(conn, cursor)
+        return
+
+    nt_id = nt.NotificationTypeId
+    default_title = nt.DefaultTitle
+    default_template = nt.DefaultTemplate
+    redirect_template = nt.RedirectUrl
+    push_enabled = nt.PushEnabled
+
+    # 2️⃣ Resolve recipients (opted-in users)
+    cursor.execute("""
+        SELECT DISTINCT U.Id
+        FROM Users U
+        JOIN UserNotificationPreference UNP
+            ON UNP.UserId = U.Id
+        WHERE UNP.NotificationTypeId = ?
+    """, (nt_id,))
+    recipients = [r[0] for r in cursor.fetchall()]
+
+    close_connection(conn, cursor)
+
+    # 3️⃣ Send notifications
+    for user_id in recipients:
+        if user_id == actor_user_id:
+            continue
+
+        message = Template(default_template).render(
+            entity_id=entity_id,
+            entity_desc=entity_desc
         )
-        response.raise_for_status()
-        print("Success:", response.json())
-        # return {"success": True, "response": response.json()}
-    except requests.exceptions.HTTPError as e:
-        print("OneSignal error:", response.status_code, response.text)  # ← IMPORTANT: log this!
-        # return {"success": False, "error": response.text}
+
+        # 🔑 Render redirect URL ONLY if template exists
+        relative_url = (
+            Template(redirect_template).render(entity_id=entity_id)
+            if redirect_template
+            else None
+        )
+
+        send_notification(
+            user_id=user_id,
+            title=default_title,
+            message=message,
+            notification_type_id=nt_id,
+            entity_id=entity_id,
+            relative_url=relative_url,
+            push_mode="batched" if push_enabled else "none"
+        )

@@ -3,7 +3,7 @@ import Dexie from 'https://unpkg.com/dexie@4.2.1/dist/dexie.mjs';
 
 export const db = new Dexie('fermesync-db-v13');
 
-db.version(13).stores({
+db.version(14).stores({
   meta: 'key',
   warehouses: 'id',
   projects: 'id',
@@ -20,7 +20,9 @@ db.version(13).stores({
   serverIssueLines: 'line_id, header_id, product_link', // Server structure
   
   outbox: '++id, created_at, retry_count',
-  notifications: 'id, created_at, read'
+  notifications: 'id, created_at, read',
+
+  grvDrafts: 'poNumber, updatedAt'
 });
 
 /**

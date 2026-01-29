@@ -506,20 +506,16 @@ header h1 {
                 <thead>
                     <tr>
                         <th>Stock ID</th>
-                        <th>Original Qty</th>
-                        <th>New Qty</th>
-                        <th>Original Price</th>
-                        <th>New Price</th>
+                        <th>Ordered Qty</th>
+                        <th>Delivered Qty</th>>
                     </tr>
                 </thead>
                 <tbody>
                     {% for l in lines %}
                     <tr>
                         <td>{{ l.StockId }}</td>
-                        <td>{{ l.OriginalQty }}</td>
-                        <td><strong>{{ l.NewQty }}</strong></td>
-                        <td>{{ l.OriginalPrice }}</td>
-                        <td><strong>{{ l.NewPrice }}</strong></td>
+                        <td>{{ l.OrderedQty }}</td>
+                        <td><strong>{{ l.DeliveredQty }}</strong></td>
                     </tr>
                     {% endfor %}
                 </tbody>

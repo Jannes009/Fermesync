@@ -15,7 +15,7 @@ import Pastel.Evolution as Evo
 @login_required
 def stock_issue():
     # permission check (optional)
-    if "StockIssue" in current_user.permissions:
+    if "STOCK_ISSUE" in current_user.permissions:
         return render_template('EvolutionSDK/stock_issue.html')
     else:
         abort(403)
@@ -26,7 +26,7 @@ def stock_issue():
 @inventory_bp.route("/SDK/create_stock_issue", methods=["POST"])
 @login_required
 def create_stock_issue():
-    if "StockIssue" not in current_user.permissions:
+    if "STOCK_ISSUE" not in current_user.permissions:
         abort(403)  # Forbidden
     data = request.json
     if not data:

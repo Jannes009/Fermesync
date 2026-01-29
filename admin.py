@@ -13,18 +13,32 @@ admin_bp = Blueprint('admin', __name__, template_folder='Inventory/templates', s
 def get_user_settings(user_id):
     conn, cursor = get_common_db_connection()
     try:
-        # Get permissions
-        cursor.execute("SELECT EventId FROM UserPermissions WHERE UserId = ?", (user_id,))
+        # Permissions
+        cursor.execute(
+            "SELECT PermissionId FROM UserPermissions WHERE UserId = ?",
+            (user_id,)
+        )
         perms = [row[0] for row in cursor.fetchall()]
 
-        cursor.execute("SELECT EventId FROM [NotificationPreferences] WHERE UserId = ?", (user_id,))
+        # Notification preferences (NEW)
+        cursor.execute(
+            "SELECT NotificationTypeId FROM UserNotificationPreference WHERE UserId = ?",
+            (user_id,)
+        )
         not_prefs = [row[0] for row in cursor.fetchall()]
 
-        # Get warehouses
-        cursor.execute("SELECT WarehouseId FROM WarehouseToUserLink WHERE UserId = ?", (user_id,))
+        # Warehouses
+        cursor.execute(
+            "SELECT WarehouseId FROM WarehouseToUserLink WHERE UserId = ?",
+            (user_id,)
+        )
         whs = [row[0] for row in cursor.fetchall()]
 
-        return jsonify({"permissions": perms, "warehouses": whs, "not_prefs": not_prefs})
+        return jsonify({
+            "permissions": perms,
+            "warehouses": whs,
+            "not_prefs": not_prefs
+        })
 
     finally:
         close_connection(conn, cursor)
@@ -38,65 +52,78 @@ def get_user_settings(user_id):
 def manage_users():
     conn, cursor = get_common_db_connection()
     try:
-        # Fetch all users
+        # Users
         cursor.execute("SELECT id, username FROM Users")
         users = cursor.fetchall()
 
-        # Fetch all events
-        cursor.execute("SELECT Id, Code FROM Events ORDER BY Code")
-        events = cursor.fetchall()
+        # Permissions (unchanged)
+        cursor.execute("SELECT PermissionId, PermissionCode FROM Permission ORDER BY PermissionCode")
+        permissions = cursor.fetchall()
 
-        # Fetch all warehouses
-        cursor.execute("SELECT WhseLink, Name FROM _uvWhseMst Order BY Name")
+        # Warehouses
+        cursor.execute("SELECT WhseLink, Name FROM _uvWhseMst ORDER BY Name")
         warehouses = cursor.fetchall()
+
+        # Notification Types (NEW)
+        cursor.execute("""
+            SELECT NotificationTypeId, ModuleCode, Name
+            FROM NotificationType
+            WHERE IsActive = 1 AND IsSystem = 0
+            ORDER BY ModuleCode, Name
+        """)
+        notification_types = cursor.fetchall()
 
         if request.method == "POST":
             user_id = request.form.get("user_id")
 
-            # Update PERMISSIONS
-            selected_permissions = request.form.getlist("permissions")
+            # -----------------
+            # Permissions
+            # -----------------
             cursor.execute("DELETE FROM UserPermissions WHERE UserId = ?", (user_id,))
-            for perm_id in selected_permissions:
+            for perm_id in request.form.getlist("permissions"):
                 cursor.execute(
-                    "INSERT INTO UserPermissions (UserId, EventId) VALUES (?, ?)",
+                    "INSERT INTO UserPermissions (UserId, PermissionId) VALUES (?, ?)",
                     (user_id, perm_id)
                 )
 
-            # Update WAREHOUSES
-            selected_warehouses = request.form.getlist("warehouses")
+            # -----------------
+            # Warehouses
+            # -----------------
             cursor.execute("DELETE FROM WarehouseToUserLink WHERE UserId = ?", (user_id,))
-            for wh_id in selected_warehouses:
+            for wh_id in request.form.getlist("warehouses"):
                 cursor.execute(
                     "INSERT INTO WarehouseToUserLink (UserId, WarehouseId) VALUES (?, ?)",
                     (user_id, wh_id)
                 )
 
-            # Update WAREHOUSES
-            selected_not_prefs = request.form.getlist("not_prefs")
-            cursor.execute("DELETE FROM [NotificationPreferences] WHERE UserId = ?", (user_id,))
-            for event_id in selected_not_prefs:
+            # -----------------
+            # Notification Preferences (NEW)
+            # -----------------
+            cursor.execute(
+                "DELETE FROM UserNotificationPreference WHERE UserId = ?",
+                (user_id,)
+            )
+            for nt_id in request.form.getlist("not_prefs"):
                 cursor.execute(
-                    "INSERT INTO [NotificationPreferences] (UserId, EventId) VALUES (?, ?)",
-                    (user_id, event_id)
+                    """
+                    INSERT INTO UserNotificationPreference
+                    (UserId, NotificationTypeId)
+                    VALUES (?, ?)
+                    """,
+                    (user_id, nt_id)
                 )
 
-
             conn.commit()
-            print("User permissions and warehouses updated!")
-
             return redirect(url_for("admin.manage_users"))
 
         return render_template(
             "permissions.html",
             users=users,
-            events=events,
+            permissions=permissions,
             warehouses=warehouses,
+            notification_types=notification_types,
             user=current_user
         )
-
-    except Exception as e:
-        print("Error:", str(e))
-        return redirect(url_for("admin.manage_users"))
 
     finally:
         close_connection(conn, cursor)

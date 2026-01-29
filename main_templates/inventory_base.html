@@ -23,7 +23,7 @@
         <script> 
             if ('serviceWorker' in navigator) { 
                 navigator.serviceWorker.register('/sw.js', { scope: '/' }) 
-                .then(() => console.log("Custom SW registered")) .catch(err => console.error("SW failed", err)); 
+                .catch(err => console.error("SW failed", err)); 
             } 
         </script> 
 
@@ -46,7 +46,6 @@
                 const subscription = OneSignal.User.PushSubscription;
 
                 if (subscription?.id && subscription.optedIn) {
-                    console.log("Storing subscription ID:", subscription.id);
 
                     await fetch('/inventory/link_user_and_subscription', {
                         method: 'POST',

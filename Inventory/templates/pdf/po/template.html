@@ -1,0 +1,282 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>Purchase Order</title>
+
+<link rel="stylesheet" href="{{ url_for('static', filename='css/fonts.css') }}">
+
+<style>
+@page {
+  size: A4;
+  margin: 12mm;
+}
+
+body {
+  font-family: ff1, Arial, sans-serif;
+  font-size: 10pt;
+  color: #000;
+}
+
+/* =====================
+   PAGE WRAPPER
+===================== */
+.page {
+  width: 100%;
+}
+
+/* =====================
+   HEADER
+===================== */
+.header {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  margin-bottom: 6mm;
+}
+
+.header h1 {
+  font-size: 28pt;
+  margin: 0;
+}
+
+/* =====================
+   PARTY SECTION
+===================== */
+.party-grid {
+  display: grid;
+  grid-template-columns: 2fr 2fr 2fr;
+  gap: 8mm;
+  margin-bottom: 6mm;
+}
+
+.party-grid strong {
+  font-size: 11pt;
+}
+
+.company-meta div {
+  margin-bottom: 2mm;
+}
+
+.company-meta span {
+  display: inline-block;
+  width: 38mm;
+  color: #555;
+}
+
+/* =====================
+   META BOXES
+===================== */
+.meta-grid {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 6mm;
+  margin-bottom: 8mm;
+}
+
+.field label {
+  font-weight: bold;
+  font-size: 9pt;
+}
+
+.field .value {
+  height: 8mm;
+  border: 1px solid #000;
+  border-radius: 4px;
+  padding: 2mm;
+  margin-top: 1mm;
+}
+
+.field.wide {
+  grid-column: span 2;
+}
+
+/* =====================
+   ITEMS TABLE
+===================== */
+.items-table {
+  width: 100%;
+  border-collapse: collapse;
+  margin-top: 4mm;
+}
+
+.items-table th {
+  text-align: left;
+  border-bottom: 2px solid #000;
+  padding: 2mm;
+}
+
+.items-table td {
+  padding: 2mm;
+  vertical-align: top;
+}
+
+.items-table .num {
+  text-align: right;
+}
+
+.items-table col:nth-child(1) { width: 40%; }
+.items-table col:nth-child(2) { width: 10%; }
+.items-table col:nth-child(3) { width: 8%; }
+.items-table col:nth-child(4) { width: 12%; }
+.items-table col:nth-child(5) { width: 8%; }
+.items-table col:nth-child(6) { width: 8%; }
+.items-table col:nth-child(7) { width: 14%; }
+
+/* =====================
+   TOTALS
+===================== */
+.totals-table {
+  width: 40%;
+  margin-left: auto;
+  margin-top: 6mm;
+  border-collapse: collapse;
+}
+
+.totals-table td {
+  padding: 2mm;
+}
+
+.totals-table .num {
+  text-align: right;
+}
+
+.totals-table .final td {
+  border-top: 3px solid #000;
+  border-bottom: 3px solid #000;
+  font-weight: bold;
+  font-size: 14pt;
+}
+
+/* =====================
+   FOOTER
+===================== */
+.footer {
+  margin-top: 10mm;
+  font-size: 8pt;
+  color: #777;
+}
+</style>
+</head>
+
+<body>
+<div class="page">
+
+  <!-- HEADER -->
+  <div class="header">
+    <h1>Purchase Order</h1>
+  </div>
+
+  <!-- COMPANY / SUPPLIER -->
+  <div class="party-grid">
+    <div>
+      <strong>H DU PREEZ BOERDERY (PTY) LTD</strong><br>
+      Farm Kalkfontein LS 615<br>
+      Polokwane
+    </div>
+
+    <div class="company-meta">
+      <div><span>VAT Registration</span>4120194412</div>
+      <div><span>Telephone</span>(015) 289 6249</div>
+      <div><span>E-mail</span><u>admin@uitdraai.net</u></div>
+    </div>
+
+    <div>
+      <strong>THE OIL SHOPPE</strong><br>
+      64 PLATINUM STREET<br>
+      LADINE<br>
+      POLOKWANE<br>
+      0699
+    </div>
+  </div>
+
+  <!-- META -->
+  <div class="meta-grid">
+    <div class="field">
+      <label>Account</label>
+      <div class="value">THE002</div>
+    </div>
+
+    <div class="field">
+      <label>Date</label>
+      <div class="value">16/01/2026</div>
+    </div>
+
+    <div class="field">
+      <label>Order No</label>
+      <div class="value">UIT-PO26636</div>
+    </div>
+
+    <div class="field">
+      <label>Quotation No</label>
+      <div class="value">&nbsp;</div>
+    </div>
+
+    <div class="field wide">
+      <label>Internal Project</label>
+      <div class="value">TOYOTA 2.4 – FGS 409 L</div>
+    </div>
+  </div>
+
+  <!-- ITEMS -->
+  <table class="items-table">
+    <colgroup>
+      <col><col><col><col><col><col><col>
+    </colgroup>
+    <thead>
+      <tr>
+        <th>Item Description</th>
+        <th>Ordered</th>
+        <th>Unit</th>
+        <th>Price (Ex)</th>
+        <th>Disc %</th>
+        <th>Tax</th>
+        <th>Total (Incl)</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td>SAKURA FILTER KIT GD6 2.4 &amp; 2.8</td>
+        <td class="num">1.0000</td>
+        <td>EA</td>
+        <td class="num">460.00</td>
+        <td class="num">0.00</td>
+        <td class="num">69.00</td>
+        <td class="num">529.00</td>
+      </tr>
+      <tr>
+        <td>SAKURA OIL FILTER GD6 1125</td>
+        <td class="num">1.0000</td>
+        <td>EA</td>
+        <td class="num">135.00</td>
+        <td class="num">0.00</td>
+        <td class="num">20.25</td>
+        <td class="num">155.25</td>
+      </tr>
+    </tbody>
+  </table>
+
+  <!-- TOTALS -->
+  <table class="totals-table">
+    <tr>
+      <td>Total (Excl)</td>
+      <td class="num">595.00</td>
+    </tr>
+    <tr>
+      <td>Tax</td>
+      <td class="num">89.25</td>
+    </tr>
+    <tr class="final">
+      <td>Total (Incl)</td>
+      <td class="num">684.25</td>
+    </tr>
+  </table>
+
+  <!-- FOOTER -->
+  <div class="footer">
+    Sage 200 Evolution (Registered to H du Preez Boerdery) – 16/01/2026 21:35:04
+  </div>
+
+</div>
+</body>
+</html>

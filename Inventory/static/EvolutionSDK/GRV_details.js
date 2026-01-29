@@ -1,6 +1,37 @@
-document.addEventListener("DOMContentLoaded", () => {
-    loadPOLines(currentPoNumber);
+import {
+  db
+} from '/main_static/offline/db.js?v=44';
+let currentReceiverName = "";
+let supplierRef = "";
+
+document.addEventListener("DOMContentLoaded", async () => {
+    await loadPOLines(currentPoNumber);
+
+    const draft = await loadGrvDraft(currentPoNumber);
+    if (!draft) return;
+
+    document.getElementById("receiver").value = draft.receiverName || "";
+    document.getElementById("SupplierRef").value = draft.supplierRef || "";
+
+    document.querySelectorAll(".po-line").forEach(line => {
+        const savedQty = draft.lines?.[line.dataset.lineId];
+        if (savedQty !== undefined) {
+            line.querySelector(".qty-input").value = savedQty;
+        }
+    });
 });
+
+// Helper function to format UOM display
+function formatUOM(uom) {
+    return uom && uom.trim() ? uom : "";
+}
+
+// Helper function to get UOM display with space
+function getUOMDisplay(uom) {
+    const formatted = formatUOM(uom);
+    return formatted ? ` ${formatted}` : "";
+}
+
 // ---------------- PO LINES ----------------
 async function loadPOLines(poNumber) {
     const res = await fetch(`/inventory/SDK/fetch_po_lines/${poNumber}`);
@@ -13,30 +44,30 @@ async function loadPOLines(poNumber) {
         const row = document.createElement("div");
         row.className = "po-line";
 
+        const uomDisplay = getUOMDisplay(line.UOM);
+
         row.dataset.lineId = line.LineId
-        row.dataset.stockId = line.StockId;
-        row.dataset.StockDesc = line.StockDesc;
-        row.dataset.originalQty = line.QtyOutstanding;
-        row.dataset.originalPrice = line.Price;
-        row.dataset.UOM = line.UOM;
+        row.dataset.stockId = line.StockId
+        row.dataset.qtyOrdered = line.QtyOutstanding
+        row.dataset.StockDesc = line.StockDesc
+        row.dataset.UOM = line.UOM || ""
 
         row.innerHTML = `
             <strong>${line.StockDesc}</strong>
-
             <div>
-                Qty:
-                <input class="qty-input" type="number" min="0" step="0.01" placeholder="Qty">
-                <span>${line.UOM}</span>
+                Ordered Qty: ${line.QtyOutstanding}${uomDisplay} @ R${line.Price}
             </div>
-
             <div>
-                Price:
-                <input class="price-input" type="number" min="0" step="0.01" placeholder="Price">
+                Confirm Qty:
+                <input class="qty-input" type="number" min="0" step="0.01" placeholder="Qty">
+                <span>${uomDisplay}</span>
             </div>
 
             <small class="warning" style="display:none;color:#ff6b6b"></small>
         `;
-
+        container.addEventListener("input", () => {
+            saveGrvDraft(currentPoNumber);
+        });
         container.appendChild(row);
     });
 
@@ -53,17 +84,16 @@ function validateAndContinue() {
         return;
     }
 
-    let mismatches = [];
+    let overQtys = [];
+    let underQtys = [];
     let lines = [];
     let hasErrors = false;
 
     document.querySelectorAll(".po-line").forEach(line => {
         const qtyInput = line.querySelector(".qty-input");
-        const priceInput = line.querySelector(".price-input");
         const warning = line.querySelector(".warning");
 
         const qty = parseFloat(qtyInput.value);
-        const price = parseFloat(priceInput.value);
 
         warning.style.display = "none";
 
@@ -74,50 +104,69 @@ function validateAndContinue() {
             return;
         }
 
-        if (priceInput.value === "" || Number.isNaN(price)) {
-            warning.textContent = "Price required";
-            warning.style.display = "block";
-            hasErrors = true;
-            return;
-        }
-
         lines.push({
             lineId: line.dataset.lineId,
-            stockId: line.dataset.stockId,
-            qty,
-            price,
-            UOM: line.dataset.UOM
+            qty: qty
         });
-        console.log(line.dataset)
-        if (
-            qty !== parseFloat(line.dataset.originalQty) ||
-            price !== parseFloat(line.dataset.originalPrice)
-        ) {
-            mismatches.push({
+        console.log(qty, line.dataset.qtyOrdered);
+        if (qty > parseFloat(line.dataset.qtyOrdered)) {
+            overQtys.push({
                 LineId: line.dataset.lineId,
-                ProductId: line.dataset.stockId,
+                StockId: line.dataset.stockId,
                 StockDesc: line.dataset.StockDesc,
-                OriginalQty: line.dataset.originalQty,
-                QtyReceived: qty,
-                OriginalPrice: line.dataset.originalPrice,
-                PriceReceived: price,
-                UOM: line.dataset.UOM
+                QtyOrdered: line.dataset.qtyOrdered,
+                QtyDelivered: qty,
+                UOM: formatUOM(line.dataset.UOM)
+            });
+        }
+        if (qty < parseFloat(line.dataset.qtyOrdered)) {
+            underQtys.push({
+                StockDesc: line.dataset.StockDesc,
+                UOM: formatUOM(line.dataset.UOM)
             });
         }
     });
-
     if (hasErrors) return;
-    console.log(lines, mismatches)
-    if (mismatches.length) {
+
+    // check under-qty
+    if (underQtys.length) {
         Swal.fire({
             icon: 'warning',
-            title: 'PO Differences Detected',
+            title: 'Qty confirmed less than ordered',
             html: `
                 <div style="text-align:left">
-                On these product lines4
-                    ${mismatches.map(m =>
-                        `• ${m.StockDesc} - ${m.UOM}`
-                    ).join("<br>")}
+                On these product lines
+                    ${underQtys.map(m => {
+                        const uomText = m.UOM ? ` - ${m.UOM}` : "";
+                        return `• ${m.StockDesc}${uomText}`;
+                    }).join("<br>")}
+                </div>
+            `,
+            showCancelButton: true,
+            confirmButtonText: "Continue",
+            cancelButtonText: "Cancel",
+            reverseButtons: true,
+            allowOutsideClick: false
+        }).then(result => {
+            if (result.isConfirmed) {
+                submitGRV(lines);
+            }
+        });
+        return;
+    }
+
+    // Over-qty always checked
+    if (overQtys.length) {
+        Swal.fire({
+            icon: 'warning',
+            title: 'Qty exceeds ordered qty',
+            html: `
+                <div style="text-align:left">
+                On these product lines
+                    ${overQtys.map(m => {
+                        const uomText = m.UOM ? ` - ${m.UOM}` : "";
+                        return `• ${m.StockDesc}${uomText}`;
+                    }).join("<br>")}
                 </div>
             `,
             showCancelButton: true,
@@ -127,14 +176,16 @@ function validateAndContinue() {
             allowOutsideClick: false
         }).then(result => {
             if (result.isConfirmed) {
-                sendToSupervisor(mismatches)
+                sendToSupervisor(overQtys);
             }
-            // cancel → do nothing, user stays on screen
         });
-
-    } else {
-        submitGRV(lines);
+        return; // ⬅ stop here
     }
+
+    // 3️⃣ Clean submit
+    submitGRV(lines);
+
+        
 
 }
 
@@ -153,14 +204,23 @@ function submitGRV(lines) {
     .then(r => r.json())
     .then(res => {
         if (res.success) {
-            Swal.fire("Success", "GRV submitted", "success");
+            clearGrvDraft(currentPoNumber);
+            Swal.fire({
+                icon: "success",
+                title: "GRV submitted succesfully",
+                text: "The GRV was created in Evolution"
+            }).then(() => {
+                window.location.href = "/inventory/grv";
+            });
         } else {
             Swal.fire("Error", res.message || res.error || "Failed", "error");
         }
     });
 }
 
-function sendToSupervisor(mismatches) {
+async function sendToSupervisor(overQtys) {
+    await saveGrvDraft(currentPoNumber);
+
     fetch("/inventory/incorrect_po", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -168,15 +228,51 @@ function sendToSupervisor(mismatches) {
             poNumber: currentPoNumber,
             receiverName: currentReceiverName,
             supplierRef,
-            mismatches
+            overQtys
         })
     })
     .then(r => r.json())
     .then(res => {
         if (res.success) {
-            Swal.fire("Success", "Request send to supplier", "success");
+            Swal.fire({
+                icon: "info",
+                title: "Sent to supervisor",
+                text: "Please wait for supplier confirmation",
+                allowOutsideClick: false
+            }).then(() => {
+                window.location.href = "/inventory/grv";
+            });
         } else {
-            Swal.fire("Error", res.message || "Failed", "error");
+            Swal.fire("Error", res.message || res.error || "Failed", "error");
         }
     });
+}
+
+
+// ---------------- Draft saving ----------------
+async function saveGrvDraft(poNumber) {
+    const lines = {};
+
+    document.querySelectorAll(".po-line").forEach(line => {
+        const input = line.querySelector(".qty-input");
+        if (input.value !== "") {
+            lines[line.dataset.lineId] = input.value;
+        }
+    });
+
+    await db.grvDrafts.put({
+        poNumber,
+        receiverName: document.getElementById("receiver").value,
+        supplierRef: document.getElementById("SupplierRef").value,
+        lines,
+        updatedAt: Date.now()
+    });
+}
+
+async function loadGrvDraft(poNumber) {
+    return await db.grvDrafts.get(poNumber);
+}
+
+async function clearGrvDraft(poNumber) {
+    await db.grvDrafts.delete(poNumber);
 }

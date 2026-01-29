@@ -360,6 +360,10 @@
     const currentPoNumber = "{{ po_number }}";
   </script>
 
-  <script src="{{ url_for('inventory.static', filename='EvolutionSDK/GRV_details.js') }}"></script>
+  <script 
+  type="module"
+  src="{{ url_for('inventory.static', 
+  filename='EvolutionSDK/GRV_details.js') }}?{{ filemtime('inventory', 'EvolutionSDK/GRV_details.js') }}">
+</script>
 
 {% endblock %}

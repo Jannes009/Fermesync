@@ -5,7 +5,7 @@ from Inventory.db import create_db_connection
 from Inventory.routes import inventory_bp
 from Inventory.routes.sdk_connection import EvolutionConnection
 import Pastel.Evolution as Evo
-from Inventory.routes.notifications import notify_user
+from Inventory.routes.notifications import emit_event, send_notification
 
 @inventory_bp.route("/grv")
 @login_required
@@ -114,20 +114,12 @@ from flask import request, jsonify
 import clr  # pythonnet
 import sys
 
-# Add the path to your Evolution DLLs
-sys.path.append(r"C:\Program Files (x86)\Sage Evolution")  # <-- replace with your DLL folder
-
-# Load Evolution DLLs
-clr.AddReference("Pastel.Evolution.Common")
-clr.AddReference("Pastel.Evolution")
-
-# Import classes
-from Pastel.Evolution import DatabaseContext
-from Pastel.Evolution import PurchaseOrder
+from Inventory.routes.sdk_connection import EvolutionConnection
+import Pastel.Evolution as Evo
 
 @inventory_bp.route("/submit_grv", methods=["POST"])
 def submit_grv():
-    if "GRV" not in current_user.permissions:
+    if "GRV_CREATE" not in current_user.permissions:
         abort(403)  # Forbidden
     data = request.get_json()
 
@@ -145,53 +137,28 @@ def submit_grv():
     if not lines or not isinstance(lines, list) or len(lines) == 0:
         return jsonify({"success": False, "error": "Lines collection required"}), 400
 
-    for l in lines:
-        if "stockId" not in l or "qty" not in l:
-            return jsonify({
-                "success": False,
-                "error": "Each line must contain ProductId and QtyReceived"
-            }), 400
-
     try:
-        # -------------------------
-        # Connect to Evolution SDK
-        # -------------------------
-        DatabaseContext.CreateCommonDBConnection(
-            "SIGMAFIN-RDS\\EVOLUTION", "SageCommon", "sa", "@Evolution", False
-        )
-        DatabaseContext.SetLicense("DE12111082", "9824607")
-        DatabaseContext.CreateConnection(
-            "SIGMAFIN-RDS\\EVOLUTION", "UB_UITDRAAI_BDY", "sa", "@Evolution", False
-        )
+        with EvolutionConnection():
+            PO = Evo.PurchaseOrder(po_number)
+            PO.SupplierInvoiceNo = supplierRef
 
-        # -------------------------
-        # Load Purchase Order
-        # -------------------------
-        PO = PurchaseOrder(po_number)
-        PO.SupplierInvoiceNo = supplierRef
-        # -------------------------
-        # Match lines to PO.Detail
-        # -------------------------
-        for line in lines:
-            pid = str(line["stockId"])
-            uom = str(line["UOM"])
-            qty_received = float(line["qty"])
+            for line in lines:
+                if "lineId" not in line or "qty" not in line:
+                    print("Skipping invalid line:", line)
+                    continue
+                qty_received = float(line["qty"])
 
-            # Loop through Evolution PO Lines
-            for detail in PO.Detail:
-                print(str(detail.Index), str(line["lineId"]), detail.InventoryItemID, pid, uom, detail.Unit)
-                if str(detail.Index) == str(line["lineId"]):
-                    detail.ToProcess = qty_received
-                    break
+                # Loop through Evolution PO Lines
+                for detail in PO.Detail:
+                    if str(detail.Index) == str(line["lineId"]):
+                        detail.ToProcess = qty_received
+                        break
 
-        # -------------------------
-        # Process the GRV (same as C#: PO.ProcessStock())
-        # -------------------------
-        PO.ProcessStock()
-        # audit_trail = PO.GetAuditTrail()
-        grv_number = PO.Reference
-        audit_number = PO.Audit
-        
+            PO.ProcessStock()
+            # audit_trail = PO.GetAuditTrail()
+            grv_number = PO.Reference
+            audit_number = PO.Audit
+            
         conn = create_db_connection()
         cursor = conn.cursor()
         cursor.execute("""
@@ -200,6 +167,12 @@ def submit_grv():
         """, (current_user.id,  receiver, po_number, grv_number, audit_number, supplierRef))
         conn.commit()
         conn.close()
+
+        emit_event(
+            event_code="GRV_CREATE",
+            entity_id=grv_number,
+            entity_desc="Goods Received Voucher"
+        )
         return jsonify({
             "success": True,
             "message": "GRV submitted successfully"

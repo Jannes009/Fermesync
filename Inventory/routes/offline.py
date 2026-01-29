@@ -104,7 +104,7 @@ def incomplete_issues():
 
 @inventory_bp.route("/SDK/incomplete_issue_lines", methods=["GET"])
 def incomplete_issue_lines():
-    if "StockIssue" not in current_user.permissions:
+    if "STOCK_ISSUE" not in current_user.permissions:
         abort(403)  # Forbidden
 
     results = []

@@ -7,7 +7,8 @@
     .page-content { display: flex; flex-direction: column; flex: 1; }
     .wrap { width: 100%; margin: 0 auto; padding: 1rem; max-width: 1600px; }
     .wrap.with-fixed-taskbar { padding-top: 1rem; margin-top: 60px; }
-    .card { background: var(--container-bg); border-radius: 8px; box-shadow: 0 1px 6px rgba(44,62,80,0.08); padding: 1rem; margin-bottom: 1rem; }
+    .card { background: var(--container-bg); border-radius: 12px; box-shadow: 0 4px 24px 0 rgba(44,62,80,0.08); padding: 1.2rem; margin-bottom: 2rem; transition: box-shadow 0.2s; }
+    .card:hover { box-shadow: 0 8px 32px 0 rgba(44,62,80,0.16); }
     header h1 { margin: 0; font-size: 1.4rem; color: var(--primary-text); }
 
     /* Form */
@@ -116,14 +117,34 @@
       padding-bottom: 0.5rem;
     }
 
-    /* --- PO Create Specific --- */
-    .card h3 {
-      margin: 0 0 1rem 0;
+    .po-header-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 2rem;
+      margin-bottom: 2rem;
+    }
+
+    .po-section h3 {
       font-size: 1.1rem;
+      font-weight: 600;
       color: var(--primary-text);
+      margin-bottom: 1rem;
       border-bottom: 1px solid var(--input-border);
       padding-bottom: 0.5rem;
     }
+
+    .badge {
+      padding: 4px 8px;
+      border-radius: 4px;
+      font-size: 0.8rem;
+      font-weight: bold;
+      margin-left: 1rem;
+    }
+
+    .badge.pending { background: #fff3cd; color: #856404; }
+    .badge.approved { background: #d4edda; color: #155724; }
+    .badge.rejected { background: #f8d7da; color: #721c24; }
+    .badge.submitted { background: #cce5ff; color: #004085; }
 
     .form-grid {
       display: grid;
@@ -232,6 +253,20 @@
     background: #fff5f5;
     }
 
+    input:disabled,
+select:disabled,
+textarea:disabled {
+  background: #f5f6f8;
+  color: #374151;
+  border-color: #e5e7eb;
+  cursor: not-allowed;
+}
+
+select:disabled + .select2 .select2-selection {
+  background: #f5f6f8 !important;
+}
+
+
 
     @media (max-width: 900px) {
       .form-grid {
@@ -269,97 +304,127 @@ input, select, textarea, .select2-container--default .select2-selection--single 
   <div class="wrap">
     <div class="card">
     <form id="po-form">
-      <header><h1>Create Purchase Order</h1></header>
+      <header class="flex items-center gap-3">
+        <h1>
+          {% if status == "PENDING APPROVAL" %}
+            PO Requisition #{{ form_id }}
+          {% elif status == "POSTED" %}
+            Purchase Order #{{ form_id }}
+          {% else %}
+            Create Purchase Order
+          {% endif %}
+        </h1>
 
-      <!-- ================= HEADER FIELDS ================= -->
-      <section class="card">
-        <h3>Header</h3>
+        {% if status %}
+          <span class="status-badge {{ status|lower|replace(' ', '-') }}">
+            {{ status }}
+          </span>
+        {% endif %}
+      </header>
+    <form id="po-form">
 
-        <div class="form-grid">
-          <label>Supplier</label>
-          <select id="supplier" name="supplier" required></select>
+      <!-- ================= HEADER AND UDFS ================= -->
+      <section class="po-header-section">
+        <div class="po-header-grid">
+          <div class="header-fields">
+            <h3>Header</h3>
+            <div class="form-grid">
+              <label>Supplier</label>
+              <select id="supplier" name="supplier" required></select>
 
-          <label>Order Date</label>
-          <input id="order-date" type="date" name="order_date" required>
+              <label>Order Date</label>
+              <input id="order-date" type="date" name="order_date" required>
 
-          <label>Due Date</label>
-          <input id="due-date" type="date" name="due_date" required>
+              <label>Due Date</label>
+              <input id="due-date" type="date" name="due_date" required>
 
-          <label>Description</label>
-          <input type="text" name="description" required>
+              <label>Description</label>
+              <input type="text" name="description" required>
+            </div>
+          </div>
+
+          <div class="header-udfs">
+            <h3>User Defined Fields</h3>
+            <div class="udf-tabs">
+                {% for page in header_udfs.keys() %}
+                <button type="button"
+                        class="udf-tab"
+                        onclick="showUdfPage('{{ page }}')">
+                    {{ page }}
+                </button>
+                {% endfor %}
+            </div>
+
+            {% for page in header_udfs.keys() %}
+                <div class="udf-page"
+                    id="udf-page-{{ page }}"
+                    data-page="{{ page }}"
+                    style="display:none">
+
+                <div class="form-grid"></div>
+
+                </div>
+            {% endfor %}
+          </div>
         </div>
       </section>
 
-        <!-- ================= HEADER UDFS ================= -->
-        <section class="card">
-        <h3>User Defined Fields</h3>
+      <!-- ================= LINES ================= -->
+      <section class="po-section">
+        <h3>Lines</h3>
 
-        <div class="udf-tabs">
-            {% for page in header_udfs.keys() %}
-            <button type="button"
-                    class="udf-tab"
-                    onclick="showUdfPage('{{ page }}')">
-                {{ page }}
-            </button>
-            {% endfor %}
-        </div>
+        <table id="po-lines">
+          <thead>
+            <tr>
+              <th>Item</th>
+              <th>UOM</th>
+              <th>Warehouse</th>
+              <th>Qty</th>
+              <th>Qty Processed</th>
+              <th>Price</th>
+              <th>Project</th>
 
-        {% for page in header_udfs.keys() %}
-            <div class="udf-page"
-                id="udf-page-{{ page }}"
-                data-page="{{ page }}"
-                style="display:none">
+              {% for udf in line_udfs %}
+                <th>{{ udf.label }}</th>
+              {% endfor %}
 
-            <div class="form-grid"></div>
+              <th></th>
+            </tr>
+          </thead>
 
-            </div>
-        {% endfor %}
-        </section>
+          <tbody></tbody>
+        </table>
 
-
-  <!-- ================= LINES ================= -->
-  <section class="card">
-    <h3>Lines</h3>
-
-    <table id="po-lines">
-      <thead>
-        <tr>
-          <th>Item</th>
-          <th>UOM</th>
-          <th>Warehouse</th>
-          <th>Qty</th>
-          <th>Price</th>
-          <th>Project</th>
-
-
-          {% for udf in line_udfs %}
-            <th>{{ udf.label }}</th>
-          {% endfor %}
-
-          <th></th>
-        </tr>
-      </thead>
-
-      <tbody></tbody>
-    </table>
-
-    <button type="button" onclick="addLine()" class="btn btn-primary">+ Add Line</button>
-  </section>
+        <button type="button" onclick="addLine()" class="btn btn-primary">+ Add Line</button>
+      </section>
   <div style="display:flex; justify-content:flex-end; gap:8px; margin-top:16px;">
-  <button type="button"
-          class="btn btn-primary"
-          onclick="saveRequisition()">
-    💾 Save Requisition
-  </button>
+    <div class="actions">
+    {% if mode == "create" %}
+        {% if 'POCreate' in current_user.permissions %}
+        <button class="btn btn-primary" type="button" onclick="saveRequisition(process=true)">🚀 Process Purchase Order</button>
+        {% endif %}
+        <button class="btn btn-primary" type="button" onclick="saveRequisition(process=false)">💾 Save</button>
+    {% endif %}
+    </div>
+
 </div>
 
   </form>
 </div>
 
 <script>
+  const PERMISSIONS = {{ current_user.permissions | tojson }};
   const LINE_UDFS = {{ line_udfs | tojson }};
   const HEADER_UDFS = {{ header_udfs | tojson }};
+  let FORM_MODE = "{{ mode }}";
+  const FORM_ID = {{ form_id or "null" }};
+  const STATUS = "{{ status or "" }}";
 </script>
-<script src="{{ url_for('inventory.static', filename='purchase_order/udf.js') }}?{{ filemtime('inventory', 'purchase_order/udf.js') }}"></script>
-<script src="{{ url_for('inventory.static', filename='purchase_order/po_create.js') }}?{{ filemtime('inventory', 'purchase_order/po_create.js') }}"></script>
+
+<script src="{{ url_for('inventory.static', filename='purchase_order/form_structure.js') }}?{{ filemtime('inventory', 'purchase_order/form_structure.js') }}"></script>
+<script src="{{ url_for('inventory.static', filename='purchase_order/behaviour.js') }}?{{ filemtime('inventory', 'purchase_order/behaviour.js') }}"></script>
+<script src="{{ url_for('inventory.static', filename='purchase_order/populate_requisition.js') }}?{{ filemtime('inventory', 'purchase_order/populate_requisition.js') }}"></script>
+<script src="{{ url_for('inventory.static', filename='purchase_order/po_requisition_behaviour.js') }}?{{ filemtime('inventory', 'purchase_order/po_requisition_behaviour.js') }}"></script>
+<script src="{{ url_for('inventory.static', filename='purchase_order/validation.js') }}?{{ filemtime('inventory', 'purchase_order/validation.js') }}"></script>
+<script src="{{ url_for('inventory.static', filename='purchase_order/purchase_order.js') }}?{{ filemtime('inventory', 'purchase_order/purchase_order.js') }}"></script>
 {% endblock %}
