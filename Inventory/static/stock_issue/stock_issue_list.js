@@ -20,40 +20,38 @@ async function loadIncompleteIssues() {
     });
 
     // Normalize into one shape
-  const normalizedOnline = onlineIssues
-    .filter(i => i.isReturned === false) // or !i.isReturned
-    .map(i => ({
-      issue_id: i.IssueId,
-      whse_id: i.WhseId,
-      project: i.ProjectName,
-      issued_to: i.IssueToName,
-      timestamp: i.IssueTimeStamp,
-      isOffline: false
-    }));
+    const normalizedOnline = onlineIssues
+      .filter(i => i.isReturned === false)
+      .map(i => ({
+        issue_id: i.IssueId,
+        whse_id: i.WhseId,
+        project: i.ProjectName,
+        timestamp: i.IssueTimeStamp,
+        isOffline: false
+      }));
 
     // only fetch offline issues if we are offline
     if (!navigator.onLine) {
         const offlineIssues = await db.offlineIssues
-        .filter(i => i.allow_returns === true && i.status === "queued" && !i.isReturned)
-        .toArray();
+          .filter(i => i.allow_returns === true && i.status === "queued" && !i.isReturned)
+          .toArray();
 
         const normalizedOffline = offlineIssues.map(i => ({
-        issue_id: i.client_issue_id,
-        whse_id: i.warehouse,
-        project: i.project,
-        issued_to: i.issued_to,
-        timestamp: i.created_at,
-        isOffline: true
+          issue_id: i.client_issue_id,
+          whse_id: i.warehouse,
+          project: i.project,
+          timestamp: i.created_at,
+          isOffline: true
         }));
-        console.log({ normalizedOffline, normalizedOnline });
-        // 4️⃣ Merge without duplication
+
+        // Merge without duplication
         const merged = [...normalizedOnline];
 
         for (const off of normalizedOffline) {
-        const exists = normalizedOnline.some(
-            on => on.issue_id === off.issue_id
-        );
-        if (!exists) merged.push(off);
+          const exists = normalizedOnline.some(
+              on => on.issue_id === off.issue_id
+          );
+          if (!exists) merged.push(off);
         }
 
         renderIssues(merged);
@@ -86,9 +84,8 @@ function renderIssues(issues) {
       </h3>
       <p><b>Date:</b> ${issue.timestamp}</p>
       <p><b>Project:</b> ${issue.project}</p>
-      <p><b>Issued To:</b> ${issue.issued_to}</p>
       <button class="btn-primary"
-        onclick="startReturnWizard('${issue.issue_id}', '${issue.whse_id}', ${issue.isOffline})">
+        onclick="startReturnWizard('${issue.issue_id}')">
         Process Return →
       </button>
     `;
@@ -107,6 +104,7 @@ function isClientId(issueId) {
     )
   );
 }
+
 // ============================================================================
 //  RETURN WIZARD
 // ============================================================================
@@ -116,7 +114,6 @@ async function fetchIssueLines(issueId) {
   if (!is_client_id) {
     try {
       console.log(`Fetching lines for server issue ${issueId} from server`);
-      console.log(typeof issueId);
       let lines = await db.serverIssueLines
         .where("header_id").equals(parseInt(issueId))
         .toArray();
@@ -129,11 +126,11 @@ async function fetchIssueLines(issueId) {
       console.log(`Fetched ${lines.length} lines from server for issue ${issueId}`);
       return lines;
     } catch (error) {
-      console.warn("Failed to fetch from lines", error);
+      console.warn("Failed to fetch lines", error);
     }
   }
   
-  // 3. Check offlineIssueLines directly (for client_issue_id)
+  // Check offlineIssueLines directly (for client_issue_id)
   if (is_client_id) {
     try {
       const offlineLines = await db.offlineIssueLines
@@ -157,33 +154,13 @@ async function fetchIssueLines(issueId) {
       console.warn("Error accessing offlineIssueLines:", error);
     }
   }  
+  
   console.warn(`No lines found for issue ID: ${issueId} (${is_client_id ? 'client' : 'server'} ID)`);
   return [];
 }
 
 async function startReturnWizard(issueId) {
-
-    // STEP 1: Who is returning the goods?
-    const retInfo = await Swal.fire({
-        title: "Return Details",
-        html: `
-            <label>Returned By:</label>
-            <input id="returned_by" class="swal2-input" placeholder="Person returning items">
-        `,
-        confirmButtonText: "Next",
-        preConfirm: () => {
-            const returned = document.getElementById("returned_by").value.trim();
-            if (!returned) {
-                Swal.showValidationMessage("Returned By is required");
-                return false;
-            }
-            return returned;
-        }
-    });
-
-    const returnedBy = retInfo.value;
-
-    // STEP 2: FETCH ISSUE LINES FROM BACKEND
+    // STEP 1: FETCH ISSUE LINES
     let products = await fetchIssueLines(issueId);
     if (!products.length) {
         Swal.fire("No Products", "No products found for this issue.", "warning");
@@ -194,7 +171,7 @@ async function startReturnWizard(issueId) {
     const prodHTML = products.map((p, i) => `
         <tr>
             <td>${p.product_desc}</td>
-            <td>${p.uom_code}</td>
+            <td>${p.uom_code || p.stocking_uom_code || "—"}</td>
             <td>${p.qty_issued}</td>
             <td>
                 <input id="ret_qty_${i}" 
@@ -207,7 +184,7 @@ async function startReturnWizard(issueId) {
         </tr>
     `).join("");
 
-    // STEP 3: ENTER RETURN QTY
+    // STEP 2: ENTER RETURN QTY
     const qtyEntry = await Swal.fire({
         title: "Enter Quantities Returned",
         width: 800,
@@ -234,33 +211,34 @@ async function startReturnWizard(issueId) {
                     return false;
                 }
                 lines.push({
-                line_id: products[i].line_id,
-                product_link: products[i].product_link,
-                qty_issued: products[i].qty_issued,
-                qty_returned: qty,
-                is_client_id: products[i].is_client_id || false
+                    line_id: products[i].line_id,
+                    product_link: products[i].product_link,
+                    qty_issued: products[i].qty_issued,
+                    qty_returned: qty,
+                    is_client_id: products[i].is_client_id || false
                 });
             }
             return lines;
         }
     });
+    
     if (!qtyEntry.value) return;
     const returnLines = qtyEntry.value;
 
-    // STEP 4: CONFIRMATION
+    // STEP 3: CONFIRMATION
     const confirmHTML = returnLines.map(l => {
         const prod = products.find(p => p.line_id === l.line_id);
         return `
             <tr>
                 <td>${prod.product_desc}</td>
-                <td>${prod.uom_code}</td>
+                <td>${prod.uom_code || prod.stocking_uom_code || "—"}</td>
                 <td>${l.qty_issued}</td>
                 <td>${l.qty_returned}</td>
             </tr>
         `;
     }).join("");
 
-    await Swal.fire({
+    const confirmResult = await Swal.fire({
         title: "Confirm Return",
         width: 800,
         html: `
@@ -274,19 +252,22 @@ async function startReturnWizard(issueId) {
                 ${confirmHTML}
             </table>
         `,
-        confirmButtonText: "Submit Return"
+        confirmButtonText: "Submit Return",
+        showCancelButton: true,
+        cancelButtonText: "Cancel"
     });
 
-    // STEP 5: SUBMIT TO BACKEND
+    if (!confirmResult.isConfirmed) return;
+
+    // STEP 4: SUBMIT TO BACKEND
     let loadingVisible = false;
     try {
         const payload = {
             issue_id: issueId,
-            returned_to: returnedBy,
             created_at: new Date().toISOString(),
             returns: returnLines
         };
-        // Show a loading state so the user knows something is happening
+        
         Swal.fire({
             title: "Processing return...",
             allowOutsideClick: false,
@@ -295,22 +276,20 @@ async function startReturnWizard(issueId) {
                 loadingVisible = true;
             }
         });
+        
         if (!navigator.onLine) {
             console.log("Offline - queuing return", payload);
-
-            let issue;
 
             if (isClientId(issueId)) {
                 await db.offlineReturns.add({
                     client_issue_id: issueId,
                     issue_id: issueId,
-                    returned_to: returnedBy,
                     returns: returnLines,
                     status: "queued",
                     created_at: new Date().toISOString(),
                 });
 
-                issue = await db.offlineIssues
+                const issue = await db.offlineIssues
                     .where("client_issue_id")
                     .equals(issueId)
                     .first();
@@ -325,7 +304,6 @@ async function startReturnWizard(issueId) {
                     server_issue_id: issueId,
                     issue_id: issueId,
                     created_by_user_id: window.FERMESYNC.userId,
-                    returned_to: returnedBy,
                     returns: returnLines,
                     status: "queued",
                     created_at: new Date().toISOString(),
@@ -334,10 +312,8 @@ async function startReturnWizard(issueId) {
                 await db.serverIssues.update(parseInt(issueId), {
                     isReturned: true
                 });
-
             }
 
-            // ✅ NOW we close the offline block
             if (loadingVisible) {
                 Swal.close();
                 loadingVisible = false;
@@ -348,33 +324,31 @@ async function startReturnWizard(issueId) {
             return;
         }
 
-        // ✅ ONLINE path
-        else {
-            const submit = await fetch("/inventory/process_return", {
-                method: "POST",
-                headers: { "Content-Type": "application/json" },
-                body: JSON.stringify(payload)
-            });
+        // ONLINE path
+        const submit = await fetch("/inventory/process_return", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify(payload)
+        });
 
-            if (!submit.ok) {
-                const text = await submit.text();
-                throw new Error(`Server responded with ${submit.status}: ${text || "No details"}`);
-            }
+        if (!submit.ok) {
+            const text = await submit.text();
+            throw new Error(`Server responded with ${submit.status}: ${text || "No details"}`);
+        }
 
-            const submitRes = await submit.json();
+        const submitRes = await submit.json();
 
-            if (loadingVisible) {
-                Swal.close();
-                loadingVisible = false;
-            }
+        if (loadingVisible) {
+            Swal.close();
+            loadingVisible = false;
+        }
 
-            if (submitRes.success) {
-                Swal.fire("Success", "Return processed successfully!", "success");
-                loadIncompleteIssues();
-            } else {
-                Swal.fire("Error", submitRes.message || "Return failed with no message from server.", "error");
-            }
-            fetchProducts(); // Refresh local products
+        if (submitRes.success) {
+            Swal.fire("Success", "Return processed successfully!", "success");
+            loadIncompleteIssues();
+            fetchProducts();
+        } else {
+            Swal.fire("Error", submitRes.message || "Return failed with no message from server.", "error");
         }
 
     } catch (err) {

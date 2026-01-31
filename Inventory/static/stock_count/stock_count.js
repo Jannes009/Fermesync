@@ -40,12 +40,12 @@ function setupCommandBar() {
     function updateCommandBarVisibility() {
         const step = getActiveStep();
         if (step === 2) {
-            commandBar.classList.add("active");
+            commandBar.classList.remove("hidden");
             requestAnimationFrame(() => {
                 commandSearch.focus();
             });
         } else {
-            commandBar.classList.remove("active");
+            commandBar.classList.add("hidden");
         }
     }
 
@@ -487,8 +487,9 @@ function validateAllProductsCounted() {
 
 function findDiscrepancies() {
     discrepancies = countedProducts
-        .filter(p => Math.abs(p.counted_qty - Number(p.qty_in_whse || 0)) > 0.001)
+        .filter(p => Math.abs(p.counted_qty - Number(p.system_qty || 0)) > 0.001)
         .map(p => ({ ...p, original_count: p.counted_qty }));
+    console.log("Discrepancies:", discrepancies);
 }
 
 /* ====== Recounts ====== */
@@ -631,7 +632,9 @@ async function submitFinalCount() {
 
         if (data.success) {
             Swal.fire("Success!", data.message || "Stock count completed", "success")
-                .then(() => location.reload());
+                .then(() => {
+                    location.href = "/inventory/stock-counts";
+                });
         } else {
             throw new Error(data.error || "Server error");
         }

@@ -47,35 +47,102 @@ document.addEventListener("DOMContentLoaded", async () => {
         const fromWh = document.getElementById("wh-from").value;
         const toWh = document.getElementById("wh-to").value;
 
-        const requestedBy = document.getElementById("requested-by").value.trim();
-        const dispatcher = document.getElementById("dispatcher").value.trim();
-        const driver = document.getElementById("driver").value.trim();
-
-        if (!fromWh || !toWh || !requestedBy || !dispatcher || !driver) {
-            return Swal.fire("Missing Info", "Please fill in all fields", "warning");
+        if (!fromWh || !toWh) {
+            return Swal.fire("Missing Info", "Please select both warehouses", "warning");
         }
 
-        const res = await fetch("/inventory/fetch_products_in_both_whses", {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ whse_from_code: fromWh, whse_to_code: toWh })
+        if (fromWh === toWh) {
+            return Swal.fire("Invalid Selection", "Source and destination warehouses must be different", "warning");
+        }
+
+        // Show loading indicator
+        Swal.fire({
+            title: "Loading products...",
+            didOpen: () => {
+                Swal.showLoading();
+            },
+            allowOutsideClick: false,
+            allowEscapeKey: false
         });
 
-        const data = await res.json();
-        products = data.products || [];
+        try {
+            const res = await fetch("/inventory/fetch_products_in_both_whses", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ whse_from_code: fromWh, whse_to_code: toWh })
+            });
 
-        if (products.length === 0) {
-            document.getElementById("ibt-lines-container").innerHTML =
-                "<p>No products found for both warehouses.</p>";
-            return;
+            if (!res.ok) {
+                throw new Error(`Server error: ${res.status}`);
+            }
+
+            const data = await res.json();
+
+            if (data.error) {
+                Swal.close();
+                return Swal.fire({
+                    icon: "error",
+                    title: "Error Loading Products",
+                    text: data.error
+                });
+            }
+
+            products = data.products || [];
+
+            // No products found
+            if (products.length === 0) {
+                Swal.close();
+                return Swal.fire({
+                    icon: "info",
+                    title: "No Products Available",
+                    html: `
+                        <p>No products were found that exist in both:</p>
+                        <div style="margin: 15px 0; padding: 10px; background: #f8f9fa; border-radius: 6px;">
+                            <strong>From:</strong> ${document.querySelector('#wh-from option:checked').text}<br>
+                            <strong>To:</strong> ${document.querySelector('#wh-to option:checked').text}
+                        </div>
+                        <p style="font-size: 0.9rem; color: #666;">
+                            Please select different warehouses or check your inventory.
+                        </p>
+                    `,
+                    confirmButtonText: "Try Again"
+                });
+            }
+
+            // Successfully loaded products
+            Swal.close();
+
+            // Switch to Step 2
+            document.getElementById("ibt-step-1").classList.add("hidden");
+            document.getElementById("ibt-step-2").classList.remove("hidden");
+
+            // Add the initial line
+            addIbtLine();
+
+            // Show success toast
+            const toast = Swal.mixin({
+                toast: true,
+                position: 'top-end',
+                showConfirmButton: false,
+                timer: 2000,
+                timerProgressBar: true
+            });
+
+            toast.fire({
+                icon: 'success',
+                title: `Loaded ${products.length} product(s)`
+            });
+
+        } catch (error) {
+            console.error("Error fetching products:", error);
+            Swal.close();
+            Swal.fire({
+                icon: "error",
+                title: "Failed to Load Products",
+                text: error.message || "An unexpected error occurred. Please try again.",
+                confirmButtonText: "Close"
+            });
         }
-
-        // Switch to Step 2
-        document.getElementById("ibt-step-1").classList.add("hidden");
-        document.getElementById("ibt-step-2").classList.remove("hidden");
-
-        // Add the initial line
-        addIbtLine();
     });
 
     // --- Add Product Button ---
@@ -91,6 +158,7 @@ document.addEventListener("DOMContentLoaded", async () => {
         for (let line of lines) {
             const select = line.querySelector(".product-select");
             const qtyInput = line.querySelector(".qty-input");
+            const uomLabel = line.querySelector(".stock-unit");
 
             const productId = select.value;
             const qtyToSend = Number(qtyInput.value);
@@ -105,11 +173,12 @@ document.addEventListener("DOMContentLoaded", async () => {
 
             const productData = $(select).find(":selected").data();
             const availableQty = Number(productData.qty);
+            const uom = productData.unit || "EA"; // Default to "EA" if no UOM
 
             if (qtyToSend > availableQty) {
                 return Swal.fire(
                     "Not Enough Stock",
-                    `Product: ${select.options[select.selectedIndex].text}\nAvailable: ${availableQty}`,
+                    `Product: ${select.options[select.selectedIndex].text}\nAvailable: ${availableQty} ${uom}`,
                     "error"
                 );
             }
@@ -118,7 +187,8 @@ document.addEventListener("DOMContentLoaded", async () => {
                 product_id: productId,
                 qty: qtyToSend,
                 productText: select.options[select.selectedIndex].text,
-                availableQty: availableQty
+                availableQty: availableQty,
+                uom: uom // Capture UOM
             });
         }
 
@@ -134,9 +204,6 @@ document.addEventListener("DOMContentLoaded", async () => {
         const payload = {
             WarehouseFrom: $('#wh-from').val(),
             WarehouseTo: $('#wh-to').val(),
-            RequestedBy: document.getElementById("requested-by").value.trim(),
-            Dispatcher: document.getElementById("dispatcher").value.trim(),
-            Driver: document.getElementById("driver").value.trim(),
             Lines: ibtLines.map(line => ({
                 ProductId: line.product_id,
                 QtyIssued: line.qty
@@ -172,13 +239,10 @@ document.addEventListener("DOMContentLoaded", async () => {
             // Reset form fields
             document.getElementById("wh-from").value = "";
             document.getElementById("wh-to").value = "";
-            document.getElementById("requested-by").value = "";
-            document.getElementById("dispatcher").value = "";
-            document.getElementById("driver").value = "";
             $('#wh-from, #wh-to').trigger('change'); // refresh Select2
             document.getElementById("ibt-lines-container").innerHTML = "";
             ibtLines = [];
-            lineIndex = 0;;
+            lineIndex = 0;
         });
     });
 
@@ -206,43 +270,29 @@ function addIbtLine() {
     lineDiv.id = lineId;
 
     lineDiv.innerHTML = `
-        <div class="ibt-line-header">
-            <label class="line-number">Line ${lineIndex}</label>
-            <button type="button" class="ibt-remove-btn btn-danger" title="Remove line">✕</button>
-        </div>
-        <div class="ibt-line-fields">
-            <div class="field-group product-field-group">
-                <label class="field-label">Product</label>
+        <div class="product-row">
+            <div class="product-select-wrapper">
                 <select id="${selectId}" class="product-select">
                     <option></option>
                 </select>
             </div>
-            <div class="qty-group">
-                <div class="field-group">
-                    <label class="field-label">Quantity</label>
-                    <input type="number" class="qty-input" min="0" placeholder="0" />
-                </div>
-                <div class="field-group uom-display">
-                    <label class="field-label">Unit</label>
-                    <span class="stock-unit">—</span>
-                </div>
-            </div>
+            <input type="number" class="qty-input" min="0" step="1" placeholder="0" />
+            <div class="uom-label stock-unit">—</div>
+            <button type="button" class="ibt-remove-btn" title="Remove line">
+                <i class="fas fa-trash"></i>
+            </button>
         </div>
     `;
 
     document.getElementById("ibt-lines-container").appendChild(lineDiv);
 
-    // ---------------------------------------------------
-    // REMOVE LINE BUTTON
-    // ---------------------------------------------------
+    // Remove button handler
     const removeBtn = lineDiv.querySelector('.ibt-remove-btn');
     removeBtn.addEventListener('click', () => {
         lineDiv.remove();
     });
 
-    // ---------------------------------------------------
-    // Populate dropdown
-    // ---------------------------------------------------
+    // Populate select2 dropdown
     populateSelect(selectId, lineDiv);
 }
 
@@ -272,14 +322,14 @@ function populateSelect(selectId, lineDiv) {
 
     products.forEach(p => {
         const opt = new Option(`${p.product_desc} (In: ${p.qty_in_whse})`, p.product_id, false, false);
-        $(opt).data("unit", p.stocking_unit);
+        const uom = p.stocking_unit || "EA"; // Default to "EA" if missing
+        $(opt).data("unit", uom);
         $(opt).data("qty", p.qty_in_whse);
 
         // Disable the option if it is already in ibtLines
         if (selectedProducts.has(p.product_id)) {
             opt.disabled = true;
         }
-
 
         select.appendChild(opt);
     });
@@ -293,11 +343,11 @@ function populateSelect(selectId, lineDiv) {
         templateSelection: formatProductOption
     });
 
-
     // When a product is chosen → update the stocking unit
     $(`#${selectId}`).on("select2:select", function (e) {
         const selected = $(this).find(":selected").data();
-        lineDiv.querySelector(".stock-unit").textContent = selected.unit || "";
+        const uom = selected.unit || "EA"; // Default to "EA"
+        lineDiv.querySelector(".stock-unit").textContent = uom;
 
         const val = this.value;
         selectedProducts.add(val);
@@ -309,7 +359,6 @@ function populateSelect(selectId, lineDiv) {
                 $(otherSelect).trigger("change.select2");
             }
         });
-
 
         // Disable the selected product in other dropdowns
         document.querySelectorAll(".product-select").forEach(otherSelect => {
@@ -331,7 +380,7 @@ function populateSelect(selectId, lineDiv) {
             $(otherSelect).trigger("change.select2");
         });
 
-        lineDiv.querySelector(".stock-unit").textContent = "";
+        lineDiv.querySelector(".stock-unit").textContent = "—";
         document.querySelectorAll(".product-select").forEach(otherSelect => {
             if (otherSelect.id !== selectId) {
                 $(otherSelect).find("option").prop("disabled", false);
@@ -370,9 +419,6 @@ function renderSummaryUltraCompact() {
     const summaryData = [
         { label: "From", value: $('#wh-from').find(':selected').text() },
         { label: "To", value: $('#wh-to').find(':selected').text() },
-        { label: "Requested By", value: document.getElementById("requested-by").value.trim() },
-        { label: "Dispatcher", value: document.getElementById("dispatcher").value.trim() },
-        { label: "Driver", value: document.getElementById("driver").value.trim() }
     ];
     
     summaryData.forEach(item => {
@@ -418,10 +464,12 @@ function renderCompactProducts(summaryDiv) {
             productItem.innerHTML = `
                 <div class="product-details">
                     <div class="product-name">${line.productText}</div>
-                    <div class="product-meta">Available: ${line.availableQty} | ID: ${line.productId}</div>
+                    <div class="product-meta">
+                        Available: ${line.availableQty} ${line.uom}
+                    </div>
                 </div>
                 <div class="product-qty">
-                    <span class="qty-badge">${line.qty} units</span>
+                    <span class="qty-badge">${line.qty} ${line.uom}</span>
                 </div>
             `;
             

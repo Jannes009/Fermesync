@@ -16,7 +16,7 @@ def po_change_review(request_id):
     # Header
     header = cursor.execute("""
         SELECT
-            Id, PONumber, SupplierRef, ReceiverName,
+            Id, PONumber, SupplierRef,
             RequestedByUserId, RequestedAt, Status,
             ReviewedByUserId, ReviewedAt
         FROM POChangeRequest
@@ -143,7 +143,6 @@ def incorrect_po():
     print(data)
 
     po_number = data["poNumber"]
-    receiver = data["receiverName"]
     supplier_ref = data.get("supplierRef")
     overQtys = data["overQtys"]
 
@@ -154,13 +153,12 @@ def incorrect_po():
     # 1️⃣ Insert header
     cursor.execute("""
         INSERT INTO POChangeRequest
-        (PONumber, SupplierRef, ReceiverName, RequestedByUserId)
+        (PONumber, SupplierRef, RequestedByUserId)
         OUTPUT INSERTED.Id
-        VALUES (?, ?, ?, ?)
+        VALUES (?, ?, ?)
     """, (
         po_number,
         supplier_ref,
-        receiver,
         current_user.id
     ))
 

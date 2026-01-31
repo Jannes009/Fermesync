@@ -114,10 +114,6 @@
       </header>
       <div id="ibt-detail-container"><div class="loading">Loading details...</div></div>
       <div class="acceptance-row">
-        <div class="input-group">
-          <label for="returned-to-input">Returned To</label>
-          <input type="text" id="returned-to-input" placeholder="Who are the goods returned to?">
-        </div>
         <div class="action-buttons">
           <button type="button" id="submit-receipt" class="btn-primary">Submit Receipt</button>
         </div>
@@ -259,14 +255,8 @@ document.addEventListener("DOMContentLoaded", async () => {
     };
 
     async function submitReceipt() {
-        const returnedTo = (document.getElementById("returned-to-input").value || "").trim();
-        if (!returnedTo) {
-            Swal.fire("Missing info", "Please enter who the stock was returned to.", "warning");
-            return;
-        }
-
         const lines = document.querySelectorAll('.product-line');
-        const payload = { ibt_number: currentIbt, returned_to: returnedTo, lines: [] };
+        const payload = { ibt_number: currentIbt, lines: [] };
         let valid = true;
 
         lines.forEach(line => {

@@ -4,40 +4,13 @@ from .. import inventory_bp
 from Inventory.db import create_db_connection
 from flask_login import current_user
 from flask_login import login_required
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, date
+from Inventory.routes.db_conversions import category_link_to_name, warehouse_link_to_code
 
 @inventory_bp.route("/stock-counts")
 @login_required
 def stock_counts():
     return render_template("stock_count/stock_counts.html")
-
-@inventory_bp.route("/stock-counts/overview")
-@login_required
-def stock_counts_overview():
-    conn = create_db_connection()
-    cursor = conn.cursor()
-
-    try:
-        cursor.execute("""
-            SELECT
-                COUNT(DISTINCT h.InvCountHeaderId) AS completed,
-                SUM(CASE WHEN ABS(l.InvCountLineQtyCounted - l.InvCountLineQtyOnHand) > 0 THEN 1 ELSE 0 END) AS withVariance
-            FROM InventoryCountHeaders h
-            LEFT JOIN InventoryCountLines l ON l.InvCountLineHeaderId = h.InvCountHeaderId
-        """)
-
-        r = cursor.fetchone()
-        completed = r[0] or 0
-        withVariance = r[1] or 0
-
-        return jsonify({
-            "completed": completed,
-            "withVariance": withVariance,
-            "overdue": 0,
-            "dueSoon": 0
-        })
-    finally:
-        conn.close()
 
 @inventory_bp.route("/stock-counts/due")
 @login_required
@@ -128,11 +101,20 @@ def stock_counts_history():
             h.InvCountCatName,
             h.InvCountStatus,
             h.InvCountTimeFinalised,
+
+            -- Totals
             SUM(l.InvCountLineQtyOnHand) AS SystemQty,
-            SUM(ISNULL(l.InvCountLineQtyCounted, 0)) AS CountedQty
+            SUM(ISNULL(l.InvCountLineQtyCounted, 0)) AS CountedQty,
+
+            -- New counts
+            COUNT(l.InvCountLineHeaderId) AS TotalProducts,
+            COUNT(l.InvCountLineQtyCounted) AS ProductsCounted
+
         FROM InventoryCountHeaders h
         LEFT JOIN InventoryCountLines l
             ON l.InvCountLineHeaderId = h.InvCountHeaderId
+        WHERE INVCountStatus IN ('FINALISED', 'DRAFT')
+
         GROUP BY
             h.InvCountHeaderId,
             h.InvCountTimeCreated,
@@ -140,7 +122,9 @@ def stock_counts_history():
             h.InvCountCatName,
             h.InvCountStatus,
             h.InvCountTimeFinalised
-        ORDER BY h.InvCountTimeCreated DESC
+
+        ORDER BY h.InvCountTimeCreated DESC;
+
         """)
 
         rows = []
@@ -163,6 +147,8 @@ def stock_counts_history():
                 "shelf": r.InvCountCatName,
                 "systemQty": system_qty,
                 "countedQty": counted_qty,
+                "countedProducts": r.ProductsCounted,
+                "totalProducts": r.TotalProducts,
                 "variance": variance,
                 "status": r.InvCountStatus,
                 "canContinue": r.InvCountTimeFinalised is None
@@ -172,7 +158,7 @@ def stock_counts_history():
     finally:
         conn.close()
 
-@inventory_bp.route("/stock-counts/<int:header_id>")
+@inventory_bp.route("/stock_count_details/<int:header_id>")
 @login_required
 def stock_count_detail(header_id):
     """Returns detail lines for a specific stock count"""
@@ -184,6 +170,7 @@ def stock_count_detail(header_id):
             SELECT
                 InvCountWhseCode,
                 InvCountCatName,
+                InvCountUsername,
                 InvCountTimeFinalised
             FROM InventoryCountHeaders
             WHERE InvCountHeaderId = ?
@@ -216,7 +203,8 @@ def stock_count_detail(header_id):
         return jsonify({
             "warehouse": h[0],
             "shelf": h[1],
-            "date": h[2].strftime("%Y-%m-%d") if h[2] else "N/A",
+            "counted_by": h[2],
+            "date": h[3].strftime("%Y-%m-%d") if h[2] else "N/A",
             "lines": lines
         })
     finally:
@@ -249,51 +237,67 @@ def create_stock_count_schedule():
     """Creates a new stock count schedule"""
     data = request.get_json()
     warehouse_id = data.get("warehouse")
-    category = data.get("category")
+    category_id = data.get("category")
     frequency = data.get("frequency")
 
-    if not warehouse_id or not category or not frequency:
+    if not warehouse_id or not category_id or not frequency:
         return jsonify({"success": False, "error": "Missing required fields"}), 400
 
     conn = create_db_connection()
     cursor = conn.cursor()
 
+    # Convert inputs to correct types
     try:
-        # Convert inputs to correct types
+        category_name = category_link_to_name(category_id, cursor)
+
+        warehouse_id = int(warehouse_id)
+        category_id = int(category_id)
+        frequency = int(frequency)
+    except (ValueError, TypeError):
+        cursor.close()
+        conn.close()
+        return jsonify({"success": False, "error": "Invalid warehouse or frequency"}), 400
+
+    # Get the most recent count date for this category
+    cursor.execute("""
+        SELECT TOP 1 InvCountTimeFinalised 
+        FROM [dbo].[InventoryCountHeaders]
+        WHERE InvCountCatId = ? AND InvCountWhseId = ?
+        ORDER BY InvCountTimeFinalised DESC
+    """, (category_id, warehouse_id))
+    
+    last_count_row = cursor.fetchone()
+    last_count_date = last_count_row[0] if last_count_row else None
+    
+    # Normalize dates to datetime (pyodbc expects datetime.datetime for DATETIME parameters)
+    def to_datetime(dt):
+        if dt is None:
+            return None
+        if isinstance(dt, datetime):
+            return dt
+        if isinstance(dt, date):
+            return datetime.combine(dt, datetime.min.time())
         try:
-            warehouse_id = int(warehouse_id)
-            frequency = int(frequency)
-        except (ValueError, TypeError):
-            return jsonify({"success": False, "error": "Invalid warehouse or frequency"}), 400
+            # fallback for strings like '2026-01-31'
+            return datetime.fromisoformat(str(dt))
+        except Exception:
+            return None
 
-        # Get the most recent count date for this category
-        cursor.execute("""
-            SELECT TOP 1 InvCountTimeFinalised 
-            FROM [dbo].[InventoryCountHeaders]
-            WHERE InvCountCatName = ?
-            ORDER BY InvCountTimeFinalised DESC
-        """, (category,))
-        
-        last_count_row = cursor.fetchone()
-        last_count_date = last_count_row[0] if last_count_row else None
-        
-        # Convert to date if it's datetime
-        if last_count_date and isinstance(last_count_date, datetime):
-            last_count_date = last_count_date.date()
-        
-        now = datetime.now()
+    last_count_dt = to_datetime(last_count_date)
+    
+    now = datetime.now()
 
-        if last_count_date:
-            next_due_date = last_count_date + timedelta(days=frequency)
-        else:
-            next_due_date = now + timedelta(days=frequency)
+    if last_count_dt:
+        next_due_dt = last_count_dt + timedelta(days=frequency)
+    else:
+        next_due_dt = now + timedelta(days=frequency)
 
-        print(f"Last count date: {last_count_date}, Next due date: {next_due_date}")
-
-        # Insert the schedule
+    try:
+        # Insert the schedule — pass datetime objects (or None) not date
         cursor.execute("""
             INSERT INTO InventoryCountSchedule (
                 WhseId,
+                CategoryId,
                 CategoryName,
                 Frequency,
                 LastCountDate,
@@ -302,31 +306,74 @@ def create_stock_count_schedule():
                 CreatedByUserId,
                 CreatedAt
             )
-            VALUES (?, ?, ?, ?, ?, 1, ?, ?)
+            VALUES (?, ?, ?, ?, ?, ?, 1, ?, GETDATE())
         """, (
             warehouse_id,
-            category,
+            category_id,
+            category_name,
             frequency,
-            last_count_date,
-            next_due_date,
-            current_user.id,
-            datetime.now()
+            last_count_dt,
+            next_due_dt,
+            current_user.id
         ))
-        
         conn.commit()
-
-        return jsonify({
-            "success": True,
-            "message": "Stock count schedule created successfully"
-        }), 201
-
     except Exception as e:
-        print(f"Error creating schedule: {str(e)}")
         conn.rollback()
-        return jsonify({
-            "success": False,
-            "error": str(e)
-        }), 500
+        cursor.close()
+        conn.close()
+        return jsonify({"success": False, "error": str(e)}), 500
     finally:
         cursor.close()
+        conn.close()
+
+    return jsonify({
+        "success": True,
+        "message": "Stock count schedule created successfully"
+    }), 201
+
+    # except Exception as e:
+    #     print(f"Error creating schedule: {str(e)}")
+    #     conn.rollback()
+    #     return jsonify({
+    #         "success": False,
+    #         "error": str(e)
+    #     }), 500
+    # finally:
+    #     cursor.close()
+    #     conn.close()
+
+@inventory_bp.route("stock-counts/discard/<int:header_id>", methods=["POST"])
+@login_required
+def discard_stock_count(header_id):
+    """Discards a draft stock count session"""
+    conn = create_db_connection()
+    cursor = conn.cursor()
+
+    try:
+        # Verify the stock count is in DRAFT status
+        cursor.execute("""
+            SELECT InvCountStatus
+            FROM InventoryCountHeaders
+            WHERE InvCountHeaderId = ?
+        """, (header_id,))
+        row = cursor.fetchone()
+        if not row:
+            return jsonify({"success": False, "error": "Stock count session not found"}), 404
+        if row.InvCountStatus != "DRAFT":
+            return jsonify({"success": False, "error": "Only DRAFT stock counts can be discarded"}), 400
+
+        # Delete header
+        cursor.execute("""
+            UPDATE InventoryCountHeaders
+                SET InvCountTimeFinalised = GETDATE(),
+                    InvCountStatus = 'DISCARDED'
+            WHERE InvCountHeaderId = ?
+        """, (header_id,))
+
+        conn.commit()
+        return jsonify({"success": True, "message": "Stock count session discarded successfully"})
+    except Exception as e:
+        conn.rollback()
+        return jsonify({"success": False, "error": str(e)}), 500
+    finally:
         conn.close()

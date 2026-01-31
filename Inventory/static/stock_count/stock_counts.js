@@ -2,16 +2,94 @@
 let allHistoryData = [];
 
 document.addEventListener("DOMContentLoaded", () => {
-    loadOverview();
     loadHistory();
     loadDue();
     loadFilters();
 
-    // Add event listeners for filtering
+    // Add event listeners for filtering (history only)
     document.querySelectorAll(
         "#warehouseFilter, #shelfFilter, #fromDate, #toDate, #varianceOnly"
     ).forEach(el => el.addEventListener("change", filterHistory));
 });
+
+// Collapsible toggle behaviour (enhance arrow visibility + state)
+document.querySelectorAll(".stock-card.collapsible .toggle")
+  .forEach(header => {
+    header.addEventListener("click", () => {
+      const card = header.closest(".stock-card");
+      card.classList.toggle("open");
+
+      // Optional: remember state
+      const key = card.dataset.section;
+      if (key) {
+        localStorage.setItem(`stockcard_${key}`, card.classList.contains("open"));
+      }
+    });
+  });
+
+// Restore state on load (ensure open/closed from storage)
+document.querySelectorAll(".stock-card.collapsible").forEach(card => {
+  const key = card.dataset.section;
+  if (!key) return;
+  const open = localStorage.getItem(`stockcard_${key}`);
+  if (open === "false") card.classList.remove("open");
+  else if (open === "true") card.classList.add("open");
+});
+
+// --------------------------
+// Filters modal controls
+// --------------------------
+function openFilterModal() {
+    const fm = document.getElementById("filterModal");
+    if (!fm) return;
+    fm.classList.remove("hidden");
+    fm.setAttribute("aria-hidden", "false");
+}
+
+function closeFilterModal() {
+    const fm = document.getElementById("filterModal");
+    if (!fm) return;
+    fm.classList.add("hidden");
+    fm.setAttribute("aria-hidden", "true");
+}
+
+// Apply filters and close modal
+function applyAndCloseFilters() {
+    // trigger existing change handlers and filterHistory
+    document.getElementById("warehouseFilter")?.dispatchEvent(new Event('change'));
+    document.getElementById("shelfFilter")?.dispatchEvent(new Event('change'));
+    document.getElementById("fromDate")?.dispatchEvent(new Event('change'));
+    document.getElementById("toDate")?.dispatchEvent(new Event('change'));
+    document.getElementById("varianceOnly")?.dispatchEvent(new Event('change'));
+    filterHistory();
+    closeFilterModal();
+}
+
+// Close modal when clicking outside
+document.addEventListener("click", (e) => {
+    const scheduleModal = document.getElementById("scheduleModal");
+    const countModal = document.getElementById("countModal");
+    const filterModal = document.getElementById("filterModal");
+    
+    if (scheduleModal && e.target === scheduleModal) {
+        closeScheduleModal();
+    }
+    if (countModal && e.target === countModal) {
+        closeModal();
+    }
+    if (filterModal && e.target === filterModal) {
+        closeFilterModal();
+    }
+});
+
+// Restore state on load
+document.querySelectorAll(".stock-card.collapsible").forEach(card => {
+  const key = card.dataset.section;
+  if (!key) return;
+  const open = localStorage.getItem(`stockcard_${key}`);
+  if (open === "false") card.classList.remove("open");
+});
+
 
 function getFilters() {
     return {
@@ -53,7 +131,9 @@ function applyFilters(rows, filters) {
 
 function filterHistory() {
     const filters = getFilters();
-    const filteredRows = applyFilters(allHistoryData, filters);
+    // Filter to only completed counts before applying other filters
+    const completedOnly = allHistoryData.filter(r => !r.canContinue);
+    const filteredRows = applyFilters(completedOnly, filters);
     renderHistoryTable(filteredRows);
 }
 
@@ -69,24 +149,26 @@ function getVarianceCategory(variance, systemQty) {
     return "big";
 }
 
-// Update renderHistoryTable function
+// Update renderHistoryTable to only show completed counts
 function renderHistoryTable(rows) {
     const tbody = document.querySelector("#historyTable tbody");
     tbody.innerHTML = "";
 
-    if (rows.length === 0) {
+    // Filter to only completed counts
+    const completedRows = rows.filter(r => !r.canContinue);
+
+    if (completedRows.length === 0) {
         tbody.insertAdjacentHTML("beforeend", `
             <tr>
-                <td colspan="8" style="text-align: center; padding: 2rem; color: var(--secondary-text);">
-                    <i class="fas fa-inbox"></i> No stock counts found
+                <td colspan="7" style="text-align: center; padding: 2rem; color: var(--secondary-text);">
+                    <i class="fas fa-inbox"></i> No completed stock counts found
                 </td>
             </tr>
         `);
         return;
     }
 
-    rows.forEach(r => {
-
+    completedRows.forEach(r => {
         const varianceCategory = getVarianceCategory(r.variance, r.systemQty);
         let statusBadge = '';
         let rowClass = '';
@@ -101,21 +183,6 @@ function renderHistoryTable(rows) {
             statusBadge = '<span class="badge badge-variance-big"><i class="fas fa-exclamation-triangle"></i> Big Variance</span>';
             rowClass = "warn";
         }
-        let statusCell = "";
-
-        if (r.canContinue) {
-            statusCell = `
-                <button class="btn-continue"
-                    onclick="continueCount(event, ${r.headerId})">
-                    <i class="fas fa-play"></i> Continue
-                </button>
-            `;
-        } else {
-            // existing variance badge logic
-            statusCell = statusBadge;
-        }
-        rowClass += r.canContinue ? " in-progress" : "";
-
 
         tbody.insertAdjacentHTML("beforeend", `
             <tr class="${rowClass}" onclick="openModal(${r.headerId})" style="cursor: pointer;">
@@ -125,30 +192,87 @@ function renderHistoryTable(rows) {
                 <td>${r.systemQty}</td>
                 <td>${r.countedQty}</td>
                 <td>${r.variance}</td>
-                <td>${statusCell}</td>
+                <td>${statusBadge}</td>
             </tr>
         `);
     });
 }
 
-function continueCount(e, headerId) {
-    e.stopPropagation();
-    window.location.href = `/inventory/stock-counts/${headerId}`;
+// New function to render incomplete counts
+function renderIncompleteTable(rows) {
+    const tbody = document.querySelector("#incompleteTable tbody");
+    tbody.innerHTML = "";
+
+    // Filter to only incomplete counts
+    const incompleteRows = rows.filter(r => r.canContinue);
+
+    if (incompleteRows.length === 0) {
+        tbody.insertAdjacentHTML("beforeend", `
+            <tr>
+                <td colspan="6" style="text-align: center; padding: 2rem; color: var(--secondary-text);">
+                    <i class="fas fa-check-circle"></i> No incomplete counts
+                </td>
+            </tr>
+        `);
+        return;
+    }
+
+    incompleteRows.forEach(r => {
+        console.log(r)
+        // Progress is based on number of products counted vs total products
+        // countedQty represents products with counted qty
+        // systemQty represents total products to count
+        const totalProducts = r.totalProducts || 0;
+        const productsCountedLines = r.countedProducts || 0;
+        const progressPercent = Math.round((productsCountedLines / totalProducts) * 100);
+        
+        tbody.insertAdjacentHTML("beforeend", `
+            <tr class="in-progress">
+                <td>${r.date}</td>
+                <td>${r.warehouse}</td>
+                <td>${r.shelf}</td>
+                <td>
+                    <div style="display: flex; align-items: center; gap: 0.5rem;">
+                        <div style="flex: 1; height: 24px; background: #e5e7eb; border-radius: 4px; overflow: hidden;">
+                            <div style="height: 100%; width: ${progressPercent}%; background: #10b981; display: flex; align-items: center; justify-content: center; font-size: 0.7rem; font-weight: 600; color: white;">
+                                ${progressPercent > 10 ? progressPercent + '%' : ''}
+                            </div>
+                        </div>
+                        <span style="font-size: 0.85rem; font-weight: 600; min-width: 50px; text-align: right;">${productsCountedLines}/${totalProducts}</span>
+                    </div>
+                </td>
+                <td style="text-align: center;">
+                    <div style="display: flex; gap: 4px; justify-content: center; flex-wrap: wrap;">
+                        <button class="btn-action-small" onclick="continueCount(event, ${r.headerId})" title="Continue Counting">
+                            <i class="fas fa-play"></i> Continue
+                        </button>
+                        <button class="btn-action-small danger" onclick="discardCount(event, ${r.headerId})" title="Discard This Count">
+                            <i class="fas fa-trash"></i> Discard
+                        </button>
+                    </div>
+                </td>
+            </tr>
+        `);
+    });
 }
 
-
-async function loadOverview() {
-    try {
-        const res = await fetch("/inventory/stock-counts/overview");
-        const data = await res.json();
-
-        document.getElementById("kpiOverdue").querySelector("span").innerText = data.overdue || 0;
-        document.getElementById("kpiDueSoon").querySelector("span").innerText = data.dueSoon || 0;
-        document.getElementById("kpiCompleted").querySelector("span").innerText = data.completed || 0;
-        document.getElementById("kpiVariance").querySelector("span").innerText = data.withVariance || 0;
-    } catch (err) {
-        console.error("Error loading overview:", err);
+async function discardCount(event, headerId) {
+    event.stopPropagation(); // Prevent row click
+    fetch(`/inventory/stock-counts/discard/${headerId}`, {
+        method: "POST"
+    }).then(res => res.json())
+    .then(data => {
+        if (data.success) {
+            alert("Stock count discarded.");
+            loadHistory();
+        } else {
+            alert("Error discarding stock count: " + (data.message || "Unknown error"));
+        }
+    }).catch(err => {
+        console.error("Error discarding stock count:", err);
+        alert("Error discarding stock count.");
     }
+    );
 }
 
 async function loadDue() {
@@ -194,9 +318,9 @@ async function loadDue() {
                     <td>${r.nextDue}</td>
                     <td>${badge}</td>
                     <td style="text-align: center;">
-                        <a href="/inventory/count/${r.shelf}" style="text-decoration: none; color: var(--accent-color);" title="Start Count">
-                            <i class="fas fa-play-circle"></i>
-                        </a>
+                        <button class="btn-action-small" onclick="startCountFromSchedule('${r.shelf}')" title="Start Count">
+                            <i class="fas fa-play-circle"></i> Start Count
+                        </button>
                     </td>
                 </tr>
             `);
@@ -204,6 +328,10 @@ async function loadDue() {
     } catch (err) {
         console.warn("Error loading due counts:", err);
     }
+}
+
+function startCountFromSchedule(shelfName) {
+    window.location.href = `/inventory/start_stock_count?category=${encodeURIComponent(shelfName)}`;
 }
 
 // Schedule Modal Functions
@@ -337,17 +465,21 @@ document.addEventListener("click", (e) => {
     }
 });
 
+// Update loadHistory to render both tables
 async function loadHistory() {
     try {
         const res = await fetch("/inventory/stock-counts/history");
         allHistoryData = await res.json();
-        filterHistory(); // Apply any existing filters
+        
+        // Render both incomplete and completed tables
+        renderIncompleteTable(allHistoryData);
+        filterHistory(); // Apply filters to history table
     } catch (err) {
         console.error("Error loading history:", err);
         const tbody = document.querySelector("#historyTable tbody");
         tbody.innerHTML = `
             <tr>
-                <td colspan="8" style="text-align: center; padding: 1.5rem; color: #dc2626;">
+                <td colspan="7" style="text-align: center; padding: 1.5rem; color: #dc2626;">
                     <i class="fas fa-exclamation-circle"></i> Error loading stock counts
                 </td>
             </tr>
@@ -358,7 +490,7 @@ async function loadHistory() {
 // Update openModal to show variance category
 async function openModal(headerId) {
     try {
-        const res = await fetch(`/inventory/stock-counts/${headerId}`);
+        const res = await fetch(`/inventory/stock_count_details/${headerId}`);
         const data = await res.json();
 
         const modalTitle = document.getElementById("modalTitle");

@@ -172,131 +172,269 @@
 
         .product-row {
             display: grid;
-            grid-template-columns: minmax(0, 1.6fr) minmax(0, 0.8fr) auto;
-            gap: 12px;
-            align-items: stretch;
+            grid-template-columns: 1fr 70px auto 36px;
+            align-items: center;
+            gap: 8px;
+            padding: 8px 10px;
             background: var(--form-bg);
             border: 1px solid var(--input-border);
-            padding: 12px;
-            border-radius: 12px;
-            margin-bottom: 12px;
+            border-radius: 6px;
+            margin-bottom: 6px;
+            cursor: pointer;
+            transition: all 0.15s ease;
+            min-height: 44px;
         }
 
-        .product-main {
-            display: flex;
-            flex-direction: column;
-            gap: 6px;
+        .product-row:hover {
+            border-color: var(--button-bg);
+            box-shadow: 0 2px 6px rgba(0,0,0,0.08);
         }
 
-        .field-label {
-            font-size: 0.8rem;
-            text-transform: uppercase;
-            color: var(--muted-text, #7b8a99);
-            letter-spacing: 0.05em;
+        .product-row.focused {
+            background: var(--button-bg);
+            color: var(--button-text);
+            border-color: var(--button-bg);
+            box-shadow: 0 2px 8px rgba(0,0,0,0.15);
         }
 
-        .product-main select,
-        .product-main .select2-container {
+        .product-select-wrapper {
+            width: 100%;
+        }
+
+        .product-select {
+            width: 100% !important;
+            padding: 8px 10px !important;
+            font-size: 0.9rem !important;
+            border-radius: 5px !important;
+        }
+
+        .select2-container {
             width: 100% !important;
         }
 
-        .qty-wrapper {
-            display: flex;
-            flex-direction: column;
-            gap: 6px;
+        .select2-container--default .select2-selection--single {
+            height: 36px !important;
+            border: 1px solid var(--input-border) !important;
+            border-radius: 5px !important;
+            background: white !important;
+            padding: 0 !important;
         }
 
-        .qty-wrapper label {
-            font-size: 0.8rem;
-            text-transform: uppercase;
-            color: var(--muted-text, #7b8a99);
-            letter-spacing: 0.05em;
+        .select2-container--default .select2-selection--single .select2-selection__rendered {
+            line-height: 36px !important;
+            padding-left: 10px !important;
+            color: var(--primary-text) !important;
+            font-size: 0.9rem !important;
+        }
+
+        .select2-container--default .select2-selection--single .select2-selection__arrow {
+            height: 36px !important;
+            right: 6px !important;
         }
 
         .qty-input {
+            height: 36px;
+            font-size: 1rem;
+            font-weight: bold;
+            text-align: center;
+            border: 2px solid var(--input-border);
+            border-radius: 5px;
+            background: white;
+            color: black;
+            -moz-appearance: textfield;
+            appearance: textfield;
+            padding: 0;
             width: 100%;
-            padding: 10px;
-            border-radius: 8px;
-            border: 1px solid var(--input-border);
-            background: #fff;
+        }
+        
+        .qty-input::-webkit-inner-spin-button,
+        .qty-input::-webkit-outer-spin-button {
+            -webkit-appearance: none;
+            margin: 0;
+        }
+        
+        .qty-input:focus {
+            outline: none;
+            border-color: var(--button-bg);
+            box-shadow: 0 0 0 2px rgba(0,123,255,0.15);
         }
 
         .uom-label {
-            font-size: 0.85rem;
-            color: var(--muted-text, #7b8a99);
-        }
-
-        .row-actions {
-            display: flex;
-            flex-direction: column;
-            gap: 8px;
-            align-items: stretch;
-        }
-
-        .icon-btn {
+            background: #e9ecef;
+            padding: 3px 7px;
+            border-radius: 4px;
+            font-size: 0.75rem;
+            font-weight: bold;
+            color: #495057;
+            white-space: nowrap;
+            text-align: center;
+            height: 36px;
             display: flex;
             align-items: center;
             justify-content: center;
-            border: 1px solid var(--input-border);
-            background: #fff;
-            border-radius: 10px;
-            padding: 10px;
-            font-size: 1.1rem;
+        }
+
+        .issue-remove-btn {
+            width: 36px;
+            height: 36px;
+            border: none;
+            border-radius: 5px;
+            background: #dc3545;
+            color: white;
             cursor: pointer;
-            transition: background 0.2s;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 14px;
+            padding: 0;
+            transition: background 0.2s, transform 0.1s;
         }
 
-        .icon-btn:hover {
-            background: rgba(0,0,0,0.05);
+        .issue-remove-btn:hover {
+            background: #c82333;
+            transform: translateY(-1px);
         }
 
-        @media(max-width:600px){
-            .product-row {
+        .issue-remove-btn:active {
+            transform: translateY(0);
+        }
+
+        .issue-remove-btn i {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        /* Issue Line Container */
+        #ibt-lines {
+            margin: 15px 0;
+        }
+
+        .issue-line {
+            margin-bottom: 0;
+        }
+
+        /* Remove old styles */
+        .product-main,
+        .qty-wrapper,
+        .field-label,
+        .row-actions,
+        .icon-btn {
+            display: none;
+        }
+
+        /* Add Line Button */
+        #add-line {
+            background: #28a745;
+            color: white;
+            border: none;
+            padding: 12px 16px;
+            border-radius: 6px;
+            font-size: 0.95rem;
+            cursor: pointer;
+            font-weight: 600;
+            transition: background 0.2s, transform 0.1s;
+            margin: 8px 0;
+        }
+
+        #add-line:hover {
+            background: #218838;
+            transform: translateY(-2px);
+        }
+
+        #add-line:active {
+            transform: translateY(0);
+        }
+
+        /* Step Buttons Container */
+        .step-actions {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(100px, 1fr));
+            gap: 8px;
+            margin-top: 16px;
+            padding: 12px 0;
+        }
+
+        .btn-action {
+            padding: 12px 16px;
+            border-radius: 6px;
+            border: none;
+            font-size: 0.95rem;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.2s ease;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 6px;
+            min-height: 44px;
+        }
+
+        .btn-action:active {
+            transform: scale(0.98);
+        }
+
+        .btn-action.primary {
+            background: var(--button-bg);
+            color: var(--button-text);
+        }
+
+        .btn-action.primary:hover {
+            background: var(--button-hover);
+            transform: translateY(-2px);
+        }
+
+        .btn-action.secondary {
+            background: #6c757d;
+            color: white;
+        }
+
+        .btn-action.secondary:hover {
+            background: #5a6268;
+            transform: translateY(-2px);
+        }
+
+        .btn-action.success {
+            background: #28a745;
+            color: white;
+        }
+
+        .btn-action.success:hover {
+            background: #218838;
+            transform: translateY(-2px);
+        }
+
+        /* Icons in buttons */
+        .btn-action i {
+            font-size: 1rem;
+        }
+
+        /* Responsive - stack on mobile */
+        @media (max-width: 600px) {
+            .step-actions {
+                grid-template-columns: 1fr;
+                gap: 6px;
+            }
+
+            .btn-action {
+                width: 100%;
+            }
+        }
+
+        /* Step summary buttons */
+        .step-summary-actions {
+            display: grid;
+            grid-template-columns: auto 1fr;
+            gap: 8px;
+            margin-top: 16px;
+            padding: 12px 0;
+        }
+
+        @media (max-width: 600px) {
+            .step-summary-actions {
                 grid-template-columns: 1fr;
             }
-
-            .row-actions {
-                flex-direction: row;
-            }
         }
-
-        @media(max-width:767px){
-            .horizontal-scroll {
-                grid-auto-columns: 85%;
-            }
-        }
-
-        .wizard-card {
-            padding: 1.5rem;
-        }
-
-        .wizard-top-bar {
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            margin-bottom: 1rem;
-            flex-wrap: wrap;
-            gap: 0.75rem;
-        }
-
-        .wizard-top-bar h2 {
-            margin: 0;
-            font-size: 1.4rem;
-        }
-
-        .wizard-actions {
-            display: flex;
-            flex-wrap: wrap;
-            gap: 0.5rem;
-        }
-        input, select, textarea, .select2-container--default .select2-selection--single {
-    font-size: 16px !important;
-}
-.select2-container--default .select2-selection--single .select2-selection__rendered,
-.select2-container--default .select2-selection--single .select2-selection__arrow {
-    font-size: 16px !important;
-    line-height: 30px !important; 
-}
     </style>
 
 <barcode-scanner-overlay id="barcodeScanner"></barcode-scanner-overlay>
@@ -353,11 +491,6 @@
                 <select id="project-select"><option>Select…</option></select>
             </div>
 
-            <div class="form-row">
-                <label>Issued To</label>
-                <input id="issued-to" type="text">
-            </div>
-
             <button id="step1-next" type="button" class="btn-primary">
                 Next →
             </button>
@@ -370,10 +503,19 @@
 
             <div id="ibt-lines"></div>
 
-            <div style="margin-top:10px; display:flex; gap:8px;">
-                <button type="button" id="back-to-step-1" class="btn-primary">← Back</button>
-                <button type="button" id="add-line" class="btn-primary">+ Add Line</button>
-                <button type="button" id="step2-next" class="btn-primary">Next →</button>
+            <div class="step-actions">
+                <button type="button" id="back-to-step-1" class="btn-action secondary">
+                    <i class="fas fa-arrow-left"></i>
+                    Back
+                </button>
+                <button type="button" id="add-line" class="btn-action success">
+                    <i class="fas fa-plus"></i>
+                    Add Line
+                </button>
+                <button type="button" id="step2-next" class="btn-action primary">
+                    Next
+                    <i class="fas fa-arrow-right"></i>
+                </button>
             </div>
         </section>
 
@@ -384,9 +526,15 @@
 
             <div id="summary-box" class="summary-box"></div>
 
-            <div style="margin-top:10px;">
-                <button type="button" id="back-to-step-2" class="btn-primary">← Back</button>
-                <button type="button" id="create-issue" class="btn-primary">Create Issue</button>
+            <div class="step-summary-actions">
+                <button type="button" id="back-to-step-2" class="btn-action secondary">
+                    <i class="fas fa-arrow-left"></i>
+                    Back
+                </button>
+                <button type="button" id="create-issue" class="btn-action primary">
+                    <i class="fas fa-check"></i>
+                    Create Issue
+                </button>
             </div>
         </section>
 

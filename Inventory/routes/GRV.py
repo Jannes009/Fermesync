@@ -124,7 +124,6 @@ def submit_grv():
     data = request.get_json()
 
     po_number = data.get("poNumber")
-    receiver = data.get("receiverName")
     supplierRef = data.get("supplierRef")
     lines = data.get("lines")  # list of { ProductId, QtyReceived }
 
@@ -162,9 +161,9 @@ def submit_grv():
         conn = create_db_connection()
         cursor = conn.cursor()
         cursor.execute("""
-            INSERT INTO GRV (GRVUserId, GRVReceivedBy, GRVPONumber, GRVNumber, GRVAuditNumber, GRVSuppRef)
-            VALUES (?, ?, ?, ?, ?, ?)
-        """, (current_user.id,  receiver, po_number, grv_number, audit_number, supplierRef))
+            INSERT INTO GRV (GRVUserId, GRVPONumber, GRVNumber, GRVAuditNumber, GRVSuppRef)
+            VALUES (?, ?, ?, ?, ?)
+        """, (current_user.id,  po_number, grv_number, audit_number, supplierRef))
         conn.commit()
         conn.close()
 

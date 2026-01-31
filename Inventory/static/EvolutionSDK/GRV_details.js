@@ -1,7 +1,6 @@
 import {
   db
 } from '/main_static/offline/db.js?v=44';
-let currentReceiverName = "";
 let supplierRef = "";
 
 document.addEventListener("DOMContentLoaded", async () => {
@@ -10,7 +9,6 @@ document.addEventListener("DOMContentLoaded", async () => {
     const draft = await loadGrvDraft(currentPoNumber);
     if (!draft) return;
 
-    document.getElementById("receiver").value = draft.receiverName || "";
     document.getElementById("SupplierRef").value = draft.supplierRef || "";
 
     document.querySelectorAll(".po-line").forEach(line => {
@@ -76,11 +74,10 @@ async function loadPOLines(poNumber) {
 
 // ---------------- VALIDATION ----------------
 function validateAndContinue() {
-    currentReceiverName = document.getElementById("receiver").value.trim();
     supplierRef = document.getElementById("SupplierRef").value.trim();
 
-    if (!currentReceiverName || !supplierRef) {
-        Swal.fire("Missing info", "Receiver and Supplier Ref required", "error");
+    if (!supplierRef) {
+        Swal.fire("Missing info", "Supplier Ref required", "error");
         return;
     }
 
@@ -196,7 +193,6 @@ function submitGRV(lines) {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
             poNumber: currentPoNumber,
-            receiverName: currentReceiverName,
             supplierRef,
             lines
         })
@@ -226,7 +222,6 @@ async function sendToSupervisor(overQtys) {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
             poNumber: currentPoNumber,
-            receiverName: currentReceiverName,
             supplierRef,
             overQtys
         })
@@ -262,7 +257,6 @@ async function saveGrvDraft(poNumber) {
 
     await db.grvDrafts.put({
         poNumber,
-        receiverName: document.getElementById("receiver").value,
         supplierRef: document.getElementById("SupplierRef").value,
         lines,
         updatedAt: Date.now()

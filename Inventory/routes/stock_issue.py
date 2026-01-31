@@ -7,6 +7,7 @@ from flask_login import login_required, current_user
 from auth import get_common_db_connection, close_connection
 from Inventory.routes.db_conversions import warehouse_code_to_link, project_code_to_link, stock_link_to_code
 from datetime import datetime
+from Inventory.routes.notifications import emit_event
 
 from Inventory.routes.sdk_connection import EvolutionConnection
 import Pastel.Evolution as Evo
@@ -35,13 +36,12 @@ def create_stock_issue():
     warehouse_code = data.get("warehouse")
     try: 
         project_code = data.get("project")
-        issued_to = data.get("issued_to")
         order_final = data.get("order_final", False)
         created_at = data.get("created_at", datetime.now().isoformat())
         lines_payload = data.get("lines", [])
         submission_lines = []
 
-        if not warehouse_code or not project_code or not issued_to or not lines_payload:
+        if not warehouse_code or not project_code or not lines_payload:
             return jsonify({"status": "error", "message": "Missing required data"}), 400
 
         conn = create_db_connection()
@@ -51,10 +51,10 @@ def create_stock_issue():
 
         cursor.execute("""
         INSERT INTO IssueHeader( 
-        IssueWhseId, IssueProjectId, IssueByUserId, IssueToName, [IssueTimeStamp])
+        IssueWhseId, IssueProjectId, IssueByUserId, [IssueTimeStamp])
         OUTPUT INSERTED.IssueId 
-        VALUES (?, ?, ?, ?, ?) """, 
-        (whse_link, project_link, current_user.id, issued_to, created_at))
+        VALUES (?, ?, ?, ?) """, 
+        (whse_link, project_link, current_user.id, created_at))
 
         stock_issue_id = cursor.fetchone()[0]
 
@@ -102,13 +102,18 @@ def create_stock_issue():
         # keep it synchronous here for simplicity. If submit_stock_issue raises, log it but do not fail DB insert.
         if order_final:
             try:
-                order_number = submit_stock_issue(warehouse_code, project_code, submission_lines, issued_to)
+                order_number = submit_stock_issue(warehouse_code, project_code, submission_lines)
                 print(order_number,stock_issue_id)
                 cursor.execute("""
                     UPDATE IssueHeader
                     SET IssueInvoiceNo = ?
                     WHERE IssueId = ?
                 """, (order_number, stock_issue_id))
+                emit_event(
+                    event_code="STOCK_ISSUE",
+                    entity_id=stock_issue_id,
+                    entity_desc=order_number,
+                )
                 conn.commit()
             except Exception as ex:
                 conn.rollback()
@@ -117,7 +122,6 @@ def create_stock_issue():
                     "message": str(ex)
                 }), 400
 
-        complete_stock_issue(stock_issue_id, complete=order_final)
         cursor.execute("""
         Select IssLineId, IssLineStockLink from [dbo].[IssueLines]
         Where IssLineHeaderId = ?
@@ -136,8 +140,8 @@ def create_stock_issue():
             conn.close()
 
 
-def submit_stock_issue(warehouse_code, project_code, lines, issued_to, returned_to=None):
-    description = f"{issued_to}, {returned_to}" if returned_to else f"{issued_to}"
+def submit_stock_issue(warehouse_code, project_code, lines):
+    description = f"Stock Issue for Project {project_code}"
     try:
         with EvolutionConnection():
             SO = Evo.SalesOrder()
@@ -168,7 +172,6 @@ def submit_stock_issue(warehouse_code, project_code, lines, issued_to, returned_
 def process_return():
     data = request.json
     issue_id = data.get("issue_id")
-    returned_to = data.get("returned_to")
     created_at = data.get("created_at")
     if created_at:
         created_at = datetime.fromisoformat(created_at.replace("Z", ""))
@@ -196,10 +199,10 @@ def process_return():
         
         cursor.execute("""
             Update IssueHeader
-            SET IssueReturnedToName = ?, IssueFinalised = 1, 
+            SET IssueFinalised = 1, 
                 IssueFinalisedByUserId = ?, IssueFinalisedTimeStamp = ?
             WHERE IssueId = ?
-        """, (returned_to, current_user.id, created_at, issue_id))
+        """, (current_user.id, created_at, issue_id))
         for line in lines:
             qty_finalised = line.get("qty_issued") - line.get("qty_returned")
             if qty_finalised > 0:
@@ -238,7 +241,7 @@ def process_return():
             raise Exception(f"Issue {issue_id} not found.")
 
         if containsQty:
-            order_number = submit_stock_issue(issue.IssueWhseId, issue.IssueProjectId, submission_lines, issue.IssueToName, issue.IssueReturnedToName)
+            order_number = submit_stock_issue(issue.IssueWhseId, issue.IssueProjectId, submission_lines)
         else:
             order_number = "No Order Created"
         cursor.execute("""
@@ -249,7 +252,11 @@ def process_return():
 
         conn.commit()
 
-        complete_stock_issue(issue_id, complete=True)
+        emit_event(
+            event_code="STOCK_ISSUE",
+            entity_id=issue_id,
+            entity_desc=order_number,
+        )
         print("Return processed, order number:", order_number)
         return jsonify({"success": True, "order_number": order_number})
 
@@ -273,39 +280,3 @@ def process_return():
                 conn.close()
             except Exception:
                 pass
-
-def complete_stock_issue(issue_id, complete):
-    conn, cursor = get_common_db_connection()
-    
-    # 1. Find users who want notifications, SubmitStockIssue has EventId 6
-    cursor.execute("""
-        SELECT UserId 
-        FROM [dbo].[NotificationPreferences]
-        WHERE EventId = 6
-    """)
-    users = cursor.fetchall()
-
-    # 2. Determine message based on `complete`
-    if complete:
-        message = f"Stock issue #{issue_id} has been finalised."
-    else:
-        message = f"Stock issue #{issue_id} is pending returns."
-
-    # 3. Create notification per user
-    for (user_id,) in users:
-        if user_id == current_user.id:
-            continue  # skip notifying the current user
-        cursor.execute("""
-            INSERT INTO Notifications (UserID, EventCode, Title, Message, EntityID, ActionURL)
-            VALUES (?, ?, ?, ?, ?, ?)
-        """, (
-            user_id,
-            'StockIssue',
-            f'Stock issue #{issue_id} completed by {current_user.username}',
-            message,  # <-- Use dynamic message here
-            issue_id,
-            f'/inventory/stock_issue/{issue_id}'
-        ))
-
-    conn.commit()
-    close_connection(conn, cursor)

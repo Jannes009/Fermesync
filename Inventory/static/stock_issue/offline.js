@@ -278,7 +278,6 @@ async function submitUnsyncedReturns() {
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
         issue_id: serverIssueId,
-        returned_to: issueReturn.returned_to,
         created_at: issueReturn.created_at,
         returns: mappedReturns
       })
@@ -298,4 +297,27 @@ async function submitUnsyncedReturns() {
     });
     generateNotification(issueReturn.created_by_user_id, "Return Synced", `Your offline stock issue return has been synced successfully.`, serverIssueId);
   }
+}
+
+export async function addReturnToOffline(issueId, returnLines) {
+  if (isClientId(issueId)) {
+        await db.offlineReturns.add({
+            client_issue_id: issueId,
+            issue_id: issueId,
+            returns: returnLines,
+            status: "queued",
+            created_at: new Date().toISOString(),
+        });
+        // ...
+    } else {
+        await db.offlineReturns.add({
+            server_issue_id: issueId,
+            issue_id: issueId,
+            created_by_user_id: window.FERMESYNC.userId,
+            returns: returnLines,
+            status: "queued",
+            created_at: new Date().toISOString(),
+        });
+        // ...
+    }
 }

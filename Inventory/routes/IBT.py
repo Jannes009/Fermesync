@@ -59,6 +59,7 @@ def fetch_products_in_both_whses():
         }
         for row in rows
     ]
+    print(products_list)
     return jsonify({"products": products_list})
 
 import sys
@@ -74,14 +75,14 @@ def submit_ibt():
             ibt = Evo.WarehouseIBT()
             ibt.WarehouseFrom = Evo.Warehouse((data["WarehouseFrom"]))
             ibt.WarehouseTo = Evo.Warehouse(data["WarehouseTo"])
-            ibt.Description = data.get("RequestedBy", "")
+            ibt.Description = current_user.username + " IBT"
 
             for l in data["Lines"]:
                 line = Evo.WarehouseIBTLine()
                 line.InventoryItem = Evo.InventoryItem(l["ProductId"])
                 line.QuantityIssued = l["QtyIssued"]
-                line.Description = data.get("Dispatcher", "")
-                line.Reference = data.get("Driver", "")
+                line.Description = "IBT line issued via SDK"
+                line.Reference = current_user.username
                 ibt.Detail.Add(line)
 
             ibt.IssueStock()
@@ -92,12 +93,11 @@ def submit_ibt():
         cursor.execute("""
         INSERT INTO [IBT](
         [IBTDispatchUserId],
-        [IBTDriverName],
         [IBTDispatchTimeStamp],
         [IBTNo],
         [IBTDispatchAuditNo]
-        )VALUES(?,?,GETDATE(),?,?)
-        """, (current_user.id, data["Driver"], ibt.Number, ibt.AuditNumberIssued))
+        )VALUES(?,GETDATE(),?,?)
+        """, (current_user.id, ibt.Number, ibt.AuditNumberIssued))
         conn.commit()
         conn.close()
 
@@ -188,9 +188,6 @@ def submit_ibt_receive():
     try:
         data = request.get_json()
         print("Received IBT receive data:", data)
-        returned_to = (data.get("returned_to") or "").strip()
-        if not returned_to:
-            return jsonify({"success": False, "message": "Returned To is required."}), 400
 
         with EvolutionConnection():
             ibt = Evo.WarehouseIBT(data["ibt_number"])
@@ -215,10 +212,10 @@ def submit_ibt_receive():
         cursor = conn.cursor()
         cursor.execute("""
         UPDATE [IBT]
-        SET [IBTRecUserId] = ?, [IBTRecBy] = ?, [IBTRecTimeStamp] = GETDATE(),
+        SET [IBTRecUserId] = ?, [IBTRecTimeStamp] = GETDATE(),
         [IBTRecAuditNo] = ?
         WHERE [IBTNo] = ?
-        """, (current_user.id, returned_to, ibt.AuditNumberReceived, data["ibt_number"]))
+        """, (current_user.id, ibt.AuditNumberReceived, data["ibt_number"]))
         conn.commit()
         conn.close()
 

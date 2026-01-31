@@ -108,6 +108,7 @@ def stock_count_session(header_id):
     """, header_id)
     row = cursor.fetchone()
     conn.close()
+    print(row.InvCountTimeFinalised)
     if not row:
         abort(404)
     if row.InvCountTimeFinalised is not None:
@@ -232,6 +233,12 @@ def finalise_stock_count(header_id):
                 InvCountStatus = 'FINALISED'
             WHERE InvCountHeaderId = ?
         """, (header_id,))
+        cursor.execute("""
+            UPDATE [InventoryCountSchedule]
+            SET LastCountDate = GETDATE()
+            WHERE WhseId = (SELECT InvCountWhseId FROM InventoryCountHeaders WHERE InvCountHeaderId = ?)
+                AND CategoryId = (SELECT InvCountCatId FROM InventoryCountHeaders WHERE InvCountHeaderId = ?)
+        """, (header_id, header_id))
 
         conn.commit()
 

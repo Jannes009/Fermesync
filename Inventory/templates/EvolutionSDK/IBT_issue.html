@@ -515,71 +515,242 @@ button:active { transform: scale(0.98); }
   background-color: var(--button-bg);
 }
 
-.select2-container--default .select2-selection--single .select2-selection__rendered,
-.select2-container--default .select2-selection--single .select2-selection__arrow {
-    font-size: 16px !important;
-    line-height: 30px !important; 
-}
-/* ---------------- Responsive ---------------- */
-@media (max-width: 768px) {
-  .wrap { padding: 1rem; }
-  .card { padding: 1rem; }
-  header h1 { font-size: 1.5rem; }
+/* Product Row — Compact & Beautiful (matching stock_count.html) */
+    .product-row {
+      display: grid;
+      grid-template-columns: 1fr 70px auto 36px;
+      align-items: center;
+      gap: 8px;
+      padding: 8px 10px;
+      background: var(--form-bg);
+      border: 1px solid var(--input-border);
+      border-radius: 6px;
+      margin-bottom: 6px;
+      transition: all 0.15s ease;
+      min-height: 44px;
+    }
+    
+    .product-row:hover {
+      border-color: var(--button-bg);
+      box-shadow: 0 2px 6px rgba(0,0,0,0.08);
+    }
+    
+    .product-row.focused {
+      background: var(--button-bg);
+      color: var(--button-text);
+      border-color: var(--button-bg);
+      box-shadow: 0 2px 8px rgba(0,0,0,0.15);
+    }
 
-  .summary-grid, 
-  .compact-grid-tight,
-  .compact-grid-inline { 
-    grid-template-columns: 1fr; 
-  }
+    .product-select-wrapper {
+      width: 100%;
+    }
 
-  .qty-group {
-    grid-template-columns: 1fr;
-    gap: 8px;
-  }
-  
-  .uom-display {
-    min-width: 100%;
-  }
-  
-  .compact-product-item {
-    flex-direction: column;
-    align-items: flex-start;
-    gap: 10px;
-  }
-  
-  .product-qty {
-    margin-left: 0;
-    align-self: flex-end;
-  }
-  
-  .ibt-line {
-    padding: 12px;
-  }
-  
-  .ibt-line-header {
-    margin-bottom: 10px;
-    padding-bottom: 6px;
-  }
-}
+    .product-select {
+      width: 100% !important;
+      padding: 8px 10px !important;
+      font-size: 0.9rem !important;
+      border-radius: 5px !important;
+    }
 
-@media (max-width: 480px) {
-  .wrap { padding: 0.75rem; }
-  .card { padding: 0.75rem; }
-  header h1 { font-size: 1.3rem; }
+    .select2-container {
+      width: 100% !important;
+    }
 
-  input[list], input[type="number"] {
-    font-size: 0.16px;
-    padding: 10px 12px;
-  }
-  
-  .button-group {
-    flex-direction: column;
-  }
-}
-/* Prevent iPhone input zoom */
-input, select, textarea, .select2-container--default .select2-selection--single {
-    font-size: 16px !important;
-}
+    .select2-container--default .select2-selection--single {
+      height: 36px !important;
+      border: 1px solid var(--input-border) !important;
+      border-radius: 5px !important;
+      background: white !important;
+      padding: 0 !important;
+    }
+
+    .select2-container--default .select2-selection--single .select2-selection__rendered {
+      line-height: 36px !important;
+      padding-left: 10px !important;
+      color: var(--primary-text) !important;
+      font-size: 0.9rem !important;
+    }
+
+    .select2-container--default .select2-selection--single .select2-selection__arrow {
+      height: 36px !important;
+      right: 6px !important;
+    }
+
+    .qty-input {
+      height: 36px;
+      font-size: 1rem;
+      font-weight: bold;
+      text-align: center;
+      border: 2px solid var(--input-border);
+      border-radius: 5px;
+      background: white;
+      color: black;
+      -moz-appearance: textfield;
+      appearance: textfield;
+      padding: 0;
+    }
+    
+    .qty-input::-webkit-inner-spin-button,
+    .qty-input::-webkit-outer-spin-button {
+      -webkit-appearance: none;
+      margin: 0;
+    }
+    
+    .qty-input:focus {
+      outline: none;
+      border-color: var(--button-bg);
+      box-shadow: 0 0 0 2px rgba(0,123,255,0.15);
+    }
+
+    .uom-label {
+      background: #e9ecef;
+      padding: 3px 7px;
+      border-radius: 4px;
+      font-size: 0.75rem;
+      font-weight: bold;
+      color: #495057;
+      white-space: nowrap;
+      text-align: center;
+      height: 36px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+
+    .ibt-remove-btn {
+      width: 36px;
+      height: 36px;
+      border: none;
+      border-radius: 5px;
+      background: #dc3545;
+      color: white;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 14px;
+      padding: 0;
+      transition: background 0.2s, transform 0.1s;
+    }
+
+    .ibt-remove-btn:hover {
+      background: #c82333;
+      transform: translateY(-1px);
+    }
+
+    .ibt-remove-btn:active {
+      transform: translateY(0);
+    }
+
+    .ibt-remove-btn i {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+
+    /* IBT Line Container */
+    #ibt-lines-container {
+      margin: 15px 0;
+    }
+
+    .ibt-line {
+      margin-bottom: 0;
+    }
+
+    /* Remove old IBT styles */
+    .ibt-line-header,
+    .ibt-line-fields,
+    .field-group,
+    .field-label,
+    .product-field-group,
+    .qty-group,
+    .uom-display {
+      display: none;
+    }
+
+    /* Add Line Button */
+    #add-line-btn {
+      background: #28a745;
+      color: white;
+      border: none;
+      padding: 12px 16px;
+      border-radius: 6px;
+      font-size: 0.95rem;
+      cursor: pointer;
+      font-weight: 600;
+      transition: background 0.2s, transform 0.1s;
+      margin: 15px 0;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 8px;
+      width: 100%;
+    }
+
+    #add-line-btn:hover {
+      background: #218838;
+      transform: translateY(-2px);
+    }
+
+    #add-line-btn:active {
+      transform: translateY(0);
+    }
+
+    /* Responsive */
+    @media (max-width: 480px) {
+      .product-row {
+        grid-template-columns: 1fr 60px auto 32px;
+        gap: 6px;
+        padding: 6px 8px;
+        margin-bottom: 4px;
+        min-height: 40px;
+      }
+
+      .product-select {
+        font-size: 0.85rem !important;
+      }
+
+      .qty-input {
+        height: 32px;
+        font-size: 0.95rem;
+      }
+
+      .uom-label {
+        font-size: 0.7rem;
+        padding: 2px 5px;
+        height: 32px;
+      }
+
+      .ibt-remove-btn {
+        width: 32px;
+        height: 32px;
+        font-size: 12px;
+      }
+
+      .select2-container--default .select2-selection--single {
+        height: 32px !important;
+      }
+
+      .select2-container--default .select2-selection--single .select2-selection__rendered {
+        line-height: 32px !important;
+        font-size: 0.85rem !important;
+      }
+
+      .select2-container--default .select2-selection--single .select2-selection__arrow {
+        height: 32px !important;
+      }
+    }
+
+    /* Prevent iPhone input zoom */
+    input, select, textarea, .select2-container--default .select2-selection--single {
+      font-size: 16px !important;
+    }
+    .select2-container--default .select2-selection--single .select2-selection__rendered,
+    .select2-container--default .select2-selection--single .select2-selection__arrow {
+      font-size: 16px !important;
+      line-height: 30px !important; 
+    }
   </style>
 <div class="page-content">
   <div class="wrap">
@@ -596,15 +767,6 @@ input, select, textarea, .select2-container--default .select2-selection--single 
 
           <label>Warehouse To</label>
           <select id="wh-to"></select>
-
-          <label>Requested By</label>
-          <input type="text" id="requested-by" placeholder="Requested by">
-
-          <label>Dispatcher</label>
-          <input type="text" id="dispatcher" placeholder="Dispatcher name">
-
-          <label>Driver</label>
-          <input type="text" id="driver" placeholder="Driver name">
 
           <button type="button" id="ibt-step-1-next" class="btn-primary">Next: Select Products</button>
         </section>

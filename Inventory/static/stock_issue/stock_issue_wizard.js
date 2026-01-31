@@ -5,9 +5,9 @@ import { ensureStockAvailable } from "../stock_adjustment.js?v=1";
 console.log(window.FERMESYNC.userId);
 let selectedWarehouse = null;
 let selectedProject = null;
-let issuedTo = null;
 let productsInWhse = [];
 let lines = [];
+let lineIndex = 0;
 
 document.addEventListener("DOMContentLoaded", async () => {
   await loadWarehouses();
@@ -49,9 +49,8 @@ async function loadProjects() {
 async function step1Next() {
     selectedWarehouse = $("#warehouse-select").val();
     selectedProject = $("#project-select").val();
-    issuedTo = document.getElementById("issued-to").value.trim();
 
-    if (!selectedWarehouse || !selectedProject || !issuedTo) {
+    if (!selectedWarehouse || !selectedProject) {
         Swal.fire("Missing Information", "Please complete all fields.", "warning");
         return;
     }
@@ -74,43 +73,72 @@ async function step1Next() {
 }
 
 function addLine() {
-  if (!productsInWhse.length) return;
+    lineIndex++;
+    const lineId = `issue-line-${lineIndex}`;
+    const selectId = `product-select-${lineIndex}`;
 
-  const container = document.getElementById("ibt-lines");
-  let optionsHtml = '<option></option>';
-  productsInWhse.forEach(p => {
-    optionsHtml += `<option value="${p.product_link}" data-uom="${p.stocking_uom_code}" data-available="${p.qty_in_whse}" data-code="${p.product_code}">${p.product_desc} — Available: ${p.qty_in_whse} ${p.stocking_uom_code}</option>`;
-  });
+    const lineDiv = document.createElement("div");
+    lineDiv.className = "issue-line";
+    lineDiv.id = lineId;
 
-  const lineHtml = `
-    <div class="product-row">
-      <div class="product-main">
-        <label class="field-label">Product</label>
-        <select class="product-select">${optionsHtml}</select>
-      </div>
-      <div class="qty-wrapper">
-        <label>Quantity</label>
-        <input type="number" class="qty-input" min="1" placeholder="Qty">
-        <span class="uom-label">Unit</span>
-      </div>
-      <div class="row-actions">
-        <button type="button" class="icon-btn remove-line" title="Remove line">✕</button>
-      </div>
-    </div>`;
+    lineDiv.innerHTML = `
+        <div class="product-row">
+            <div class="product-select-wrapper">
+                <select id="${selectId}" class="product-select">
+                    <option></option>
+                </select>
+            </div>
+            <input type="number" class="qty-input" min="0" step="1" placeholder="0" />
+            <div class="uom-label stock-unit">—</div>
+            <button type="button" class="issue-remove-btn" title="Remove line">
+                <i class="fas fa-trash"></i>
+            </button>
+        </div>
+    `;
 
-  container.insertAdjacentHTML('beforeend', lineHtml);
-  const newLine = container.lastElementChild;
-  const selectEl = newLine.querySelector('.product-select');
-  const uomLabel = newLine.querySelector('.uom-label');
+    document.getElementById("ibt-lines").appendChild(lineDiv);
 
-  $(selectEl).select2({ placeholder: "Select product", allowClear: true, width: '100%', dropdownParent: document.body });
-  $(selectEl).on("select2:select", () => {
-    const $sel = $(selectEl).find(":selected");
-    uomLabel.textContent = $sel.data("uom") || "";
-  });
-  $(selectEl).on("select2:clear", () => { uomLabel.textContent = ""; });
+    // Remove button handler
+    const removeBtn = lineDiv.querySelector('.issue-remove-btn');
+    removeBtn.addEventListener('click', (e) => {
+        e.preventDefault();
+        lineDiv.remove();
+    });
 
-  newLine.querySelector(".remove-line").onclick = () => { $(selectEl).select2('destroy'); newLine.remove(); };
+    // Populate select2 dropdown
+    populateProductSelect(selectId, lineDiv);
+}
+
+function populateProductSelect(selectId, lineDiv) {
+    const select = document.getElementById(selectId);
+
+    productsInWhse.forEach(p => {
+        console.log(p)
+        const opt = new Option(p.product_desc, p.product_link, false, false);
+        const uom = p.stocking_uom_code || "EA";
+        $(opt).data("unit", uom);
+        $(opt).data("qty", p.qty_in_whse);
+        select.appendChild(opt);
+    });
+
+    $(`#${selectId}`).select2({
+        placeholder: "Search and select a product...",
+        allowClear: true,
+        width: "100%",
+        dropdownParent: document.body
+    });
+
+    // When a product is chosen → update the stocking unit
+    $(`#${selectId}`).on("select2:select", function (e) {
+        const selected = $(this).find(":selected").data();
+        const uom = selected.unit || "EA";
+        lineDiv.querySelector(".stock-unit").textContent = uom;
+    });
+
+    // When a product is cleared
+    $(`#${selectId}`).on("select2:clear", function () {
+        lineDiv.querySelector(".stock-unit").textContent = "—";
+    });
 }
 
 async function step2Next() {
@@ -120,15 +148,16 @@ async function step2Next() {
 
   for (let row of allLines) {
     const selectEl = row.querySelector(".product-select");
+    const selectedValue = $(selectEl).val();
     const qtyInput = row.querySelector(".qty-input");
-    if (!selectEl.value || !qtyInput.value || parseFloat(qtyInput.value) <= 0) {
+
+    if (!selectedValue || !qtyInput.value || parseFloat(qtyInput.value) <= 0) {
       Swal.fire("Missing Input", "Please select product and enter quantity for all lines.", "warning");
       return;
     }
 
-
-
-    const product = productsInWhse.find(p => String(p.product_link) === String(selectEl.value));
+    const product = productsInWhse.find(p => String(p.product_link) === String(selectedValue));
+    console.log(product, selectedValue);
     if (!product) { Swal.fire("Product Error", "Selected product not found.", "error"); return; }
 
     const qtyRequested = parseFloat(qtyInput.value);
@@ -162,7 +191,6 @@ async function step2Next() {
   const box = document.getElementById("summary-box");
   box.innerHTML = `<p><strong>Warehouse:</strong> ${selectedWarehouse}</p>
                    <p><strong>Project:</strong> ${selectedProject}</p>
-                   <p><strong>Issued To:</strong> ${issuedTo}</p>
                    <hr><h4>Products</h4>`;
   lines.forEach(l => box.innerHTML += `<div class="line-row"><div>${l.product_desc}</div><div>Issue: ${l.qty_issued} ${l.uom_code}</div></div>`);
 
@@ -197,7 +225,6 @@ async function submitIssue() {
     body: JSON.stringify({
         warehouse: selectedWarehouse,
         project: selectedProject,
-        issued_to: issuedTo,
         order_final: orderFinal,
         created_at: new Date().toISOString(),
         lines: lines.map(l => ({
@@ -236,7 +263,6 @@ async function offlineSubmit(clientIssueId, orderFinal) {
       created_by_user_id: window.FERMESYNC.userId,
       warehouse: selectedWarehouse,
       project: selectedProject,
-      issued_to: issuedTo,
       status: "queued",
       allow_returns: !orderFinal,
       created_at: new Date().toISOString(),
@@ -272,7 +298,6 @@ async function offlineSubmit(clientIssueId, orderFinal) {
         client_issue_id: clientIssueId, 
         warehouse: selectedWarehouse, 
         project: selectedProject, 
-        issued_to: issuedTo, 
         order_final: orderFinal, 
         created_at: new Date().toISOString(),
         lines: lines.map(l => ({ 

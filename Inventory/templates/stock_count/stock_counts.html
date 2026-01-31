@@ -4,6 +4,9 @@
 <link rel="stylesheet" href="{{ url_for('market.static', filename='color-template.css') }}">
 
 <style>
+    /* ---------------------------
+       Base / Variables (uses site vars)
+    --------------------------- */
     body {
         background: var(--primary-bg);
         font-size: 0.95rem;
@@ -11,520 +14,276 @@
         color: var(--primary-text);
     }
 
-    .main-content {
-        padding: 2rem 0;
-    }
+    /* ---------------------------
+       Layout
+    --------------------------- */
+    .main-content { padding: 2rem 0; }
+    .container-wide { max-width: 1200px; margin: 0 auto; padding: 0 1.2rem; }
 
-    .container-wide {
-        max-width: 1200px;
-        margin: 0 auto;
-        padding: 0 1.2rem;
-    }
-
-    /* ================================
-       CARD STYLING
-    ================================ */
+    /* ---------------------------
+       Cards
+    --------------------------- */
     .stock-card {
         background: var(--container-bg);
         border-radius: 12px;
-        box-shadow: 0 4px 24px 0 rgba(44, 62, 80, 0.08);
-        padding: 1.5rem 2rem 1.2rem 2rem;
+        box-shadow: 0 4px 24px rgba(44,62,80,0.08);
+        padding: 1.5rem 2rem;
         margin-bottom: 2rem;
-        transition: box-shadow 0.3s ease;
+        transition:box-shadow .3s ease, padding .2s ease, max-height .25s ease;
+        overflow: hidden;
     }
+    .stock-card:hover { box-shadow: 0 8px 32px rgba(44,62,80,0.12); }
 
-    .stock-card:hover {
-        box-shadow: 0 8px 32px 0 rgba(44, 62, 80, 0.12);
-    }
-
-    /* ================================
-       PAGE HEADER
-    ================================ */
-    .page-header {
+    /* collapsible helpers */
+    .stock-card.collapsible .section-title {
+        cursor: pointer;
         display: flex;
         justify-content: space-between;
         align-items: center;
-        margin-bottom: 2rem;
-        flex-wrap: wrap;
-        gap: 1rem;
+        gap: 12px;
     }
+    .stock-card.collapsible .section-title .title-main { display:flex; align-items:center; gap:10px; }
+    .stock-card.collapsible .card-body { display: none; margin-top: 0.75rem; }
+    .stock-card.collapsible.open .card-body { display: block; }
 
-    .page-header h1 {
-        font-size: 1.5rem;
-        font-weight: 700;
-        color: var(--logo-color);
-        margin: 0;
-    }
-
-    /* ================================
-       FILTERS
-    ================================ */
-    .filters {
-        display: flex;
-        gap: 10px;
-        align-items: center;
-        flex-wrap: wrap;
-    }
-
-    .filters select,
-    .filters input[type="date"] {
-        padding: 0.5rem 0.75rem;
-        border: 1px solid var(--input-border);
-        border-radius: 6px;
-        font-size: 0.95rem;
-        background: var(--container-bg);
-        color: var(--primary-text);
-        transition: border-color 0.2s ease;
-    }
-
-    .filters select:focus,
-    .filters input[type="date"]:focus {
-        outline: none;
-        border-color: var(--accent-color);
-        box-shadow: 0 0 0 3px rgba(var(--accent-rgb), 0.1);
-    }
-
-    .filters label {
-        font-size: 0.95rem;
-        display: flex;
-        align-items: center;
-        gap: 0.5rem;
-        cursor: pointer;
-    }
-
-    .filters input[type="checkbox"] {
-        cursor: pointer;
-    }
-
-    /* ================================
-       KPI CARDS
-    ================================ */
-    .kpi-row {
-        display: grid;
-        grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
-        gap: 1.5rem;
-        margin-bottom: 2rem;
-    }
-
-    .kpi-card {
-        background: var(--container-bg);
-        border: 1px solid var(--border-color);
-        border-radius: 8px;
-        padding: 1.5rem;
-        text-align: center;
-        font-size: 0.95rem;
-        box-shadow: 0 2px 8px rgba(0, 0, 0, 0.05);
-        transition: transform 0.2s ease, box-shadow 0.2s ease;
-    }
-
-    .kpi-card:hover {
-        transform: translateY(-4px);
-        box-shadow: 0 4px 16px rgba(0, 0, 0, 0.1);
-    }
-
-    .kpi-card span {
-        display: block;
-        margin-top: 0.5rem;
-        font-size: 1.8rem;
-        font-weight: 700;
-    }
-
-    #kpiOverdue span { color: #dc2626; }
-    #kpiDueSoon span { color: #f59e0b; }
-    #kpiCompleted span { color: #10b981; }
-    #kpiVariance span { color: #3b82f6; }
-
-    /* ================================
-       SECTION TITLES
-    ================================ */
-    .section-title {
-        font-size: 1.2rem;
-        font-weight: 700;
-        color: var(--logo-color);
-        margin-bottom: 1rem;
-        margin-top: 0;
-        padding-bottom: 0.5rem;
-        border-bottom: 2px solid var(--accent-color);
-    }
-
-    /* ================================
-       TABLES
-    ================================ */
-    .table-wrapper {
-        overflow-x: auto;
-    }
-
-    .table {
-        width: 100%;
-        border-collapse: collapse;
-        background: var(--container-bg);
-    }
-
-    .table th,
-    .table td {
-        padding: 0.75rem 1rem;
-        border-bottom: 1px solid var(--border-color);
-        font-size: 0.95rem;
-    }
-
-    .table th {
-        background: var(--table-header-bg);
-        color: var(--table-header-text);
-        font-weight: 700;
-        text-align: left;
-    }
-
-    .table tbody tr {
-        background: var(--table-row-uneven);
-        transition: background 0.18s, box-shadow 0.18s;
-    }
-
-    .table tbody tr:nth-child(even) {
-        background: var(--table-row-even);
-    }
-
-    .table.clickable tbody tr {
-        cursor: pointer;
-    }
-
-    .table.clickable tbody tr:hover {
-        background: var(--table-row-hover) !important;
-        box-shadow: 0 2px 12px 0 rgba(160, 150, 115, 0.3);
-    }
-
-    /* ================================
-       STATUS BADGE
-    ================================ */
-    .badge {
-        display: inline-block;
-        padding: 0.3rem 0.75rem;
-        border-radius: 999px;
-        font-weight: 600;
-        font-size: 0.85rem;
-    }
-
-    .badge-pending {
-        background: #fef3c7;
-        color: #92400e;
-        border: 1px solid #fde68a;
-    }
-
-    .badge-completed {
-        background: #d1fae5;
-        color: #065f46;
-        border: 1px solid #6ee7b7;
-    }
-
-    /* Variance - Slight (orange/yellow) */
-    .badge-variance-slight {
-        background: #fed7aa;
-        color: #b45309;
-        border: 1px solid #fdba74;
-    }
-
-    /* Variance - Big (red) */
-    .badge-variance-big {
-        background: #fecaca;
-        color: #991b1b;
-        border: 1px solid #fca5a5;
-    }
-
-    /* Overdue (red) */
-    .badge-overdue {
-        background: #fecaca;
-        color: #991b1b;
-        border: 1px solid #fca5a5;
-    }
-
-    /* ================================
-       BUTTONS
-    ================================ */
-    .btn-create-count {
-        background: var(--button-bg);
-        color: var(--button-text);
-        border: none;
-        padding: 0.65rem 1.5rem;
-        border-radius: 6px;
-        font-weight: 600;
-        font-size: 0.95rem;
-        cursor: pointer;
-        transition: opacity 0.2s ease, transform 0.2s ease, box-shadow 0.2s ease;
-        display: flex;
-        align-items: center;
-        gap: 0.5rem;
-        box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
-    }
-
-    .btn-create-count:hover {
-        opacity: 0.9;
-        transform: translateY(-2px);
-        box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
-    }
-
-    .btn-create-count:active {
-        transform: translateY(0);
-    }
-
-    #dueTable a {
-        display: inline-block;
-        text-decoration: none;
-        background: var(--button-bg);
-        color: var(--button-text);
-        padding: 0.5rem 1rem;
-        border-radius: 6px;
-        font-size: 0.85rem;
-        font-weight: 600;
-        transition: opacity 0.2s ease, transform 0.2s ease;
-    }
-
-    #dueTable a:hover {
-        opacity: 0.9;
-        transform: translateY(-2px);
-    }
-
-    /* ================================
-       MODAL
-    ================================ */
-    .modal {
-        position: fixed;
-        inset: 0;
-        background: rgba(0, 0, 0, 0.5);
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        z-index: 1000;
-    }
-
-    .modal.hidden {
-        display: none;
-    }
-
-    .modal-content {
-        background: var(--container-bg);
-        width: 90%;
-        max-width: 900px;
-        border-radius: 12px;
-        padding: 2rem;
-        box-shadow: 0 20px 40px rgba(0, 0, 0, 0.3);
-    }
-
-    .modal-content h3 {
-        margin: 0 0 1.5rem 0;
-        font-size: 1.3rem;
-        font-weight: 700;
-        color: var(--logo-color);
-    }
-
-    .modal-content button {
-        margin-top: 1.5rem;
-        padding: 0.75rem 1.5rem;
-        background: var(--button-bg);
-        border: none;
-        color: var(--button-text);
-        border-radius: 6px;
-        cursor: pointer;
-        font-weight: 600;
-        transition: opacity 0.2s ease;
-    }
-
-    .modal-content button:hover {
-        opacity: 0.9;
-    }
-
-    /* ================================
-       LOADING & ERROR
-    ================================ */
-    .loading {
-        text-align: center;
-        font-size: 1.1rem;
+    /* Arrow visibility & animation */
+    .stock-card .arrow {
         color: var(--secondary-text);
-        padding: 2rem;
-    }
-
-    .error {
-        color: #dc2626;
-        text-align: center;
-        padding: 1rem;
-        background: #fee2e2;
-        border-radius: 6px;
-        border: 1px solid #fecaca;
-        margin-bottom: 1rem;
-    }
-
-    .table tr.ok td {
-        color: #065f46;
-    }
-
-    .table tr.warn td {
-        color: #92400e;
-        font-weight: 600;
-    }
-
-       .btn-add-schedule {
-        background: var(--button-bg);
-        color: var(--button-text);
-        border: none;
-        padding: 0.5rem 1rem;
-        border-radius: 6px;
-        font-weight: 600;
-        cursor: pointer;
-        transition: opacity 0.2s ease, transform 0.2s ease;
-    }
-
-    .btn-add-schedule:hover {
-        opacity: 0.9;
-        transform: translateY(-2px);
-    }
-
-    .form-group {
-        margin-bottom: 1.5rem;
-    }
-
-    .form-group label {
-        display: block;
-        font-weight: 600;
-        margin-bottom: 0.5rem;
-        color: var(--primary-text);
-    }
-
-    .form-group select,
-    .form-group input {
-        width: 100%;
-        padding: 0.75rem;
-        border: 1px solid var(--input-border);
-        border-radius: 6px;
-        background: var(--container-bg);
-        color: var(--primary-text);
         font-size: 0.95rem;
+        transition: transform 0.25s ease, color 0.2s ease;
+    }
+    .stock-card.open .arrow { transform: rotate(180deg); color: var(--accent-color); }
+
+    /* Closed card compact appearance */
+    .stock-card.collapsible:not(.open) {
+        padding: 0.9rem 1rem;
+        max-height: 64px;
+        box-shadow: 0 2px 8px rgba(0,0,0,0.06);
+    }
+    .stock-card.collapsible:not(.open) .section-title { padding: 0; }
+    .stock-card.collapsible:not(.open) .section-title .summary {
+        color: var(--secondary-text);
+        font-size: 0.9rem;
+        font-weight:600;
+        opacity:0.95;
     }
 
-    .form-group select:focus,
-    .form-group input:focus {
-        outline: none;
-        border-color: var(--accent-color);
-        box-shadow: 0 0 0 3px rgba(var(--accent-rgb), 0.1);
+    /* ---------------------------
+       Page header / Titles
+    --------------------------- */
+    .page-header { display:flex; justify-content:space-between; align-items:center; margin-bottom:2rem; flex-wrap:wrap; gap:1rem; }
+    .page-header h1 { font-size:1.5rem; font-weight:700; color:var(--logo-color); margin:0; }
+    .section-title {
+        font-size:1.2rem; font-weight:700; color:var(--logo-color);
+        margin:0 0 1rem 0; padding-bottom:0.5rem; border-bottom:2px solid var(--accent-color);
     }
 
-    .btn-cancel {
-        background: var(--secondary-color, #6c757d);
-        color: white;
-        border: none;
-        padding: 0.75rem 1.5rem;
-        border-radius: 6px;
-        font-weight: 600;
-        cursor: pointer;
-        transition: opacity 0.2s ease;
+    /* ---------------------------
+       Filters
+    --------------------------- */
+    .filters { display:flex; gap:10px; align-items:center; flex-wrap:wrap; }
+    .filters select, .filters input[type="date"] {
+        padding:0.5rem 0.75rem; border:1px solid var(--input-border); border-radius:6px;
+        font-size:0.95rem; background:var(--container-bg); color:var(--primary-text);
     }
-
-    .btn-cancel:hover {
-        opacity: 0.9;
+    .filters select:focus, .filters input[type="date"]:focus {
+        outline:none; border-color:var(--accent-color); box-shadow:0 0 0 3px rgba(var(--accent-rgb),0.1);
     }
+    .filters label { font-size:0.95rem; display:flex; align-items:center; gap:0.5rem; cursor:pointer; }
 
-    .btn-submit {
-        background: var(--button-bg);
-        color: var(--button-text);
-        border: none;
-        padding: 0.75rem 1.5rem;
-        border-radius: 6px;
-        font-weight: 600;
-        cursor: pointer;
-        transition: opacity 0.2s ease, transform 0.2s ease;
+    /* ---------------------------
+       KPI Cards
+    --------------------------- */
+    .kpi-row { display:grid; grid-template-columns:repeat(auto-fit,minmax(200px,1fr)); gap:1.5rem; margin-bottom:2rem; }
+    .kpi-card {
+        background:var(--container-bg); border:1px solid var(--border-color); border-radius:8px;
+        padding:1.5rem; text-align:center; font-size:0.95rem; box-shadow:0 2px 8px rgba(0,0,0,0.05);
+        transition:transform .2s ease, box-shadow .2s ease;
     }
+    .kpi-card:hover { transform:translateY(-4px); box-shadow:0 4px 16px rgba(0,0,0,0.1); }
+    .kpi-card span { display:block; margin-top:.5rem; font-size:1.8rem; font-weight:700; }
 
-    .btn-submit:hover {
-        opacity: 0.9;
-        transform: translateY(-2px);
+    /* ---------------------------
+       Tables
+    --------------------------- */
+    .table-wrapper { overflow-x:auto; }
+    .table { width:100%; border-collapse:collapse; background:var(--container-bg); }
+    .table th, .table td {
+        padding:0.75rem 1rem; border-bottom:1px solid var(--border-color); font-size:0.95rem;
     }
+    .table th { background:var(--table-header-bg); color:var(--table-header-text); font-weight:700; text-align:left; }
+    .table tbody tr { background:var(--table-row-uneven); transition:background .18s, box-shadow .18s; }
+    .table tbody tr:nth-child(even) { background:var(--table-row-even); }
 
-    .status-overdue {
-        color: #dc2626;
-        font-weight: 600;
-    }
+    .table.clickable tbody tr { cursor:pointer; }
+    .table.clickable tbody tr:hover { background:var(--table-row-hover) !important; box-shadow:0 2px 12px rgba(160,150,115,0.3); }
 
-    .status-dueSoon {
-        color: #f59e0b;
-        font-weight: 600;
-    }
+    .table tr.ok td { color:#065f46; }
+    .table tr.warn td { color:#92400e; font-weight:600; }
 
-    .status-onSchedule {
-        color: #10b981;
-    }
-
-    .btn-continue {
-    background: var(--button-bg);
-    color: var(--button-text);
-    border: none;
-    padding: 0.35rem 0.9rem;
-    border-radius: 6px;
-    font-size: 0.85rem;
-    font-weight: 600;
-    cursor: pointer;
-    display: inline-flex;
-    align-items: center;
-    gap: 0.4rem;
-}
-
-.btn-continue:hover {
-    opacity: 0.9;
-    transform: translateY(-1px);
-}
-
-tr.in-progress {
-    background: #fefce8 !important;
-}
-
-
-    /* ================================
-       RESPONSIVE
-    ================================ */
-    @media (max-width: 900px) {
-        .kpi-row {
-            grid-template-columns: repeat(2, 1fr);
-        }
-
-        .page-header {
-            flex-direction: column;
-            align-items: flex-start;
-        }
-
-        .filters {
-            width: 100%;
-        }
-
-        .modal-content {
-            width: 95%;
-            padding: 1.5rem;
-        }
-    }
-
+    /* responsive table — compact, two-column grid on mobile */
     @media (max-width: 600px) {
-        .kpi-row {
-            grid-template-columns: 1fr;
+        .table thead { display: none; }
+
+        /* make each row a compact two-column card:
+           left column = primary identifiers (date / name)
+           right column = meta / actions (status, progress, buttons) */
+        .table tbody tr {
+            display: grid;
+            grid-template-columns: 1fr auto;
+            gap: 8px;
+            align-items: center;
+            padding: 8px;
+            margin-bottom: 8px;
+            border: 1px solid var(--border-color);
+            border-radius: 8px;
+            background: var(--container-bg);
         }
 
-        .page-header h1 {
-            font-size: 1.25rem;
-        }
-
-        .filters {
-            flex-direction: column;
-            width: 100%;
-        }
-
-        .filters select,
-        .filters input[type="date"] {
-            width: 100%;
-        }
-
-        .table {
-            font-size: 0.85rem;
-        }
-
-        .table th,
+        /* clear default cell styling, use compact typography */
         .table td {
-            padding: 0.5rem 0.75rem;
+            padding: 0;
+            border: none;
+            display: block;
+            font-size: 0.9rem;
+            color: var(--primary-text);
         }
+
+        /* first two cells go to the left column stacked */
+        .table td:nth-child(1),
+        .table td:nth-child(2) {
+            grid-column: 1;
+        }
+        .table td:nth-child(1) { font-weight:700; }
+        .table td:nth-child(2) { color:var(--secondary-text); font-weight:600; margin-top:2px; }
+
+        /* all remaining cells flow to the right column and align horizontally */
+        .table td:nth-child(n+3) {
+            grid-column: 2;
+            display: flex;
+            gap: 8px;
+            align-items: center;
+            justify-content: flex-end;
+            white-space: nowrap;
+            font-weight:600;
+        }
+
+        /* small helper for labels inside cells if needed */
+        .table td .meta {
+            display: inline-block;
+            font-size: 0.82rem;
+            color: var(--secondary-text);
+            font-weight:500;
+        }
+
+        /* tighten buttons and progress display */
+        .btn-action-small {
+            padding: 0.25rem 0.6rem;
+            font-size: 0.78rem;
+            border-radius: 6px;
+        }
+
+        /* compact progress bar */
+        .progress-compact { height: 18px; border-radius: 6px; overflow: hidden; }
+        .progress-compact > div { height: 100%; font-size: 0.72rem; font-weight:700; }
+
+        /* reduce vertical spacing on cards */
+        .stock-card { padding: 0.9rem 1rem; }
+        .section-title { margin-bottom: 0; padding-bottom: 0; }
+
+        /* show filter button only when section open */
+        .stock-card .mobile-filter-btn { display: none !important; }
+        .stock-card.open .mobile-filter-btn { display: inline-flex !important; }
     }
+
+    @media (min-width: 601px) {
+        .mobile-filter-btn { display: none; }
+    }
+
+    /* ---------------------------
+       Badges / Status
+    --------------------------- */
+    .badge { display:inline-block; padding:.3rem .75rem; border-radius:999px; font-weight:600; font-size:.85rem; }
+    .badge-pending { background:#fef3c7; color:#92400e; border:1px solid #fde68a; }
+    .badge-completed { background:#d1fae5; color:#065f46; border:1px solid #6ee7b7; }
+    .badge-variance-slight { background:#fed7aa; color:#b45309; border:1px solid #fdba74; }
+    .badge-variance-big, .badge-overdue { background:#fecaca; color:#991b1b; border:1px solid #fca5a5; }
+
+    /* ---------------------------
+       Buttons
+    --------------------------- */
+    .btn-create-count {
+        background:var(--button-bg); color:var(--button-text); border:none; padding:.65rem 1.5rem;
+        border-radius:6px; font-weight:600; font-size:0.95rem; cursor:pointer; display:flex; align-items:center; gap:.5rem;
+        box-shadow:0 2px 8px rgba(0,0,0,0.1); transition:opacity .2s ease, transform .2s ease;
+    }
+    .btn-create-count:hover { opacity:.9; transform:translateY(-2px); box-shadow:0 4px 12px rgba(0,0,0,0.15); }
+    .btn-add-schedule { background:var(--button-bg); color:var(--button-text); border:none; padding:.5rem 1rem; border-radius:6px; font-weight:600; cursor:pointer; }
+    .btn-add-schedule:hover { opacity:.9; transform:translateY(-2px); }
+
+    .btn-continue, .btn-action-small {
+        background:var(--button-bg); color:var(--button-text); border:none; padding:.35rem .9rem; border-radius:6px;
+        font-size:0.85rem; font-weight:600; cursor:pointer; display:inline-flex; align-items:center; gap:.4rem;
+    }
+    .btn-action-small { padding:.4rem .8rem; border-radius:5px; font-size:0.8rem; gap:.3rem; white-space:nowrap; }
+    .btn-action-small:hover, .btn-continue:hover { opacity:.9; transform:translateY(-1px); }
+    .btn-action-small:active { transform:translateY(0); }
+
+    .btn-action-small.danger { background:#dc2626; color:white; }
+    .btn-action-small.danger:hover { background:#b91c1c; }
+
+    .btn-cancel { background:var(--secondary-color,#6c757d); color:white; border:none; padding:.75rem 1.5rem; border-radius:6px; font-weight:600; cursor:pointer; }
+    .btn-submit { background:var(--button-bg); color:var(--button-text); border:none; padding:.75rem 1.5rem; border-radius:6px; font-weight:600; cursor:pointer; }
+
+    /* ---------------------------
+       Modal
+    --------------------------- */
+    .modal { position:fixed; inset:0; background:rgba(0,0,0,0.5); display:flex; align-items:center; justify-content:center; z-index:1000; }
+    .modal.hidden { display:none; }
+    .modal-content {
+        background:var(--container-bg); width:90%; max-width:900px; border-radius:12px; padding:2rem;
+        box-shadow:0 20px 40px rgba(0,0,0,0.3);
+    }
+    .modal-content h3 { margin:0 0 1.5rem 0; font-size:1.3rem; font-weight:700; color:var(--logo-color); }
+    .modal-content button { margin-top:1.5rem; padding:.75rem 1.5rem; background:var(--button-bg); border:none; color:var(--button-text); border-radius:6px; cursor:pointer; font-weight:600; }
+    .modal-content button:hover { opacity:.9; }
+
+    /* ---------------------------
+       Loading / Errors
+    --------------------------- */
+    .loading { text-align:center; font-size:1.1rem; color:var(--secondary-text); padding:2rem; }
+    .error { color:#dc2626; text-align:center; padding:1rem; background:#fee2e2; border-radius:6px; border:1px solid #fecaca; margin-bottom:1rem; }
+
+    /* ---------------------------
+       Small helpers
+    --------------------------- */
+    .status-overdue { color:#dc2626; font-weight:600; }
+    .status-dueSoon { color:#f59e0b; font-weight:600; }
+    .status-onSchedule { color:#10b981; }
+
+    /* Filters modal */
+    .filter-modal { position: fixed; inset: 0; display:flex; align-items:center; justify-content:center; z-index:1200; background: rgba(0,0,0,0.45); }
+    .filter-modal.hidden { display:none; }
+    .filter-modal .modal-card {
+        width: 92%; max-width: 640px; background:var(--container-bg); border-radius:10px; padding:1.25rem; box-shadow:0 10px 30px rgba(0,0,0,0.3);
+    }
+    .filter-modal .modal-card h3 { margin:0 0 .5rem 0; font-size:1.05rem; }
+    .filter-modal .modal-actions { display:flex; gap:8px; justify-content:flex-end; margin-top: 1rem; }
+
+    /* small tweak for filter button position */
+    .mobile-filter-btn { margin-left: .5rem; }
+
+    /* Arrow only headers, hide summary text and hide filters when closed */
+    .stock-card .summary { display: none; }
+
+    /* hide filter button by default; show only when the card is open */
+    .stock-card .mobile-filter-btn { display: none !important; }
+    .stock-card.open .mobile-filter-btn { display: inline-flex !important; }
+
+    /* ensure arrow rotates when open (already present but kept for clarity) */
+    .stock-card .arrow { color: var(--secondary-text); font-size: 0.95rem; transition: transform 0.25s ease, color 0.2s ease; }
+    .stock-card.open .arrow { transform: rotate(180deg); color: var(--accent-color); }
+
 </style>
 
 <div class="main-content with-fixed-taskbar">
@@ -538,35 +297,15 @@ tr.in-progress {
             </button>
         </div>
 
-        <!-- KPI Cards -->
-        <div class="kpi-row">
-            <div class="kpi-card" id="kpiOverdue">
-                <div>Overdue</div>
-                <span>–</span>
-            </div>
-            <div class="kpi-card" id="kpiDueSoon">
-                <div>Due Soon</div>
-                <span>–</span>
-            </div>
-            <div class="kpi-card" id="kpiCompleted">
-                <div>Completed</div>
-                <span>–</span>
-            </div>
-            <div class="kpi-card" id="kpiVariance">
-                <div>With Variance</div>
-                <span>–</span>
-            </div>
-        </div>
-
         <!-- Due & Overdue Section -->
-        <div class="stock-card">
-            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1.5rem;">
-                <h2 class="section-title" style="margin-bottom: 0;"><i class="fas fa-calendar-times"></i> Due & Overdue Shelves</h2>
-                <button class="btn-add-schedule" onclick="openScheduleModal()">
-                    <i class="fas fa-plus-circle"></i> Add Schedule
-                </button>
+        <div class="stock-card collapsible open" data-section="due">
+            <div class="section-title toggle">
+                <div class="title-main"><span><i class="fas fa-calendar-times"></i></span><span>Due & Overdue Shelves</span></div>
+                <div class="summary-and-arrow">
+                    <i class="fas fa-chevron-down arrow" aria-hidden="true"></i>
+                </div>
             </div>
-            <div class="table-wrapper">
+            <div class="table-wrapper card-body">
                 <table class="table" id="dueTable">
                     <thead>
                         <tr>
@@ -584,6 +323,7 @@ tr.in-progress {
             </div>
         </div>
 
+        <!-- Schedule Modal (existing) -->
         <div id="scheduleModal" class="modal hidden">
             <div class="modal-content">
                 <h3><i class="fas fa-calendar-plus"></i> Create Count Schedule</h3>
@@ -616,45 +356,98 @@ tr.in-progress {
             </div>
         </div>
 
-
-        <!-- History Section -->
-        <div class="stock-card">
-            <h2 class="section-title"><i class="fas fa-history"></i> Stock Count History</h2>
-                    <!-- Filters Card -->
-        <div class="stock-card">
-            <div class="filters">
-                <select id="warehouseFilter">
-                    <option value="">All Warehouses</option>
-                </select>
-
-                <select id="shelfFilter">
-                    <option value="">All Shelves</option>
-                </select>
-
-                <input type="date" id="fromDate" placeholder="From Date">
-                <input type="date" id="toDate" placeholder="To Date">
-
-                <label>
-                    <input type="checkbox" id="varianceOnly">
-                    Variance only
-                </label>
+        <!-- Incomplete Counts Section -->
+        <div class="stock-card collapsible open" data-section="incomplete">
+            <div class="section-title toggle">
+                <div class="title-main"><span><i class="fas fa-hourglass-half"></i></span><span>Incomplete Counts</span></div>
+                <div class="summary-and-arrow">
+                    <i class="fas fa-chevron-down arrow" aria-hidden="true"></i>
+                </div>
             </div>
-        </div>
-            <div class="table-wrapper">
-                <table class="table clickable" id="historyTable">
+            <div class="table-wrapper card-body">
+                <table class="table" id="incompleteTable">
                     <thead>
                         <tr>
-                            <th>Date</th>
+                            <th>Date Started</th>
                             <th>Warehouse</th>
                             <th>Shelf</th>
-                            <th>System Qty</th>
-                            <th>Counted Qty</th>
-                            <th>Variance</th>
-                            <th>Status / Action</th>
+                            <th>Progress</th>
+                            <th style="text-align: center;">Actions</th>
                         </tr>
                     </thead>
                     <tbody></tbody>
                 </table>
+            </div>
+        </div>
+
+        <!-- History Section -->
+        <div class="stock-card collapsible open" data-section="history">
+            <div class="section-title toggle">
+                <div class="title-main"><span><i class="fas fa-history"></i></span><span>Stock Count History</span></div>
+                <div class="summary-and-arrow">
+                    <button class="btn-action-small mobile-filter-btn" onclick="openFilterModal()">
+                        <i class="fas fa-filter"></i> Filters
+                    </button>
+                    <i class="fas fa-chevron-down arrow" aria-hidden="true"></i>
+                </div>
+            </div>
+
+            <div class="card-body">
+                <div class="table-wrapper">
+                    <table class="table clickable" id="historyTable">
+                        <thead>
+                            <tr>
+                                <th>Date</th>
+                                <th>Warehouse</th>
+                                <th>Shelf</th>
+                                <th>System Qty</th>
+                                <th>Counted Qty</th>
+                                <th>Variance</th>
+                                <th>Status / Action</th>
+                            </tr>
+                        </thead>
+                        <tbody></tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+
+        <!-- Filters Modal (moved from inline filters into modal) -->
+        <div id="filterModal" class="filter-modal hidden" aria-hidden="true">
+            <div class="modal-card">
+                <h3><i class="fas fa-filter"></i> Filters</h3>
+                <div style="display:flex; flex-direction:column; gap:8px; margin-top:.5rem;">
+                    <label>Warehouse
+                        <select id="warehouseFilter">
+                            <option value="">All Warehouses</option>
+                        </select>
+                    </label>
+
+                    <label>Shelf / Category
+                        <select id="shelfFilter">
+                            <option value="">All Shelves</option>
+                        </select>
+                    </label>
+
+                    <div style="display:flex; gap:8px;">
+                        <label style="flex:1">From
+                            <input type="date" id="fromDate">
+                        </label>
+                        <label style="flex:1">To
+                            <input type="date" id="toDate">
+                        </label>
+                    </div>
+
+                    <label style="display:flex; align-items:center; gap:8px;">
+                        <input type="checkbox" id="varianceOnly">
+                        Variance only
+                    </label>
+                </div>
+
+                <div class="modal-actions">
+                    <button class="btn-cancel" onclick="closeFilterModal()">Close</button>
+                    <button class="btn-submit" onclick="applyAndCloseFilters()">Apply</button>
+                </div>
             </div>
         </div>
 
