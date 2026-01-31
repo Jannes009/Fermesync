@@ -20,7 +20,7 @@ def get_user_settings(user_id):
         )
         perms = [row[0] for row in cursor.fetchall()]
 
-        # Notification preferences (NEW)
+        # Notification preferences
         cursor.execute(
             "SELECT NotificationTypeId FROM UserNotificationPreference WHERE UserId = ?",
             (user_id,)
@@ -34,10 +34,18 @@ def get_user_settings(user_id):
         )
         whs = [row[0] for row in cursor.fetchall()]
 
+        # Project Groups (NEW)
+        cursor.execute(
+            "SELECT ProjectGroupId FROM UserProjectGroupLink WHERE UserId = ?",
+            (user_id,)
+        )
+        proj_groups = [row[0] for row in cursor.fetchall()]
+
         return jsonify({
             "permissions": perms,
             "warehouses": whs,
-            "not_prefs": not_prefs
+            "not_prefs": not_prefs,
+            "project_groups": proj_groups
         })
 
     finally:
@@ -53,10 +61,10 @@ def manage_users():
     conn, cursor = get_common_db_connection()
     try:
         # Users
-        cursor.execute("SELECT id, username FROM Users")
+        cursor.execute("SELECT id, username FROM Users ORDER BY username")
         users = cursor.fetchall()
 
-        # Permissions (unchanged)
+        # Permissions
         cursor.execute("SELECT PermissionId, PermissionCode FROM Permission ORDER BY PermissionCode")
         permissions = cursor.fetchall()
 
@@ -64,7 +72,7 @@ def manage_users():
         cursor.execute("SELECT WhseLink, Name FROM _uvWhseMst ORDER BY Name")
         warehouses = cursor.fetchall()
 
-        # Notification Types (NEW)
+        # Notification Types
         cursor.execute("""
             SELECT NotificationTypeId, ModuleCode, Name
             FROM NotificationType
@@ -72,6 +80,14 @@ def manage_users():
             ORDER BY ModuleCode, Name
         """)
         notification_types = cursor.fetchall()
+
+        # Project Groups (NEW)
+        cursor.execute("""
+        Select DISTINCT MainProjectLink, MainProjectCode, MainProjectName 
+        from _uvProject 
+        ORDER BY MainProjectCode
+        """)
+        project_groups = cursor.fetchall()
 
         if request.method == "POST":
             user_id = request.form.get("user_id")
@@ -97,7 +113,7 @@ def manage_users():
                 )
 
             # -----------------
-            # Notification Preferences (NEW)
+            # Notification Preferences
             # -----------------
             cursor.execute(
                 "DELETE FROM UserNotificationPreference WHERE UserId = ?",
@@ -113,6 +129,23 @@ def manage_users():
                     (user_id, nt_id)
                 )
 
+            # -----------------
+            # Project Groups (NEW)
+            # -----------------
+            cursor.execute(
+                "DELETE FROM UserProjectGroupLink WHERE UserId = ?",
+                (user_id,)
+            )
+            for pg_id in request.form.getlist("project_groups"):
+                cursor.execute(
+                    """
+                    INSERT INTO UserProjectGroupLink
+                    (UserId, ProjectGroupId)
+                    VALUES (?, ?)
+                    """,
+                    (user_id, pg_id)
+                )
+
             conn.commit()
             return redirect(url_for("admin.manage_users"))
 
@@ -122,6 +155,7 @@ def manage_users():
             permissions=permissions,
             warehouses=warehouses,
             notification_types=notification_types,
+            project_groups=project_groups,
             user=current_user
         )
 

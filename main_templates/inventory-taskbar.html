@@ -19,13 +19,20 @@
   <!-- Desktop Navigation -->
   <nav class="desktop-nav">
     <ul>
+      {% if "IBT_DISPATCH" in current_user.permissions or "IBT_RECEIVE" in current_user.permissions %}
       <li class="dropdown-parent">
         <a href="#" class="taskbar-link">IBT <span>▼</span></a>
         <ul class="dropdown-menu">
+          {% if "IBT_DISPATCH" in current_user.permissions %}
           <li><a href="/inventory/SDK/IBT_issue" class="dropdown-item">Issue</a></li>
+          {% endif %}
+          {% if "IBT_RECEIVE" in current_user.permissions %}
           <li><a href="/inventory/SDK/IBT_receive" class="dropdown-item">Receive</a></li>
+          {% endif %}
         </ul>
       </li>
+      {% endif %}
+      <li><a href="/inventory/qty-summary" class="taskbar-link">Warehouse Qty's</a></li>
       {% if "GRV_CREATE" in current_user.permissions %}
       <li><a href="/inventory/grv" class="taskbar-link">GRV</a></li>
       {% endif %}
@@ -35,7 +42,9 @@
       {% if "STOCK_ISSUE" in current_user.permissions %}
       <li><a href="/inventory/SDK/stock_issue" class="taskbar-link">Stock Issue</a></li>
       {% endif %}
+      {% if "PO_REQUISITION_CREATE" in current_user.permissions or "PO_CREATE" in current_user.permissions or "PO_EDIT" in current_user.permissions or "PO_VIEW" in current_user.permissions %}
       <li><a href="/inventory/po/requisition" class="taskbar-link">Purchase Order</a></li>
+      {% endif %}
       <!-- <li><a href="/inventory/barcode_scanner" class="taskbar-link">Barcode Scanner</a></li> -->
     </ul>
   </nav>
@@ -144,6 +153,14 @@
           <li><a href="/inventory/SDK/IBT_receive" class="mobile-submenu-link">Receive</a></li>
         </ul>
       </li>
+      <li class="mobile-nav-item">
+        <a href="/inventory/qty-summary" class="mobile-nav-link">
+          <div class="mobile-nav-content">
+            <span class="mobile-nav-icon">📦</span>
+            <span>Warehouse Qty's</span>
+          </div>
+        </a>
+      </li>
       {% if "GRV_CREATE" in current_user.permissions %}
       <li class="mobile-nav-item">
         <a href="/inventory/grv" class="mobile-nav-link">
@@ -174,6 +191,7 @@
         </a>
       </li>
       {% endif %}
+      {% if "PO_REQUISITION_CREATE" in current_user.permissions or "PO_CREATE" in current_user.permissions or "PO_EDIT" in current_user.permissions or "PO_VIEW" in current_user.permissions %}
       <li class="mobile-nav-item">
         <a href="/inventory/po/requisition" class="mobile-nav-link">
           <div class="mobile-nav-content">
@@ -182,6 +200,7 @@
           </div>
         </a>
       </li>
+      {% endif %}
       <!-- <li class="mobile-nav-item">
         <a href="/inventory/barcode_scanner" class="mobile-nav-link">
           <div class="mobile-nav-content">

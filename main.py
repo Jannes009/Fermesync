@@ -95,7 +95,7 @@ def create_app():
         elif current_user.inventory_module:
             return redirect(url_for('inventory.dashboard'))
         else:
-            return render_template('no_modules.html')
+            return redirect(url_for('account.view_account'))
         
     # Serve manifest.json at root
     @app.route("/manifest.json")

@@ -13,7 +13,7 @@ def create_db_connection(user=None, database_type="Inventory"):
     - OR a supplied user snapshot dict (background thread)
     - Pulls DB credentials from UserDatabaseConfig table in the Common database.
     """
-
+    print(user)
     # -------------------------
     # INTERACTIVE MODE (Flask user)
     # -------------------------
@@ -52,7 +52,7 @@ def create_db_connection(user=None, database_type="Inventory"):
         server_name = row[0]
         database_name = row[1]
         db_username = row[2]
-
+        print(db_username, db_password, server_name, database_name)
 
     # -------------------------
     # BACKGROUND THREAD MODE (dict snapshot)

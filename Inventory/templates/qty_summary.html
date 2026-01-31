@@ -1,0 +1,326 @@
+{% extends "inventory_base.html" %}
+{% block content %}
+
+<div class="main-content">
+  <div class="container-wide">
+    <div class="page-header">
+      <h1><i class="fas fa-box"></i> Inventory Quantity Summary</h1>
+    </div>
+
+    <div class="warehouse-list">
+      {% for wh in warehouses %}
+      <div class="warehouse-card stock-card collapsible" data-section="wh-{{ wh.WhseLink }}">
+        <div class="warehouse-header section-title toggle" data-warehouse-id="{{ wh.WhseLink }}">
+          <div class="header-left">
+            <i class="fas fa-warehouse header-icon"></i>
+            <div class="wh-meta">
+              <div class="wh-desc">{{ wh.WhseName }}</div>
+            </div>
+          </div>
+
+          <div class="header-right">
+            <div class="wh-totals">
+              <span class="tot-item">Item Count: <strong data-val="{{ wh.ItemCount or 0 }}">{{ wh.ItemCount or 0 }}</strong></span>
+              <span class="tot-onhand">Qty On Hand: <strong data-val="{{ wh.QtyOnHand or 0 }}">{{ wh.QtyOnHand or 0 }}</strong></span>
+              <span class="tot-order">Qty To Order: <strong class="tot-toorder {% if (wh.ToBeOrdered or 0) > 0 %}danger{% endif %}" data-val="{{ wh.ToBeOrdered or 0 }}">{{ wh.ToBeOrdered or 0 }}</strong></span>
+            </div>
+            <i class="fas fa-chevron-right chevron arrow"></i>
+          </div>
+        </div>
+
+        <div class="warehouse-body card-body" id="wh-{{ wh.WhseLink }}" hidden>
+          <div class="loading"><i class="fas fa-spinner fa-spin"></i> Loading…</div>
+        </div>
+      </div>
+      {% endfor %}
+    </div>
+  </div>
+</div>
+
+<script>
+document.addEventListener("DOMContentLoaded", () => {
+  // formatting helper: thousands separator + 1 decimal
+  function formatQty(v) {
+    const n = Number(v) || 0;
+    return n.toLocaleString(undefined, { minimumFractionDigits: 1, maximumFractionDigits: 1 });
+  }
+
+  // format header totals rendered server-side (data-val attributes)
+  document.querySelectorAll("[data-val]").forEach(el => {
+    // skip non-numeric elements that you might have used for other data-val usage
+    const raw = el.getAttribute("data-val");
+    if (raw === null) return;
+    // leave integer counts (Items) formatted with 1 decimal as requested
+    el.textContent = formatQty(raw);
+    // add danger class for to-order values > 0 (if not already applied)
+    if (el.closest(".tot-order") && Number(raw) > 0) {
+      el.classList.add("danger");
+    }
+  });
+
+  // rest of existing DOMContentLoaded handlers...
+  document.querySelectorAll(".warehouse-header").forEach(header => {
+    const warehouseId = header.dataset.warehouseId;
+    const body = document.getElementById(`wh-${warehouseId}`);
+    const chevron = header.querySelector(".chevron");
+
+    const saved = localStorage.getItem(`qty_wh_open_${warehouseId}`);
+    if (saved === "true") {
+      body.hidden = false;
+      header.closest(".stock-card").classList.add("open");
+      chevron.style.transform = "rotate(90deg)";
+      if (!body.dataset.loaded) loadWarehouse(warehouseId, body);
+    }
+
+    header.addEventListener("click", async () => {
+      const card = header.closest(".stock-card");
+      const opening = body.hidden;
+      body.hidden = !opening;
+      card.classList.toggle("open", opening);
+      chevron.style.transform = opening ? "rotate(90deg)" : "rotate(0deg)";
+      localStorage.setItem(`qty_wh_open_${warehouseId}`, opening ? "true" : "false");
+
+      if (opening && body.dataset.loaded !== "true") {
+        await loadWarehouse(warehouseId, body);
+      }
+    });
+  });
+});
+
+/* load and keep rows on the body element for client-side sorting */
+async function loadWarehouse(warehouseId, body) {
+  try {
+    const res = await fetch(`/inventory/qty-summary/${warehouseId}`);
+    if (!res.ok) {
+      body.innerHTML = `<p class="error"><i class="fas fa-exclamation-circle"></i> Failed to load inventory</p>`;
+      return;
+    }
+    const data = await res.json();
+    body.tableData = Array.isArray(data) ? data : [];
+    body.dataset.loaded = "true";
+    body.dataset.sortKey = "";
+    body.dataset.sortDir = "asc";
+    renderTable(body.tableData, body);
+  } catch (err) {
+    console.error("Error loading warehouse data:", err);
+    body.innerHTML = `<p class="error"><i class="fas fa-exclamation-circle"></i> Error: ${err.message}</p>`;
+  }
+}
+
+/* render table from rows and attach clickable header sorting */
+function renderTable(rows, body) {
+  if (!rows || !rows.length) {
+    body.innerHTML = '<div class="table-wrapper"><p class="loading"><i class="fas fa-inbox"></i> No inventory found</p></div>';
+    return;
+  }
+
+  const columns = [
+    { key: "StockCode", label: "Item Code", align: "left" },
+    { key: "StockDescription", label: "Description", align: "left" },
+    { key: "cCategoryName", label: "Category", align: "left" },
+    { key: "EvoQtyOnHand", label: "On Hand", align: "right" },
+    { key: "IncompleteIssuesQty", label: "Issues", align: "right" },
+    { key: "QtyOnPo", label: "On PO", align: "right" },
+    { key: "ReorderLevel", label: "Reorder Level", align: "right" },
+    { key: "ToBeOrdered", label: "To Order", align: "right" },
+    { key: "DateLastCounted", label: "Last Counted", align: "center" }
+  ];
+
+  function formatQty(v) {
+    const n = Number(v) || 0;
+    return n.toLocaleString(undefined, { minimumFractionDigits: 1, maximumFractionDigits: 1 });
+  }
+
+  function formatDateLastCounted(dateStr) {
+    if (!dateStr) return '<span style="color:var(--secondary-text);">Never</span>';
+    
+    const date = new Date(dateStr);
+    if (isNaN(date.getTime())) return '<span style="color:var(--secondary-text);">Invalid</span>';
+    
+    const now = new Date();
+    const diffMs = now - date;
+    const diffDays = Math.floor(diffMs / (1000 * 60 * 60 * 24));
+    
+    let daysText = '';
+    let statusClass = '';
+    
+    if (diffDays === 0) {
+      daysText = 'Today';
+      statusClass = 'status-fresh';
+    } else if (diffDays === 1) {
+      daysText = 'Yesterday';
+      statusClass = 'status-fresh';
+    } else if (diffDays <= 7) {
+      daysText = `${diffDays}d ago`;
+      statusClass = 'status-recent';
+    } else if (diffDays <= 30) {
+      daysText = `${Math.floor(diffDays / 7)}w ago`;
+      statusClass = 'status-moderate';
+    } else if (diffDays <= 365) {
+      daysText = `${Math.floor(diffDays / 30)}m ago`;
+      statusClass = 'status-stale';
+    } else {
+      daysText = `${Math.floor(diffDays / 365)}y ago`;
+      statusClass = 'status-ancient';
+    }
+    
+    const formatted = date.toLocaleDateString(undefined, { year: '2-digit', month: 'short', day: 'numeric' });
+    return `<span class="date-badge ${statusClass}" title="${formatted}">${daysText}</span>`;
+  }
+
+  let html = `
+    <div class="table-wrapper">
+      <table class="table">
+        <thead>
+          <tr>
+  `;
+
+  columns.forEach(col => {
+    html += `<th class="sortable ${col.align === "right" || col.align === "center" ? col.align : ""}" data-key="${col.key}">${col.label} <span class="sort-indicator"></span></th>`;
+  });
+
+  html += `</tr></thead><tbody>`;
+
+  rows.forEach(r => {
+    const toOrder = Number(r.ToBeOrdered) || 0;
+    const rowClass = toOrder > 0 ? 'warning' : '';
+    html += `
+      <tr class="${rowClass}">
+        <td><strong>${r.StockCode || '—'}</strong></td>
+        <td>${r.StockDescription || '—'}</td>
+        <td>${r.cCategoryName || '—'}</td>
+        <td class="numeric">${formatQty(r.EvoQtyOnHand)}</td>
+        <td class="numeric">${formatQty(r.IncompleteIssuesQty)}</td>
+        <td class="numeric">${formatQty(r.QtyOnPo)}</td>
+        <td class="numeric">${formatQty(r.ReorderLevel)}</td>
+        <td class="numeric"><strong class="${toOrder > 0 ? 'danger' : ''}">${formatQty(toOrder)}</strong></td>
+        <td class="center">${formatDateLastCounted(r.DateLastCounted)}</td>
+      </tr>
+    `;
+  });
+
+  html += `</tbody></table></div>`;
+  body.innerHTML = html;
+
+  // restore sorted state indicator
+  const currentKey = body.dataset.sortKey || "";
+  const currentDir = body.dataset.sortDir || "asc";
+
+  // attach header click handlers
+  body.querySelectorAll("th.sortable").forEach(th => {
+    const key = th.dataset.key;
+    // mark indicator
+    const indicator = th.querySelector(".sort-indicator");
+    indicator.textContent = currentKey === key ? (currentDir === "asc" ? "▲" : "▼") : "";
+    th.style.cursor = "pointer";
+
+    th.addEventListener("click", () => {
+      // toggle direction if same key
+      let dir = "asc";
+      if (body.dataset.sortKey === key) dir = body.dataset.sortDir === "asc" ? "desc" : "asc";
+      body.dataset.sortKey = key;
+      body.dataset.sortDir = dir;
+      sortAndRender(body);
+    });
+  });
+}
+
+/* perform sort and re-render using stored rows */
+function sortAndRender(body) {
+  const key = body.dataset.sortKey;
+  const dir = body.dataset.sortDir === "desc" ? -1 : 1;
+  if (!key || !body.tableData) {
+    renderTable(body.tableData || [], body);
+    return;
+  }
+
+  // detect numeric column by sampling values
+  const sample = body.tableData.find(r => r[key] !== null && r[key] !== undefined);
+  const isNumeric = sample && (typeof sample[key] === "number" || !isNaN(Number(sample[key])));
+
+  body.tableData.sort((a, b) => {
+    let va = a[key];
+    let vb = b[key];
+
+    if (va === null || va === undefined) va = "";
+    if (vb === null || vb === undefined) vb = "";
+
+    if (isNumeric) {
+      va = Number(va) || 0;
+      vb = Number(vb) || 0;
+      return (va - vb) * dir;
+    } else {
+      return String(va).localeCompare(String(vb), undefined, { numeric: true }) * dir;
+    }
+  });
+
+  renderTable(body.tableData, body);
+}
+</script>
+
+<style>
+/* reuse stock-count look & feel, compact and professional */
+.container-wide { max-width: 1200px; margin: 0 auto; padding: 0 1.2rem; }
+.page-header { margin: 1rem 0; display:flex; align-items:center; gap:12px; }
+.page-header h1 { font-size:1.25rem; margin:0; }
+
+/* warehouse card */
+.warehouse-list { display:flex; flex-direction:column; gap:10px; }
+.warehouse-card { border:1px solid var(--border-color); border-radius:8px; overflow:hidden; background:var(--container-bg); box-shadow:0 2px 8px rgba(0,0,0,0.04); }
+.warehouse-header { display:flex; align-items:center; justify-content:space-between; gap:12px; padding:12px 14px; cursor:pointer; }
+.warehouse-header:hover { background:var(--table-row-hover); }
+
+.header-left { display:flex; align-items:center; gap:12px; }
+.header-icon { font-size:1.05rem; color:var(--secondary-text); }
+.wh-meta { display:flex; flex-direction:column; gap:2px; }
+.wh-desc { font-weight:700; color:var(--logo-color); font-size:1rem; }
+
+.header-right { display:flex; align-items:center; gap:12px; margin-left:auto; }
+.wh-totals { display:flex; gap:12px; align-items:center; font-size:0.88rem; color:var(--secondary-text); }
+.wh-totals strong { color:var(--primary-text); font-weight:700; }
+.wh-totals .danger { color:#dc2626; }
+
+.chevron { transition: transform 0.18s ease; color:var(--secondary-text); }
+
+/* table */
+.table-wrapper { padding:12px; }
+.table { width:100%; border-collapse:collapse; }
+.table th, .table td { padding:10px 8px; border-bottom:1px solid var(--border-color); text-align:left; font-size:0.92rem; }
+.table th { font-weight:700; color:var(--table-header-text); background:var(--table-header-bg); }
+.table td.numeric, .table th.numeric { text-align:right; }
+.table tr.warning { background:#fff7ed; }
+
+/* loading / error */
+.loading { text-align:center; padding:1rem; color:var(--secondary-text); }
+.error { color:#dc2626; padding:0.75rem; }
+
+/* sortable header styling */
+.table th.sortable { cursor: pointer; user-select: none; }
+.table th .sort-indicator { font-size: 0.75rem; margin-left: 6px; color: var(--secondary-text); }
+
+/* responsive: compact two-column rows on small screens */
+@media (max-width: 700px) {
+  .wh-desc { display:none; }
+  .table th, .table td { padding:8px 6px; font-size:0.85rem; }
+  .table thead { display:none; }
+
+  .table tbody tr {
+    display:grid;
+    grid-template-columns: 1fr auto;
+    gap:8px;
+    align-items:center;
+    padding:8px;
+    margin-bottom:8px;
+    border:1px solid var(--border-color);
+    border-radius:8px;
+    background:var(--container-bg);
+  }
+  .table td { padding:0; border:none; display:block; font-size:0.9rem; }
+  .table td:nth-child(1), .table td:nth-child(2) { grid-column:1; }
+  .table td:nth-child(1) { font-weight:700; }
+  .table td:nth-child(2) { color:var(--secondary-text); margin-top:2px; }
+  .table td:nth-child(n+3) { grid-column:2; display:flex; gap:8px; align-items:center; justify-content:flex-end; white-space:nowrap; font-weight:600; }
+}
+</style>
+
+{% endblock %}

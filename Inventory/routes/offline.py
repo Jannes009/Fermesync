@@ -24,7 +24,11 @@ def fetch_warehouses():
 def fetch_projects():
     conn = create_db_connection()
     cursor = conn.cursor()
-    cursor.execute("SELECT ProjectLink, ProjectCode, ProjectName FROM _uvProject")
+    cursor.execute(f"""
+        SELECT ProjectLink, ProjectCode, ProjectName
+        FROM _uvProject
+        WHERE MainProjectLink IN ({','.join(['?'] * len(current_user.projects))}) 
+    """, current_user.projects)
     rows = cursor.fetchall()
     conn.close()
 

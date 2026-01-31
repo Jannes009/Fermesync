@@ -100,6 +100,7 @@ def authenticate_user(username, password):
             db_config = get_user_db_config(row[0])
             user = UserLogin(id=row[0], username=row[1], db_config=db_config)
             user.warehouses = get_user_warehouses(user.id)
+            user.projects = get_user_projects(user.id)
             user.permissions = get_user_permissions(user.id)
             user.market_module = market_module(user.id)
             user.inventory_module = inventory_module(user.id)
@@ -123,6 +124,7 @@ def load_user(user_id):
             db_config = get_user_db_config(row[0])
             user = UserLogin(id=row[0], username=row[1], db_config=db_config)
             user.warehouses = get_user_warehouses(user.id)
+            user.projects = get_user_projects(user.id)
             user.permissions = get_user_permissions(user.id)
             user.market_module = market_module(user.id)
             user.inventory_module = inventory_module(user.id)
@@ -151,6 +153,19 @@ def get_user_warehouses(user_id):
         cursor.execute("""
             SELECT WarehouseId 
             FROM [WarehouseToUserLink]
+            WHERE UserId = ?
+        """, (user_id,))
+        rows = cursor.fetchall()
+        return [row[0] for row in rows] if rows else []
+    finally:
+        close_connection(conn, cursor)
+
+def get_user_projects(user_id):
+    conn, cursor = connect()  # common DB
+    try:
+        cursor.execute("""
+            SELECT ProjectGroupId 
+            FROM [UserProjectGroupLink]
             WHERE UserId = ?
         """, (user_id,))
         rows = cursor.fetchall()

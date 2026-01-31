@@ -298,6 +298,7 @@
                         <ul class="sidebar-nav">
                             <li><a class="nav-link active" data-tab="permissions"><i class="fas fa-lock-open"></i> Permissions</a></li>
                             <li><a class="nav-link" data-tab="warehouses"><i class="fas fa-warehouse"></i> Warehouses</a></li>
+                            <li><a class="nav-link" data-tab="project_groups"><i class="fas fa-project-diagram"></i> Project Groups</a></li>
                             <li><a class="nav-link" data-tab="notifications"><i class="fas fa-bell"></i> Notifications</a></li>
                         </ul>
                     </div>
@@ -351,6 +352,36 @@
                                         </label>
                                     </div>
                                 {% endfor %}
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Project Groups Tab (NEW) -->
+                    <div class="tab-pane" id="project_groups">
+                        <div class="card">
+                            <h3 class="section-title"><i class="fas fa-project-diagram"></i> Project Groups</h3>
+                            <input class="form-control filter-input"
+                                   placeholder="Search project groups..."
+                                   onkeyup="filterList(this,'project_groups')">
+                            <div id="project_groups-list">
+                                {% if project_groups %}
+                                    {% for pg in project_groups %}
+                                        <div class="switch-row">
+                                            <span>
+                                                <strong>{{ pg[1] }}</strong>
+                                                <span style="color: var(--secondary-text); margin-left: 0.5rem;">{{ pg[2] }}</span>
+                                            </span>
+                                            <label class="switch">
+                                                <input type="checkbox" name="project_groups" value="{{ pg[0] }}">
+                                                <span class="slider"></span>
+                                            </label>
+                                        </div>
+                                    {% endfor %}
+                                {% else %}
+                                    <p style="color: var(--secondary-text); text-align: center; padding: 1rem;">
+                                        <i class="fas fa-inbox"></i> No project groups available
+                                    </p>
+                                {% endif %}
                             </div>
                         </div>
                     </div>
@@ -428,7 +459,7 @@
         // Fetch user settings
         fetch(`/admin/get_user_settings/${userId}`)
             .then(r => r.json())
-            .then(({ permissions, warehouses, not_prefs }) => {
+            .then(({ permissions, warehouses, not_prefs, project_groups }) => {
 
                 permissions.forEach(id => {
                     const cb = document.querySelector(`input[name='permissions'][value='${id}']`);
@@ -437,6 +468,11 @@
 
                 warehouses.forEach(id => {
                     const cb = document.querySelector(`input[name='warehouses'][value='${id}']`);
+                    if (cb) cb.checked = true;
+                });
+
+                project_groups.forEach(id => {
+                    const cb = document.querySelector(`input[name='project_groups'][value='${id}']`);
                     if (cb) cb.checked = true;
                 });
 

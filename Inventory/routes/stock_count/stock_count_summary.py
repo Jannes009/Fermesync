@@ -20,7 +20,7 @@ def stock_counts_due():
     cursor = conn.cursor()
 
     try:
-        cursor.execute("""
+        cursor.execute(f"""
             SELECT
                 ICS.InvCountScheduleId,
                 WH.WhseCode,
@@ -32,9 +32,9 @@ def stock_counts_due():
                 ICS.NextDueDate
             FROM InventoryCountSchedule ICS
             JOIN _uvWarehouses WH ON WH.WhseLink = ICS.WhseId
-            WHERE ICS.IsActive = 1
+            WHERE ICS.IsActive = 1 AND WH.WhseLink IN ({','.join(['?'] * len(current_user.warehouses))}) 
             ORDER BY ICS.NextDueDate ASC
-        """)
+        """, current_user.warehouses)
 
         rows = []
         today = datetime.now().date()
@@ -93,7 +93,7 @@ def stock_counts_history():
     cursor = conn.cursor()
 
     try:
-        cursor.execute("""
+        cursor.execute(f"""
         SELECT
             h.InvCountHeaderId,
             CONVERT(date, h.InvCountTimeCreated) AS CountDate,
@@ -114,6 +114,7 @@ def stock_counts_history():
         LEFT JOIN InventoryCountLines l
             ON l.InvCountLineHeaderId = h.InvCountHeaderId
         WHERE INVCountStatus IN ('FINALISED', 'DRAFT')
+        AND InvCountWhseId IN ({','.join(['?'] * len(current_user.warehouses))}) 
 
         GROUP BY
             h.InvCountHeaderId,
@@ -122,10 +123,9 @@ def stock_counts_history():
             h.InvCountCatName,
             h.InvCountStatus,
             h.InvCountTimeFinalised
-
         ORDER BY h.InvCountTimeCreated DESC;
 
-        """)
+        """, current_user.warehouses)
 
         rows = []
         for r in cursor.fetchall():
