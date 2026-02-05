@@ -199,11 +199,11 @@ def submit_sales_entry():
                         price, stockId, 0, discount, 
                         discountAmnt, gross_amount,
                         market_commission, agent_commission, net_sales, destroyed,))
-            cursor.execute("""
-            EXEC [dbo].[SIGUpdatePackagingCost]
-            EXEC [dbo].[SIGUpdateWeightTransport]
-            EXEC [dbo].[SIGUpdateDeliveryNoteLineTotals]
-            """)
+            cursor.execute("SELECT DB_NAME()")
+            print(cursor.fetchone())
+            cursor.execute("EXEC [dbo].[SIGUpdatePackagingCost]")
+            cursor.execute("EXEC [dbo].[SIGUpdateWeightTransport]")
+            cursor.execute("EXEC [dbo].[SIGUpdateDeliveryNoteLineTotals]")
         conn.commit()
     finally:
         cursor.close()
@@ -617,110 +617,104 @@ def get_destination_api():
 
 @market_bp.route('/api/update-line-quantities', methods=['POST'])
 def update_line_quantities():
-# try:
+    import traceback
     data = request.get_json()
     quantities = data.get('quantities', {})
-    new_line_info = data.get('new_line_info', {})  # Expecting: {product_id, prod_unit, quantity, del_note_no}
+    new_line_info = data.get('new_line_info', {})
     new_line_id = None
-    
+
     if not quantities:
         return jsonify({'success': False, 'message': 'No quantities provided'}), 400
-        
+
     conn = create_db_connection()
     cursor = conn.cursor()
+    try:
+        # Insert new line if present
+        if 'new' in quantities and new_line_info:
+            cursor.execute("SELECT TOP 1 DelIndex FROM ZZDeliveryNoteHeader WHERE DelNoteNo = ?", (new_line_info['delNoteNo'],))
+            header_row = cursor.fetchone()
+            if not header_row:
+                return jsonify({'success': False, 'message': 'Delivery note not found'}), 404
+            header_id = header_row[0]
+            production_unit_id = production_unit_name_to_production_unit_id(new_line_info['prod_unit'], cursor)
+            cursor.execute(
+                "INSERT INTO ZZDeliveryNoteLines (DelHeaderId, DelLineStockId, DelLineFarmId, DelLineQuantityBags) VALUES (?, ?, ?, ?)",
+                (header_id, new_line_info['product_id'], production_unit_id, new_line_info['quantity'])
+            )
+            conn.commit()  # commit insert so subsequent select finds it
+            cursor.execute("SELECT TOP 1 DelLineIndex FROM ZZDeliveryNoteLines WHERE DelHeaderId = ? ORDER BY DelLineIndex DESC", (header_id,))
+            new_line_id = cursor.fetchone()[0]
+            quantities[new_line_id] = quantities['new']
+            del quantities['new']
 
-    # If there is a 'new' line, insert it first
-    if 'new' in quantities and new_line_info:
-        # Insert new line
+        # Validate header exists and totals
+        first_line_id = next(iter(quantities.keys()))
         cursor.execute("""
-            SELECT TOP 1 DelIndex FROM ZZDeliveryNoteHeader WHERE DelNoteNo = ?
-        """, (new_line_info['delNoteNo'],))
-        header_row = cursor.fetchone()
-        production_unit_id = production_unit_name_to_production_unit_id(new_line_info['prod_unit'], cursor)
-        if not header_row:
-            return jsonify({'success': False, 'message': 'Delivery note not found'}), 404
-        header_id = header_row[0]
-        cursor.execute("""
-            INSERT INTO ZZDeliveryNoteLines (DelHeaderId, DelLineStockId, DelLineFarmId, DelLineQuantityBags)
-            VALUES (?, ?, ?, ?)
-        """, (header_id, new_line_info['product_id'], production_unit_id, new_line_info['quantity']))
-        conn.commit()
-        # Get the new line's ID
-        cursor.execute("""
-            SELECT TOP 1 DelLineIndex FROM ZZDeliveryNoteLines WHERE DelHeaderId = ? ORDER BY DelLineIndex DESC
-        """, (header_id,))
-        new_line_id = cursor.fetchone()[0]
-        # Replace 'new' with the real id in quantities
-        quantities[new_line_id] = quantities['new']
-        del quantities['new']
-
-    # Get the header ID and total quantity from the first line (after possible insert)
-    first_line_id = list(quantities.keys())[0]
-    cursor.execute("""
-        SELECT DelHeaderId, DelQuantityBags
-        FROM ZZDeliveryNoteLines LIN
-        JOIN ZZDeliveryNoteHeader HEA ON HEA.DelIndex = LIN.DelHeaderId
-        WHERE DelLineIndex = ?
-    """, (first_line_id,))
-    result = cursor.fetchone()
-    
-    if not result:
-        return jsonify({'success': False, 'message': 'Line not found'}), 404
-        
-    header_id, header_total = result
-    
-    # Validate total quantity matches header total
-    total_new_quantity = sum(quantities.values())
-    if total_new_quantity != header_total:
-        return jsonify({
-            'success': False, 
-            'message': f'Total quantity must equal {header_total} bags'
-        }), 400
-    
-    # Validate each line's new quantity
-    for line_id, new_qty in quantities.items():
-        cursor.execute("""
-            SELECT TotalQtySold, TotalQtyInvoiced
-            FROM _uvMarketDeliveryNote
+            SELECT DelHeaderId, DelQuantityBags
+            FROM ZZDeliveryNoteLines LIN
+            JOIN ZZDeliveryNoteHeader HEA ON HEA.DelIndex = LIN.DelHeaderId
             WHERE DelLineIndex = ?
-        """, (line_id,))
+        """, (first_line_id,))
         result = cursor.fetchone()
         if not result:
-            return jsonify({'success': False, 'message': f'Line {line_id} not found'}), 404
-        sold_qty, invoiced_qty = result
-        min_qty = sold_qty
-        if new_qty < min_qty:
-            return jsonify({
-                'success': False, 
-                'message': f'Quantity for line {line_id} cannot be less than {min_qty} bags (sold quantity)'
-            }), 400
-    # Update all quantities in a single transaction
-    for line_id, new_qty in quantities.items():
-        cursor.execute("""
-            UPDATE ZZDeliveryNoteLines
-            SET DelLineQuantityBags = ?
-            WHERE DelLineIndex = ?
-        """, (new_qty, line_id))
-    cursor.execute("""
-    EXEC [dbo].[SIGUpdatePackagingCost]
-    EXEC [dbo].[SIGUpdateWeightTransport]
-    EXEC [dbo].[SIGUpdateDeliveryNoteLineTotals]
-    """)
-    conn.commit()
-    return jsonify({
-        'success': True,
-        'quantities': {str(k): v for k, v in quantities.items()},
-        'new_line_id': new_line_id,
-        'message': 'Quantities updated successfully'
-    })
-# except Exception as e:
-    if 'conn' in locals():
-        conn.rollback()
-    return jsonify({'success': False, 'message': str(e)}), 500
-# finally:
-    if 'conn' in locals():
-        cursor.close()
-        conn.close() 
+            return jsonify({'success': False, 'message': 'Line not found'}), 404
+        header_id, header_total = result
+
+        total_new_quantity = sum(float(v) for v in quantities.values())
+        if total_new_quantity != float(header_total):
+            return jsonify({'success': False, 'message': f'Total quantity must equal {header_total} bags'}), 400
+
+        # Validate individual line constraints
+        for line_id, new_qty in quantities.items():
+            cursor.execute("SELECT TotalQtySold, TotalQtyInvoiced FROM _uvMarketDeliveryNote WHERE DelLineIndex = ?", (line_id,))
+            row = cursor.fetchone()
+            if not row:
+                return jsonify({'success': False, 'message': f'Line {line_id} not found'}), 404
+            sold_qty, invoiced_qty = row
+            min_qty = sold_qty or 0
+            if float(new_qty) < float(min_qty):
+                return jsonify({'success': False, 'message': f'Quantity for line {line_id} cannot be less than {min_qty} bags (sold quantity)'}), 400
+
+        # Perform updates inside transaction and run maintenance stored procs individually
+        for line_id, new_qty in quantities.items():
+            cursor.execute("UPDATE ZZDeliveryNoteLines SET DelLineQuantityBags = ? WHERE DelLineIndex = ?", (new_qty, line_id))
+
+        # run maintenance procedures one by one and check for errors
+        try:
+            cursor.execute("EXEC [dbo].[SIGUpdatePackagingCost]")
+            cursor.execute("EXEC [dbo].[SIGUpdateWeightTransport]")
+            cursor.execute("EXEC [dbo].[SIGUpdateDeliveryNoteLineTotals]")
+            conn.commit()
+        except Exception as dbexc:
+            conn.rollback()
+            tb = traceback.format_exc()
+            print("DB maintenance/commit failed:", dbexc, tb)
+            # try to surface helpful message
+            return jsonify({'success': False, 'message': 'Database error during maintenance/commit', 'detail': str(dbexc)}), 500
+
+        return jsonify({
+            'success': True,
+            'quantities': {str(k): v for k, v in quantities.items()},
+            'new_line_id': new_line_id,
+            'message': 'Quantities updated successfully'
+        })
+    except Exception as e:
+        try:
+            conn.rollback()
+        except Exception:
+            pass
+        tb = traceback.format_exc()
+        print("Error in update_line_quantities:", e, tb)
+        return jsonify({'success': False, 'message': str(e)}), 500
+    finally:
+        try:
+            cursor.close()
+        except Exception:
+            pass
+        try:
+            conn.close()
+        except Exception:
+            pass
 
 @market_bp.route('/api/delete-delivery-line/<int:line_id>', methods=['DELETE'])
 def delete_delivery_line(line_id):

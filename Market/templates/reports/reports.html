@@ -138,35 +138,64 @@
             padding: 1rem;
         }
         .report-creation-section {
-            padding: 1.2rem;
+            padding: 1.5rem;
             border-radius: 12px;
-            background: var(--container-bg);
-            box-shadow: 0 4px 24px 0 rgba(44, 62, 80, 0.08);
-            transition: box-shadow 0.2s;
-            margin-bottom: 1.5rem;
+            background: linear-gradient(135deg, var(--container-bg) 0%, var(--table-row-hover) 100%);
+            box-shadow: 0 4px 24px 0 rgba(44, 62, 80, 0.12), inset 0 1px 0 rgba(255, 255, 255, 0.1);
+            transition: box-shadow 0.2s, transform 0.2s;
+            margin: 0 auto 1.5rem auto;
+            max-width: 800px;
+            border: 1px solid var(--table-border);
         }
         .report-creation-section:hover {
-            box-shadow: 0 8px 32px 0 rgba(44, 62, 80, 0.16);
+            box-shadow: 0 8px 32px 0 rgba(44, 62, 80, 0.16), inset 0 1px 0 rgba(255, 255, 255, 0.15);
+            transform: translateY(-2px);
+        }
+        .report-creation-section h2 {
+            margin: 0 0 1.2rem 0;
+            font-size: 1.15rem;
+            font-weight: 700;
+            color: var(--primary-text);
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+        .report-creation-section h2::before {
+            content: '\f133'; /* Font Awesome calendar icon */
+            font-family: 'Font Awesome 6 Free';
+            font-weight: 900;
+            color: var(--button-bg);
         }
         .report-creation-section label {
             font-weight: 600;
             color: var(--primary-text);
             margin-right: 0.5rem;
+            display: inline-flex;
+            align-items: center;
+            gap: 0.3rem;
         }
         .report-creation-section input[type="date"] {
-            padding: 0.5rem;
-            border: 1px solid var(--input-border);
+            padding: 0.65rem 0.8rem;
+            border: 1.5px solid var(--input-border);
             border-radius: 6px;
             background: var(--input-bg);
             color: var(--primary-text);
-            font-size: 0.9rem;
+            font-size: 0.95rem;
             margin-right: 1rem;
+            transition: border-color 0.2s, box-shadow 0.2s;
+        }
+        .report-creation-section input[type="date"]:focus {
+            outline: none;
+            border-color: var(--button-bg);
+            box-shadow: 0 0 0 3px rgba(var(--accent-rgb), 0.1);
         }
         .report-creation-section .date-inputs {
             display: flex;
             align-items: center;
             gap: 1rem;
-            margin-bottom: 1rem;
+            margin-bottom: 0;
+            flex-wrap: wrap;
+            justify-content: center;
         }
         .report-results {
             padding: 1.2rem;
@@ -569,13 +598,13 @@
         <div class="container-card main-content">
             <h1>Reports</h1>
             <div class="report-creation-section">
-                <h2>Create Report</h2>
+                <h2>Fetch Report Data</h2>
                 <div class="date-inputs">
                     <label for="startDate">Start Date:</label>
                     <input type="date" id="startDate" name="startDate">
                     <label for="endDate">End Date:</label>
                     <input type="date" id="endDate" name="endDate">
-                    <button class="create-report-button" onclick="fetchData()">Create Report</button>
+                    <button class="create-report-button" onclick="fetchData()">Fetch Data</button>
                 </div>
             </div>
             <div class="container-wide">
@@ -931,23 +960,34 @@
                     debugLog("Error in fetchData:", err);
                 });
         }
-        async function loadReportDropdownOptions(){
-                    const data = await fetch("/market/static/report_templates.json");
-                    if (!data.ok) throw new Error("Failed to load JSON data");
-                    reportSelect.innerHTML = "";
+        async function loadReportDropdownOptions() {
+            const data = await fetch("/market/static/report_templates.json");
+            if (!data.ok) throw new Error("Failed to load JSON data");
+            reportSelect.innerHTML = "";
 
-                    const templatesData = await data.json();
-                    window.templatesData = templatesData;
+            const templatesData = await data.json();
+            window.templatesData = templatesData;
 
-                    Object.keys(templatesData).forEach(key => {
-                        const report = templatesData[key];
-                        const option = document.createElement("option");
-                        option.value = key;
-                        option.textContent = report.name || key;
-                        reportSelect.appendChild(option);
+            const placeholder = document.createElement("option");
+            placeholder.value = "";
+            placeholder.disabled = true;
+            placeholder.selected = true;
+            placeholder.textContent = "Select Report";
+            reportSelect.appendChild(placeholder);
 
-                    });
+            Object.keys(templatesData).forEach(key => {
+                const report = templatesData[key];
+                const option = document.createElement("option");
+                option.value = key;
+                option.textContent = report.name || key;
+                reportSelect.appendChild(option);
+            });
+
+            // Add this block to auto-select the first option
+            if (reportSelect.options.length > 0) {
+                reportSelect.selectedIndex = 0;
             }
+        }
 
         document.addEventListener("DOMContentLoaded", async () => {
             showLoadingOverlay();
@@ -956,7 +996,9 @@
                 document.getElementById("endDate").value = today;
                 document.getElementById("startDate").value = new Date(new Date().setDate(new Date().getDate() - 7)).toISOString().split('T')[0];
 
-                loadReportDropdownOptions()
+                // Load dropdown options first
+                await loadReportDropdownOptions();
+                
                 const response = await fetch("/market/static/delivery_note_data.json");
                 if (!response.ok) throw new Error("Failed to load JSON data");
                 const responseData = await response.json();
@@ -978,13 +1020,10 @@
                 window.activeProdUnitName = window.activeProdUnitName || [];
                 window.data = applyGlobalFilters(window.originalData);
                 renderGlobalSlicers();
-                hideLoadingOverlay();
-
-                document.querySelectorAll(".filters-toggle, .print-button, .create-report-button, .create-template-button").forEach(el => {
-                    el.disabled = false;
-                });
 
                 const reportSelect = document.getElementById("reportSelect");
+                if (!reportSelect) throw new Error("Report select dropdown not found");
+
                 reportSelect.addEventListener("change", () => {
                     const selectedContent = document.querySelector(`[data-report-content="template"]`);
                     if (selectedContent) {
@@ -995,6 +1034,12 @@
                         debugLog("Template report content not found");
                         hideLoadingOverlay();
                     }
+                });
+                
+                hideLoadingOverlay();
+
+                document.querySelectorAll(".filters-toggle, .print-button, .create-report-button, .create-template-button").forEach(el => {
+                    el.disabled = false;
                 });
 
             } catch (err) {

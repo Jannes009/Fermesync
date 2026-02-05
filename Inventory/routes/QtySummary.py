@@ -89,3 +89,49 @@ def inventory_qty_summary_warehouse(warehouse_id):
         print(f"Error fetching inventory qty: {e}")
         return jsonify({"error": str(e)}), 500
 
+
+# Add new endpoint
+@inventory_bp.route("/bulk-update-stock", methods=["POST"])
+@login_required
+def bulk_update_stock():
+    try:
+        data = request.get_json()
+        stock_ids = data.get("stockIds", [])
+        category = data.get("category")
+        reorder_level = data.get("reorderLevel")
+        reorder_qty = data.get("reorderQty")
+
+        if not stock_ids:
+            return jsonify({"success": False, "error": "No items selected"}), 400
+
+        conn = create_db_connection()
+        cursor = conn.cursor()
+
+        for stock_id in stock_ids:
+            updates = []
+            params = []
+
+            if category:
+                updates.append("cCategoryLink = ?")
+                params.append(category)
+            if reorder_level is not None:
+                updates.append("ReorderLevel = ?")
+                params.append(reorder_level)
+            if reorder_qty is not None:
+                updates.append("ReorderQty = ?")
+                params.append(reorder_qty)
+
+            if updates:
+                params.append(stock_id)
+                sql = f"UPDATE _uvInventoryQty SET {', '.join(updates)} WHERE StockId = ?"
+                cursor.execute(sql, params)
+
+        conn.commit()
+        cursor.close()
+        conn.close()
+
+        return jsonify({"success": True, "message": f"Updated {len(stock_ids)} items"})
+
+    except Exception as e:
+        print(f"Error bulk updating stock: {e}")
+        return jsonify({"success": False, "error": str(e)}), 500

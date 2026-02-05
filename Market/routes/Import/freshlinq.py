@@ -1,12 +1,13 @@
 import time
 import datetime
 import tempfile
-import subprocess
 import pandas as pd
 from Market.db import create_db_connection
 from playwright.sync_api import sync_playwright
 import re
 from db_manager import get_service_details
+import threading
+freshlinq_lock = threading.Lock()
 
 def Freshlinq(current_user, start_date):
     def status(message):
@@ -25,27 +26,15 @@ def Freshlinq(current_user, start_date):
     password = service["password"]
 
     yield from status("Attempting to connect to FreshLinq...")
-    file_path = yield from download_freshlinq_report(username, password, start_date, status)
+    with freshlinq_lock:
+        file_path = yield from download_freshlinq_report(username, password, start_date, status)
+
     if not file_path:
         yield from status("ERROR: Failed to download FreshLinq report.")
         return
 
     yield from process_excel(file_path, None)
-    try:
-        import os
-        os.remove(file_path)
-        yield from status("Temporary file removed.")
-    except Exception as e:
-        yield from status(f"WARNING: Could not remove temporary file - {str(e)}")
 
-    yield from status("SUCCESS: Excel processing completed")
-
-    yield "data: Attempting to connect to FreshLinq...\n\n"
-    file_path = yield from download_freshlinq_report("uitdraai2@gmail.com", "Uitdraai123#", start_date, status)
-    if not file_path:
-        yield "data: ERROR: Failed to download FreshLinq report.\n\n"
-        return
-    yield from process_excel(file_path, current_user)
     # Remove the temporary file after processing
     try:
         import os
@@ -56,10 +45,35 @@ def Freshlinq(current_user, start_date):
     yield "data: SUCCESS: Excel processing completed\n\n"
 
 def download_freshlinq_report(username, password, report_date, status):
-    ensure_playwright_browsers_installed()
-    formatted_date = report_date.strftime("%Y-%m-%d") if isinstance(report_date, datetime.date) else report_date
-    report_url = f"https://trade.freshlinq.com/Report/Render/ProducerSalesSummaryAllLots/17578?Date={formatted_date}&Time=0000"
 
+    # Ensure report_date is datetime (handle string input)
+    if isinstance(report_date, str):
+        try:
+            report_date = datetime.datetime.strptime(report_date, "%Y-%m-%d")
+        except ValueError:
+            try:
+                report_date = datetime.datetime.fromisoformat(report_date)
+            except ValueError:
+                yield from status(f"ERROR: Invalid date format: {report_date}")
+                return False
+    elif isinstance(report_date, datetime.date) and not isinstance(report_date, datetime.datetime):
+        report_date = datetime.datetime.combine(report_date, datetime.time.min)
+    elif not isinstance(report_date, datetime.datetime):
+        yield from status(f"ERROR: Unsupported date type: {type(report_date)}")
+        return False
+
+    # Convert to UTC ISO format with milliseconds and Z
+    from_date = report_date.strftime("%Y-%m-%dT%H:%M:%S.000Z")
+
+    # Current UTC datetime
+    now_utc = datetime.datetime.utcnow()
+    to_date = now_utc.strftime("%Y-%m-%dT%H:%M:%S.000Z")
+
+    report_url = (
+        "https://trade.freshlinq.com/Report/Render/"
+        "ProducerSalesSummaryAllLots/17578"
+        f"?FromDate={from_date}&ToDate={to_date}"
+    )
     with sync_playwright() as p:
         browser = p.chromium.launch(headless=True)
         context = browser.new_context(accept_downloads=True)
@@ -88,18 +102,14 @@ def download_freshlinq_report(username, password, report_date, status):
             start_time = time.time()
             timeout_seconds = 500
 
-            while time.time() - start_time < timeout_seconds:
-                text_content = error_pane.text_content()
-                text = text_content.strip() if text_content else ""
-                if 'done' in text.lower():
-                    yield from status("File download in progress...")
-                    break
-                yield from status(f"Status: {text}")
-                time.sleep(1)
+            page.wait_for_selector("text=Done", timeout=500000)
 
-            if 'done' not in text.lower():
-                yield from status("ERROR: Timeout - report did not finish generating.")
-                return False
+
+            # print(text)
+
+            # if 'done' not in text.lower():
+            #     yield from status("ERROR: Timeout - report did not finish generating.")
+            #     return False
 
             try:
                 page.evaluate("document.querySelector('#trv-main-menu-export-command').classList.remove('k-disabled');")
@@ -125,12 +135,6 @@ def download_freshlinq_report(username, password, report_date, status):
         finally:
             browser.close()
 
-
-def ensure_playwright_browsers_installed():
-    try:
-        subprocess.run(["playwright", "install"], check=True)
-    except Exception as e:
-        print(f"Failed to install Playwright browsers: {e}")
 # ---------------------------
 # Helper function for safe value extraction
 # ---------------------------

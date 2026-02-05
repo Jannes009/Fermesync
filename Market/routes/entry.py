@@ -130,21 +130,20 @@ def create_entry():
             # --------------------------
             # Build background user snapshot from DB config
             # --------------------------
-            from models import UserDatabaseConfig
-            cfg = UserDatabaseConfig.query.filter_by(
-                user_id=current_user.id,
-                database_type="Market"
-            ).first()
+            market_cfg = next(
+                (cfg for cfg in current_user.db_config if cfg["database_type"] == "Market"),
+                None
+            )
 
-            if not cfg:
-                raise Exception("No DB config found for user.")
+            if not market_cfg:
+                raise Exception("No Market DB config found for user.")
 
             user_snapshot = {
                 "username": current_user.username,
-                "server_name": cfg.server_name,
-                "database_name": cfg.database_name,
-                "db_username": cfg.db_username,
-                "db_password": cfg.get_db_password(),
+                "server_name": market_cfg["server"],
+                "database_name": market_cfg["database"],
+                "db_username": market_cfg["uid"],
+                "db_password": market_cfg["pwd"],  # decrypt later if needed
             }
 
             # --------------------------
@@ -161,7 +160,7 @@ def create_entry():
             ).start()
 
             session['del_note_no'] = del_note_no
-            return redirect(url_for('entry.submission_success'))
+            return redirect(url_for('market.submission_success'))
 
         except odbc.IntegrityError as e:
             error_data = integrity_error(e, request.form)
@@ -174,7 +173,18 @@ def create_entry():
     # --------------------------
     # GET request or POST error path
     # --------------------------
-    dropdown_options = fetch_dropdown_options(cursor)
+
+    # Ensure dropdowns are loaded from a fresh connection/cursor in case the
+    # original cursor/connection was closed during POST processing.
+    dropdown_options_conn = create_db_connection(database_type="Market")
+    if not dropdown_options_conn:
+        return "Database connection failed. Contact admin."
+
+    dropdown_options_cursor = dropdown_options_conn.cursor()
+    try:
+        dropdown_options = fetch_dropdown_options(dropdown_options_cursor)
+    finally:
+        close_db_connection(dropdown_options_cursor, dropdown_options_conn)
 
     if not form_data:
         form_data = {}

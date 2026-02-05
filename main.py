@@ -3,6 +3,7 @@ from flask_login import login_user, logout_user, current_user, login_required
 from auth import login_manager, authenticate_user
 import os
 from config import DevelopmentConfig, ProductionConfig, TestingConfig
+import subprocess
 
 # -----------------------------
 # Flask App
@@ -128,10 +129,16 @@ def create_app():
 
     return app
 
+def ensure_playwright_browsers_installed():
+    try:
+        subprocess.run(["playwright", "install"], check=True)
+    except Exception as e:
+        print(f"Failed to install Playwright browsers: {e}")
 
 # -----------------------------
 # RUN APP
 # -----------------------------
 app = create_app()
 if __name__ == "__main__":
+    ensure_playwright_browsers_installed()
     app.run(host='0.0.0.0', port=5001, debug=True)

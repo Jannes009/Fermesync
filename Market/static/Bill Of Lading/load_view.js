@@ -1,6 +1,6 @@
 function load_delivery_lines_table(delnoteno) {
     console.log(delnoteno)
-    fetch(`/api/fetch_delivery_note_lines/${encodeURIComponent(delnoteno)}`)
+    fetch(`/market/api/fetch_delivery_note_lines/${encodeURIComponent(delnoteno)}`)
         .then(response => response.json())
         .then(data => {
             const lines = data.lines;
@@ -76,7 +76,7 @@ function load_delivery_lines_table(delnoteno) {
 
 function load_sales_lines_table(delnoteno) {
     console.log(delnoteno)
-    fetch(`/api/fetch_sales_note_lines/${encodeURIComponent(delnoteno)}`)
+    fetch(`/market/api/fetch_sales_note_lines/${encodeURIComponent(delnoteno)}`)
         .then(response => response.json())
         .then(data => {
             const lines = data.lines;

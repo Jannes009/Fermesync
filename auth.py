@@ -68,20 +68,21 @@ def get_user_db_config(user_id):
     conn, cursor = connect()
     try:
         cursor.execute("""
-            SELECT ServerName, DatabaseName, SqlUsername, [EncryptedDbPassword]
+            SELECT ServerName, DatabaseName, SqlUsername, [EncryptedDbPassword], DatabaseType
             FROM UserDatabaseConfig
             WHERE UserId = ?
         """, (user_id,))
-        row = cursor.fetchone()
-        if row:
-            return {
+        rows = cursor.fetchall()
+        if rows:
+            return [{
                 "server": row[0],
                 "database": row[1],
                 "uid": row[2],
                 "pwd": row[3],
+                "database_type": row[4],
                 "driver": "SQL Server",
                 "trust_connection": "no"
-            }
+            } for row in rows]
         return None
     finally:
         close_connection(conn, cursor)

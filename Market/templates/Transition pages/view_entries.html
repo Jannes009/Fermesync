@@ -169,7 +169,7 @@
                             <tr class="main-row {% if fully_invoiced %}row-fully-invoiced{% elif partially_invoiced %}row-partially-invoiced{% elif high_sales %}row-high-sales{% else %}row-not-invoiced{% endif %}" 
                                 data-entry-id="{{ entry[0] }}" 
                                 data-completed="{{ '1' if fully_invoiced else '0' }}"
-                                onclick="window.location.href='/delivery-note/{{ entry[2] }}'">
+                                onclick="window.location.href='/market/delivery-note/{{ entry[2] }}'">
                                 <td class="status-col">
                                     <span class="status-indicator {% if fully_invoiced %}status-fully-invoiced{% elif partially_invoiced %}status-partially-invoiced{% elif high_sales %}status-high-sales{% else %}status-not-invoiced{% endif %}"></span>
                                 </td>

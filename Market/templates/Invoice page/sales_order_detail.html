@@ -217,104 +217,6 @@
             letter-spacing: 0.5px;
         }
 
-                /* Correction Modal Styles */
-        .correction-modal-bg {
-            position: fixed;
-            top: 0; left: 0; right: 0; bottom: 0;
-            background: rgba(0,0,0,0.4);
-            z-index: 1000;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-        }
-        .correction-modal-card {
-            background: var(--container-bg);
-            border-radius: 14px;
-            box-shadow: 0 8px 32px 0 rgba(44, 62, 80, 0.16);
-            max-width: 900px;
-            width: 100%;
-            padding: 2.5rem 2.5rem 2rem 2.5rem;
-            margin: 2rem;
-        }
-        .correction-modal-header {
-            display: flex;
-            align-items: center;
-            justify-content: space-between;
-            margin-bottom: 1.5rem;
-        }
-        .correction-modal-title {
-            font-size: 1.3rem;
-            font-weight: 700;
-            color: var(--logo-color);
-            margin: 0;
-        }
-        .correction-modal-close {
-            background: none;
-            border: none;
-            color: var(--secondary-text);
-            font-size: 1.5rem;
-            cursor: pointer;
-            transition: color 0.2s;
-        }
-        .correction-modal-close:hover {
-            color: var(--primary-text);
-        }
-        .correction-modal-summary {
-            background: var(--muted-bg);
-            border: 1px solid var(--table-border);
-            border-radius: 8px;
-            padding: 1.2rem 1.5rem;
-            margin-bottom: 1.5rem;
-        }
-        .correction-modal-summary-row {
-            display: flex;
-            gap: 2.5rem;
-            flex-wrap: wrap;
-        }
-        .correction-modal-label {
-            font-weight: 600;
-            color: var(--secondary-text);
-            margin-right: 0.3em;
-        }
-        .correction-modal-form-row {
-            display: flex;
-            gap: 1.5rem;
-            margin-bottom: 1.2rem;
-            flex-wrap: wrap;
-        }
-        .correction-modal-form-group {
-            flex: 1 1 220px;
-            display: flex;
-            flex-direction: column;
-            gap: 0.4rem;
-        }
-        .correction-modal-form-group-btn {
-            display: flex;
-            align-items: flex-end;
-        }
-        .correction-modal-input {
-            width: 100%;
-            border: 1px solid var(--input-border);
-            border-radius: 6px;
-            padding: 0.5rem 0.8rem;
-            background: var(--form-bg);
-            color: var(--primary-text);
-            font-size: 1rem;
-        }
-        .correction-modal-input:focus {
-            border-color: var(--input-focus);
-            outline: none;
-            box-shadow: 0 0 0 2px var(--input-shadow);
-        }
-        .correction-modal-table-section {
-            margin-top: 1.5rem;
-        }
-        .correction-modal-section-title {
-            font-size: 1.05rem;
-            font-weight: 600;
-            color: var(--logo-color);
-            margin-bottom: 0.7rem;
-        }
     </style>
 </head>
 <body>
@@ -327,7 +229,6 @@
             <div class="sales-order-header-card mb-6" style="position: relative;">
                 <div style="position: absolute; top: 1.5rem; right: 2rem;">
                     <span id="sales-order-status-badge" class="status-badge"></span>
-                    <button id="open-correct-modal" class="custom-btn" style="margin-left: 1rem;"><i class="fa fa-wrench"></i> Correct Invoice</button>
                 </div>
                 <div class="sales-order-header-title" id="sales-order-title"></div>
                 <div class="sales-order-header-grid" id="sales-order-header-details"></div>
@@ -535,80 +436,8 @@ async function loadSalesOrder() {
 
 window.addEventListener('DOMContentLoaded', loadSalesOrder);
 </script>
-<!-- Correction Modal -->
-<div id="correct-modal" class="correction-modal-bg hidden">
-    <div class="correction-modal-card">
-        <div class="correction-modal-header">
-            <h2 class="correction-modal-title">Correct Invoice</h2>
-            <button id="close-correct-modal" class="correction-modal-close"><i class="fa fa-times"></i></button>
-        </div>
-        <div id="correct-steps">
-            <div class="correction-modal-summary">
-                <div class="correction-modal-summary-row">
-                    <div><span class="correction-modal-label">Delivery Note:</span> <span id="cm-delnote"></span></div>
-                    <div><span class="correction-modal-label">Invoice:</span> <span id="cm-invoice"></span></div>
-                    <div><span class="correction-modal-label">Evo SO:</span> <span id="cm-evoso"></span></div>
-                </div>
-            </div>
-            <div class="action-btn-group" style="margin-bottom: 1.5rem;">
-                <button id="choose-agent" class="btn btn-action"><i class="fa fa-user"></i> Edit Agent</button>
-                <button id="choose-prod" class="btn btn-action"><i class="fa fa-industry"></i> Edit Production Unit</button>
-            </div>
-            <div id="step-agent" class="hidden">
-                <div class="correction-modal-form-row">
-                    <div class="correction-modal-form-group">
-                        <label class="correction-modal-label">Current Agent</label>
-                        <input id="cm-agent-current" class="correction-modal-input" readonly />
-                    </div>
-                    <div class="correction-modal-form-group">
-                        <label class="correction-modal-label">New Agent</label>
-                        <select id="cm-agent-select" class="correction-modal-input"></select>
-                    </div>
-                    <div class="correction-modal-form-group-btn">
-                        <button id="cm-agent-submit" class="btn btn-primary"><i class="fa fa-check"></i> Submit</button>
-                    </div>
-                </div>
-                <div class="correction-modal-table-section">
-                    <h3 class="correction-modal-section-title">Invoices for delivery note</h3>
-                    <table class="fs-table">
-                        <thead><tr><th>Invoice No</th><th>Date</th><th>Nett</th><th>Status</th></tr></thead>
-                        <tbody id="cm-agent-invoices"></tbody>
-                    </table>
-                </div>
-            </div>
-            <div id="step-prod" class="hidden">
-                <div class="correction-modal-form-row">
-                    <div class="correction-modal-form-group">
-                        <label class="correction-modal-label">Old Production Unit</label>
-                        <select id="cm-old-prod" class="correction-modal-input"></select>
-                    </div>
-                    <div class="correction-modal-form-group">
-                        <label class="correction-modal-label">New Production Unit</label>
-                        <select id="cm-new-prod" class="correction-modal-input"></select>
-                    </div>
-                    <div class="correction-modal-form-group-btn">
-                        <button id="cm-prod-submit" class="btn btn-primary"><i class="fa fa-check"></i> Submit</button>
-                    </div>
-                </div>
-                <div class="correction-modal-table-section">
-                    <h3 class="correction-modal-section-title">All Delivery Note Lines</h3>
-                    <table class="fs-table mb-4">
-                        <thead><tr><th>Line</th><th>Product</th><th>Prod Unit</th><th>Status</th></tr></thead>
-                        <tbody id="cm-prod-lines"></tbody>
-                    </table>
-                    <h3 class="correction-modal-section-title">Affected Invoices</h3>
-                    <table class="fs-table">
-                        <thead><tr><th>Invoice No</th><th>Date</th><th>Nett</th><th>Status</th><th>Change</th></tr></thead>
-                        <tbody id="cm-prod-invoices"></tbody>
-                    </table>
-                </div>
-            </div>
-        </div>
-    </div>
-</div>
 
 </div>
-<script src="{{ url_for('static', filename='Invoice/correct-modal.js') }}"></script>
 </body>
     
 </html> 

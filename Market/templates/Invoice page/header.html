@@ -5,9 +5,19 @@
             <div class="form-group">
                 <label for="delivery-note-number">Delivery Note Nr</label>
                 <div class="input-wrapper">
-                    <input type="text" id="delivery-note-number" placeholder="Enter Delivery Note Number" required/>
-                    <img id="del-note-number-icon" src="{{ url_for('static', filename='Image/neutral.png') }}" 
-                    alt="Status" class="verify-icon">
+                    <input 
+                        type="text" 
+                        id="delivery-note-number" 
+                        placeholder="Search or select Delivery Note Number"
+                        list="delivery-note-list"
+                        autocomplete="off"
+                        required/>
+                    <datalist id="delivery-note-list"></datalist>
+                    <img id="del-note-number-icon" 
+                         src="{{ url_for('market.static', filename='Image/neutral.png') }}" 
+                         alt="Status" 
+                         class="verify-icon"
+                         style="display: none;">
                 </div>
             </div>
             <div class="form-group">
@@ -18,7 +28,7 @@
                 <label for="ZZInvoiceNo">Invoice Number</label>
                 <div class="input-wrapper">
                     <input type="text" id="ZZInvoiceNo" name="ZZInvoiceNo" placeholder="Invoice Number" class="form-input" required>
-                    <img id="invoice-icon" src="{{ url_for('static', filename='Image/neutral.png') }}" 
+                    <img id="invoice-icon" src="{{ url_for('market.static', filename='Image/neutral.png') }}" 
                     alt="Status" class="verify-icon">
                 </div>
             </div>
@@ -75,6 +85,37 @@
     </div>
     <div class="tax-rate-info">
         <span id="current-tax-rate">Tax Rate: <span id="tax-rate-value">15</span>%</span>
-        <img id="change-tax-rate-icon" src="{{ url_for('static', filename='Image/edit.png') }}" alt="Change Tax Rate" class="change-tax-icon" title="Change Default Tax Rate">
+        <img id="change-tax-rate-icon" src="{{ url_for('market.static', filename='Image/edit.png') }}" alt="Change Tax Rate" class="change-tax-icon" title="Change Default Tax Rate">
     </div>
 </div>
+
+<script>
+// Load delivery notes on page load
+document.addEventListener("DOMContentLoaded", async () => {
+    await loadOpenDeliveryNotes();
+});
+
+async function loadOpenDeliveryNotes() {
+    try {
+        const response = await fetch("/market/api/open-delivery-notes");
+        const data = await response.json();
+        
+        const datalist = document.getElementById("delivery-note-list");
+        datalist.innerHTML = "";
+        
+        if (Array.isArray(data) && data.length > 0) {
+            data.forEach(note => {
+                const option = document.createElement("option");
+                option.value = note.DelNoteNo;
+                option.textContent = `${note.DelNoteNo} - ${note.AgentName || ""}`;
+                datalist.appendChild(option);
+            });
+        }
+    } catch (error) {
+        console.error("Error loading delivery notes:", error);
+    }
+}
+
+// Keep existing check_delivery_note function unchanged
+// It will still work with the input value
+</script>

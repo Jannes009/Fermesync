@@ -125,7 +125,7 @@
             <div class="flex justify-between items-center mb-6">
                 <h1 class="page-title">Sales Orders</h1>
                 <div class="flex items-center gap-4">
-                    <a href="/create_sales_order" class="custom-btn">
+                    <a href="/market/create_sales_order" class="custom-btn">
                         <i class="fas fa-plus"></i> Create Sales Order
                     </a>
                     <a onclick="RefreshInvoices()" class="custom-btn">
@@ -211,7 +211,7 @@ function renderTable(salesOrders) {
                 <td>${order.invoiceno}</td>
                 <td>${order.invoicedate || ''}</td>
                 <td>${order.agentname}</td>
-                <td><a href="/delivery-note/${order.invoicedelnoteno}" class="text-blue-600 hover:underline" onclick="event.stopPropagation();">${order.invoicedelnoteno}</a></td>
+                <td><a href="/market/delivery-note/${order.invoicedelnoteno}" class="text-blue-600 hover:underline" onclick="event.stopPropagation();">${order.invoicedelnoteno}</a></td>
                 <td>${order.invoiceqty || ''}</td>
                 <td>${formatAmount(order.invoicenett)}</td>
                 <td>${statusBadge(order.status)}</td>
@@ -225,7 +225,7 @@ function renderTable(salesOrders) {
             if (e.target.tagName.toLowerCase() === 'a') return;
             const salesOrderId = this.getAttribute('data-sales-order-id');
             if (salesOrderId) {
-                window.location.href = `/sales-order/${salesOrderId}`;
+                window.location.href = `/market/sales-order/${salesOrderId}`;
             }
         });
     });

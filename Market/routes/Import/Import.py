@@ -11,8 +11,18 @@ from db_manager import get_services_for_user
 @market_bp.route('/import/main', methods=['GET'])
 def import_page():
     services = get_services_for_user(current_user.id)
-    print(services)
-    return render_template("Import/import.html", services=services['service_type'])
+
+    # normalize to a simple list of service_type strings for the template
+    if isinstance(services, dict):
+        service_list = services.get('service_type') or []
+        if isinstance(service_list, str):
+            service_list = [service_list]
+    elif isinstance(services, list):
+        service_list = [s.get('service_type') if isinstance(s, dict) else s for s in services]
+    else:
+        service_list = []
+
+    return render_template("Import/import.html", services=service_list)
 
 logging.basicConfig(level=logging.INFO)
 
@@ -63,7 +73,7 @@ def get_dockets():
     } for row in dockets])
 
 
-@market_bp.route("/update_market_del_note_no", methods=["POST"])
+@market_bp.route("/import/update_market_del_note_no", methods=["POST"])
 def update_market_del_note_no():
     data = request.json  # Extract JSON data from the frontend
     new_del_note_no = data.get("newDelNoteNo")  # Ensure key matches frontend
@@ -161,7 +171,7 @@ def get_consignment_details(consignment_id):
     from DelNoteLineLookup
     Where DelNoteNo = ?
     """
-
+    print(consignment_id, query)
     try:
         conn = create_db_connection()
         cursor = conn.cursor()
@@ -196,7 +206,7 @@ def get_consignment_details(consignment_id):
                 "LineSize": row[5],
                 "LineVariety": row[2],
                 "LineQty": row[7],
-                "LineBrand": row[6]  # Add this line to handle the new field
+                "LineBrand": row[6]
             }
             for row in matches
         ]
@@ -210,19 +220,22 @@ def get_consignment_details(consignment_id):
         return jsonify({"error": str(e)}), 500
 
     finally:
-        cursor.close()
-        conn.close()
+        try: cursor.close()
+        except Exception: pass
+        try: conn.close()
+        except Exception: pass
 
-@market_bp.route("/get_consignment_details", methods=["GET"])
+@market_bp.route("/import/get_consignment_details", methods=["GET"])
 def fetch_consignment_details():
     consignment_id = request.args.get("consignment_id")
+    print(f"Fetching details for consignment_id: {consignment_id}")
 
     if not consignment_id:
         return jsonify({"error": "Consignment ID is required"}), 400
 
     return get_consignment_details(consignment_id)
 
-@market_bp.route("/match_consignment", methods=["POST"])
+@market_bp.route("/import/match_consignment", methods=["POST"])
 def match_consignment():
     data = request.get_json()
     
@@ -263,7 +276,7 @@ def match_consignment():
         cursor.close()
         conn.close()
 
-@market_bp.route("/discard_consignment", methods=["POST"])
+@market_bp.route("/import/discard_consignment", methods=["POST"])
 def discard_consignment(consignment_id=None):
     # Try to get from JSON body first
     data = request.get_json()

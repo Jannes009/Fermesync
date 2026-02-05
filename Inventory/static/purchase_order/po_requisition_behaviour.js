@@ -70,14 +70,13 @@ function lockForm() {
   document.querySelectorAll(
     "button[onclick='addLine()'], .btn-icon.danger"
   ).forEach(b => b.style.display = "none");
-  console.log(PERMISSIONS, STATUS)
   let actions = "";
-  if (STATUS === "PENDING APPROVAL" && PERMISSIONS.includes("POCreate")) {
+  if (STATUS === "PENDING APPROVAL" && PERMISSIONS.includes("PO_CREATE")) {
     actions = `<button class="btn btn-success" type="button" onclick="approve()">✔ Approve</button>
         <button class="btn btn-danger" type="button" onclick="reject()">✖ Reject</button>
         `;
   }
-  if (STATUS === "PENDING APPROVAL" || STATUS === "POSTED" && PERMISSIONS.includes("POEdit")) {
+  if (STATUS === "PENDING APPROVAL" || STATUS === "POSTED" && PERMISSIONS.includes("PO_EDIT")) {
     actions += `<button class="btn btn-secondary" type="button" onclick="enableEdit()">✏ Edit</button>`;
   }
 

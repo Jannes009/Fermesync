@@ -12,15 +12,10 @@
         <h1>Entry Submitted Successfully!</h1>
         <div class="options">
             <!-- View Entry button now links to the edit_entry page -->
-             {% if del_note_no %}
-                <button onclick="location.href='{{ url_for('view_entry.delivery_note', del_note_no=del_note_no) }}'">
-                    View Entry
-                </button>
-            {% endif %}
             <button onclick="window.location.href='/create_entry'">
                 Create New Entry
             </button>
-            <button onclick="window.location.href='/'">
+            <button onclick="window.location.href='/market/dashboard'">
                 Back to Home
             </button>
         </div>

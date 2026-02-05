@@ -51,7 +51,7 @@ def add_service():
 
         conn, cursor = connect()
         cursor.execute("""
-            INSERT INTO ConnectedService (UserId, ServiceType, Username, PasswordEncrypted)
+            INSERT INTO ConnectedServices (UserId, ServiceType, Username, EncryptedPassword)
             VALUES (?, ?, ?, ?)
         """, (current_user.id, service_type, username, encrypted))
         conn.commit()
@@ -72,7 +72,7 @@ def remove_service():
     conn, cursor = connect()
     try:
         cursor.execute("""
-            DELETE FROM ConnectedService 
+            DELETE FROM ConnectedServices
             WHERE Id = ? AND UserId = ?
         """, (service_id, current_user.id))
         deleted = cursor.rowcount

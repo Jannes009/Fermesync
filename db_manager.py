@@ -1,5 +1,5 @@
 from auth import connect, close_connection
-from key_manager import encrypt_password, decrypt_password
+from key_manager import decrypt_password
 
 import logging
 import pyodbc
@@ -57,9 +57,9 @@ def get_services_for_user(user_id):
         """, (user_id,))
         rows = cursor.fetchall()
 
-        print(f"[get_services_for_user] Retrieved {len(rows)} services for user {user_id}")
+        print({"service_type": [r[1]for r in rows]})
 
-        return {"service_type": [r[1]for r in rows]}
+        return [{"id": r[0], "service_type": r[1], "username": r[2]}for r in rows]
 
     except Exception as e:
         print(f"[get_services_for_user] Error executing query: {e}")
@@ -83,8 +83,8 @@ def get_service_details(user_id, service_type):
 
     try:
         cursor.execute("""
-            SELECT Username, PasswordEncrypted
-            FROM ConnectedService
+            SELECT Username, EncryptedPassword
+            FROM ConnectedServices
             WHERE UserId = ? AND ServiceType = ?
         """, (user_id, service_type))
 

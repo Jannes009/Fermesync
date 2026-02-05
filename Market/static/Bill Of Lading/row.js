@@ -38,7 +38,7 @@ document.addEventListener("DOMContentLoaded", () => {
         }
         
         try {
-            const response = await fetch("/get-default-transport-cost", {
+            const response = await fetch("/market/get-default-transport-cost", {
                 method: "POST",
                 headers: { "Content-Type": "application/json" },
                 body: JSON.stringify({

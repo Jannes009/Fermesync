@@ -185,13 +185,6 @@ document.addEventListener("DOMContentLoaded", function () {
 // Function to fetch products based on the Delivery Note number
 async function fetchProducts() {
     const deliveryNoteNumber = document.getElementById("delivery-note-number").value.trim();
-    let noteNumberIconSrc = document.getElementById('del-note-number-icon').getAttribute('src');
-
-    // Check if 'noteNumberIconSrc' contains 'neutral' or 'error'
-    if (noteNumberIconSrc.includes('neutral') || noteNumberIconSrc.includes('error')) {
-        alert("This delivery note doesn't exist")
-        return false;  // Exit the function or stop further execution
-    }      
     
     try {
         // Wait for the delivery note ID to be fetched before proceeding
@@ -288,13 +281,11 @@ function createEventListener(row){
 
 function check_delivery_note(){
     let inputField = document.getElementById('delivery-note-number');
-    let noteNumberIcon = document.getElementById('del-note-number-icon');
     
     let delNoteNo = inputField.value.trim();
     console.log("Checking DelNoteNo", delNoteNo);
 
     if (delNoteNo === '') {
-        noteNumberIcon.src = "/market/static/Image/neutral.png"; // Reset icon
         deliveryNoteStatus = null;
         return;
     }
@@ -307,12 +298,8 @@ function check_delivery_note(){
     .then(response => response.json())
     .then(data => {
         if (data.exists) {
-            noteNumberIcon.src = "/market/static/Image/check.png";
-            deliveryNoteStatus = "Delivery Note already exists!";
             fetch_delivery_note_sales()
         } else {
-            noteNumberIcon.src = "/market/static/Image/incorrect.png"; 
-            deliveryNoteStatus = "Delivery Note is available!";
             document.getElementById("pivot-table-container").innerHTML = '';
         }
     })

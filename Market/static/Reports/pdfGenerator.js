@@ -44,6 +44,36 @@ function isTotalsRow(row) {
     return firstCellText.includes('total') || firstCellText.includes('grand') || firstCellText.includes('sum');
 }
 
+// Add this helper function before generatePDF()
+function getRowHierarchyLevel(row) {
+    // Check for common indentation patterns
+    if (row.classList.contains('level-1') || row.classList.contains('child')) return 1;
+    if (row.classList.contains('level-2') || row.classList.contains('grandchild')) return 2;
+    if (row.classList.contains('level-3') || row.classList.contains('great-grandchild')) return 3;
+    
+    // Check data attributes
+    const level = row.dataset.level || row.dataset.hierarchyLevel;
+    if (level) return parseInt(level);
+    
+    // Check for padding/margin in inline styles
+    const style = row.getAttribute('style') || '';
+    const paddingMatch = style.match(/padding-left:\s*(\d+)px/);
+    if (paddingMatch) {
+        const padding = parseInt(paddingMatch[1]);
+        return Math.ceil(padding / 20); // Adjust divisor based on your indent size
+    }
+    
+    // Check first cell for visual indentation (arrows, bullets, etc.)
+    const firstCell = row.querySelector('td:first-child');
+    if (firstCell) {
+        const text = firstCell.textContent;
+        const arrowCount = (text.match(/↳/g) || []).length;
+        if (arrowCount > 0) return arrowCount;
+    }
+    
+    return 0; // Parent level
+}
+
 async function generatePDF() {
     if (!window.currentReportType) {
         showLoadingOverlay("No report selected. Please select a report first.");
@@ -135,9 +165,13 @@ async function generatePDF() {
         const rows = Array.from(table.querySelectorAll("tbody tr"));
         const tableData = rows.map(row => ({
             data: Array.from(row.querySelectorAll("td")).map(td => cleanText(td.textContent)),
-            isTotals: isTotalsRow(row)
+            isTotals: isTotalsRow(row),
+            hierarchyLevel: getRowHierarchyLevel(row)
         }));
 
+        // stable line height (mm) used for headers and row height calculations
+        const lineHeight = 5;
+        
         // Determine column widths
         const colTextLengths = headers.map((header, colIndex) => {
             let total = header.length;
@@ -160,8 +194,9 @@ async function generatePDF() {
             let y = margin;
 
             if (logoDataUrl) {
-                const logoWidth = 30;
-                const logoHeight = 30;
+                // smaller logo on subsequent pages
+                const logoWidth = firstPage ? 30 : 14;
+                const logoHeight = firstPage ? 30 : 14;
                 doc.addImage(logoDataUrl, "PNG", (pageWidth - logoWidth) / 2, y, logoWidth, logoHeight);
                 y += logoHeight + 5;
             }
@@ -203,7 +238,8 @@ async function generatePDF() {
                 doc.splitTextToSize(header, colWidths[i] - 2).slice(0, 2)
             );
 
-            const maxHeaderHeight = Math.max(...allHeaderTextLines.map(lines => 4.5 * lines.length + 2));
+            // add a small extra padding to avoid bottom-line clipping
+            const maxHeaderHeight = Math.max(...allHeaderTextLines.map(lines => lineHeight * lines.length)) + 6;
 
             headers.forEach((header, i) => {
                 const xPos = margin + colWidths.slice(0, i).reduce((sum, w) => sum + w, 0);
@@ -212,7 +248,8 @@ async function generatePDF() {
                 doc.setFillColor(233, 239, 247);
                 doc.rect(xPos, y, colWidths[i], maxHeaderHeight, "F");
 
-                const textY = y + (maxHeaderHeight - 4.5 * headerText.length) / 2 + 4.5;
+                // place text vertically centered with safe padding
+                const textY = y + (maxHeaderHeight - (lineHeight * headerText.length)) / 2 + (lineHeight - 0.5);
                 doc.text(headerText, xPos + colWidths[i] / 2, textY, { align: "center" });
             });
 
@@ -233,8 +270,12 @@ async function generatePDF() {
             const baseRowHeight = 7;
             const row = rowInfo.data;
             const isTotals = rowInfo.isTotals;
+            const hierarchyLevel = rowInfo.hierarchyLevel || 0;
+            
+            // Indent amount (in mm) - adjust as needed
+            const indentPerLevel = 4;
+            const totalIndent = hierarchyLevel * indentPerLevel;
 
-            // Enhanced distinctive styling for totals row
             let bgColor, textColor, fontStyle, rowHeight;
             if (isTotals) {
                 // Professional dark gray background with white bold text for totals row
@@ -246,59 +287,61 @@ async function generatePDF() {
                 // Normal alternating colors for regular rows
                 bgColor = rowIndex % 2 === 0 ? [245, 247, 250] : [255, 255, 255];
                 textColor = [0, 0, 0]; // Black text
-                fontStyle = "normal";
+                fontStyle = hierarchyLevel > 0 ? "normal" : "normal";
                 
                 const cellData = row.map((cell, i) => {
                     const text = cleanText(cell || "");
                     const textLines = doc.getTextWidth(text) > colWidths[i] - 4
                         ? doc.splitTextToSize(text, colWidths[i] - 4)
                         : [text];
-                    return { textLines, cellHeight: Math.max(baseRowHeight, 4.5 * textLines.length) };
+                    return { textLines, cellHeight: Math.max(baseRowHeight, lineHeight * textLines.length) };
                 });
                 rowHeight = Math.max(...cellData.map(c => c.cellHeight));
+                // add a small padding to prevent bottom line clipping
+                rowHeight += 2;
             }
 
             headers.forEach((_, i) => {
-                const xPos = margin + colWidths.slice(0, i).reduce((sum, w) => sum + w, 0);
+                const baseXPos = margin + colWidths.slice(0, i).reduce((sum, w) => sum + w, 0);
+                // Apply indent only to first column
+                const xPos = i === 0 ? baseXPos + totalIndent : baseXPos;
+                // Reduce first column width by indent amount
+                const cellWidth = i === 0 ? colWidths[i] - totalIndent : colWidths[i];
+                
                 doc.setFillColor(...bgColor);
-                doc.rect(xPos, currentY, colWidths[i], rowHeight, "F");
+                doc.rect(xPos, currentY, cellWidth, rowHeight, "F");
 
-                // Enhanced text positioning for totals row
                 if (isTotals) {
-                    // Use same alignment as normal rows for totals row
                     const text = cleanText(row[i] || "");
-                    const textLines = doc.getTextWidth(text) > colWidths[i] - 4
-                        ? doc.splitTextToSize(text, colWidths[i] - 4)
+                    const textLines = doc.getTextWidth(text) > cellWidth - 4
+                        ? doc.splitTextToSize(text, cellWidth - 4)
                         : [text];
                     
                     const align = i === 0 ? "left" : "right";
-                    const textX = align === "left" ? xPos + 2 : xPos + colWidths[i] - 2;
-                    const textY = currentY + (rowHeight - 4.5 * textLines.length) / 2 + 4.5;
+                    const textX = align === "left" ? xPos + 2 : xPos + cellWidth - 2;
+                    const textY = currentY + (rowHeight - (lineHeight * textLines.length)) / 2 + (lineHeight - 0.5);
                     
-                    // Set text color and font style for totals row
                     doc.setTextColor(...textColor);
                     doc.setFont("helvetica", fontStyle);
-                    
-                    // Use same alignment as normal rows
-                    doc.text(textLines, textX, textY, { align, maxWidth: colWidths[i] - 4 });
+                    doc.text(textLines, textX, textY, { align, maxWidth: cellWidth - 4 });
                 } else {
-                    // Regular row styling
                     const cellData = row.map((cell, j) => {
+                        const adjustedWidth = j === 0 ? cellWidth : colWidths[j];
                         const text = cleanText(cell || "");
-                        const textLines = doc.getTextWidth(text) > colWidths[j] - 4
-                            ? doc.splitTextToSize(text, colWidths[j] - 4)
+                        const textLines = doc.getTextWidth(text) > adjustedWidth - 4
+                            ? doc.splitTextToSize(text, adjustedWidth - 4)
                             : [text];
-                        return { textLines, cellHeight: Math.max(baseRowHeight, 4.5 * textLines.length) };
+                        return { textLines, cellHeight: Math.max(baseRowHeight, lineHeight * textLines.length) };
                     });
 
                     const align = i === 0 ? "left" : "right";
-                    const textX = align === "left" ? xPos + 2 : xPos + colWidths[i] - 2;
-                    const textY = currentY + (rowHeight - 4.5 * cellData[i].textLines.length) / 2 + 4.5;
+                    const textX = align === "left" ? xPos + 2 : xPos + cellWidth - 2;
+                    const textY = currentY + (rowHeight - (lineHeight * cellData[i].textLines.length)) / 2 + (lineHeight - 0.5);
 
                     doc.setTextColor(...textColor);
                     doc.setFont("helvetica", fontStyle);
                     
-                    doc.text(cellData[i].textLines, textX, textY, { align, maxWidth: colWidths[i] - 4 });
+                    doc.text(cellData[i].textLines, textX, textY, { align, maxWidth: cellWidth - 4 });
                 }
             });
 

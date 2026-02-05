@@ -579,9 +579,16 @@ form button:hover {
 .input-wrapper input {
     width: 100%;
     padding-right: 30px; /* Space for the icon */
+    padding-left: 10px;
 }
 
-.verify-icon {
+/* Remove the custom ::after arrow - browser handles it */
+.input-wrapper::after {
+    display: none;
+}
+
+/* Position verify icon (invoice number icon) */
+.input-wrapper .verify-icon {
     position: absolute;
     right: 8px;
     top: 50%;
@@ -591,6 +598,38 @@ form button:hover {
     cursor: pointer;
     object-fit: contain;
     vertical-align: middle;
+    z-index: 2;
+}
+
+/* Style datalist options dropdown */
+datalist option {
+    padding: 12px 10px;
+    font-size: 14px;
+    line-height: 1.5;
+    color: var(--primary-text);
+    background: var(--container-bg);
+    min-height: 40px;
+    display: flex;
+    align-items: center;
+    cursor: pointer;
+    transition: background-color 0.15s ease;
+}
+
+datalist option:hover {
+    background-color: var(--table-row-hover);
+}
+
+/* Match input height */
+#delivery-note-number {
+    height: 40px;
+    line-height: 40px;
+}
+
+@media (max-width: 768px) {
+    datalist option {
+        padding: 10px 8px;
+        min-height: 36px;
+    }
 }
 
 .tax-rate-info {
@@ -612,6 +651,13 @@ form button:hover {
     width: 16px;
     height: 16px;
     margin-left: 6px;
+}
+
+/* Remove default dropdown styling from browsers */
+input::-webkit-outer-spin-button,
+input::-webkit-inner-spin-button {
+    -webkit-appearance: none;
+    margin: 0;
 }
 
 #current-tax-rate {

@@ -63,7 +63,7 @@ function displayTable(data) {
         let delNoteNoCell = '-';
         if (row.delnoteno) {
             if (isMatched || isLinked) {
-                delNoteNoCell = `<a href="/delivery-note/${row.delnoteno}" target="_blank" style="color:#2563eb;text-decoration:underline;">${row.delnoteno}</a>`;
+                delNoteNoCell = `<a href="/market/delivery-note/${row.delnoteno}" target="_blank" style="color:#2563eb;text-decoration:underline;">${row.delnoteno}</a>`;
             } else {
                 delNoteNoCell = `<span class="supplier-ref-text">${row.delnoteno}</span>`;
             }

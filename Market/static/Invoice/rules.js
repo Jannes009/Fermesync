@@ -362,7 +362,7 @@ document.addEventListener("DOMContentLoaded", () => {
                     timer: 1800,
                     showConfirmButton: false
                 }).then(() => {
-                    window.location.href = '/create_sales_order';
+                    window.location.href = '/market/sales-orders';
                 });
             } else {
                 Swal.fire({

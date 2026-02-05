@@ -209,7 +209,7 @@ $.getJSON("/market/dashboard/incomplete", function (data) {
     // Append button AFTER the table
     $('#incomplete-delivery-notes').parent().after(`
       <div class="flex justify-center mt-4">
-        <a href="/view_entries"
+        <a href="/market/view_entries"
           class="inline-flex items-center px-4 py-2 bg-blue-600 text-white text-sm font-medium rounded-lg shadow hover:bg-blue-700 transition">
           View More
           <svg class="ml-2 w-4 h-4" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
@@ -242,7 +242,7 @@ $.getJSON("/market/dashboard/invoices", function (data) {
     // Append button AFTER the table
     $('#recent-invoices').parent().after(`
       <div class="flex justify-center mt-4">
-        <a href="/sales-orders"
+        <a href="/market/sales-orders"
           class="inline-flex items-center px-4 py-2 bg-blue-600 text-white text-sm font-medium rounded-lg shadow hover:bg-blue-700 transition">
           View More
           <svg class="ml-2 w-4 h-4" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">

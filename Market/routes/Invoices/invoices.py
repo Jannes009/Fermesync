@@ -560,3 +560,36 @@ def submit_produnit_change():
     finally:
         cursor.close()
         conn.close()
+
+
+@market_bp.route('/api/open-delivery-notes')
+def api_open_delivery_notes():
+    """Fetch all open (not fully invoiced) delivery notes."""
+    conn = create_db_connection()
+    cursor = conn.cursor()
+    try:
+        cursor.execute("""
+            SELECT DISTINCT
+                H.DelNoteNo,
+                A.Name,
+                H.DelIndex
+            FROM ZZDeliveryNoteHeader H
+            JOIN _uvMarketAgent A ON A.DCLink = H.DeliClientId
+            WHERE NOT EXISTS (
+                SELECT 1
+                FROM ZZInvoiceHeader INV
+                WHERE INV.InvoiceDelNoteNo = H.DelNoteNo
+            )
+            ORDER BY H.DelNoteNo DESC
+        """)
+        rows = cursor.fetchall()
+        delivery_notes = [
+            {"DelNoteNo": row[0], "AgentName": row[1], "DelIndex": row[2]}
+            for row in rows
+        ]
+        return jsonify(delivery_notes)
+    except Exception as e:
+        print(f"Error fetching delivery notes: {e}")
+        return jsonify({"error": str(e)}), 500
+    finally:
+        close_db_connection(cursor, conn)
