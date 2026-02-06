@@ -1,9 +1,9 @@
 
 from flask_login import login_required, current_user
 from flask import jsonify, request, render_template, abort
-from auth import get_common_db_connection, close_connection
+from Core.auth import create_db_connection, close_db_connection
 from Inventory.routes import inventory_bp
-from auth import get_common_db_connection
+from Core.auth import create_db_connection
 import os, requests
 
 
@@ -11,38 +11,40 @@ import os, requests
 @inventory_bp.route("/notifications/count")
 @login_required
 def notifications_count():
-    conn, cursor = get_common_db_connection()
+    conn = create_db_connection() 
+    cursor = conn.cursor() 
     cursor.execute("""
         SELECT COUNT(*) 
-        FROM Notifications
+        FROM users.Notifications
         WHERE UserID = ? AND IsRead = 0
     """, (current_user.id,))
     count = cursor.fetchone()[0]
-    close_connection(conn, cursor)
+    close_db_connection(conn, cursor)
     return jsonify({"count": count})
 
 # Notifications page
 @inventory_bp.route("/notifications")
 @login_required
 def notifications_page():
-    conn, cursor = get_common_db_connection()
+    conn = create_db_connection() 
+    cursor = conn.cursor() 
 
     cursor.execute("""
         SELECT Id, Title, Message, ActionURL, CreatedAt
-        FROM Notifications
+        FROM users.Notifications
         WHERE UserId = ?
         ORDER BY CreatedAt DESC
     """, (current_user.id,))
     notifications = cursor.fetchall()
 
     cursor.execute("""
-        UPDATE Notifications
+        UPDATE users.Notifications
         SET IsRead = 1
         WHERE UserId = ? AND IsRead = 0
     """, (current_user.id,))
     conn.commit()
 
-    close_connection(conn, cursor)
+    close_db_connection(conn, cursor)
     return render_template("notifications.html", notifications=notifications)
 
 
@@ -56,16 +58,17 @@ def link_user_and_subscription():
         return jsonify({"success": False, "error": "Missing user_id or onesignal_id"}), 400
 
     try:
-        conn, cursor = get_common_db_connection()
+        conn = create_db_connection() 
+        cursor = conn.cursor() 
        
         # Check if user already has a subscription
-        cursor.execute("SELECT OnesignalId FROM PushSubscriptions WHERE OnesignalId = ? And UserId = ?", (onesignal_id, user_id))
+        cursor.execute("SELECT OnesignalId FROM users.PushSubscriptions WHERE OnesignalId = ? And UserId = ?", (onesignal_id, user_id))
         row = cursor.fetchone()
 
         if not row:
             # Insert new record
             cursor.execute(
-                "INSERT INTO PushSubscriptions (UserId, OnesignalId) VALUES (?, ?)",
+                "INSERT INTO users.PushSubscriptions (UserId, OnesignalId) VALUES (?, ?)",
                 user_id, onesignal_id
             )
 
@@ -93,11 +96,11 @@ def send_notification(
     relative_url: str = None,
     push_mode: str = "none"  # none | immediate | batched
 ):
-    conn, cursor = get_common_db_connection()
+    conn, cursor = create_db_connection()
     print(user_id, title, message, notification_type_id, entity_id, relative_url, push_mode)
     # 1️⃣ Create in-app notification
     cursor.execute("""
-        INSERT INTO Notifications
+        INSERT INTO users.Notifications
             (UserId, EntityType, Title, Message,
              EntityId, ActionURL, CreatedAt, IsRead)
         OUTPUT INSERTED.Id
@@ -121,20 +124,21 @@ def send_notification(
     elif push_mode == "batched":
         send_batched_push(user_id)
 
-    close_connection(conn, cursor)
+    close_db_connection(conn, cursor)
 
     return notification_id
 
 def send_immediate_push(user_id: int, title: str, message: str, relative_url: str = None):
-    conn, cursor = get_common_db_connection()
+    conn = create_db_connection() 
+    cursor = conn.cursor() 
 
     cursor.execute("""
-        SELECT OnesignalId FROM PushSubscriptions
+        SELECT OnesignalId FROM users.PushSubscriptions
         WHERE UserId = ?
     """, (user_id,))
     subs = [r[0] for r in cursor.fetchall()]
 
-    close_connection(conn, cursor)
+    close_db_connection(conn, cursor)
 
     if not subs:
         return
@@ -160,33 +164,34 @@ def send_immediate_push(user_id: int, title: str, message: str, relative_url: st
     )
 
 def send_batched_push(user_id: int):
-    conn, cursor = get_common_db_connection()
+    conn = create_db_connection() 
+    cursor = conn.cursor() 
 
     cursor.execute("""
-        SELECT COUNT(*) FROM Notifications
+        SELECT COUNT(*) FROM users.Notifications
         WHERE UserId = ? AND IsRead = 0
     """, (user_id,))
     unread_count = cursor.fetchone()[0]
 
     if unread_count == 0:
-        close_connection(conn, cursor)
+        close_db_connection(conn, cursor)
         return
 
     cursor.execute("""
         SELECT TOP 3 Title
-        FROM Notifications
+        FROM users.Notifications
         WHERE UserId = ? AND IsRead = 0
         ORDER BY CreatedAt DESC
     """, (user_id,))
     titles = [r[0] for r in cursor.fetchall()]
 
     cursor.execute("""
-        SELECT OnesignalId FROM PushSubscriptions
+        SELECT OnesignalId FROM users.PushSubscriptions
         WHERE UserId = ?
     """, (user_id,))
     subs = [r[0] for r in cursor.fetchall()]
 
-    close_connection(conn, cursor)
+    close_db_connection(conn, cursor)
 
     if not subs:
         return
@@ -223,7 +228,8 @@ def emit_event(
 ):
     print("Emitting event:", event_code, entity_id, entity_desc)
 
-    conn, cursor = get_common_db_connection()
+    conn = create_db_connection() 
+    cursor = conn.cursor() 
     actor_user_id = current_user.id
 
     # 1️⃣ Load notification type
@@ -234,13 +240,13 @@ def emit_event(
             DefaultTemplate,
             RedirectUrl,
             PushEnabled
-        FROM NotificationType
+        FROM users.NotificationType
         WHERE EventCode = ? AND IsActive = 1
     """, (event_code,))
     nt = cursor.fetchone()
 
     if not nt:
-        close_connection(conn, cursor)
+        close_db_connection(conn, cursor)
         return
 
     nt_id = nt.NotificationTypeId
@@ -252,14 +258,14 @@ def emit_event(
     # 2️⃣ Resolve recipients (opted-in users)
     cursor.execute("""
         SELECT DISTINCT U.Id
-        FROM Users U
-        JOIN UserNotificationPreference UNP
+        FROM users.Users U
+        JOIN users.UserNotificationPreference UNP
             ON UNP.UserId = U.Id
         WHERE UNP.NotificationTypeId = ?
     """, (nt_id,))
     recipients = [r[0] for r in cursor.fetchall()]
 
-    close_connection(conn, cursor)
+    close_db_connection(conn, cursor)
 
     # 3️⃣ Send notifications
     for user_id in recipients:

@@ -2,7 +2,7 @@ import sys
 from flask import request, jsonify, render_template, abort
 import clr  # pythonnet
 from Inventory.routes import inventory_bp
-from Inventory.db import create_db_connection
+from Core.auth import create_db_connection, close_db_connection
 from flask_login import login_required
 
 
@@ -24,8 +24,8 @@ def list_po_requisitions():
             Description,
             Status,
             PONumber
-        FROM PO_RequisitionHeader POHEA
-        JOIN [dbo].[_uvSuppliers] SUP on SUP.DCLink = POHEA.SupplierId
+        FROM inventory.PO_RequisitionHeader POHEA
+        JOIN [common].[_uvSuppliers] SUP on SUP.DCLink = POHEA.SupplierId
         Where Status <> 'POSTED'
         ORDER BY CreatedAt ASC
         """)
@@ -47,7 +47,7 @@ def list_po_requisitions():
         # fetch posted po's from evolution
         cursor.execute("""
         Select DISTINCT AutoIndex, SupplierName, OrderDate, DueDate, OrderDesc, OrderNum, DocStatus
-        from [dbo].[_uvPurchaseOrders]
+        from [inventory].[_uvPurchaseOrders]
         Where DocState in (1,3)
         ORDER BY OrderDate ASC
         """)

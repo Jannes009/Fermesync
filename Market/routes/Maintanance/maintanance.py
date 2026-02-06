@@ -1,6 +1,6 @@
-from flask import jsonify, request, render_template
+﻿from flask import jsonify, request, render_template
 from flask_login import login_required
-from Market.db import create_db_connection, close_db_connection
+from Core.auth import create_db_connection, close_db_connection
 from Market.routes.db_functions import (
     get_production_unit_codes, get_market_codes,
     get_transporter_codes
@@ -14,13 +14,13 @@ from Market.routes import market_bp
 def fetch_data(cursor):
     # Execute multiple queries in one go
     cursor.execute("""
-        SELECT * FROM ZZProduct;
-        SELECT * FROM ZZProductType;
-        SELECT * FROM ZZProductSize;
-        SELECT * FROM ZZProductWeight;
-        SELECT * FROM ZZProductBrand;
-        Select * from ZZProductClass;
-        Select OutputidTaxRate, OutputTaxRate from [dbo].[_uvMarketTaxRates]
+        SELECT * FROM market.ZZProduct;
+        SELECT * FROM market.ZZProductType;
+        SELECT * FROM market.ZZProductSize;
+        SELECT * FROM market.ZZProductWeight;
+        SELECT * FROM market.ZZProductBrand;
+        Select * from market.ZZProductClass;
+        Select OutputidTaxRate, OutputTaxRate from [market].[_uvMarketTaxRates]
     """)
 
     # Initialize an empty dictionary to store the results
@@ -62,7 +62,7 @@ def fetch_data(cursor):
     data["tax_rates"] = cursor.fetchall()
 
 
-    # Process data into structured JSON format
+    # Process data into market.structured JSON format
     result = {
         "products": [{"id": row[0], "code": row[1], "description": row[2]} for row in data["products"]],
         "types": [{"id": row[0], "code": row[1], "description": row[2]} for row in data["types"]],
@@ -91,7 +91,7 @@ def create_product():
     conn = create_db_connection()
     cursor = conn.cursor()
 
-    # Collect data from the form
+    # Collect data from market.the form
     stock_item_code = request.form.get('generatedProductCode')
     product_code = request.form.get('productCode')
     type_code = request.form.get('typeCode')
@@ -102,7 +102,7 @@ def create_product():
     output_tax_rate = request.form.get('taxRate')
 
     print(output_tax_rate, stock_item_code, product_code, type_code)
-    query = "SELECT InputidTaxRate FROM [dbo].[_uvTaxRates] WHERE OutputidTaxRate = ?"
+    query = "SELECT InputidTaxRate FROM [market].[_uvTaxRates] WHERE OutputidTaxRate = ?"
     cursor.execute(query, (output_tax_rate,))
     input_tax_rate = cursor.fetchone()
 
@@ -112,7 +112,7 @@ def create_product():
 
     # SQL Insert Query
     query = """
-    INSERT INTO [dbo].[ZZProductStockItem] (ProductStockItemCode, ProductIndex, ProductClassIndex, ProductWeightIndex, 
+    INSERT INTO [market].[ZZProductStockItem] (ProductStockItemCode, ProductIndex, ProductClassIndex, ProductWeightIndex, 
     ProductSizeIndex, ProductTypeIndex, ProductBrandIndex,
     [ProductOutputidTaxRate], [ProductInputidTaxRate])
     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
@@ -124,7 +124,7 @@ def create_product():
 
         cursor.execute(query, values)
         conn.commit()
-        cursor.execute("EXEC [dbo].[SIGCreateEvoStockItem]")
+        cursor.execute("EXEC [market].[SIGCreateEvoStockItem]")
         conn.commit()
     except IntegrityError as e:
         print(e)
@@ -164,23 +164,23 @@ def add_item():
         
         # Prepare your SQL based on the field_type
         if field_type == 'product':
-            query = "INSERT INTO ZZProduct (ProductCode, ProductDescription) VALUES (?, ?)"
-            id_query = "Select ProductIndex from ZZProduct Where ProductCode = ?"
+            query = "INSERT INTO market.ZZProduct (ProductCode, ProductDescription) VALUES (?, ?)"
+            id_query = "Select ProductIndex from market.ZZProduct Where ProductCode = ?"
         elif field_type == 'type':
-            query = "INSERT INTO ZZProductType (ProductTypeCode, ProductTypeDescription) VALUES (?, ?)"
-            id_query = "Select ProductTypeIndex from ZZProductType Where ProductTypeCode = ?"
+            query = "INSERT INTO market.ZZProductType (ProductTypeCode, ProductTypeDescription) VALUES (?, ?)"
+            id_query = "Select ProductTypeIndex from market.ZZProductType Where ProductTypeCode = ?"
         elif field_type == 'class':
-            query = "INSERT INTO ZZProductClass(ProductClassCode, ProductClassDescription) VALUES (?, ?)"
-            id_query = "Select ProductClassIndex from ZZProductClass Where ProductClassCode = ?"
+            query = "INSERT INTO market.ZZProductClass(ProductClassCode, ProductClassDescription) VALUES (?, ?)"
+            id_query = "Select ProductClassIndex from market.ZZProductClass Where ProductClassCode = ?"
         elif field_type == 'size':
-            query = "INSERT INTO ZZProductSize(ProductSizeCode, ProductSizeDescription) VALUES (?, ?)"
-            id_query = "Select ProductSizeIndex from ZZProductSize Where ProductSizeCode = ?"
+            query = "INSERT INTO market.ZZProductSize(ProductSizeCode, ProductSizeDescription) VALUES (?, ?)"
+            id_query = "Select ProductSizeIndex from market.ZZProductSize Where ProductSizeCode = ?"
         elif field_type == 'weight':
-            query = "INSERT INTO ZZProductWeight(ProductWeightCode, ProductWeightDescription) VALUES (?, ?)"
-            id_query = "Select ProductWeightIndex from ZZProductWeight Where ProductWeightCode = ?"
+            query = "INSERT INTO market.ZZProductWeight(ProductWeightCode, ProductWeightDescription) VALUES (?, ?)"
+            id_query = "Select ProductWeightIndex from market.ZZProductWeight Where ProductWeightCode = ?"
         elif field_type == 'brand':
-            query = "INSERT INTO ZZProductBrand(ProductBrandCode, ProductBrandDescription) VALUES (?, ?)"
-            id_query = "Select ProductBrandIndex from ZZProductBrand Where ProductBrandCode = ?"
+            query = "INSERT INTO market.ZZProductBrand(ProductBrandCode, ProductBrandDescription) VALUES (?, ?)"
+            id_query = "Select ProductBrandIndex from market.ZZProductBrand Where ProductBrandCode = ?"
         
         cursor.execute(query, (new_code, new_description))
         cursor.execute(id_query,(new_code,))
@@ -224,8 +224,7 @@ def get_agents_full():
         SELECT 
             DCLink, Account, Name, GroupCode, MarketComm, AgentComm, 
             DiscountPercent 
-        FROM 
-            _uvMarketAgent
+        FROM market._uvMarketAgent
     """)
     agents = cursor.fetchall()
     close_db_connection(cursor, conn)
@@ -274,7 +273,7 @@ def get_transporters():
     cursor = conn.cursor()
     cursor.execute("""
                    SELECT [TransporterAccount], [TransporterName], GroupCode
-                   FROM [_uvMarketTransporter]
+                   FROM market._uvMarketTransporter
                     ORDER BY [TransporterName]
                    """)
     transporters = cursor.fetchall()
@@ -303,3 +302,5 @@ def update_agent_maintenance():
         if 'conn' in locals():
             close_db_connection(cursor, conn)
         return jsonify(success=False, error=str(e)), 500
+
+

@@ -1,7 +1,7 @@
 import requests
 from flask import request, jsonify, render_template, abort
 from .. import inventory_bp
-from Inventory.db import create_db_connection
+from Core.auth import create_db_connection, close_db_connection
 from flask_login import current_user
 from flask_login import login_required
 from datetime import datetime, timedelta, date
@@ -30,8 +30,8 @@ def stock_counts_due():
                 ICS.Frequency,
                 ICS.LastCountDate,
                 ICS.NextDueDate
-            FROM InventoryCountSchedule ICS
-            JOIN _uvWarehouses WH ON WH.WhseLink = ICS.WhseId
+            FROM inventory.InventoryCountSchedule ICS
+            JOIN common._uvWarehouses WH ON WH.WhseLink = ICS.WhseId
             WHERE ICS.IsActive = 1 AND WH.WhseLink IN ({','.join(['?'] * len(current_user.warehouses))}) 
             ORDER BY ICS.NextDueDate ASC
         """, current_user.warehouses)
@@ -110,8 +110,8 @@ def stock_counts_history():
             COUNT(l.InvCountLineHeaderId) AS TotalProducts,
             COUNT(l.InvCountLineQtyCounted) AS ProductsCounted
 
-        FROM InventoryCountHeaders h
-        LEFT JOIN InventoryCountLines l
+        FROM inventory.InventoryCountHeaders h
+        LEFT JOIN inventory.InventoryCountLines l
             ON l.InvCountLineHeaderId = h.InvCountHeaderId
         WHERE INVCountStatus IN ('FINALISED', 'DRAFT')
         AND InvCountWhseId IN ({','.join(['?'] * len(current_user.warehouses))}) 
@@ -172,7 +172,7 @@ def stock_count_detail(header_id):
                 InvCountCatName,
                 InvCountUsername,
                 InvCountTimeFinalised
-            FROM InventoryCountHeaders
+            FROM inventory.InventoryCountHeaders
             WHERE InvCountHeaderId = ?
         """, (header_id,))
 
@@ -186,8 +186,8 @@ def stock_count_detail(header_id):
                 STK.StockDescription,
                 l.InvCountLineQtyOnHand,
                 l.InvCountLineQtyCounted
-            FROM InventoryCountLines l
-            LEFT JOIN _uvStockItems STK ON STK.StockCode = l.InvCountLineStockCode
+            FROM inventory.InventoryCountLines l
+            LEFT JOIN inventory._uvStockItems STK ON STK.StockCode = l.InvCountLineStockCode
             WHERE l.InvCountLineHeaderId = ?
             ORDER BY l.InvCountLineStockCode
         """, (header_id,))
@@ -218,10 +218,10 @@ def stock_counts_filters():
     cursor = conn.cursor()
 
     try:
-        cursor.execute("SELECT DISTINCT InvCountWhseCode FROM InventoryCountHeaders ORDER BY InvCountWhseCode")
+        cursor.execute("SELECT DISTINCT InvCountWhseCode FROM inventory.InventoryCountHeaders ORDER BY InvCountWhseCode")
         warehouses = [r[0] for r in cursor.fetchall()]
 
-        cursor.execute("SELECT DISTINCT InvCountCatName FROM InventoryCountHeaders WHERE InvCountCatName IS NOT NULL ORDER BY InvCountCatName")
+        cursor.execute("SELECT DISTINCT InvCountCatName FROM inventory.InventoryCountHeaders WHERE InvCountCatName IS NOT NULL ORDER BY InvCountCatName")
         shelves = [r[0] for r in cursor.fetchall()]
 
         return jsonify({
@@ -261,7 +261,7 @@ def create_stock_count_schedule():
     # Get the most recent count date for this category
     cursor.execute("""
         SELECT TOP 1 InvCountTimeFinalised 
-        FROM [dbo].[InventoryCountHeaders]
+        FROM [inventory].[InventoryCountHeaders]
         WHERE InvCountCatId = ? AND InvCountWhseId = ?
         ORDER BY InvCountTimeFinalised DESC
     """, (category_id, warehouse_id))
@@ -295,7 +295,7 @@ def create_stock_count_schedule():
     try:
         # Insert the schedule — pass datetime objects (or None) not date
         cursor.execute("""
-            INSERT INTO InventoryCountSchedule (
+            INSERT INTO inventory.InventoryCountSchedule (
                 WhseId,
                 CategoryId,
                 CategoryName,
@@ -353,7 +353,7 @@ def discard_stock_count(header_id):
         # Verify the stock count is in DRAFT status
         cursor.execute("""
             SELECT InvCountStatus
-            FROM InventoryCountHeaders
+            FROM inventory.InventoryCountHeaders
             WHERE InvCountHeaderId = ?
         """, (header_id,))
         row = cursor.fetchone()
@@ -364,7 +364,7 @@ def discard_stock_count(header_id):
 
         # Delete header
         cursor.execute("""
-            UPDATE InventoryCountHeaders
+            UPDATE inventory.InventoryCountHeaders
                 SET InvCountTimeFinalised = GETDATE(),
                     InvCountStatus = 'DISCARDED'
             WHERE InvCountHeaderId = ?

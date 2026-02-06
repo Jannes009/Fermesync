@@ -89,7 +89,7 @@
     <div class="user-section desktop-user">
       <div class="username" id="username">{{ current_user.username }}<span>▼</span></div>
       <div class="dropdown">
-        {% if current_user.market_module %}
+        {% if current_user.has_feature("MARKET") %}
         <a href="/market/dashboard">Fermesync Market</a>
         {% endif %}
         <a href="{{ url_for('account.view_account') }}">View Account</a>

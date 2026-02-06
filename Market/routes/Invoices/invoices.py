@@ -1,6 +1,6 @@
-from flask import render_template, request, jsonify
+﻿from flask import render_template, request, jsonify
 import pypyodbc as odbc
-from Market.db import create_db_connection, close_db_connection
+from Core.auth import create_db_connection, close_db_connection
 from Market.routes.db_functions import agent_code_to_agent_name, get_stock_name, get_invoice_id, del_note_number_to_del_id
 
 from Market.routes import market_bp
@@ -32,20 +32,20 @@ def get_delivery_note_details(note_number):
             --WHEN INVLIN.InvoiceSaleLineIndex IS NOT NULL THEN 1
             ---ELSE 0
         --END AS HasInvoice
-    FROM ZZDeliveryNoteHeader HEA
-    JOIN (SELECT DCLink, Name AgentName, MarketComm, AgentComm FROM _uvMarketAgent) AGENT 
+    FROM market.ZZDeliveryNoteHeader HEA
+    JOIN (SELECT DCLink, Name AgentName, MarketComm, AgentComm FROM market._uvMarketAgent) AGENT 
         ON AGENT.DCLink = HEA.DeliClientId
     JOIN (SELECT DelHeaderId, DelLineIndex, DelLineFarmId, DelLineStockId 
-        FROM ZZDeliveryNoteLines) LIN 
+        FROM market.ZZDeliveryNoteLines) LIN 
         ON LIN.DelHeaderId = HEA.DelIndex
-    JOIN (SELECT StockLink, ProductDescription FROM _uvMarketProduct) PROD 
+    JOIN (SELECT StockLink, ProductDescription FROM market._uvMarketProduct) PROD 
         ON PROD.StockLink = LIN.DelLineStockId
-    JOIN (SELECT ProjectLink, ProdUnitName FROM _uvMarketProdUnit) PRODUN 
+    JOIN (SELECT ProjectLink, ProdUnitName FROM market._uvMarketProdUnit) PRODUN 
         ON PRODUN.ProjectLink = LIN.DelLineFarmId
     LEFT JOIN (SELECT SalesDelLineId, SalesQty, SalesPrice, DiscountPercent, SalesAmnt, SalesLineIndex, SalesDate 
-            FROM ZZSalesLines) SALLIN 
+            FROM market.ZZSalesLines) SALLIN 
         ON SALLIN.SalesDelLineId = LIN.DelLineIndex
-    LEFT JOIN (SELECT InvoiceSaleLineIndex FROM ZZInvoiceLines) INVLIN 
+    LEFT JOIN (SELECT InvoiceSaleLineIndex FROM market.ZZInvoiceLines) INVLIN 
         ON INVLIN.InvoiceSaleLineIndex = SALLIN.SalesLineIndex
     WHERE InvoiceSaleLineIndex IS NULL and HEA.DelNoteNo = ?
     """, (note_number,))
@@ -63,7 +63,7 @@ def get_delivery_note_details(note_number):
     # Commissions
     cursor.execute("""
         SELECT MarketComm, AgentComm
-        FROM _uvMarketAgent
+        FROM market._uvMarketAgent
         WHERE DCLink = ?
     """, (del_client_id,))
     commissions = cursor.fetchone() or (0, 0)
@@ -162,14 +162,14 @@ def submit_invoice():
     print(DelNoteId)
 
     query = """
-    Select [DeliClientId] From [dbo].[ZZDeliveryNoteHeader]
+    Select [DeliClientId] From [market].[ZZDeliveryNoteHeader]
     Where [DelNoteNo] = ?
     """
     cursor.execute(query, (InvoiceDelNoteNo, )),
     clientId = cursor.fetchone()
 
     query = """
-    INSERT INTO [dbo].[ZZInvoiceHeader] (
+    INSERT INTO [market].[ZZInvoiceHeader] (
         [InvoiceDate], [InvoiceNo], [InvoiceDelNoteId], [InvoiceDelNoteNo],
         [InvoiceQty], [InvoiceGross], [InvoiceTotalDeducted],
         [InvoiceMarketCommIncl], [InvoiceAgentCommIncl], [InvoiceOtherCostsIncl], 
@@ -189,7 +189,7 @@ def submit_invoice():
         line = dict(line)
         print(headerId, type(headerId))
         query = """
-        INSERT INTO [dbo].[ZZInvoiceLines] (
+        INSERT INTO [market].[ZZInvoiceLines] (
             [InvoiceHeaderId], [InvoiceSaleLineIndex] 
         ) VALUES (?, ?)
         """
@@ -198,11 +198,11 @@ def submit_invoice():
         ))
     conn.commit()
     # create invoice
-    cursor.execute("EXEC [dbo].[SIGCreateSalesOrder]")
+    cursor.execute("EXEC [market].[SIGCreateSalesOrder]")
     cursor.execute("""
-        EXEC [dbo].[SIGUpdatePackagingCost]
-        EXEC [dbo].[SIGUpdateWeightTransport]
-        EXEC [dbo].[SIGUpdateDeliveryNoteLineTotals]
+        EXEC [market].[SIGUpdatePackagingCost]
+        EXEC [market].[SIGUpdateWeightTransport]
+        EXEC [market].[SIGUpdateDeliveryNoteLineTotals]
     """)
 
     conn.commit()
@@ -254,7 +254,7 @@ def check_invoice_no():
     conn = create_db_connection()
     cursor = conn.cursor()
     
-    cursor.execute("SELECT COUNT(*) FROM ZZInvoiceHeader WHERE InvoiceNo = ?", (invoice_number,))
+    cursor.execute("SELECT COUNT(*) FROM market.ZZInvoiceHeader WHERE InvoiceNo = ?", (invoice_number,))
     exists = cursor.fetchone()[0] > 0
     print(invoice_number, exists)
 
@@ -270,10 +270,10 @@ def api_sales_order_detail(sales_order_id):
     conn = create_db_connection()
     cursor = conn.cursor()
 
-    # Fetch sales order header from _uvInvoiceSOStatus
+    # Fetch sales order header from market._uvInvoiceSOStatus
     cursor.execute("""
         SELECT InvoiceIndex, InvoiceDate, InvoiceDelNoteNo, InvoiceNo, AgentName, InvoiceTaxRate, InvoiceGross, InvoiceTotalDeducted, InvoiceAgentCommIncl, InvoiceMarketCommIncl, InvoiceOtherCostsIncl, InvoiceNett, InvoiceQty, InvoiceEvoSONumber, Status
-        FROM _uvInvoiceSOStatus
+        FROM market._uvInvoiceSOStatus
         WHERE InvoiceIndex = ?
     """, (sales_order_id,))
     header_row = cursor.fetchone()
@@ -285,7 +285,7 @@ def api_sales_order_detail(sales_order_id):
     sales_order_header = dict(zip(header_columns, header_row))
 
     # Fetch sales order lines (keep as is)
-    cursor.execute("SELECT * FROM _uvMarketInvoiceLines WHERE InvoiceIndex = ?", (sales_order_id,))
+    cursor.execute("SELECT * FROM market._uvMarketInvoiceLines WHERE InvoiceIndex = ?", (sales_order_id,))
     line_rows = cursor.fetchall()
     line_columns = [desc[0] for desc in cursor.description]
     sales_order_lines = [dict(zip(line_columns, row)) for row in line_rows]
@@ -301,12 +301,12 @@ def sales_order_summary_page():
 def api_sales_orders():
     conn = create_db_connection()
     cursor = conn.cursor()
-    # Fetch all sales order headers from _uvInvoiceSOStatus, now including InvoiceNo and InvoiceQty
+    # Fetch all sales order headers from market._uvInvoiceSOStatus, now including InvoiceNo and InvoiceQty
     cursor.execute("""
         SELECT InvoiceIndex, InvoiceDate, InvoiceDelNoteNo, InvoiceNo, AgentName, InvoiceTaxRate, InvoiceGross, 
         InvoiceGross, InvoiceTotalDeducted, InvoiceAgentCommIncl, InvoiceMarketCommIncl, InvoiceOtherCostsIncl, 
         InvoiceNett, InvoiceQty, InvoiceEvoSONumber, Status
-        FROM _uvInvoiceSOStatus
+        FROM market._uvInvoiceSOStatus
         ORDER BY InvoiceDate DESC, InvoiceIndex DESC
     """)
     rows = cursor.fetchall()
@@ -323,7 +323,7 @@ def purchase_order_summary_page():
 def api_purchase_orders():
     conn = create_db_connection()
     cursor = conn.cursor()
-    cursor.execute("SELECT DelIndex, DelNoteNo, DelTransporter, DelTransportCostExcl, TransportEvoPONumber, Status FROM _uvTransportPOStatus ORDER BY DelIndex DESC")
+    cursor.execute("SELECT DelIndex, DelNoteNo, DelTransporter, DelTransportCostExcl, TransportEvoPONumber, Status FROM market._uvTransportPOStatus ORDER BY DelIndex DESC")
     rows = cursor.fetchall()
     columns = [desc[0] for desc in cursor.description]
     purchase_orders = [dict(zip(columns, row)) for row in rows]
@@ -338,7 +338,7 @@ def api_invoices_for_delivery_note(del_note_no):
     print(del_note_no)
     cursor.execute("""
         SELECT InvoiceIndex, InvoiceNo, InvoiceDate, InvoiceGross, InvoiceNett, Status
-        FROM _uvInvoiceSOStatus
+        FROM market._uvInvoiceSOStatus
         WHERE InvoiceDelNoteNo = ?
         ORDER BY InvoiceDate DESC, InvoiceIndex DESC
     """, (del_note_no,))
@@ -354,8 +354,8 @@ def refresh_invoices():
     try:
         conn = create_db_connection()
         cursor = conn.cursor()
-        cursor.execute("EXEC [dbo].[SIGUpdateMarketFromEvoInvoices]" \
-        "; EXEC [dbo].[SIGRemoveCreditNotedInvoice];")
+        cursor.execute("EXEC [market].[SIGUpdateMarketFromEvoInvoices]" \
+        "; EXEC [market].[SIGRemoveCreditNotedInvoice];")
         conn.commit()
         return jsonify({'success': True, 'message': 'Invoices refreshed successfully.'})
     except Exception as e:
@@ -376,7 +376,7 @@ def correct_invoice_agents():
     conn = create_db_connection()
     cursor = conn.cursor()
     try:
-        cursor.execute("SELECT Account, Name FROM _uvMarketAgent ORDER BY Name")
+        cursor.execute("SELECT Account, Name FROM market._uvMarketAgent ORDER BY Name")
         rows = cursor.fetchall()
         return jsonify([{"id": r[0], "name": r[1]} for r in rows])
     finally:
@@ -397,9 +397,9 @@ def correct_invoice_old_prod_units_and_invoices(del_note_no):
         cursor.execute(
             """
             SELECT DISTINCT PU.ProjectLink, PU.ProdUnitName
-            FROM ZZDeliveryNoteHeader H
-            JOIN ZZDeliveryNoteLines L ON L.DelHeaderId = H.DelIndex
-            JOIN _uvMarketProdUnit PU ON PU.ProjectLink = L.DelLineFarmId
+            FROM market.ZZDeliveryNoteHeader H
+            JOIN market.ZZDeliveryNoteLines L ON L.DelHeaderId = H.DelIndex
+            JOIN market._uvMarketProdUnit PU ON PU.ProjectLink = L.DelLineFarmId
             WHERE H.DelNoteNo = ?
             ORDER BY PU.ProdUnitName
             """,
@@ -410,7 +410,7 @@ def correct_invoice_old_prod_units_and_invoices(del_note_no):
         # Fetch invoices for the delivery note (same as agent step)
         cursor.execute("""
             SELECT InvoiceIndex, InvoiceNo, InvoiceDate, InvoiceGross, InvoiceNett, Status
-            FROM _uvInvoiceSOStatus
+            FROM market._uvInvoiceSOStatus
             WHERE InvoiceDelNoteNo = ?
             ORDER BY InvoiceDate DESC, InvoiceIndex DESC
         """, (del_note_no,))
@@ -426,12 +426,12 @@ def correct_invoice_old_prod_units_and_invoices(del_note_no):
 @market_bp.route('/api/correct-invoice/all-prod-units')
 def correct_invoice_all_prod_units():
     """
-    Return all available production units from _uvMarketProdUnit.
+    Return all available production units from market._uvMarketProdUnit.
     """
     conn = create_db_connection()
     cursor = conn.cursor()
     try:
-        cursor.execute("SELECT ProjectLink, ProdUnitName FROM _uvMarketProdUnit ORDER BY ProdUnitName")
+        cursor.execute("SELECT ProjectLink, ProdUnitName FROM market._uvMarketProdUnit ORDER BY ProdUnitName")
         rows = cursor.fetchall()
         return jsonify([{"id": r[0], "name": r[1]} for r in rows])
     finally:
@@ -456,10 +456,10 @@ def correct_invoice_lines_and_invoices():
         cursor.execute(
             """
             SELECT L.DelLineIndex, P.ProductDescription, PU.ProdUnitName
-            FROM ZZDeliveryNoteHeader H
-            JOIN ZZDeliveryNoteLines L ON L.DelHeaderId = H.DelIndex
-            JOIN _uvMarketProduct P ON P.StockLink = L.DelLineStockId
-            JOIN _uvMarketProdUnit PU ON PU.ProjectLink = L.DelLineFarmId
+            FROM market.ZZDeliveryNoteHeader H
+            JOIN market.ZZDeliveryNoteLines L ON L.DelHeaderId = H.DelIndex
+            JOIN market._uvMarketProduct P ON P.StockLink = L.DelLineStockId
+            JOIN market._uvMarketProdUnit PU ON PU.ProjectLink = L.DelLineFarmId
             WHERE H.DelNoteNo = ? AND L.DelLineFarmId = ?
             ORDER BY L.DelLineIndex
             """,
@@ -478,14 +478,14 @@ def correct_invoice_lines_and_invoices():
             INV.InvoiceNett,
             INV.Status,
             DELL.DelLineIndex
-        FROM _uvInvoiceSOStatus INV
-        JOIN ZZInvoiceLines ZIL
+        FROM market._uvInvoiceSOStatus INV
+        JOIN market.ZZInvoiceLines ZIL
             ON ZIL.InvoiceHeaderId = INV.InvoiceIndex
-        JOIN ZZSalesLines ZSL
+        JOIN market.ZZSalesLines ZSL
             ON ZSL.SalesLineIndex = ZIL.InvoiceSaleLineIndex
-        JOIN ZZDeliveryNoteLines DELL
+        JOIN market.ZZDeliveryNoteLines DELL
             ON DELL.DelLineIndex = ZSL.SalesDelLineId
-        JOIN ZZDeliveryNoteHeader DELH
+        JOIN market.ZZDeliveryNoteHeader DELH
             ON DELH.DelIndex = DELL.DelHeaderId
         WHERE DELH.DelNoteNo = ?;
             """, (del_note_no,)
@@ -512,7 +512,7 @@ def submit_agent_change():
     conn = create_db_connection()
     cursor = conn.cursor()
     try:
-        # Update the delivery note header agent (client)
+        # Update market.the delivery note header agent (client)
         cursor.execute("""
             EXEC [SIGUpdateProcessedAgentAccount]
                 @DelNoteNo = ?,
@@ -542,10 +542,10 @@ def submit_produnit_change():
     cursor = conn.cursor()
     print(del_note_no, old_prod_unit_id, new_prod_unit_id)
     try:
-        # Update lines for this delivery note that match the old production unit
+        # Update market.lines for this delivery note that match the old production unit
         cursor.execute(
             """
-        EXEC [dbo].[SIGChangeProcessedProject]
+        EXEC [market].[SIGChangeProcessedProject]
             @DelNoteNo       = ?,
             @OldProjectId  = ?,
             @NewProjectId  = ?;
@@ -573,11 +573,11 @@ def api_open_delivery_notes():
                 H.DelNoteNo,
                 A.Name,
                 H.DelIndex
-            FROM ZZDeliveryNoteHeader H
-            JOIN _uvMarketAgent A ON A.DCLink = H.DeliClientId
+            FROM market.ZZDeliveryNoteHeader H
+            JOIN market._uvMarketAgent A ON A.DCLink = H.DeliClientId
             WHERE NOT EXISTS (
                 SELECT 1
-                FROM ZZInvoiceHeader INV
+                FROM market.ZZInvoiceHeader INV
                 WHERE INV.InvoiceDelNoteNo = H.DelNoteNo
             )
             ORDER BY H.DelNoteNo DESC
@@ -593,3 +593,4 @@ def api_open_delivery_notes():
         return jsonify({"error": str(e)}), 500
     finally:
         close_db_connection(cursor, conn)
+

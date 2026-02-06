@@ -2,7 +2,7 @@ import sys
 from flask import request, jsonify, render_template, abort
 import clr  # pythonnet
 from Inventory.routes import inventory_bp
-from Inventory.db import create_db_connection
+from Core.auth import create_db_connection, close_db_connection
 from flask_login import login_required, current_user
 from Inventory.routes.db_conversions import stock_link_to_code, supplier_link_to_code, unit_link_to_code
 
@@ -21,7 +21,7 @@ def update_purchase_order(order_id):
     conn = create_db_connection()
     cursor = conn.cursor()
     cursor.execute("""
-    Select TOP 1 OrderNum from _uvPO_Outstanding
+    Select TOP 1 OrderNum from inventory._uvPO_Outstanding
 	Where AutoIndex = ?
     """, order_id)
     order_no = cursor.fetchone().OrderNum
@@ -156,7 +156,7 @@ def fetch_purchase_order(po_id):
     # ---------- HEADER ----------
     cursor.execute("""
     Select DISTINCT DCLink SupplierId, OrderDate, DueDate, OrderDesc Description
-    from [dbo].[_uvPurchaseOrders]
+    from [inventory].[_uvPurchaseOrders]
     Where  AutoIndex = ?
     """, po_id)
     header = cursor.fetchone()
@@ -166,7 +166,7 @@ def fetch_purchase_order(po_id):
     # ---------- HEADER UDFS ----------
     cursor.execute("""
     Select cFieldName, UserValue
-    from [dbo].[_uvPurchaseOrderHeaderUDFs]
+    from [inventory].[_uvPurchaseOrderHeaderUDFs]
     Where AutoIndex = ?
     """, po_id)
     header_udfs = {
@@ -178,7 +178,7 @@ def fetch_purchase_order(po_id):
     cursor.execute("""
     Select iLineID LineId, iStockCodeID ProductId,  fQuantity Quantity, fQtyProcessed QtyProcessed, fUnitPriceExcl Price
     ,ProjectId, UomId, WhseLink WarehouseId
-    from [_uvPurchaseOrders]
+    from inventory.[_uvPurchaseOrders]
     Where AutoIndex = ?
     """, po_id)
     lines = cursor.fetchall()
@@ -189,8 +189,8 @@ def fetch_purchase_order(po_id):
         U.idInvoiceLines LineId,
         U.FieldName,
         U.FieldValue
-    FROM dbo._uvPurchaseOrderLineUDFs U
-    JOIN dbo._uvPurchaseOrders L
+    FROM inventory.._uvPurchaseOrderLineUDFs U
+    JOIN inventory.._uvPurchaseOrders L
         ON L.iLineID = U.idInvoiceLines
     WHERE L.AutoIndex = ?
     """, po_id)

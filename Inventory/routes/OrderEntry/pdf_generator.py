@@ -4,7 +4,7 @@ from flask_login import login_required
 import pdfkit
 import os, tempfile
 from playwright.sync_api import sync_playwright
-from Inventory.db import create_db_connection
+from Core.auth import create_db_connection, close_db_connection
 
 @inventory_bp.route("/test/po/pdf")
 @login_required
@@ -114,7 +114,7 @@ def print_po_pdf(auto_index):
 
     cursor.execute("""
         SELECT *
-        FROM _uvPurchaseOrders
+        FROM inventory._uvPurchaseOrders
         WHERE AutoIndex = ?
     """, auto_index)
 
@@ -130,7 +130,7 @@ def print_po_pdf(auto_index):
     # --- Build PO object ---
     header = data[0]
     cursor.execute("""
-    Select Physical1, Physical2, Physical3, PhysicalPC from _uvSuppliers
+    Select Physical1, Physical2, Physical3, PhysicalPC from common_uvSuppliers
     WHERE DCLink = ?""", header["DcLink"])
     supplier_info = cursor.fetchone()
 

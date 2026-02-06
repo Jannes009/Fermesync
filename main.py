@@ -1,8 +1,8 @@
 from flask import Flask, render_template, request, redirect, session, url_for, make_response, send_from_directory
 from flask_login import login_user, logout_user, current_user, login_required
-from auth import login_manager, authenticate_user
+from Core.auth import login_manager, authenticate_user
 import os
-from config import DevelopmentConfig, ProductionConfig, TestingConfig
+from Core.config import DevelopmentConfig, ProductionConfig, TestingConfig
 import subprocess
 
 # -----------------------------
@@ -27,10 +27,10 @@ def create_app():
     login_manager.init_app(app)
     login_manager.session_protection = "basic"
 
-    from admin import admin_bp
+    from Core.admin import admin_bp
     from Market.routes import market_bp
     from Inventory.routes import inventory_bp
-    from view_account import account_bp
+    from Core.view_account import account_bp
 
     app.register_blueprint(market_bp, url_prefix='/market')
     app.register_blueprint(inventory_bp, url_prefix='/inventory')
@@ -89,14 +89,22 @@ def create_app():
     @app.route("/dashboard")
     @login_required
     def dashboard():
-        if current_user.market_module and current_user.inventory_module:
+
+        has_market = current_user.has_feature("MARKET")
+        has_inventory = current_user.has_feature("INVENTORY")
+
+        if has_market and has_inventory:
             return render_template('dashboard.html')
-        elif current_user.market_module:
+
+        elif has_market:
             return redirect(url_for('market.dashboard'))
-        elif current_user.inventory_module:
+
+        elif has_inventory:
             return redirect(url_for('inventory.dashboard'))
+
         else:
             return redirect(url_for('account.view_account'))
+
         
     # Serve manifest.json at root
     @app.route("/manifest.json")

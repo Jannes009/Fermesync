@@ -1,6 +1,6 @@
 from flask import Blueprint, render_template, request, redirect, url_for, jsonify
 from flask_login import login_required, current_user
-from auth import get_common_db_connection, close_connection
+from Core.auth import create_db_connection, close_db_connection
 
 admin_bp = Blueprint('admin', __name__, template_folder='Inventory/templates', static_folder='Inventory/static')
 
@@ -11,32 +11,33 @@ admin_bp = Blueprint('admin', __name__, template_folder='Inventory/templates', s
 @admin_bp.route("/admin/get_user_settings/<int:user_id>")
 @login_required
 def get_user_settings(user_id):
-    conn, cursor = get_common_db_connection()
+    conn = create_db_connection()
+    cursor = conn.cursor()
     try:
         # Permissions
         cursor.execute(
-            "SELECT PermissionId FROM UserPermissions WHERE UserId = ?",
+            "SELECT PermissionId FROM users.UserPermissions WHERE UserId = ?",
             (user_id,)
         )
         perms = [row[0] for row in cursor.fetchall()]
 
         # Notification preferences
         cursor.execute(
-            "SELECT NotificationTypeId FROM UserNotificationPreference WHERE UserId = ?",
+            "SELECT NotificationTypeId FROM users.UserNotificationPreference WHERE UserId = ?",
             (user_id,)
         )
         not_prefs = [row[0] for row in cursor.fetchall()]
 
         # Warehouses
         cursor.execute(
-            "SELECT WarehouseId FROM WarehouseToUserLink WHERE UserId = ?",
+            "SELECT WarehouseId FROM users.WarehouseToUserLink WHERE UserId = ?",
             (user_id,)
         )
         whs = [row[0] for row in cursor.fetchall()]
 
         # Project Groups (NEW)
         cursor.execute(
-            "SELECT ProjectGroupId FROM UserProjectGroupLink WHERE UserId = ?",
+            "SELECT ProjectGroupId FROM users.UserProjectGroupLink WHERE UserId = ?",
             (user_id,)
         )
         proj_groups = [row[0] for row in cursor.fetchall()]
@@ -49,7 +50,7 @@ def get_user_settings(user_id):
         })
 
     finally:
-        close_connection(conn, cursor)
+        close_db_connection(conn, cursor)
 
 
 # -----------------------------
@@ -58,24 +59,25 @@ def get_user_settings(user_id):
 @admin_bp.route("/admin/users", methods=["GET", "POST"])
 @login_required
 def manage_users():
-    conn, cursor = get_common_db_connection()
+    conn = create_db_connection()
+    cursor = conn.cursor()
     try:
         # Users
-        cursor.execute("SELECT id, username FROM Users ORDER BY username")
+        cursor.execute("SELECT id, username FROM users.Users ORDER BY username")
         users = cursor.fetchall()
 
         # Permissions
-        cursor.execute("SELECT PermissionId, PermissionCode FROM Permission ORDER BY PermissionCode")
+        cursor.execute("SELECT PermissionId, PermissionCode FROM users.Permission ORDER BY PermissionCode")
         permissions = cursor.fetchall()
 
         # Warehouses
-        cursor.execute("SELECT WhseLink, Name FROM _uvWhseMst ORDER BY Name")
+        cursor.execute("SELECT WhseLink, Name FROM common._uvWhseMst ORDER BY Name")
         warehouses = cursor.fetchall()
 
         # Notification Types
         cursor.execute("""
             SELECT NotificationTypeId, ModuleCode, Name
-            FROM NotificationType
+            FROM users.NotificationType
             WHERE IsActive = 1 AND IsSystem = 0
             ORDER BY ModuleCode, Name
         """)
@@ -84,7 +86,7 @@ def manage_users():
         # Project Groups (NEW)
         cursor.execute("""
         Select DISTINCT MainProjectLink, MainProjectCode, MainProjectName 
-        from _uvProject 
+        from common._uvProject 
         ORDER BY MainProjectCode
         """)
         project_groups = cursor.fetchall()
@@ -95,20 +97,20 @@ def manage_users():
             # -----------------
             # Permissions
             # -----------------
-            cursor.execute("DELETE FROM UserPermissions WHERE UserId = ?", (user_id,))
+            cursor.execute("DELETE FROM users.UserPermissions WHERE UserId = ?", (user_id,))
             for perm_id in request.form.getlist("permissions"):
                 cursor.execute(
-                    "INSERT INTO UserPermissions (UserId, PermissionId) VALUES (?, ?)",
+                    "INSERT INTO users.UserPermissions (UserId, PermissionId) VALUES (?, ?)",
                     (user_id, perm_id)
                 )
 
             # -----------------
             # Warehouses
             # -----------------
-            cursor.execute("DELETE FROM WarehouseToUserLink WHERE UserId = ?", (user_id,))
+            cursor.execute("DELETE FROM users.WarehouseToUserLink WHERE UserId = ?", (user_id,))
             for wh_id in request.form.getlist("warehouses"):
                 cursor.execute(
-                    "INSERT INTO WarehouseToUserLink (UserId, WarehouseId) VALUES (?, ?)",
+                    "INSERT INTO users.WarehouseToUserLink (UserId, WarehouseId) VALUES (?, ?)",
                     (user_id, wh_id)
                 )
 
@@ -116,13 +118,13 @@ def manage_users():
             # Notification Preferences
             # -----------------
             cursor.execute(
-                "DELETE FROM UserNotificationPreference WHERE UserId = ?",
+                "DELETE FROM users.UserNotificationPreference WHERE UserId = ?",
                 (user_id,)
             )
             for nt_id in request.form.getlist("not_prefs"):
                 cursor.execute(
                     """
-                    INSERT INTO UserNotificationPreference
+                    INSERT INTO users.UserNotificationPreference
                     (UserId, NotificationTypeId)
                     VALUES (?, ?)
                     """,
@@ -133,13 +135,13 @@ def manage_users():
             # Project Groups (NEW)
             # -----------------
             cursor.execute(
-                "DELETE FROM UserProjectGroupLink WHERE UserId = ?",
+                "DELETE FROM users.UserProjectGroupLink WHERE UserId = ?",
                 (user_id,)
             )
             for pg_id in request.form.getlist("project_groups"):
                 cursor.execute(
                     """
-                    INSERT INTO UserProjectGroupLink
+                    INSERT INTO users.UserProjectGroupLink
                     (UserId, ProjectGroupId)
                     VALUES (?, ?)
                     """,
@@ -160,4 +162,4 @@ def manage_users():
         )
 
     finally:
-        close_connection(conn, cursor)
+        close_db_connection(conn, cursor)

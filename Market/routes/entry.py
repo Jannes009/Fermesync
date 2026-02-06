@@ -1,5 +1,5 @@
-from flask import render_template, request, redirect, url_for, session, jsonify, make_response
-from Market.db import create_db_connection, close_db_connection
+﻿from flask import render_template, request, redirect, url_for, session, jsonify, make_response
+from Core.auth import create_db_connection, close_db_connection
 import pypyodbc as odbc
 from Market.routes.db_functions import (
     get_agent_codes, get_transporter_codes, get_production_unit_codes,
@@ -50,7 +50,7 @@ def fetch_lines_data(request_form):
 
 def store_header(cursor, form_data):
     cursor.execute("""
-        INSERT INTO ZZDeliveryNoteHeader 
+        INSERT INTO market.ZZDeliveryNoteHeader 
         (DeliClientId, DelNoteNo, DelDate, DelFarmId, DelTransporter, DelTransportCostExcl, DelMarketId, DelDestinationId)
         VALUES (?, ?, ?, ?, ?, ?, ?, ?)
     """, tuple(form_data.values()))
@@ -64,14 +64,14 @@ def store_lines(cursor, header_id, line_data, linesId=None):
         total_quantity += float(quantity)
         if linesId == None or len(linesId) <= count:
             cursor.execute("""
-                INSERT INTO ZZDeliveryNoteLines 
+                INSERT INTO market.ZZDeliveryNoteLines 
                 (DelHeaderId, DelLineStockId, DelLineQuantityBags, DelLinePriceEstimate, DelLineFarmId)
                 VALUES (?, ?, ?, ?, ?)
             """, (header_id, product, quantity, price, unit))
         else:
             
             cursor.execute("""
-                        UPDATE ZZDeliveryNoteLines 
+                        UPDATE market.ZZDeliveryNoteLines 
                         SET DelLineStockId = ?, DelLineQuantityBags = ?, DelLinePriceEstimate = ?, DelLineFarmId = ?
                         WHERE DelLineIndex = ?
             """, (product, quantity, price, unit, linesId[count]))
@@ -81,12 +81,12 @@ def store_lines(cursor, header_id, line_data, linesId=None):
 
 def update_header_quantity(cursor, header_id, total_quantity):
     cursor.execute("""
-        UPDATE ZZDeliveryNoteHeader SET DelQuantityBags = ? WHERE DelIndex = ?
+        UPDATE market.ZZDeliveryNoteHeader SET DelQuantityBags = ? WHERE DelIndex = ?
     """, (total_quantity, header_id))
     cursor.connection.commit()
 
 def fetch_lines(cursor, entry_id):
-    cursor.execute("SELECT * FROM ZZDeliveryNoteLines WHERE DelHeaderId = ?", (entry_id,))
+    cursor.execute("SELECT * FROM market.ZZDeliveryNoteLines WHERE DelHeaderId = ?", (entry_id,))
     return cursor.fetchall()
 
 @market_bp.route('/create_entry', methods=['GET', 'POST'])
@@ -95,7 +95,7 @@ def create_entry():
     form_data = None
 
     # Get connection for dropdowns and form processing
-    connection = create_db_connection(database_type="Market")
+    connection = create_db_connection()
     if not connection:
         return "Database connection failed. Contact admin."
 
@@ -109,7 +109,7 @@ def create_entry():
             # Store header
             store_header(cursor, form_data)
 
-            cursor.execute("SELECT DelIndex FROM ZZDeliveryNoteHeader WHERE DelNoteNo = ?", 
+            cursor.execute("SELECT DelIndex FROM market.ZZDeliveryNoteHeader WHERE DelNoteNo = ?", 
                            (form_data['ZZDelNoteNo'],))
             header_row = cursor.fetchone()
             if not header_row:
@@ -128,25 +128,6 @@ def create_entry():
             del_note_no = form_data['ZZDelNoteNo']
 
             # --------------------------
-            # Build background user snapshot from DB config
-            # --------------------------
-            market_cfg = next(
-                (cfg for cfg in current_user.db_config if cfg["database_type"] == "Market"),
-                None
-            )
-
-            if not market_cfg:
-                raise Exception("No Market DB config found for user.")
-
-            user_snapshot = {
-                "username": current_user.username,
-                "server_name": market_cfg["server"],
-                "database_name": market_cfg["database"],
-                "db_username": market_cfg["uid"],
-                "db_password": market_cfg["pwd"],  # decrypt later if needed
-            }
-
-            # --------------------------
             # Close main connection
             # --------------------------
             close_db_connection(cursor, connection)
@@ -156,11 +137,11 @@ def create_entry():
             # --------------------------
             threading.Thread(
                 target=run_background_procedures, 
-                args=(del_note_no, user_snapshot)
+                args=(del_note_no)
             ).start()
 
             session['del_note_no'] = del_note_no
-            return redirect(url_for('market.submission_success'))
+            return redirect(url_for('submission_success'))
 
         except odbc.IntegrityError as e:
             error_data = integrity_error(e, request.form)
@@ -176,7 +157,7 @@ def create_entry():
 
     # Ensure dropdowns are loaded from a fresh connection/cursor in case the
     # original cursor/connection was closed during POST processing.
-    dropdown_options_conn = create_db_connection(database_type="Market")
+    dropdown_options_conn = create_db_connection()
     if not dropdown_options_conn:
         return "Database connection failed. Contact admin."
 
@@ -204,11 +185,11 @@ def create_entry():
         **dropdown_options
     )
 
-def run_background_procedures(del_note_no, user_snapshot):
+def run_background_procedures(del_note_no):
     conn = None
     cursor = None
     try:
-        conn = create_db_connection(user_snapshot, database_type="Market")
+        conn = create_db_connection()
         if not conn:
             print("Failed to create DB connection in background thread.")
             return
@@ -216,11 +197,11 @@ def run_background_procedures(del_note_no, user_snapshot):
         cursor = conn.cursor()
         print(f"Running stored procedures for DelNoteNo {del_note_no}...")
 
-        cursor.execute("EXEC SIGCreateTransportPO")
-        cursor.execute("EXEC SIGUpdateDelQuantities")
-        cursor.execute("EXEC SIGUpdateWeightTransport")
-        cursor.execute("EXEC [dbo].[SIGUpdatePackagingCost]")
-        cursor.execute("EXEC [dbo].[SIGUpdateWeightTransport]")
+        cursor.execute("EXEC market.IGCreateTransportPO")
+        cursor.execute("EXEC market.SIGUpdateDelQuantities")
+        cursor.execute("EXEC market.SIGUpdateWeightTransport")
+        cursor.execute("EXEC [market].[SIGUpdatePackagingCost]")
+        cursor.execute("EXEC [market].[SIGUpdateWeightTransport]")
 
         conn.commit()
         print(f"Finished background procedures for DelNoteNo {del_note_no}")
@@ -299,7 +280,7 @@ def check_delivery_note():
     conn = create_db_connection()
     cursor = conn.cursor()
     
-    cursor.execute("SELECT COUNT(*) FROM ZZDeliveryNoteHeader WHERE DelNoteNo = ?", (del_note_no,))
+    cursor.execute("SELECT COUNT(*) FROM market.ZZDeliveryNoteHeader WHERE DelNoteNo = ?", (del_note_no,))
     exists = cursor.fetchone()[0] > 0
 
     conn.close()
@@ -318,7 +299,7 @@ def get_last_sales_price():
     cursor = conn.cursor()
     cursor.execute("""
         SELECT LastSalesPrice 
-        FROM _uvMarketProductWhse 
+        FROM market._uvMarketProductWhse 
         WHERE StockLink = ? AND WhseLink = ?
     """, (stock_link, whse_link))
     result = cursor.fetchone()
@@ -347,7 +328,7 @@ def get_default_transport_cost_api():
         
         # fetch agent destination
         query = """
-        Select AgentDestination from _uvMarketAgent
+        Select AgentDestination from market._uvMarketAgent
         Where DCLink = ?
         """
         cursor.execute(query, (agent_code,))
@@ -356,7 +337,7 @@ def get_default_transport_cost_api():
         if destination_result and destination_result[0] is not None:
             destination = destination_result[0]
             query = """
-            Select LastTransportCost from [dbo].[_uvLastTransportCost]
+            Select LastTransportCost from [market].[_uvLastTransportCost]
             where TransporterAccount = ? AND PackhouseLink = ? AND AgentDestination = ? 
             """
             cursor.execute(query, (transporter_code, packhouse_code, destination))
@@ -374,3 +355,5 @@ def get_default_transport_cost_api():
         
     except Exception as e:
         return jsonify({"error": "Failed to get default transport cost"}), 500
+
+

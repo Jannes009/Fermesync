@@ -1,7 +1,7 @@
 
 from flask_login import login_required, current_user
 from flask import jsonify, request, render_template, abort
-from Inventory.db import create_db_connection
+from Core.auth import create_db_connection, close_db_connection
 from Inventory.routes import inventory_bp
 from Inventory.routes.sdk_connection import EvolutionConnection
 import Pastel.Evolution as Evo
@@ -36,7 +36,7 @@ def fetch_outstanding_po_suppliers():
     placeholders = ",".join(["?"] * len(warehouses))
     query = f"""
     SELECT DISTINCT DCLink, SupplierName
-    FROM _uvPO_Outstanding
+    FROM inventory._uvPO_Outstanding
     WHERE WhseLink IN ({placeholders})
     """
 
@@ -60,7 +60,7 @@ def get_po_numbers():
 
     query = f"""
     SELECT DISTINCT OrderNum, OrderDate, OrderDesc, OrdTotIncl
-    FROM _uvPO_Outstanding
+    FROM inventory._uvPO_Outstanding
     WHERE DcLink = ? and WhseLink IN ({','.join(['?'] * len(current_user.warehouses))})
     """
     cursor.execute(query, [supplier_code] + current_user.warehouses)
@@ -87,7 +87,7 @@ def fetch_po_lines(po_number):
 
     query = f"""
         SELECT iLineID, iStockCodeID, StockDesc, WHName, QtyOutstanding, fUnitPriceExcl, UnitCode
-        FROM _uvPO_Outstanding
+        FROM inventory._uvPO_Outstanding
         WHERE OrderNum = ? and WhseLink IN ({','.join(['?'] * len(current_user.warehouses))})
     """
     cursor.execute(query, [po_number] + current_user.warehouses)
@@ -161,7 +161,7 @@ def submit_grv():
         conn = create_db_connection()
         cursor = conn.cursor()
         cursor.execute("""
-            INSERT INTO GRV (GRVUserId, GRVPONumber, GRVNumber, GRVAuditNumber, GRVSuppRef)
+            INSERT INTO inventory.GRV (GRVUserId, GRVPONumber, GRVNumber, GRVAuditNumber, GRVSuppRef)
             VALUES (?, ?, ?, ?, ?)
         """, (current_user.id,  po_number, grv_number, audit_number, supplierRef))
         conn.commit()

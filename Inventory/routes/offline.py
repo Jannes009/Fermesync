@@ -1,5 +1,5 @@
 from Inventory.routes import inventory_bp
-from Inventory.db import create_db_connection
+from Core.auth import create_db_connection, close_db_connection
 from flask_login import login_required, current_user
 from flask import request, jsonify, render_template, abort
 
@@ -9,7 +9,7 @@ def fetch_warehouses():
     cursor = conn.cursor() 
     query = f""" 
     Select WhseLink, WhseCode, WhseDescription
-    from [_uvWarehouses] 
+    from common.[_uvWarehouses] 
     WHERE WhseLink IN ({','.join(['?'] * len(current_user.warehouses))}) 
     """ 
     cursor.execute(query, current_user.warehouses)
@@ -26,7 +26,7 @@ def fetch_projects():
     cursor = conn.cursor()
     cursor.execute(f"""
         SELECT ProjectLink, ProjectCode, ProjectName
-        FROM _uvProject
+        FROM common._uvProject
         WHERE MainProjectLink IN ({','.join(['?'] * len(current_user.projects))}) 
     """, current_user.projects)
     rows = cursor.fetchall()
@@ -50,7 +50,7 @@ def fetch_products():
         ,StockingUnitId, StockingUnitCode
         ,PurchaseUnitId, PurchaseUnitCode
         ,PurchaseUnitCatId
-        FROM _uvInventoryQty 
+        FROM inventory._uvInventoryQty 
         WHERE WhseLink IN ({','.join(['?'] * len(current_user.warehouses))}) 
     """, current_user.warehouses)
     rows = cursor.fetchall()
@@ -83,7 +83,7 @@ def incomplete_issues():
 
     sql = """
         SELECT Distinct IssueId, IssueTimeStamp, ProjectName, IssueToName, IssueWhseId
-        FROM [dbo].[_uvStockIssue]
+        FROM [inventory].[_uvStockIssue]
         WHERE IssueFinalised = 0
         ORDER BY IssueId, IssueTimeStamp, ProjectName, IssueToName
     """
@@ -123,7 +123,7 @@ def incomplete_issue_lines():
         cursor.execute("""  
         Select IssueId, IssLineId, IssLineStockLink, StockDescription, 
                 IssLineUOMID, ISSLineUOMCode, ISSLineQtyIssued 
-        from [_uvStockIssue]
+        from inventory.[_uvStockIssue]
         Where IssLineQtyFinalised Is NULL
         """)
 

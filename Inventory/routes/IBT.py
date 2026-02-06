@@ -1,7 +1,7 @@
 import requests
 from flask import request, jsonify, render_template
 from . import inventory_bp
-from Inventory.db import create_db_connection
+from Core.auth import create_db_connection, close_db_connection
 from flask_login import login_required, current_user
 
 from Inventory.routes.sdk_connection import EvolutionConnection
@@ -18,7 +18,7 @@ def fetch_all_warehouses():
     cursor = conn.cursor() 
     query = f""" 
     Select WhseLink, WhseCode, WhseDescription
-    from [_uvWarehouses] 
+    from common.[_uvWarehouses] 
     """ 
     cursor.execute(query) 
     warehouses = [ 
@@ -38,10 +38,10 @@ def fetch_products_in_both_whses():
 
     cursor.execute("""
     SELECT FROMQTY.StockCode FromStockCode, FROMQTY.StockDescription, FROMQTY.QtyOnHand, FROMQTY.StockingUnitCode
-    FROM _uvInventoryQty FROMQTY
+    FROM inventory._uvInventoryQty FROMQTY
     WHERE  EXISTS(
         SELECT StockLink ToStckLink
-        FROM _uvInventoryQty TOQTY
+        FROM inventory._uvInventoryQty TOQTY
         where TOQTY.WhseCode = ? and TOQTY.StockLink = FROMQTY.StockLink
     )
     And FROMQTY.QtyOnHand > 0 And FROMQTY.WhseCode = ? And FROMQty.ItemActive = 1
@@ -59,7 +59,6 @@ def fetch_products_in_both_whses():
         }
         for row in rows
     ]
-    print(products_list)
     return jsonify({"products": products_list})
 
 import sys
@@ -91,7 +90,7 @@ def submit_ibt():
         cursor = conn.cursor()
 
         cursor.execute("""
-        INSERT INTO [IBT](
+        INSERT INTO inventory.[IBT](
         [IBTDispatchUserId],
         [IBTDispatchTimeStamp],
         [IBTNo],
@@ -132,7 +131,7 @@ def fetch_issued_ibts():
 
     cursor.execute("""
     Select Distinct cIBTNumber, cIBTDescription, FromWhseName, ToWhseName
-    from [dbo].[_uvIBTSummary]
+    from [inventory].[_uvIBTSummary]
     Where StatusID = 1
     """)
     ibts = [
@@ -160,7 +159,7 @@ def display_ibt():
     Select 
     cIBTNumber, cIBTDescription, FromWhseName, ToWhseName
     ,StockLink, StockDesc ,cDescription, cReference, fQtyIssued
-    from [dbo].[_uvIBTSummary]
+    from [inventory].[_uvIBTSummary]
     Where StatusID = 1 and cIBTNumber = ?
     """, (ibt_number,))
 
@@ -187,7 +186,6 @@ def display_ibt():
 def submit_ibt_receive():
     try:
         data = request.get_json()
-        print("Received IBT receive data:", data)
 
         with EvolutionConnection():
             ibt = Evo.WarehouseIBT(data["ibt_number"])
@@ -202,7 +200,6 @@ def submit_ibt_receive():
                         ibt_line.Description = line_data.get("Description", "")
                         ibt_line.Reference = line_data.get("Reference", "")
                         matched = True
-                        print("Updated IBT line:", ibt_line.InventoryItemID, ibt_line.QuantityReceived, ibt_line.QuantityDamaged, ibt_line.QuantityVariance)
                         break
                 if not matched:
                     return jsonify({"success": False, "message": f"IBT line not found for InventoryItemID {line_data['InventoryItemID']}"}), 400
@@ -211,7 +208,7 @@ def submit_ibt_receive():
         conn = create_db_connection()
         cursor = conn.cursor()
         cursor.execute("""
-        UPDATE [IBT]
+        UPDATE inventory.[IBT]
         SET [IBTRecUserId] = ?, [IBTRecTimeStamp] = GETDATE(),
         [IBTRecAuditNo] = ?
         WHERE [IBTNo] = ?

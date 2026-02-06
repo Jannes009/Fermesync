@@ -1,8 +1,8 @@
-from flask import render_template, send_file, request
+﻿from flask import render_template, send_file, request
 from reportlab.lib.pagesizes import letter
 from reportlab.pdfgen import canvas
 from io import BytesIO
-from Market.db import create_db_connection
+from Core.auth import create_db_connection, close_db_connection
 from flask import jsonify
 import json
 import os
@@ -49,7 +49,7 @@ def fetch_delivery_note_report():
         
         # Parameterized query to prevent SQL injection
         query = """
-            SELECT * FROM [dbo].[_uvMarketDeliveryNotetbl]
+            SELECT * FROM [market].[_uvMarketDeliveryNotetbl]
             WHERE DelDate BETWEEN ? AND ?
         """
         cursor.execute(query, (start_date, end_date))
@@ -152,3 +152,5 @@ def save_template():
         return jsonify({"message": "Template saved", "template": template_name}), 200
     except Exception as exc:
         return jsonify({"error": "Failed to save template", "details": str(exc)}), 500
+
+

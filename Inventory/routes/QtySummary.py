@@ -2,9 +2,8 @@ import sys
 from flask import request, jsonify, render_template, abort
 import clr  # pythonnet
 from Inventory.routes import inventory_bp
-from Inventory.db import create_db_connection
+from Core.auth import create_db_connection, close_db_connection
 from flask_login import login_required, current_user
-from auth import get_common_db_connection, close_connection
 from Inventory.routes.db_conversions import warehouse_code_to_link, project_code_to_link, stock_link_to_code
 from datetime import datetime
 from Inventory.routes.notifications import emit_event
@@ -24,7 +23,7 @@ def inventory_qty_summary():
         --SUM(IncompleteIssuesQty) IncompleteIssuesQty,
         --SUM(QtyOnPo) QtyOnPo,
         SUM(ToBeOrdered) ToBeOrdered
-    FROM _uvInventoryQty
+    FROM inventory._uvInventoryQty
     WHERE WhseLink IN ({','.join(['?'] * len(current_user.warehouses))}) 
     GROUP BY WhseLink, WhseCode, WhseName
     ORDER BY WhseName, WhseCode
@@ -56,12 +55,12 @@ def inventory_qty_summary_warehouse(warehouse_id):
             QTY.ReorderLevel,
             QTY.ToBeOrdered,
             CNT.DateLastCounted
-        FROM _uvInventoryQty QTY
+        FROM inventory._uvInventoryQty QTY
         LEFT JOIN (
             SELECT 
                 InvCountCatId,
                 MAX(InvCountTimeFinalised) AS DateLastCounted
-            FROM InventoryCountHeaders
+            FROM inventory.InventoryCountHeaders
             WHERE InvCountWhseId = ?
             AND InvCountStatus = 'FINALISED'
             GROUP BY InvCountCatId
@@ -123,7 +122,7 @@ def bulk_update_stock():
 
             if updates:
                 params.append(stock_id)
-                sql = f"UPDATE _uvInventoryQty SET {', '.join(updates)} WHERE StockId = ?"
+                sql = f"UPDATE inventory._uvInventoryQty SET {', '.join(updates)} WHERE StockId = ?"
                 cursor.execute(sql, params)
 
         conn.commit()

@@ -1,6 +1,6 @@
 from flask import request, jsonify, render_template, abort
 from Inventory.routes import inventory_bp
-from Inventory.db import create_db_connection
+from Core.auth import create_db_connection, close_db_connection
 from flask_login import login_required, current_user
 from Inventory.routes.db_conversions import stock_link_to_code
 from Inventory.routes.OrderEntry.PurchaseOrder import create_purchase_order
@@ -89,10 +89,10 @@ def view_po_requisition(requisition_id):
         abort(403)
     header_udfs, line_udfs = load_po_udf_metadata()
     cursor = create_db_connection().cursor()
-    cursor.execute("SELECT Status FROM PO_RequisitionHeader WHERE Id = ?", requisition_id)
+    cursor.execute("SELECT Status FROM inventory.PO_RequisitionHeader WHERE Id = ?", requisition_id)
     status = cursor.fetchone()
     if not status:
-        cursor.execute("Select Count(AutoIndex) as cnt from [dbo].[_uvPO_Outstanding] Where AutoIndex = ?", requisition_id)
+        cursor.execute("Select Count(AutoIndex) as cnt from [inventory].[_uvPO_Outstanding] Where AutoIndex = ?", requisition_id)
         cnt = cursor.fetchone()
         if cnt.cnt == 0:
             abort(404)
@@ -118,7 +118,7 @@ def fetch_distinct_products():
     cursor = conn.cursor()
     cursor.execute(f"""
         SELECT Distinct StockLink, StockCode, StockDescription
-        FROM _uvInventoryQty 
+        FROM inventory._uvInventoryQty 
         WHERE WhseLink IN ({','.join(['?'] * len(current_user.warehouses))}) 
     """, current_user.warehouses)
     rows = cursor.fetchall()
@@ -152,7 +152,7 @@ def fetch_item_uom_warehouse():
             WhseItem,
             PurchaseUnitId,
             PurchaseUnitCatId
-        FROM _uvInventoryQty
+        FROM inventory._uvInventoryQty
         WHERE StockLink = ?
     """, product_link)
 
@@ -174,7 +174,7 @@ def fetch_item_uom_warehouse():
     if row.bUOMItem == 1:
         cursor.execute("""
             SELECT idUnits, cUnitCode
-            FROM [dbo].[_uvUOM]
+            FROM [common].[_uvUOM]
             WHERE iUnitCategoryID = ?
         """, row.PurchaseUnitCatId)
 
@@ -193,7 +193,7 @@ def fetch_suppliers():
 
     cursor.execute("""
     SELECT DISTINCT DCLink, Name
-    FROM _uvSuppliers
+    FROM common_uvSuppliers
     """)
     suppliers = [
         {"id": row[0], "name": row[1]}
@@ -217,7 +217,7 @@ def save_po_requisition():
         # HEADER
         # -------------------------
         cursor.execute("""
-            INSERT INTO PO_RequisitionHeader (
+            INSERT INTO inventory.PO_RequisitionHeader (
                 SupplierId, OrderDate, DueDate,
                 Description, CreatedByUserId, STATUS
             )
@@ -239,7 +239,7 @@ def save_po_requisition():
         for field_name, field_value in data.get("header_udfs", {}).items():
             if field_value:
                 cursor.execute("""
-                    INSERT INTO PO_RequisitionUdf (
+                    INSERT INTO inventory.PO_RequisitionUdf (
                         RequisitionId, Scope, FieldName, FieldValue
                     )
                     VALUES (?, 'HEADER', ?, ?)
@@ -254,7 +254,7 @@ def save_po_requisition():
             product_code = stock_link_to_code(product_link, cursor)
             
             cursor.execute("""
-                INSERT INTO PO_RequisitionLine (
+                INSERT INTO inventory.PO_RequisitionLine (
                     RequisitionId, LineIndex, ProductId, ProductCode,
                     Quantity, Price, UomId, WarehouseId, ProjectId
                 )
@@ -281,7 +281,7 @@ def save_po_requisition():
             for field_name, field_value in line_data.get("udf", {}).items():
                 if field_value:
                     cursor.execute("""
-                        INSERT INTO PO_RequisitionUdf (
+                        INSERT INTO inventory.PO_RequisitionUdf (
                             RequisitionId, LineId, Scope, FieldName, FieldValue
                         )
                         VALUES (?, ?, 'LINE', ?, ?)
@@ -320,7 +320,7 @@ def update_po_requisition(requisition_id):
 
     try:
         cursor.execute(
-            "SELECT Status FROM PO_RequisitionHeader WHERE Id = ?",
+            "SELECT Status FROM inventory.PO_RequisitionHeader WHERE Id = ?",
             requisition_id
         )
         status = cursor.fetchone()[0]
@@ -330,7 +330,7 @@ def update_po_requisition(requisition_id):
 
         # Header
         cursor.execute("""
-            UPDATE PO_RequisitionHeader
+            UPDATE inventory.PO_RequisitionHeader
             SET SupplierId = ?, OrderDate = ?, DueDate = ?, Description = ?
             WHERE Id = ?
         """, (
@@ -343,26 +343,26 @@ def update_po_requisition(requisition_id):
 
         # Header UDFs
         cursor.execute("""
-            DELETE FROM PO_RequisitionUdf
+            DELETE FROM inventory.PO_RequisitionUdf
             WHERE RequisitionId = ? AND Scope = 'HEADER'
         """, requisition_id)
 
         for k, v in data.get("header_udfs", {}).items():
             if v:
                 cursor.execute("""
-                    INSERT INTO PO_RequisitionUdf
+                    INSERT INTO inventory.PO_RequisitionUdf
                     (RequisitionId, Scope, FieldName, FieldValue)
                     VALUES (?, 'HEADER', ?, ?)
                 """, (requisition_id, k, v))
 
         # Lines + line UDFs
         cursor.execute("""
-            DELETE FROM PO_RequisitionUdf
+            DELETE FROM inventory.PO_RequisitionUdf
             WHERE RequisitionId = ? AND Scope = 'LINE'
         """, requisition_id)
 
         cursor.execute("""
-            DELETE FROM PO_RequisitionLine
+            DELETE FROM inventory.PO_RequisitionLine
             WHERE RequisitionId = ?
         """, requisition_id)
 
@@ -370,7 +370,7 @@ def update_po_requisition(requisition_id):
             print(line, idx, requisition_id)
             product_code = stock_link_to_code(line["product_id"], cursor)
             cursor.execute("""
-                INSERT INTO PO_RequisitionLine (
+                INSERT INTO inventory.PO_RequisitionLine (
                     RequisitionId, LineIndex, ProductId, ProductCode,
                     Quantity, Price, UomId, WarehouseId, ProjectId
                 )
@@ -393,7 +393,7 @@ def update_po_requisition(requisition_id):
             for udf, val in line.get("udf", {}).items():
                 if val:
                     cursor.execute("""
-                        INSERT INTO PO_RequisitionUdf
+                        INSERT INTO inventory.PO_RequisitionUdf
                         (RequisitionId, LineId, Scope, FieldName, FieldValue)
                         VALUES (?, ?, 'LINE', ?, ?)
                     """, (requisition_id, line_id, udf, val))
@@ -421,7 +421,7 @@ def approve_requisition(requisition_id):
         # ------------------------------------------------------------------
         cursor.execute("""
             SELECT Status
-            FROM PO_RequisitionHeader
+            FROM inventory.PO_RequisitionHeader
             WHERE Id = ?
         """, requisition_id)
 
@@ -459,7 +459,7 @@ def approve_requisition(requisition_id):
         # UPDATE REQUISITION STATUS
         # ------------------------------------------------------------------
         cursor.execute("""
-            UPDATE PO_RequisitionHeader
+            UPDATE inventory.PO_RequisitionHeader
             SET Status = 'POSTED',
                 ApprovedByUserId = ?,
                 ApprovedAt = GETDATE(),
@@ -491,7 +491,7 @@ def reject_requisition(requisition_id):
     cursor = conn.cursor()
 
     cursor.execute("""
-        UPDATE PO_RequisitionHeader
+        UPDATE inventory.PO_RequisitionHeader
         SET Status = 'REJECTED',
             RejectedByUserId = ?,
             RejectedAt = GETDATE(),
@@ -512,7 +512,7 @@ def fetch_po_requisition(requisition_id):
     cursor = conn.cursor()
 
     # ---------- HEADER ----------
-    cursor.execute("SELECT * FROM PO_RequisitionHeader WHERE Id = ?", requisition_id)
+    cursor.execute("SELECT * FROM inventory.PO_RequisitionHeader WHERE Id = ?", requisition_id)
     header = cursor.fetchone()
     if not header:
         abort(404)
@@ -520,7 +520,7 @@ def fetch_po_requisition(requisition_id):
     # ---------- HEADER UDFS ----------
     cursor.execute("""
         SELECT FieldName, FieldValue
-        FROM PO_RequisitionUdf
+        FROM inventory.PO_RequisitionUdf
         WHERE RequisitionId = ?
           AND Scope = 'HEADER'
     """, requisition_id)
@@ -531,7 +531,7 @@ def fetch_po_requisition(requisition_id):
 
     # ---------- LINES ----------
     cursor.execute("""
-        SELECT * FROM PO_RequisitionLine
+        SELECT * FROM inventory.PO_RequisitionLine
         WHERE RequisitionId = ?
         ORDER BY LineIndex
     """, requisition_id)
@@ -540,7 +540,7 @@ def fetch_po_requisition(requisition_id):
     # ---------- LINE UDFS ----------
     cursor.execute("""
         SELECT LineId, FieldName, FieldValue
-        FROM PO_RequisitionUdf
+        FROM inventory.PO_RequisitionUdf
         WHERE RequisitionId = ?
           AND Scope = 'LINE'
     """, requisition_id)
@@ -581,7 +581,7 @@ def fetch_last_invoice_price():
     cursor = conn.cursor()
     try:
         cursor.execute("""
-        Select fUnitPriceExcl, * from _uvLastSupplierInvoicePrice
+        Select fUnitPriceExcl, * from inventory._uvLastSupplierInvoicePrice
         Where AccountID = ? AND iStockCodeID = ? AND iUnitsOfMeasureID = ?
         """, (supplier, product_link, uom_id))
         row = cursor.fetchone()

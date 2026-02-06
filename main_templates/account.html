@@ -218,79 +218,6 @@
                 </div>
               </div>
             </div>
-
-            <!-- Databases -->
-            <div class="tab-pane" id="databases" role="tabpanel">
-              <div class="section-card">
-                <div class="section-title">Database Configurations</div>
-
-                {% if database_configs %}
-                  <div class="table-box">
-                    <table class="styled-table">
-                      <thead>
-                        <tr>
-                          <th>Type</th>
-                          <th>Server</th>
-                          <th>Database</th>
-                          <th>Username</th>
-                          <th>Actions</th>
-                        </tr>
-                      </thead>
-                      <tbody>
-                        {% for db in database_configs %}
-                          <tr>
-                            <td>{{ db.db_type }}</td>
-                            <td>{{ db.server_name }}</td>
-                            <td>{{ db.database_name }}</td>
-                            <td>{{ db.db_username }}</td>
-                            <td>
-                              <form method="POST" action="{{ url_for('account.remove_database', db_user_id=db.user_id, db_type=db_type) }}" class="d-inline">
-                                <button type="button" class="custom-btn btn-danger btn-sm remove-db-btn" data-id="{{ db.user_id }}" data-type="{{ db.db_type }}">Remove</button>
-                              </form>
-                            </td>
-                          </tr>
-                        {% endfor %}
-                      </tbody>
-                    </table>
-                  </div>
-                {% else %}
-                  <div class="alert alert-info">No database configurations yet.</div>
-                {% endif %}
-
-                <!-- Add Database Form -->
-                <div class="table-box mt-3">
-                  <div class="section-title" style="font-size:1rem;">Add Database Config</div>
-                  <form method="POST" id="add-database-form">
-                    <div class="mb-3">
-                      <label class="form-label">DB Type</label>
-                      <select class="form-select" name="db_type" required>
-                        <option value="Market">Market</option>
-                        <option value="Inventory">Inventory</option>
-                        <option value="Evolution">Evolution</option>
-                      </select>
-                    </div>
-                    <div class="mb-3">
-                      <label class="form-label">Server Name</label>
-                      <input type="text" class="form-control" name="server_name" required>
-                    </div>
-                    <div class="mb-3">
-                      <label class="form-label">Database Name</label>
-                      <input type="text" class="form-control" name="db_name" required>
-                    </div>
-                    <div class="mb-3">
-                      <label class="form-label">SQL Username</label>
-                      <input type="text" class="form-control" name="db_username" required>
-                    </div>
-                    <div class="mb-3">
-                      <label class="form-label">SQL Password</label>
-                      <input type="password" class="form-control" name="db_password" required>
-                    </div>
-                    <button type="button" class="custom-btn btn-primary" id="add-database">Add Database</button>
-                  </form>
-                </div>
-              </div>
-            </div>
-
           </div>
         </div>
       </div>
@@ -378,62 +305,7 @@ document.addEventListener("DOMContentLoaded", () => {
             });
         });
     });
-
-
-    // ----------------------------
-    // ADD DATABASE
-    // ----------------------------
-    document.getElementById("add-database").addEventListener("click", async (e) => {
-
-        const form = document.getElementById("add-database-form");
-
-        // Convert form values to an object
-        const data = Object.fromEntries(new FormData(form));
-
-        const res = await fetch("/account/add_database", {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify(data)
-        });
-
-        const json = await res.json();
-
-        Swal.fire({
-            icon: json.success ? "success" : "error",
-            title: json.message,
-        }).then(() => {
-            if (json.success) location.reload();
-        });
-    });
-
-
-    // ----------------------------
-    // REMOVE DATABASE
-    // ----------------------------
-    document.querySelectorAll(".remove-db-btn").forEach(btn => {
-        btn.addEventListener("click", async () => {
-            const db_id = btn.dataset.id;
-            const db_type = btn.dataset.type;
-
-            const res = await fetch("/account/remove_database", {
-                method: "POST",
-                headers: { "Content-Type": "application/json" },
-                body: JSON.stringify({ db_id, db_type })
-            });
-
-            const json = await res.json();
-
-            Swal.fire({
-                icon: json.success ? "success" : "error",
-                title: json.message,
-            }).then(() => {
-                if (json.success) location.reload();
-            });
-        });
-    });
-
-
-});
+  });
 </script>
 
 </body>

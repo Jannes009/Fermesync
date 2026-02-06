@@ -1,5 +1,5 @@
-from flask import render_template, request, jsonify
-from Market.db import create_db_connection, close_db_connection
+﻿from flask import render_template, request, jsonify
+from Core.auth import create_db_connection, close_db_connection
 from Market.routes.db_functions import get_agent_codes, get_stock_id, get_products, del_note_number_to_del_id
 
 from Market.routes import market_bp
@@ -10,7 +10,7 @@ def view_entries():
     query = """
     SELECT DelIndex, DelDate, DelNoteNo, AgentName, PackhouseName, ProdUnitName,
         QtyLoaded,QtySold,QtyInvoiced
-    FROM [dbo].[_uvViewEntriesPage]
+    FROM [market].[_uvViewEntriesPage]
     """
 
     # Connect to the database
@@ -40,20 +40,20 @@ def get_sales_entries(lineId):
         if(view_mode != True):
             query = """
             SELECT SalesDate, SalesQty, SalesPrice, DiscountPercent, SalesAmnt, SalesStockId, SalesLineIndex, Destroyed
-            FROM [dbo].[_uvMarketSales]
+            FROM [market].[_uvMarketSales]
             WHERE SalesDelLineId = ? AND Invoiced = 'FALSE'
             """
         elif(view_mode == True):
            query = """
             SELECT SalesDate, SalesQty, SalesPrice, DiscountPercent, SalesAmnt, SalesStockId, SalesLineIndex, Destroyed
-            FROM [dbo].[ZZSalesLines]
+            FROM [market].[ZZSalesLines]
             WHERE SalesDelLineId = ?
             """ 
         cursor.execute(query, (lineId,))
         rows = cursor.fetchall()
         print(rows)
         query = """
-        Select AvailableQtyForSale from [dbo].[_uvDelQuantities] Where DelLineIndex = ?
+        Select AvailableQtyForSale from [market].[_uvDelQuantities] Where DelLineIndex = ?
         """
         cursor.execute(query, (lineId,))
         available_for_sale = cursor.fetchone()
@@ -79,3 +79,5 @@ def get_sales_entries(lineId):
     except Exception as e:
         print(f'Error retrieving sales entries: {e}')
         return jsonify({'success': False, 'message': 'Error retrieving sales entries'})
+
+

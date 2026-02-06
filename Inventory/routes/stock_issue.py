@@ -2,9 +2,8 @@ import sys
 from flask import request, jsonify, render_template, abort
 import clr  # pythonnet
 from Inventory.routes import inventory_bp
-from Inventory.db import create_db_connection
+from Core.auth import create_db_connection, close_db_connection
 from flask_login import login_required, current_user
-from auth import get_common_db_connection, close_connection
 from Inventory.routes.db_conversions import warehouse_code_to_link, project_code_to_link, stock_link_to_code
 from datetime import datetime
 from Inventory.routes.notifications import emit_event
@@ -50,7 +49,7 @@ def create_stock_issue():
         project_link = project_code_to_link(project_code, cursor)
 
         cursor.execute("""
-        INSERT INTO IssueHeader( 
+        INSERT INTO inventory.IssueHeader( 
         IssueWhseId, IssueProjectId, IssueByUserId, [IssueTimeStamp])
         OUTPUT INSERTED.IssueId 
         VALUES (?, ?, ?, ?) """, 
@@ -61,7 +60,7 @@ def create_stock_issue():
         # If order is final, mark header final now
         if order_final:
             cursor.execute("""
-                UPDATE IssueHeader
+                UPDATE inventory.IssueHeader
                 SET IssueFinalised = 1, IssueFinalisedByUserId = ?, IssueFinalisedTimeStamp = GETDATE()
                 WHERE IssueId = ?
             """, (current_user.id, stock_issue_id))
@@ -70,7 +69,7 @@ def create_stock_issue():
         for line in lines_payload:
             print(line)
             cursor.execute("""
-                INSERT INTO IssueLines(
+                INSERT INTO inventory.IssueLines(
                     IssLineHeaderId, IssLineStockLink, IssLineStockCode, IssLineQtyIssued, IssLineUOMId, IssLineUOMCode
                 )
                 VALUES (?, ?, ?, ?, ?, ?)
@@ -84,10 +83,10 @@ def create_stock_issue():
             ))
             # If final, set IssLineQtyFinalised for that newly-inserted line
             if order_final:
-                cursor.execute("SELECT MAX(IssLineId) FROM IssueLines")
+                cursor.execute("SELECT MAX(IssLineId) FROM inventory.IssueLines")
                 last_line_id = cursor.fetchone()[0]
                 cursor.execute("""
-                    UPDATE IssueLines
+                    UPDATE inventory.IssueLines
                     SET IssLineQtyFinalised = ?
                     WHERE IssLineId = ?
                 """, (line.get("qty_to_issue"), last_line_id))
@@ -105,7 +104,7 @@ def create_stock_issue():
                 order_number = submit_stock_issue(warehouse_code, project_code, submission_lines)
                 print(order_number,stock_issue_id)
                 cursor.execute("""
-                    UPDATE IssueHeader
+                    UPDATE inventory.IssueHeader
                     SET IssueInvoiceNo = ?
                     WHERE IssueId = ?
                 """, (order_number, stock_issue_id))
@@ -123,7 +122,7 @@ def create_stock_issue():
                 }), 400
 
         cursor.execute("""
-        Select IssLineId, IssLineStockLink from [dbo].[IssueLines]
+        Select IssLineId, IssLineStockLink from [inventory].[IssueLines]
         Where IssLineHeaderId = ?
         """, (stock_issue_id,))
         issue_lines = cursor.fetchall()
@@ -192,13 +191,13 @@ def process_return():
         cursor = conn.cursor()
 
         # check if issue was already processed
-        cursor.execute("Select IssueFinalised from IssueHeader where IssueId = ?", (issue_id,))
+        cursor.execute("Select IssueFinalised from inventory.IssueHeader where IssueId = ?", (issue_id,))
         order_finalised = int(cursor.fetchone()[0]) > 0
         if order_finalised:
             return jsonify({"success": False, "message": "This issue was already finalised. Please refresh page."})
         
         cursor.execute("""
-            Update IssueHeader
+            Update inventory.IssueHeader
             SET IssueFinalised = 1, 
                 IssueFinalisedByUserId = ?, IssueFinalisedTimeStamp = ?
             WHERE IssueId = ?
@@ -210,7 +209,7 @@ def process_return():
             # fetch stock link for submission
             cursor.execute("""
                 Select IssLineStockLink
-                from IssueLines
+                from inventory.IssueLines
                 where IssLineId = ?
             """, (line.get("line_id"),))
             stock_link_row = cursor.fetchone()
@@ -226,14 +225,14 @@ def process_return():
             })
 
             cursor.execute("""
-                UPDATE IssueLines
+                UPDATE inventory.IssueLines
                 SET IssLineQtyReceived = ?, IssLineQtyFinalised = ?
                 WHERE IssLineId = ?
             """, (line.get("qty_returned"), qty_finalised, line.get("line_id")))
         # get Issue details
         cursor.execute("""
             Select IssueWhseId, IssueProjectId, IssueReturnedToName, IssueToName
-            from IssueHeader
+            from inventory.IssueHeader
             where IssueId = ?
         """, (issue_id,))
         issue = cursor.fetchone()
@@ -245,7 +244,7 @@ def process_return():
         else:
             order_number = "No Order Created"
         cursor.execute("""
-            UPDATE IssueHeader
+            UPDATE inventory.IssueHeader
             SET IssueInvoiceNo = ?
             WHERE IssueId = ?
         """, (order_number, issue_id))

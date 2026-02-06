@@ -1,7 +1,7 @@
 
 from flask import request, jsonify, render_template, abort
 from Inventory.routes import inventory_bp
-from Inventory.db import create_db_connection
+from Core.auth import create_db_connection, close_db_connection
 from flask_login import login_required, current_user
 from Inventory.routes.db_conversions import warehouse_code_to_link, project_code_to_link, stock_link_to_code
 from Inventory.routes.sdk_connection import EvolutionConnection

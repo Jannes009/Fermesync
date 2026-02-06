@@ -1,11 +1,11 @@
-import time
+﻿import time
 import datetime
 import tempfile
 import pandas as pd
-from Market.db import create_db_connection
+from Core.auth import create_db_connection
 from playwright.sync_api import sync_playwright
 import re
-from db_manager import get_service_details
+from Core.db_manager import get_service_details
 import threading
 freshlinq_lock = threading.Lock()
 
@@ -285,10 +285,10 @@ def insert_into_database(data, current_user):
     conn = create_db_connection()
     cursor = conn.cursor()
     try:
-        cursor.execute("TRUNCATE TABLE ZZFreshLinqImport")
+        cursor.execute("TRUNCATE TABLE market.ZZFreshLinqImport")
         yield "data:  ↳ Table ZZFreshLinqImport truncated.\n\n"
         sql = """
-        INSERT INTO ZZFreshLinqImport (
+        INSERT INTO market.ZZFreshLinqImport (
             lot_no, brand, commodity, delivery_note_no, packaging, variety, created_at,
             delivery_date, weight, size, lot_status, branch, lot_notes, quality, agent,
             movement, weighted_average, qty_delivered, qty_sold, remaining, lot_depletions,

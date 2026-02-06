@@ -6,6 +6,7 @@ sys.path.append(r"C:\Program Files (x86)\Sage Evolution")
 clr.AddReference("Pastel.Evolution.Common")
 clr.AddReference("Pastel.Evolution")
 import Pastel.Evolution as Evo
+from Core.key_manager import decrypt_password
 
 class EvolutionConnection:
     def __init__(
@@ -14,7 +15,7 @@ class EvolutionConnection:
         common_db="SageCommon",
         company_db="UB_UITDRAAI_BDY",
         username=os.getenv("DB_USERNAME"),
-        password=os.getenv("DB_PASSWORD"),
+        password=decrypt_password(os.getenv("DB_PASSWORD")),
         license_key=os.getenv("DB_LICENCE_KEY"),
         license_serial=os.getenv("DB_LICENCE_SERIAL"),
         trusted=False

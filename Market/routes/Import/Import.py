@@ -1,12 +1,12 @@
-from flask import render_template, request, jsonify, Response, stream_with_context
-from Market.db import create_db_connection
+﻿from flask import render_template, request, jsonify, Response, stream_with_context
 import logging
 from flask_login import current_user
 from Market.routes.Import.freshlinq import Freshlinq
 from Market.routes.Import.technofresh import Technofresh
 from flask_login import current_user
 from Market.routes import market_bp
-from db_manager import get_services_for_user
+from Core.db_manager import get_services_for_user
+from Core.auth import create_db_connection, close_db_connection
 
 @market_bp.route('/import/main', methods=['GET'])
 def import_page():
@@ -32,13 +32,13 @@ def get_import_results():
     cursor = conn.cursor()
 
     # Fetch data from _uvMarketTrnConsignments
-    cursor.execute("SELECT * FROM _uvMarketTrnConsignments")
+    cursor.execute("SELECT * FROM market._uvMarketTrnConsignments")
     rows = cursor.fetchall()
 
     # Get column names
     column_names = [column[0] for column in cursor.description]
 
-    # Process data into list of dictionaries
+    # Process data into market.list of dictionaries
     results = [dict(zip(column_names, row)) for row in rows]
 
     # Close connections
@@ -57,7 +57,7 @@ def get_dockets():
     print(consignment_id)
     cursor.execute("""
         SELECT DocketNumber, QtySold, Price, SalesValue, DateSold
-        FROM ZZMarketDataTrn
+        FROM market.ZZMarketDataTrn
         WHERE ConsignmentID = ?
     """, (consignment_id,))
 
@@ -86,8 +86,8 @@ def update_market_del_note_no():
         conn = create_db_connection()
         cursor = conn.cursor()
         cursor.execute("""
-            UPDATE ZZMarketDataTrn SET DelNoteNo = ?
-            FROM ZZMarketDataTrn
+            UPDATE market.ZZMarketDataTrn SET DelNoteNo = ?
+            FROM market.ZZMarketDataTrn
             WHERE DelNoteNo = ?
         """, (new_del_note_no, old_del_note_no))
         
@@ -162,13 +162,13 @@ def get_consignment_details(consignment_id):
     query = """
     SELECT DISTINCT 
         Product ,Variety ,Class ,Mass_kg ,Size ,QtySent ,Brand ,DelNoteNo
-    FROM [dbo].[ZZMarketDataTrn]
+    FROM [market].[ZZMarketDataTrn]
     WHERE ConsignmentID = ?
     """
     
     matches_query = """
     Select DelLineIndex ,Product ,Variety ,Class ,Mass ,Size ,Brand ,DelLineQuantityBags
-    from DelNoteLineLookup
+    from market.DelNoteLineLookup
     Where DelNoteNo = ?
     """
     print(consignment_id, query)
@@ -242,7 +242,7 @@ def match_consignment():
     consignment_id = data.get('consignment_id')
     line_id = data.get('line_id')
     query = """
-    UPDATE ZZDeliveryNoteLines
+    UPDATE market.ZZDeliveryNoteLines
     SET ConsignmentID = ?
     WHERE DelLineIndex = ?
     """
@@ -261,9 +261,9 @@ def match_consignment():
         
         cursor.execute("EXEC SIGCreateSalesFromTrn")
         cursor.execute("""
-            EXEC [dbo].[SIGUpdatePackagingCost]
-            EXEC [dbo].[SIGUpdateWeightTransport]
-            EXEC [dbo].[SIGUpdateDeliveryNoteLineTotals]
+            EXEC [market].[SIGUpdatePackagingCost]
+            EXEC [market].[SIGUpdateWeightTransport]
+            EXEC [market].[SIGUpdateDeliveryNoteLineTotals]
         """)
         conn.commit()
 
@@ -287,7 +287,7 @@ def discard_consignment(consignment_id=None):
         cursor = conn.cursor()
         print(consignment_id)
         cursor.execute("""
-            UPDATE ZZMarketDataTrn
+            UPDATE market.ZZMarketDataTrn
             SET Deleted = 1
             WHERE ConsignmentID = ?
         """, (consignment_id,))
@@ -301,3 +301,4 @@ def discard_consignment(consignment_id=None):
     finally:
         cursor.close()
         conn.close()
+

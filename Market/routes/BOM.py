@@ -1,5 +1,5 @@
-from flask import render_template, jsonify
-from Market.db import create_db_connection
+﻿from flask import render_template, jsonify
+from Core.auth import create_db_connection, close_db_connection
 from Market.routes import market_bp
 
 # Helper to drain all resultsets from stored proc
@@ -77,7 +77,7 @@ def create_bom():
 def get_bill_of_materials(cursor):
     query = """
     SELECT ProductDescription, PackHouseName, DeliveredNotInvoiced, QtyToManufacture, QtyOnHand, QtyOnBOM, BOMCreated
-    FROM [dbo].[_uvManufactureDashboard]
+    FROM [market].[_uvManufactureDashboard]
     """
     cursor.execute(query)
     return cursor.fetchall()
@@ -87,7 +87,7 @@ def create_bom_masterfiles():
     try:
         conn = create_db_connection()
         cursor = conn.cursor()
-        cursor.execute("EXEC [dbo].[SIGCreateBomMasterfiles]")
+        cursor.execute("EXEC [market].[SIGCreateBomMasterfiles]")
         drain_resultsets(cursor)  # drain all result sets
         conn.commit()
         return jsonify({'success': True, 'message': 'Masterfiles created successfully.'})
@@ -106,3 +106,4 @@ def create_bom_masterfiles():
             conn.close()
         except Exception:
             pass
+

@@ -1,7 +1,7 @@
 import requests
 from flask import request, jsonify, render_template, abort
 from .. import inventory_bp
-from Inventory.db import create_db_connection
+from Core.auth import create_db_connection, close_db_connection
 from flask_login import current_user
 from flask_login import login_required
 from datetime import datetime
@@ -33,7 +33,7 @@ def create_stock_count():
     
     # Header = session
     cursor.execute("""
-        INSERT INTO InventoryCountHeaders (
+        INSERT INTO inventory.InventoryCountHeaders (
             InvCountWhseId,
             InvCountWhseCode,
             InvCountCatId,
@@ -51,13 +51,13 @@ def create_stock_count():
 
     # Snapshot system quantities ONCE
     cursor.execute("""
-        INSERT INTO InventoryCountLines (
+        INSERT INTO inventory.InventoryCountLines (
             InvCountLineHeaderId,
             InvCountLineStockCode,
             InvCountLineQtyOnHand
         )
         SELECT ?, StockCode, QtyOnHand
-        FROM _uvInventoryQty
+        FROM inventory._uvInventoryQty
         WHERE WhseLink = ?
           AND idStockCategories = ?
     """, (header_id, whse_id, cat_id))
@@ -77,7 +77,7 @@ def fetch_categories():
 
     cursor.execute("""
     Select Distinct ItemCategoryID, cCategoryName
-    from [dbo].[_uvWarehouseCategories]
+    from [inventory].[_uvWarehouseCategories]
     where WhseID = ?
     """, (whse_id,))
 
@@ -103,7 +103,7 @@ def stock_count_session(header_id):
         SELECT
             InvCountHeaderId,
             InvCountTimeFinalised
-        FROM InventoryCountHeaders
+        FROM inventory..InventoryCountHeaders
         WHERE InvCountHeaderId = ?
     """, header_id)
     row = cursor.fetchone()
@@ -129,7 +129,7 @@ def fetch_session_products(header_id):
             InvCountLineStockCode,
             InvCountLineQtyOnHand,
             InvCountLineQtyCounted
-        FROM InventoryCountLines
+        FROM inventory.InventoryCountLines
         WHERE InvCountLineHeaderId = ?
     """, (header_id,))
 
@@ -155,7 +155,7 @@ def save_count_lines(header_id):
 
     for l in lines:
         cursor.execute("""
-            UPDATE InventoryCountLines
+            UPDATE inventory.InventoryCountLines
             SET InvCountLineQtyCounted = ?
             WHERE InvCountLineHeaderId = ?
               AND InvCountLineStockCode = ?
@@ -182,7 +182,7 @@ def finalise_stock_count(header_id):
     try:
         cursor.execute("""
             SELECT InvCountWhseCode, InvCountCatName
-            FROM InventoryCountHeaders
+            FROM inventory.InventoryCountHeaders
             WHERE InvCountHeaderId = ?
               AND InvCountTimeFinalised IS NULL
         """, (header_id,))
@@ -192,7 +192,7 @@ def finalise_stock_count(header_id):
             abort(400, "Stock count already finalised or missing")
 
         cursor.execute("""
-            SELECT InvCountLineStockCode, InvCountLineQtyOnHand, InvCountLineQtyCounted
+            SELECT inventory.InvCountLineStockCode, InvCountLineQtyOnHand, InvCountLineQtyCounted
             FROM InventoryCountLines
             WHERE InvCountLineQtyOnHand <> InvCountLineQtyCounted
               AND InvCountLineHeaderId = ?
@@ -228,16 +228,16 @@ def finalise_stock_count(header_id):
                 trans.Post()
 
         cursor.execute("""
-            UPDATE InventoryCountHeaders
+            UPDATE inventory.InventoryCountHeaders
             SET InvCountTimeFinalised = GETDATE(),
                 InvCountStatus = 'FINALISED'
             WHERE InvCountHeaderId = ?
         """, (header_id,))
         cursor.execute("""
-            UPDATE [InventoryCountSchedule]
+            UPDATE inventory.[InventoryCountSchedule]
             SET LastCountDate = GETDATE()
-            WHERE WhseId = (SELECT InvCountWhseId FROM InventoryCountHeaders WHERE InvCountHeaderId = ?)
-                AND CategoryId = (SELECT InvCountCatId FROM InventoryCountHeaders WHERE InvCountHeaderId = ?)
+            WHERE WhseId = (SELECT InvCountWhseId FROM inventory.InventoryCountHeaders WHERE InvCountHeaderId = ?)
+                AND CategoryId = (SELECT InvCountCatId FROM inventory.InventoryCountHeaders WHERE InvCountHeaderId = ?)
         """, (header_id, header_id))
 
         conn.commit()

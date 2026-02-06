@@ -1,10 +1,10 @@
-
-from Market.db import create_db_connection
+﻿
+from Core.auth import create_db_connection
 import pandas as pd
 import os
 from playwright.sync_api import sync_playwright
 import tempfile
-from db_manager import get_service_details
+from Core.db_manager import get_service_details
 
 def Technofresh(current_user, start_date, end_date):
     def status(message):
@@ -99,14 +99,14 @@ def insert_data(file, current_user):
         df['SupplierRef'] = df['SupplierRef'].astype(str).str.replace('*', '-', regex=False)
         df['PaymentReference'] = df['PaymentReference'].astype(str).str.replace('*', '-', regex=False)
 
-        cursor.execute("TRUNCATE TABLE MarketData")
+        cursor.execute("TRUNCATE TABLE market.MarketData")
 
         count = 0
         for _, row in df.iterrows():
             count += 1
             row_data = {col: (None if pd.isna(val) else val) for col, val in row.items()}
             cursor.execute("""
-                INSERT INTO MarketData (
+                INSERT INTO market.MarketData (
                     Market, Agent, Product, Variety, Size, Class, Container, Mass_kg, Count,
                     DeliveryID, ConsignmentID, SupplierRef, QtySent, QtyAmendedTo, QtySold,
                     DeliveryDate, DateSold, DatePaid, DocketNumber, PaymentReference,
@@ -114,7 +114,7 @@ def insert_data(file, current_user):
                 ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
             """, tuple(row_data.values()))
 
-        cursor.execute("Exec [dbo].[SIGCopyImprtTrn]")
+        cursor.execute("Exec [market].[SIGCopyImprtTrn]")
         cursor.execute("EXEC SIGCreateSalesFromTrn")
 
         conn.commit()
@@ -122,3 +122,5 @@ def insert_data(file, current_user):
     finally:
         cursor.close()
         conn.close()
+
+

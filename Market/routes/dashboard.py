@@ -1,6 +1,6 @@
-from flask import jsonify, current_app, request
+﻿from flask import jsonify, current_app, request
 from datetime import datetime, timedelta
-from Market.db import create_db_connection
+from Core.auth import create_db_connection, close_db_connection
 
 
 from Market.routes import market_bp
@@ -18,7 +18,7 @@ def parse_date(value):
 def dashboard_summary():
     conn = create_db_connection()
     cursor = conn.cursor()
-    cursor.execute("EXEC SIGGetDashboardSummary")
+    cursor.execute("EXEC market.SIGGetDashboardSummary")
     row = cursor.fetchone()
     conn.close()
 
@@ -36,7 +36,7 @@ def dashboard_incomplete():
     cursor = conn.cursor()
     query = """
         SELECT TOP 5 DelNoteNo, AgentName, DelDate, QtyLoaded, QtySold, QtyInvoiced
-        FROM [dbo].[_uvViewEntriesPage]
+        FROM [market].[_uvViewEntriesPage]
         WHERE QtyInvoiced < QtyLoaded
         ORDER BY DelDate ASC
     """
@@ -65,7 +65,7 @@ def dashboard_invoices():
         SELECT TOP 5 InvoiceDate, InvoiceNo, DelNoteNo,
                       SUM(SalesQty) AS TotalQty,
                       SUM(SalesAmnt) AS TotalAmount
-        FROM [dbo].[_uvMarketInvoices]
+        FROM [market].[_uvMarketInvoices]
         GROUP BY InvoiceDate, InvoiceNo, DelNoteNo
         ORDER BY InvoiceDate DESC;
     """
@@ -82,5 +82,6 @@ def dashboard_invoices():
         }
         for r in rows
     ])
+
 
 

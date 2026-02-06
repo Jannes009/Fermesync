@@ -20,13 +20,13 @@ def encrypt_password(password):
     """Encrypts a password string."""
     return fernet.encrypt(password.encode())
 
-def decrypt_password(encrypted_password):
-    """Decrypts an encrypted password from VARBINARY storage."""
-    # pyodbc can return memoryview for VARBINARY
-    if isinstance(encrypted_password, memoryview):
-        encrypted_password = encrypted_password.tobytes()
-    elif isinstance(encrypted_password, str):
-        # This only works if somehow it was stored as a string (not ideal)
-        encrypted_password = encrypted_password.encode()
+def decrypt_password(encrypted_password: str) -> str:
+    """
+    Decrypt Fernet-encrypted password stored as env var
+    """
+    if not encrypted_password:
+        raise ValueError("DB_PASSWORD env var not set")
 
-    return fernet.decrypt(encrypted_password).decode()
+    # Fernet expects bytes
+    token = encrypted_password.encode("utf-8")
+    return fernet.decrypt(token).decode("utf-8")

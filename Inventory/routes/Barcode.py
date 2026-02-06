@@ -1,7 +1,7 @@
 import sys
 from flask import request, jsonify, render_template
 from Inventory.routes import inventory_bp
-from Inventory.db import create_db_connection
+from Core.auth import create_db_connection, close_db_connection
 from flask_login import login_required
 
 
