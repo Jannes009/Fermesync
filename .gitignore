@@ -4,6 +4,10 @@ env/
 __pycache__/
 build/
 
+# Ignore python configuration and instance files
+config.py
+instance/
+
 # Ignore database files
 *.sqlite3
 *.db

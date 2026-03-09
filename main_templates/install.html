@@ -1,0 +1,84 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Install App</title>
+
+<style>
+body{
+font-family:Arial;
+text-align:center;
+padding:40px;
+}
+
+.box{
+max-width:500px;
+margin:auto;
+padding:20px;
+border-radius:10px;
+background:#f5f5f5;
+}
+</style>
+</head>
+
+<body>
+
+<div class="box">
+
+<h2>Install App</h2>
+
+<div id="android" style="display:none">
+
+<p>Tap the button below to install the app.</p>
+
+<button id="installBtn">Install App</button>
+
+</div>
+
+<div id="iphone" style="display:none">
+
+<p>To install the app on iPhone:</p>
+
+<p>1️⃣ Tap the <b>Share</b> button</p>
+
+<p>2️⃣ Scroll down</p>
+
+<p>3️⃣ Tap <b>Add to Home Screen</b></p>
+
+</div>
+
+</div>
+
+<script>
+
+let deferredPrompt;
+
+window.addEventListener('beforeinstallprompt', (e) => {
+    e.preventDefault();
+    deferredPrompt = e;
+
+    document.getElementById("android").style.display = "block";
+});
+
+document.getElementById("installBtn")?.addEventListener("click", async () => {
+
+    if(!deferredPrompt) return;
+
+    deferredPrompt.prompt();
+
+    const result = await deferredPrompt.userChoice;
+
+    deferredPrompt = null;
+});
+
+
+const ua = navigator.userAgent.toLowerCase();
+
+if (ua.includes("iphone") || ua.includes("ipad")) {
+    document.getElementById("iphone").style.display = "block";
+}
+
+</script>
+
+</body>
+</html>
