@@ -77,7 +77,7 @@ def fetch_categories():
 
     cursor.execute("""
     Select Distinct ItemCategoryID, cCategoryName
-    from [inventory].[_uvWarehouseCategories]
+    from [stk].[_uvWarehouseCategories]
     where WhseID = ?
     """, (whse_id,))
 
@@ -181,7 +181,7 @@ def finalise_stock_count(header_id):
 
     try:
         cursor.execute("""
-            SELECT InvCountWhseCode, InvCountCatName
+            SELECT InvCountWhseId, InvCountCatName
             FROM [stk].InventoryCountHeaders
             WHERE InvCountHeaderId = ?
               AND InvCountTimeFinalised IS NULL
@@ -199,7 +199,15 @@ def finalise_stock_count(header_id):
         """, (header_id,))
         products = cursor.fetchall()
 
-        whse_code, cat_name = header
+        whse_id, cat_name = header
+
+        # fetch project for warehouse
+        cursor.execute("""
+            SELECT WhseAttrProjectDef FROM [stk].[WhseAttributes]
+            WHERE WhseAttrWhseId = ?
+        """, whse_id)
+        result = cursor.fetchone()
+        project = int(result[0]) if result and result[0] is not None else None
 
         with EvolutionConnection():
             for item in products:
@@ -220,10 +228,12 @@ def finalise_stock_count(header_id):
                     if diff > 0 else
                     Evo.InventoryOperation.Decrease
                 )
-                trans.Warehouse = Evo.Warehouse(whse_code)
+                trans.Warehouse = Evo.Warehouse(int(whse_id))
                 trans.Reference = f"STOCKTAKE-{header_id}"
                 trans.Reference2 = cat_name
                 trans.Description = f"Stocktake adjustment"
+                if project:
+                    trans.Project = Evo.Project(project)
 
                 trans.Post()
 
