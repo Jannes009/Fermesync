@@ -6,6 +6,8 @@ from Inventory.routes import inventory_bp
 from Inventory.routes.sdk_connection import EvolutionConnection
 import Pastel.Evolution as Evo
 from Inventory.routes.notifications import emit_event, send_notification
+from datetime import datetime
+from System import DateTime
 
 @inventory_bp.route("/grv")
 @login_required
@@ -36,7 +38,7 @@ def fetch_outstanding_po_suppliers():
     placeholders = ",".join(["?"] * len(warehouses))
     query = f"""
     SELECT DISTINCT DCLink, SupplierName
-    FROM inventory._uvPO_Outstanding
+    FROM [stk]._uvPO_Outstanding
     WHERE WhseLink IN ({placeholders})
     """
 
@@ -60,7 +62,7 @@ def get_po_numbers():
 
     query = f"""
     SELECT DISTINCT OrderNum, OrderDate, OrderDesc, OrdTotIncl
-    FROM inventory._uvPO_Outstanding
+    FROM [stk]._uvPO_Outstanding
     WHERE DcLink = ? and WhseLink IN ({','.join(['?'] * len(current_user.warehouses))})
     """
     cursor.execute(query, [supplier_code] + current_user.warehouses)
@@ -87,7 +89,7 @@ def fetch_po_lines(po_number):
 
     query = f"""
         SELECT iLineID, iStockCodeID, StockDesc, WHName, QtyOutstanding, fUnitPriceExcl, UnitCode
-        FROM inventory._uvPO_Outstanding
+        FROM [stk]._uvPO_Outstanding
         WHERE OrderNum = ? and WhseLink IN ({','.join(['?'] * len(current_user.warehouses))})
     """
     cursor.execute(query, [po_number] + current_user.warehouses)
@@ -140,6 +142,7 @@ def submit_grv():
         with EvolutionConnection():
             PO = Evo.PurchaseOrder(po_number)
             PO.SupplierInvoiceNo = supplierRef
+            PO.InvoiceDate = DateTime.Now
 
             for line in lines:
                 if "lineId" not in line or "qty" not in line:
@@ -161,7 +164,7 @@ def submit_grv():
         conn = create_db_connection()
         cursor = conn.cursor()
         cursor.execute("""
-            INSERT INTO inventory.GRV (GRVUserId, GRVPONumber, GRVNumber, GRVAuditNumber, GRVSuppRef)
+            INSERT INTO [stk].GRV (GRVUserId, GRVPONumber, GRVNumber, GRVAuditNumber, GRVSuppRef)
             VALUES (?, ?, ?, ?, ?)
         """, (current_user.id,  po_number, grv_number, audit_number, supplierRef))
         conn.commit()

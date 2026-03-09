@@ -32,13 +32,13 @@ def get_import_results():
     cursor = conn.cursor()
 
     # Fetch data from _uvMarketTrnConsignments
-    cursor.execute("SELECT * FROM market._uvMarketTrnConsignments")
+    cursor.execute("SELECT * FROM [mkt]._uvMarketTrnConsignments")
     rows = cursor.fetchall()
 
     # Get column names
     column_names = [column[0] for column in cursor.description]
 
-    # Process data into market.list of dictionaries
+    # Process data into [mkt].list of dictionaries
     results = [dict(zip(column_names, row)) for row in rows]
 
     # Close connections
@@ -57,7 +57,7 @@ def get_dockets():
     print(consignment_id)
     cursor.execute("""
         SELECT DocketNumber, QtySold, Price, SalesValue, DateSold
-        FROM market.ZZMarketDataTrn
+        FROM [mkt].ZZMarketDataTrn
         WHERE ConsignmentID = ?
     """, (consignment_id,))
 
@@ -86,8 +86,8 @@ def update_market_del_note_no():
         conn = create_db_connection()
         cursor = conn.cursor()
         cursor.execute("""
-            UPDATE market.ZZMarketDataTrn SET DelNoteNo = ?
-            FROM market.ZZMarketDataTrn
+            UPDATE [mkt].ZZMarketDataTrn SET DelNoteNo = ?
+            FROM [mkt].ZZMarketDataTrn
             WHERE DelNoteNo = ?
         """, (new_del_note_no, old_del_note_no))
         
@@ -168,7 +168,7 @@ def get_consignment_details(consignment_id):
     
     matches_query = """
     Select DelLineIndex ,Product ,Variety ,Class ,Mass ,Size ,Brand ,DelLineQuantityBags
-    from market.DelNoteLineLookup
+    from [mkt].DelNoteLineLookup
     Where DelNoteNo = ?
     """
     print(consignment_id, query)
@@ -242,7 +242,7 @@ def match_consignment():
     consignment_id = data.get('consignment_id')
     line_id = data.get('line_id')
     query = """
-    UPDATE market.ZZDeliveryNoteLines
+    UPDATE [mkt].ZZDeliveryNoteLines
     SET ConsignmentID = ?
     WHERE DelLineIndex = ?
     """
@@ -287,7 +287,7 @@ def discard_consignment(consignment_id=None):
         cursor = conn.cursor()
         print(consignment_id)
         cursor.execute("""
-            UPDATE market.ZZMarketDataTrn
+            UPDATE [mkt].ZZMarketDataTrn
             SET Deleted = 1
             WHERE ConsignmentID = ?
         """, (consignment_id,))

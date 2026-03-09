@@ -114,7 +114,7 @@ def print_po_pdf(auto_index):
 
     cursor.execute("""
         SELECT *
-        FROM inventory._uvPurchaseOrders
+        FROM [stk]._uvPurchaseOrders
         WHERE AutoIndex = ?
     """, auto_index)
 

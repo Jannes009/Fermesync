@@ -33,7 +33,7 @@ def get_sales():
         InvStatus,
         InvoiceNo,
         AutoSale
-    FROM market._uvMarketSales
+    FROM [mkt]._uvMarketSales
     ORDER BY DelNoteNo, AutoSale DESC, SalesDate
     """
     cursor.execute(sales_query)
@@ -45,7 +45,7 @@ def get_sales():
         DelNoteNo, 
         SUM(CASE WHEN LINConsignmentIDExist = 1 THEN 1 ELSE 0 END) AS linked_count,
         SUM(CASE WHEN LINConsignmentIDExist = 0 AND HEADelNoteNoExist = 1 THEN 1 ELSE 0 END) AS matched_count
-    FROM market._uvMarketTRNConsignments
+    FROM [mkt]._uvMarketTRNConsignments
     GROUP BY DelNoteNo
     '''
     cursor.execute(cons_query)
@@ -122,7 +122,7 @@ def api_consignments():
     conn = create_db_connection()
     cursor = conn.cursor()
     query = '''
-    SELECT * FROM market._uvMarketTRNConsignments
+    SELECT * FROM [mkt]._uvMarketTRNConsignments
     '''
     cursor.execute(query)
     columns = [col[0] for col in cursor.description]
@@ -146,7 +146,7 @@ def api_dockets():
     # Replace DocketsTable and fields with your actual table/fields
     query = '''
     SELECT DocketNumber, QtySold, Price, SalesValue, DateSold
-    FROM market.ZZMarketDataTrn
+    FROM [mkt].ZZMarketDataTrn
     WHERE ConsignmentID = ?
     '''
     cursor.execute(query, (consignment_id,))
@@ -165,7 +165,7 @@ def api_linked_lines():
     SELECT DelHeaderId, DelNoteNo, DelLineStockId, DelProductDescription, DelQtySent, TotalSalesQty, TotalInvoicedQty,
            TrnConsignmentID, TrnDelNoteNo, TrnProduct, TrnVariety, TrnSize, TrnClass, TrnMass, TrnBrand, TrnQtySent,
            DelLineIndex
-    FROM market._uvDelNoteVSMktTrn
+    FROM [mkt]._uvDelNoteVSMktTrn
     WHERE DelNoteNo = ? OR TrnDelNoteNo = ?
     '''
     cursor.execute(query, (delnote_no, delnote_no))
@@ -182,7 +182,7 @@ def api_delivery_note_lines():
     cursor = conn.cursor()
     query = '''
     SELECT SalesQty, SalesPrice, GrossSalesAmnt, DiscountPercent, DiscountAmnt, AutoSale, SalesDate, InvoiceNo
-    FROM market._uvMarketSales
+    FROM [mkt]._uvMarketSales
     WHERE SalesDelLineId = ?
     ORDER BY AutoSale DESC
     '''

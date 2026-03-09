@@ -1,6 +1,6 @@
 
 import pyodbc as odbc
-from werkzeug.security import check_password_hash
+from werkzeug.security import check_password_hash, generate_password_hash
 from flask_login import LoginManager, UserMixin
 import os
 from Core.key_manager import decrypt_password
@@ -72,6 +72,7 @@ def authenticate_user(username, password):
             user.permissions = get_user_permissions(user.id)
             user.features = get_user_features(user.id)
             return user
+        print(row)
         return None
     finally:
         close_db_connection(conn, cursor)
@@ -158,7 +159,7 @@ def get_user_permissions(user_id):
         close_db_connection(conn, cursor)
 
 def get_user_features(user_id):
-    conn = create_db_connection()  # common DB
+    conn = create_db_connection() 
     cursor = conn.cursor()
     try:
         cursor.execute("""

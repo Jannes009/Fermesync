@@ -24,7 +24,7 @@ def list_po_requisitions():
             Description,
             Status,
             PONumber
-        FROM inventory.PO_RequisitionHeader POHEA
+        FROM [stk].PO_RequisitionHeader POHEA
         JOIN [common].[_uvSuppliers] SUP on SUP.DCLink = POHEA.SupplierId
         Where Status <> 'POSTED'
         ORDER BY CreatedAt ASC

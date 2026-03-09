@@ -19,12 +19,14 @@ from .OrderEntry import pdf_generator
 from . import IBT
 from .stock_count import stock_count
 from .stock_count import stock_count_summary
-from . import stock_issue
+from .stock_issue import stock_issue_summary
+from .stock_issue import create_stock_issue
 from . import Barcode
 from . import notifications
 from . import offline
 from . import stock_adjustment
 from . import QtySummary
+from . import warehouse_transfer
 from flask_login import login_required
 
 @inventory_bp.route('/dashboard', methods=['GET'])

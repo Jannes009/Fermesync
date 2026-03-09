@@ -31,9 +31,11 @@ def create_app():
     from Market.routes import market_bp
     from Inventory.routes import inventory_bp
     from Core.view_account import account_bp
+    from Agri.routes import agri_bp
 
     app.register_blueprint(market_bp, url_prefix='/market')
     app.register_blueprint(inventory_bp, url_prefix='/inventory')
+    app.register_blueprint(agri_bp, url_prefix='/agri')
     app.register_blueprint(admin_bp)
     app.register_blueprint(account_bp)
 
@@ -69,6 +71,7 @@ def create_app():
     def login():
         if current_user.is_authenticated:
             return redirect(url_for('dashboard'))
+        error_msg = None
         if request.method == "POST":
             username = request.form.get('username')
             password = request.form.get('password')
@@ -77,7 +80,9 @@ def create_app():
                 login_user(user, remember=True)
                 session.permanent = True
                 return redirect(url_for('dashboard'))
-        return render_template('index.html')
+            else:
+                error_msg = "Invalid username or password"
+        return render_template('index.html', error=error_msg)
 
     @app.route("/logout")
     @login_required

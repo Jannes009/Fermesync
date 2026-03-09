@@ -42,7 +42,7 @@ function fetchImportedData() {
             console.error("Error fetching imported data:", error);
             tbody.innerHTML = `<tr><td colspan="10">Error loading data. Please try again.</td></tr>`;
         });
-    console.log("Imported")
+    console.log(importedData)
 }
 
 function displayTable(data) {

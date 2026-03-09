@@ -14,12 +14,12 @@ from Market.routes import market_bp
 def fetch_data(cursor):
     # Execute multiple queries in one go
     cursor.execute("""
-        SELECT * FROM market.ZZProduct;
-        SELECT * FROM market.ZZProductType;
-        SELECT * FROM market.ZZProductSize;
-        SELECT * FROM market.ZZProductWeight;
-        SELECT * FROM market.ZZProductBrand;
-        Select * from market.ZZProductClass;
+        SELECT * FROM [mkt].ZZProduct;
+        SELECT * FROM [mkt].ZZProductType;
+        SELECT * FROM [mkt].ZZProductSize;
+        SELECT * FROM [mkt].ZZProductWeight;
+        SELECT * FROM [mkt].ZZProductBrand;
+        Select * from [mkt].ZZProductClass;
         Select OutputidTaxRate, OutputTaxRate from [market].[_uvMarketTaxRates]
     """)
 
@@ -62,7 +62,7 @@ def fetch_data(cursor):
     data["tax_rates"] = cursor.fetchall()
 
 
-    # Process data into market.structured JSON format
+    # Process data into [mkt].structured JSON format
     result = {
         "products": [{"id": row[0], "code": row[1], "description": row[2]} for row in data["products"]],
         "types": [{"id": row[0], "code": row[1], "description": row[2]} for row in data["types"]],
@@ -164,23 +164,23 @@ def add_item():
         
         # Prepare your SQL based on the field_type
         if field_type == 'product':
-            query = "INSERT INTO market.ZZProduct (ProductCode, ProductDescription) VALUES (?, ?)"
-            id_query = "Select ProductIndex from market.ZZProduct Where ProductCode = ?"
+            query = "INSERT INTO [mkt].ZZProduct (ProductCode, ProductDescription) VALUES (?, ?)"
+            id_query = "Select ProductIndex from [mkt].ZZProduct Where ProductCode = ?"
         elif field_type == 'type':
-            query = "INSERT INTO market.ZZProductType (ProductTypeCode, ProductTypeDescription) VALUES (?, ?)"
-            id_query = "Select ProductTypeIndex from market.ZZProductType Where ProductTypeCode = ?"
+            query = "INSERT INTO [mkt].ZZProductType (ProductTypeCode, ProductTypeDescription) VALUES (?, ?)"
+            id_query = "Select ProductTypeIndex from [mkt].ZZProductType Where ProductTypeCode = ?"
         elif field_type == 'class':
-            query = "INSERT INTO market.ZZProductClass(ProductClassCode, ProductClassDescription) VALUES (?, ?)"
-            id_query = "Select ProductClassIndex from market.ZZProductClass Where ProductClassCode = ?"
+            query = "INSERT INTO [mkt].ZZProductClass(ProductClassCode, ProductClassDescription) VALUES (?, ?)"
+            id_query = "Select ProductClassIndex from [mkt].ZZProductClass Where ProductClassCode = ?"
         elif field_type == 'size':
-            query = "INSERT INTO market.ZZProductSize(ProductSizeCode, ProductSizeDescription) VALUES (?, ?)"
-            id_query = "Select ProductSizeIndex from market.ZZProductSize Where ProductSizeCode = ?"
+            query = "INSERT INTO [mkt].ZZProductSize(ProductSizeCode, ProductSizeDescription) VALUES (?, ?)"
+            id_query = "Select ProductSizeIndex from [mkt].ZZProductSize Where ProductSizeCode = ?"
         elif field_type == 'weight':
-            query = "INSERT INTO market.ZZProductWeight(ProductWeightCode, ProductWeightDescription) VALUES (?, ?)"
-            id_query = "Select ProductWeightIndex from market.ZZProductWeight Where ProductWeightCode = ?"
+            query = "INSERT INTO [mkt].ZZProductWeight(ProductWeightCode, ProductWeightDescription) VALUES (?, ?)"
+            id_query = "Select ProductWeightIndex from [mkt].ZZProductWeight Where ProductWeightCode = ?"
         elif field_type == 'brand':
-            query = "INSERT INTO market.ZZProductBrand(ProductBrandCode, ProductBrandDescription) VALUES (?, ?)"
-            id_query = "Select ProductBrandIndex from market.ZZProductBrand Where ProductBrandCode = ?"
+            query = "INSERT INTO [mkt].ZZProductBrand(ProductBrandCode, ProductBrandDescription) VALUES (?, ?)"
+            id_query = "Select ProductBrandIndex from [mkt].ZZProductBrand Where ProductBrandCode = ?"
         
         cursor.execute(query, (new_code, new_description))
         cursor.execute(id_query,(new_code,))
@@ -224,7 +224,7 @@ def get_agents_full():
         SELECT 
             DCLink, Account, Name, GroupCode, MarketComm, AgentComm, 
             DiscountPercent 
-        FROM market._uvMarketAgent
+        FROM [mkt]._uvMarketAgent
     """)
     agents = cursor.fetchall()
     close_db_connection(cursor, conn)
@@ -273,7 +273,7 @@ def get_transporters():
     cursor = conn.cursor()
     cursor.execute("""
                    SELECT [TransporterAccount], [TransporterName], GroupCode
-                   FROM market._uvMarketTransporter
+                   FROM [mkt]._uvMarketTransporter
                     ORDER BY [TransporterName]
                    """)
     transporters = cursor.fetchall()

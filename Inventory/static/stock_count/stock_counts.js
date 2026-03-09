@@ -180,7 +180,7 @@ function renderHistoryTable(rows) {
             statusBadge = '<span class="badge badge-variance-slight"><i class="fas fa-exclamation"></i> Slight Variance</span>';
             rowClass = "warn";
         } else {
-            statusBadge = '<span class="badge badge-variance-big"><i class="fas fa-exclamation-triangle"></i> Big Variance</span>';
+            statusBadge = '<span class="badge badge-variance-big"><i class="fas fa-exclamation-triangle"></i> Significant Variance</span>';
             rowClass = "warn";
         }
 

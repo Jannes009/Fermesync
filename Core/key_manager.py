@@ -20,13 +20,20 @@ def encrypt_password(password):
     """Encrypts a password string."""
     return fernet.encrypt(password.encode())
 
-def decrypt_password(encrypted_password: str) -> str:
+def decrypt_password(encrypted_password) -> str:
     """
-    Decrypt Fernet-encrypted password stored as env var
+    Decrypt Fernet-encrypted password.
+    Works for:
+    - env var strings
+    - varbinary(max) bytes from SQL
     """
     if not encrypted_password:
-        raise ValueError("DB_PASSWORD env var not set")
+        raise ValueError("Encrypted password not set")
 
-    # Fernet expects bytes
-    token = encrypted_password.encode("utf-8")
-    return fernet.decrypt(token).decode("utf-8")
+    # If value comes from env var (string), convert to bytes
+    if isinstance(encrypted_password, str):
+        encrypted_password = encrypted_password.encode("utf-8")
+
+    # If already bytes (from varbinary), leave it
+    return fernet.decrypt(encrypted_password).decode("utf-8")
+

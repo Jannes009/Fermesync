@@ -1,0 +1,203 @@
+{% extends 'inventory_base.html' %}
+{% block content %}
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
+    <style>
+        * { box-sizing: border-box; }
+        body {
+            background: var(--primary-bg);
+            color: var(--primary-text);
+            font-size: 0.95rem;
+            margin: 0; padding: 0;
+            min-height: 100vh;
+            font-family: Segoe UI, Tahoma, Geneva, Verdana, sans-serif;
+        }
+
+        .wrap {
+            max-width: 1100px;
+            margin: 0 auto;
+            padding: 1rem;
+        }
+
+        .card {
+            background: var(--container-bg);
+            border-radius: 8px;
+            padding: 1rem;
+            margin-bottom: 1rem;
+            box-shadow: 0 1px 6px rgba(44,62,80,0.08);
+        }
+
+        .dashboard-panel {
+            padding: 1.5rem;
+        }
+
+        .panel-header {
+            display: flex;
+            flex-direction: column;
+            gap: 0.5rem;
+            margin-bottom: 1.5rem;
+        }
+
+        .panel-header h1 {
+            margin: 0;
+            font-size: 1.6rem;
+        }
+
+        .panel-header p {
+            margin: 0;
+            color: var(--muted-text, #7b8a99);
+            font-size: 0.95rem;
+        }
+
+        .panel-header-actions {
+            margin-top: 1rem;
+        }
+
+        @media(min-width:768px){
+            .panel-header {
+                flex-direction: row;
+                justify-content: space-between;
+                align-items: center;
+            }
+
+            .panel-header-actions {
+                margin-top: 0;
+            }
+        }
+
+        .btn-primary {
+            background: var(--button-bg); color: var(--button-text);
+            border: none; padding: 12px 16px;
+            border-radius: 8px; cursor: pointer; font-size: 1rem;
+        }
+
+        .btn-ghost {
+            background: transparent;
+            color: var(--button-bg);
+            border: 1px solid var(--button-bg);
+            padding: 8px 12px;
+            border-radius: 999px;
+            cursor: pointer;
+            font-size: 0.9rem;
+        }
+
+        .hidden { display: none; }
+
+        .panel-section + .panel-section {
+            margin-top: 1.5rem;
+            padding-top: 1.5rem;
+            border-top: 1px solid var(--input-border);
+        }
+
+        .section-title-row {
+            display: flex;
+            flex-wrap: wrap;
+            justify-content: space-between;
+            gap: 0.5rem;
+            align-items: baseline;
+            margin-bottom: 0.75rem;
+        }
+
+        .section-title-row h2 {
+            margin: 0;
+            font-size: 1.2rem;
+        }
+
+        .section-hint {
+            font-size: 0.85rem;
+            color: var(--muted-text, #7b8a99);
+        }
+
+        /***********************************
+         HORIZONTAL CARDS FOR MOBILE
+        ***********************************/
+        .horizontal-scroll {
+            display: grid;
+            grid-auto-flow: column;
+            grid-auto-columns: minmax(280px, 1fr);
+            gap: 16px;
+            padding-bottom: 6px;
+            overflow-x: auto;
+            scroll-snap-type: x proximity;
+        }
+
+        .horizontal-scroll::-webkit-scrollbar {
+            height: 6px;
+        }
+
+        .horizontal-scroll::-webkit-scrollbar-thumb {
+            background: rgba(123,138,153,0.5);
+            border-radius: 999px;
+        }
+
+        .issue-card {
+            min-width: 260px;
+            padding: 12px;
+            border-radius: 8px;
+            background: var(--form-bg);
+            border: 1px solid var(--input-border);
+            flex-shrink: 0;
+            scroll-snap-align: start;
+            display: flex;
+            flex-direction: column;
+            gap: 4px;
+        }
+
+        .issue-card h4 {
+            margin-top: 0; font-size: 1.1rem;
+        }
+
+        .issue-card button {
+            margin-top: 8px;
+            width: 100%;
+        }
+    </style>
+
+<div class="wrap with-fixed-taskbar">
+
+    <div id="overview-panel" class="card dashboard-panel">
+        <div class="panel-header">
+            <div>
+                <h1>Stock Issues</h1>
+                <p>Review outstanding issues, process returns, or start a new one.</p>
+            </div>
+            <div class="panel-header-actions">
+                <button id="new-issue-btn" class="btn-primary">
+                    + Start New Stock Issue
+                </button>
+            </div>
+        </div>
+
+        <div class="panel-section">
+            <div class="section-title-row">
+                <h2>Incomplete Stock Issues</h2>
+                <span class="section-hint">Swipe horizontally on mobile to view all</span>
+            </div>
+            <div id="incomplete-issues-list" class="horizontal-scroll">
+                Loading…
+            </div>
+        </div>
+    </div>
+
+</div>
+<script>
+  window.FERMESYNC = {
+    userId: {{ current_user.id | tojson }},
+    permissions: {{ current_user.permissions | tojson }}
+  };
+</script>
+
+<script type="module"
+  src="{{ url_for('inventory.static',
+    filename='stock_issue/offline.js') }}?v={{ filemtime('inventory','stock_issue/offline.js') }}">
+</script>
+<script type="module"
+  src="{{ url_for('inventory.static',
+    filename='stock_issue/stock_issue_list.js') }}?v={{ filemtime('inventory','stock_issue/stock_issue_list.js') }}">
+</script>
+
+<script>
+document.getElementById("new-issue-btn").addEventListener("click", () => {
+    window.location.href = '/inventory/SDK/stock_issue_wizard';
+});
+</script>
+{% endblock %}

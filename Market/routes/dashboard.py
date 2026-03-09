@@ -18,7 +18,7 @@ def parse_date(value):
 def dashboard_summary():
     conn = create_db_connection()
     cursor = conn.cursor()
-    cursor.execute("EXEC market.SIGGetDashboardSummary")
+    cursor.execute("EXEC [mkt].SIGGetDashboardSummary")
     row = cursor.fetchone()
     conn.close()
 

@@ -276,18 +276,20 @@ function addIbtLine() {
                     <option></option>
                 </select>
             </div>
-            <input type="number" class="qty-input" min="0" step="1" placeholder="0" />
-            <div class="uom-label stock-unit">—</div>
-            <button type="button" class="ibt-remove-btn" title="Remove line">
-                <i class="fas fa-trash"></i>
-            </button>
+            <div class="product-row-bottom">
+                <input type="number" class="qty-input" min="0" step="1" placeholder="Qty"/>
+                <div class="uom-label stock-unit">—</div>
+                <button type="button" class="issue-remove-btn" title="Remove line">
+                    <i class="fas fa-trash"></i>
+                </button>
+            </div>
         </div>
     `;
 
     document.getElementById("ibt-lines-container").appendChild(lineDiv);
 
     // Remove button handler
-    const removeBtn = lineDiv.querySelector('.ibt-remove-btn');
+    const removeBtn = lineDiv.querySelector('.issue-remove-btn');
     removeBtn.addEventListener('click', () => {
         lineDiv.remove();
     });

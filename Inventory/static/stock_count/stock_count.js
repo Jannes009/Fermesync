@@ -360,6 +360,7 @@ function displayProducts() {
     const container = document.getElementById("products-container");
     container.innerHTML = "";
     products.forEach((p, i) => {
+        console.log("Displaying product:", p);
         container.innerHTML += `
             <div class="product-row">
                 <div class="product-desc" title="${p.product_desc || p.product_code}">
@@ -374,7 +375,7 @@ function displayProducts() {
                 placeholder="0"
                 value="${p.counted_qty !== null ? p.counted_qty : ""}"
                 >
-                <div class="uom-label">${p.stock_unit || "EA"}</div>
+
             </div>`;
     });
 
@@ -607,7 +608,7 @@ async function onFinalizeClicked() {
 
     if (data.success) {
       Swal.fire("Success!", data.message || "Stock count completed", "success")
-        .then(() => location.reload());
+        .then(() => window.Location.href = "/inventory/stock-counts");
     } else {
       throw new Error(data.error || "Server error");
     }

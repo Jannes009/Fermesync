@@ -9,10 +9,11 @@ def fetch_warehouses():
     cursor = conn.cursor() 
     query = f""" 
     Select WhseLink, WhseCode, WhseDescription
-    from common.[_uvWarehouses] 
+    from cmn.[_uvWarehouses] 
     WHERE WhseLink IN ({','.join(['?'] * len(current_user.warehouses))}) 
     """ 
     cursor.execute(query, current_user.warehouses)
+    print(current_user.warehouses)
     warehouses = [ 
         {"id": row[0], "code": row[1], "name": row[2]} 
         for row in cursor.fetchall() ] 
@@ -26,7 +27,7 @@ def fetch_projects():
     cursor = conn.cursor()
     cursor.execute(f"""
         SELECT ProjectLink, ProjectCode, ProjectName
-        FROM common._uvProject
+        FROM cmn._uvProject
         WHERE MainProjectLink IN ({','.join(['?'] * len(current_user.projects))}) 
     """, current_user.projects)
     rows = cursor.fetchall()
@@ -50,7 +51,7 @@ def fetch_products():
         ,StockingUnitId, StockingUnitCode
         ,PurchaseUnitId, PurchaseUnitCode
         ,PurchaseUnitCatId
-        FROM inventory._uvInventoryQty 
+        FROM [stk]._uvInventoryQty 
         WHERE WhseLink IN ({','.join(['?'] * len(current_user.warehouses))}) 
     """, current_user.warehouses)
     rows = cursor.fetchall()
@@ -83,7 +84,7 @@ def incomplete_issues():
 
     sql = """
         SELECT Distinct IssueId, IssueTimeStamp, ProjectName, IssueToName, IssueWhseId
-        FROM [inventory].[_uvStockIssue]
+        FROM [stk].[_uvStockIssue]
         WHERE IssueFinalised = 0
         ORDER BY IssueId, IssueTimeStamp, ProjectName, IssueToName
     """
@@ -123,7 +124,7 @@ def incomplete_issue_lines():
         cursor.execute("""  
         Select IssueId, IssLineId, IssLineStockLink, StockDescription, 
                 IssLineUOMID, ISSLineUOMCode, ISSLineQtyIssued 
-        from inventory.[_uvStockIssue]
+        from [stk].[_uvStockIssue]
         Where IssLineQtyFinalised Is NULL
         """)
 

@@ -2,7 +2,7 @@ import {
   db,
   fetchWithOffline,
   generateNotification
-} from '/main_static/offline/db.js?v=43';
+} from '/main_static/offline/db.js?v=45';
 
 // -----------------------------
 // Run when page loads
@@ -78,7 +78,7 @@ export async function fetchProducts(){
   .then(r => r.json())
   .then(d => d.products.map(p => ({
       product_link: p.product_link,
-      whse: p.WhseCode,        // 👈 REQUIRED
+      whse_id: p.WhseLink,
       qty_in_whse: p.qty_in_whse,
 
       product_code: p.product_code,

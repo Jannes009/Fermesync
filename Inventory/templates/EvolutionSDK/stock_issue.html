@@ -1,5 +1,6 @@
 {% extends 'inventory_base.html' %}
 {% block content %}
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
     <script src="https://unpkg.com/@zxing/library@0.19.1/umd/index.min.js"></script>
     <style>
         * { box-sizing: border-box; }
@@ -108,50 +109,6 @@
         }
 
         /***********************************
-         HORIZONTAL CARDS FOR MOBILE
-        ***********************************/
-        .horizontal-scroll {
-            display: grid;
-            grid-auto-flow: column;
-            grid-auto-columns: minmax(280px, 1fr);
-            gap: 16px;
-            padding-bottom: 6px;
-            overflow-x: auto;
-            scroll-snap-type: x proximity;
-        }
-
-        .horizontal-scroll::-webkit-scrollbar {
-            height: 6px;
-        }
-
-        .horizontal-scroll::-webkit-scrollbar-thumb {
-            background: rgba(123,138,153,0.5);
-            border-radius: 999px;
-        }
-
-        .issue-card {
-            min-width: 260px;
-            padding: 12px;
-            border-radius: 8px;
-            background: var(--form-bg);
-            border: 1px solid var(--input-border);
-            flex-shrink: 0;
-            scroll-snap-align: start;
-            display: flex;
-            flex-direction: column;
-            gap: 4px;
-        }
-
-        .issue-card h4 {
-            margin-top: 0; font-size: 1.1rem;
-        }
-
-        .issue-card button {
-            margin-top: 8px;
-            width: 100%;
-        }
-
-        /***********************************
          WIZARD FIELDS
         ***********************************/
         .form-row {
@@ -172,19 +129,33 @@
 
         .product-row {
             display: grid;
-            grid-template-columns: 1fr 70px auto 36px;
-            align-items: center;
+            grid-template-columns: 1fr;
             gap: 8px;
-            padding: 8px 10px;
+            padding: 10px;
             background: var(--form-bg);
             border: 1px solid var(--input-border);
-            border-radius: 6px;
-            margin-bottom: 6px;
-            cursor: pointer;
-            transition: all 0.15s ease;
-            min-height: 44px;
+            border-radius: 8px;
         }
 
+        /* second row container */
+        .product-row-bottom {
+            display: grid;
+            grid-template-columns: 1fr auto 36px;
+            gap: 8px;
+            align-items: center;
+        }
+
+        /* Desktop layout */
+        @media (min-width: 768px) {
+            .product-row {
+                grid-template-columns: 2fr 100px 70px 1.5fr 36px;
+                align-items: center;
+            }
+
+            .product-row-bottom {
+                display: contents;
+            }
+        }
         .product-row:hover {
             border-color: var(--button-bg);
             box-shadow: 0 2px 6px rgba(0,0,0,0.08);
@@ -199,6 +170,24 @@
 
         .product-select-wrapper {
             width: 100%;
+        }
+
+        .line-project-wrapper {
+            width: 100%;
+            display: block;
+        }
+
+        .line-project-wrapper.hidden {
+            display: none;
+        }
+
+        .line-project-select {
+            width: 100% !important;
+            padding: 8px 10px !important;
+            font-size: 0.9rem !important;
+            border-radius: 5px !important;
+            border: 1px solid var(--input-border) !important;
+            background: white !important;
         }
 
         .product-select {
@@ -233,9 +222,9 @@
         }
 
         .qty-input {
-            height: 36px;
+            height: 40px;
             font-size: 1rem;
-            font-weight: bold;
+            font-weight: 600;
             text-align: center;
             border: 2px solid var(--input-border);
             border-radius: 5px;
@@ -243,7 +232,7 @@
             color: black;
             -moz-appearance: textfield;
             appearance: textfield;
-            padding: 0;
+            padding: 0 4px;
             width: 100%;
         }
         
@@ -314,6 +303,25 @@
             margin-bottom: 0;
         }
 
+        /* Toggle checkbox styling */
+        .form-row input[type="checkbox"] {
+            cursor: pointer;
+            width: 18px;
+            height: 18px;
+            accent-color: var(--button-bg, #007bff);
+        }
+
+        .form-row label {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .form-row label[style*="display:flex"] {
+            font-weight: normal;
+            width: auto;
+        }
+
         /* Remove old styles */
         .product-main,
         .qty-wrapper,
@@ -324,54 +332,77 @@
         }
 
         /* Add Line Button */
-        #add-line {
-            background: #28a745;
-            color: white;
-            border: none;
-            padding: 12px 16px;
-            border-radius: 6px;
+        .add-line-container {
+            display: flex;
+            justify-content: center;
+            margin: 20px 0;
+        }
+
+        .add-line-btn {
+            background: #f8f9fa;
+            color: #495057;
+            border: 2px dashed #dee2e6;
+            padding: 12px 24px;
+            border-radius: 8px;
             font-size: 0.95rem;
-            cursor: pointer;
             font-weight: 600;
-            transition: background 0.2s, transform 0.1s;
-            margin: 8px 0;
+            cursor: pointer;
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            transition: all 0.2s ease;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.1);
         }
 
-        #add-line:hover {
-            background: #218838;
-            transform: translateY(-2px);
+        .add-line-btn:hover {
+            background: #e9ecef;
+            border-color: #adb5bd;
+            transform: translateY(-1px);
+            box-shadow: 0 2px 6px rgba(0,0,0,0.15);
         }
 
-        #add-line:active {
+        .add-line-btn:active {
             transform: translateY(0);
+        }
+
+        .add-line-btn i {
+            font-size: 1rem;
         }
 
         /* Step Buttons Container */
         .step-actions {
-            display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(100px, 1fr));
-            gap: 8px;
+            display: flex;
+            gap: 12px;
             margin-top: 16px;
             padding: 12px 0;
+            justify-content: flex-end;
+            flex-wrap: wrap;
         }
 
         .btn-action {
-            padding: 12px 16px;
+            flex: 0 1 auto;
+            min-width: 140px;
+            padding: 12px 20px;
             border-radius: 6px;
             border: none;
             font-size: 0.95rem;
             font-weight: 600;
             cursor: pointer;
             transition: all 0.2s ease;
-            display: flex;
+            display: inline-flex;
             align-items: center;
             justify-content: center;
             gap: 6px;
             min-height: 44px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+
+        .btn-action:hover {
+            box-shadow: 0 4px 8px rgba(0,0,0,0.15);
         }
 
         .btn-action:active {
-            transform: scale(0.98);
+            transform: translateY(1px);
         }
 
         .btn-action.primary {
@@ -385,22 +416,23 @@
         }
 
         .btn-action.secondary {
-            background: #6c757d;
+            background: #95a5a6;
             color: white;
+            border: 1px solid #7f8c8d;
         }
 
         .btn-action.secondary:hover {
-            background: #5a6268;
+            background: #7f8c8d;
             transform: translateY(-2px);
         }
 
         .btn-action.success {
-            background: #28a745;
-            color: white;
+            background: var(--button-bg);
+            color: var(--button-text);
         }
 
         .btn-action.success:hover {
-            background: #218838;
+            background: var(--button-hover);
             transform: translateY(-2px);
         }
 
@@ -412,27 +444,33 @@
         /* Responsive - stack on mobile */
         @media (max-width: 600px) {
             .step-actions {
-                grid-template-columns: 1fr;
-                gap: 6px;
+                justify-content: stretch;
             }
 
             .btn-action {
-                width: 100%;
+                flex: 1;
+                min-width: unset;
             }
         }
 
         /* Step summary buttons */
         .step-summary-actions {
-            display: grid;
-            grid-template-columns: auto 1fr;
-            gap: 8px;
+            display: flex;
+            gap: 12px;
             margin-top: 16px;
             padding: 12px 0;
+            justify-content: flex-end;
+            flex-wrap: wrap;
         }
 
         @media (max-width: 600px) {
             .step-summary-actions {
-                grid-template-columns: 1fr;
+                justify-content: stretch;
+            }
+            
+            .step-summary-actions .btn-action {
+                flex: 1;
+                min-width: unset;
             }
         }
     </style>
@@ -441,39 +479,14 @@
 
 <div class="wrap with-fixed-taskbar">
 
-    <div id="overview-panel" class="card dashboard-panel">
-        <div class="panel-header">
-            <div>
-                <h1>Stock Issues</h1>
-                <p>Review outstanding issues, process returns, or start a new one.</p>
-            </div>
-            <div class="panel-header-actions">
-                <button id="new-issue-btn" class="btn-primary">
-                    + Start New Stock Issue
-                </button>
-            </div>
-        </div>
-
-        <div class="panel-section">
-            <div class="section-title-row">
-                <h2>Incomplete Stock Issues</h2>
-                <span class="section-hint">Swipe horizontally on mobile to view all</span>
-            </div>
-            <div id="incomplete-issues-list" class="horizontal-scroll">
-                Loading…
-            </div>
-        </div>
-    </div>
-
-
     <!-- ---------------------------------------------
-         WIZARD (INITIALLY HIDDEN)
+         WIZARD
     ------------------------------------------------ -->
-    <form id="stockIssueForm" class="card wizard-card hidden">
+    <form id="stockIssueForm" class="card wizard-card">
         <div class="wizard-top-bar">
             <h2>New Stock Issue</h2>
             <div class="wizard-actions">
-                <button type="button" id="exit-wizard" class="btn-ghost">← Back to Overview</button>
+                <button type="button" id="exit-wizard" class="btn-ghost">← Back to Summary</button>
             </div>
         </div>
 
@@ -501,16 +514,26 @@
         <section id="step-2" class="card hidden">
             <h3>Step 2 – Add Products</h3>
 
+            <div class="form-row" style="display: flex; gap: 12px; align-items: center; margin-bottom: 16px; padding: 12px; background: var(--form-bg); border-radius: 6px; border: 1px solid var(--input-border);">
+                <input type="checkbox" id="project-per-line">
+                <label for="project-per-line" style="font-weight: normal; margin: 0; cursor: pointer;">
+                    Select project for each line (optional)
+                </label>
+            </div>
+
             <div id="ibt-lines"></div>
+
+            <div class="add-line-container">
+                <button type="button" id="add-line" class="add-line-btn">
+                    <i class="fas fa-plus"></i>
+                    Add Product Line
+                </button>
+            </div>
 
             <div class="step-actions">
                 <button type="button" id="back-to-step-1" class="btn-action secondary">
                     <i class="fas fa-arrow-left"></i>
                     Back
-                </button>
-                <button type="button" id="add-line" class="btn-action success">
-                    <i class="fas fa-plus"></i>
-                    Add Line
                 </button>
                 <button type="button" id="step2-next" class="btn-action primary">
                     Next
@@ -557,35 +580,10 @@
     filename='stock_issue/stock_issue_wizard.js') }}?v={{ filemtime('inventory','stock_issue/stock_issue_wizard.js') }}">
 </script>
 
-<script type="module"
-  src="{{ url_for('inventory.static',
-    filename='stock_issue/stock_issue_list.js') }}?v={{ filemtime('inventory','stock_issue/stock_issue_list.js') }}">
-</script>
-
 <script>
-const overviewPanel = document.getElementById("overview-panel");
-const wizardForm = document.getElementById("stockIssueForm");
-const wizardSteps = ["step-1", "step-2", "step-3"].map(id => document.getElementById(id));
-
-function showWizard() {
-    overviewPanel.classList.add("hidden");
-    wizardForm.classList.remove("hidden");
-    wizardSteps.forEach((step, idx) => {
-        if (idx === 0) {
-            step.classList.remove("hidden");
-        } else {
-            step.classList.add("hidden");
-        }
-    });
-    window.scrollTo({ top: 0, behavior: 'smooth' });
-}
-
-function hideWizard() {
-    wizardForm.classList.add("hidden");
-    overviewPanel.classList.remove("hidden");
-}
-
-document.getElementById("new-issue-btn").addEventListener("click", showWizard);
-document.getElementById("exit-wizard").addEventListener("click", hideWizard);
+document.getElementById("step-1").classList.remove("hidden");
+document.getElementById("exit-wizard").addEventListener("click", () => {
+    window.location.href = '/inventory/SDK/stock_issue_summary';
+});
 </script>
 {% endblock %}

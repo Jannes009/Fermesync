@@ -33,7 +33,7 @@ def create_stock_count():
     
     # Header = session
     cursor.execute("""
-        INSERT INTO inventory.InventoryCountHeaders (
+        INSERT INTO [stk].InventoryCountHeaders (
             InvCountWhseId,
             InvCountWhseCode,
             InvCountCatId,
@@ -51,13 +51,13 @@ def create_stock_count():
 
     # Snapshot system quantities ONCE
     cursor.execute("""
-        INSERT INTO inventory.InventoryCountLines (
+        INSERT INTO [stk].InventoryCountLines (
             InvCountLineHeaderId,
             InvCountLineStockCode,
             InvCountLineQtyOnHand
         )
         SELECT ?, StockCode, QtyOnHand
-        FROM inventory._uvInventoryQty
+        FROM [stk]._uvInventoryQty
         WHERE WhseLink = ?
           AND idStockCategories = ?
     """, (header_id, whse_id, cat_id))
@@ -103,7 +103,7 @@ def stock_count_session(header_id):
         SELECT
             InvCountHeaderId,
             InvCountTimeFinalised
-        FROM inventory..InventoryCountHeaders
+        FROM [stk].InventoryCountHeaders
         WHERE InvCountHeaderId = ?
     """, header_id)
     row = cursor.fetchone()
@@ -129,7 +129,7 @@ def fetch_session_products(header_id):
             InvCountLineStockCode,
             InvCountLineQtyOnHand,
             InvCountLineQtyCounted
-        FROM inventory.InventoryCountLines
+        FROM [stk].InventoryCountLines
         WHERE InvCountLineHeaderId = ?
     """, (header_id,))
 
@@ -155,7 +155,7 @@ def save_count_lines(header_id):
 
     for l in lines:
         cursor.execute("""
-            UPDATE inventory.InventoryCountLines
+            UPDATE [stk].InventoryCountLines
             SET InvCountLineQtyCounted = ?
             WHERE InvCountLineHeaderId = ?
               AND InvCountLineStockCode = ?
@@ -182,7 +182,7 @@ def finalise_stock_count(header_id):
     try:
         cursor.execute("""
             SELECT InvCountWhseCode, InvCountCatName
-            FROM inventory.InventoryCountHeaders
+            FROM [stk].InventoryCountHeaders
             WHERE InvCountHeaderId = ?
               AND InvCountTimeFinalised IS NULL
         """, (header_id,))
@@ -192,8 +192,8 @@ def finalise_stock_count(header_id):
             abort(400, "Stock count already finalised or missing")
 
         cursor.execute("""
-            SELECT inventory.InvCountLineStockCode, InvCountLineQtyOnHand, InvCountLineQtyCounted
-            FROM InventoryCountLines
+            SELECT InvCountLineStockCode, InvCountLineQtyOnHand, InvCountLineQtyCounted
+            FROM [stk].InventoryCountLines
             WHERE InvCountLineQtyOnHand <> InvCountLineQtyCounted
               AND InvCountLineHeaderId = ?
         """, (header_id,))
@@ -228,16 +228,16 @@ def finalise_stock_count(header_id):
                 trans.Post()
 
         cursor.execute("""
-            UPDATE inventory.InventoryCountHeaders
+            UPDATE [stk].InventoryCountHeaders
             SET InvCountTimeFinalised = GETDATE(),
                 InvCountStatus = 'FINALISED'
             WHERE InvCountHeaderId = ?
         """, (header_id,))
         cursor.execute("""
-            UPDATE inventory.[InventoryCountSchedule]
+            UPDATE [stk].[InventoryCountSchedule]
             SET LastCountDate = GETDATE()
-            WHERE WhseId = (SELECT InvCountWhseId FROM inventory.InventoryCountHeaders WHERE InvCountHeaderId = ?)
-                AND CategoryId = (SELECT InvCountCatId FROM inventory.InventoryCountHeaders WHERE InvCountHeaderId = ?)
+            WHERE WhseId = (SELECT InvCountWhseId FROM [stk].InventoryCountHeaders WHERE InvCountHeaderId = ?)
+                AND CategoryId = (SELECT InvCountCatId FROM [stk].InventoryCountHeaders WHERE InvCountHeaderId = ?)
         """, (header_id, header_id))
 
         conn.commit()

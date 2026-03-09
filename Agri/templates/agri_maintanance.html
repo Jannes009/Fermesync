@@ -1,0 +1,315 @@
+{% extends 'inventory_base.html' %}
+{% block content %}
+<link rel="stylesheet" href="{{ url_for('market.static', filename='color-template.css') }}">
+<!-- Select2 CSS -->
+<link href="https://cdn.jsdelivr.net/npm/select2@4.0.13/dist/css/select2.min.css" rel="stylesheet" />
+<style>
+  :root{
+    --card-bg: var(--container-bg);
+    --muted: var(--secondary-text);
+    --accent: #2563eb;
+  }
+  .page-wrap{ padding:2rem; max-width:1200px; margin:0 auto; }
+  .po-table-card{
+    background:var(--card-bg);
+    border-radius:12px;
+    box-shadow:0 6px 18px rgba(20,30,50,0.06);
+    padding:1.25rem;
+  }
+  .section-head{ display:flex; justify-content:space-between; align-items:center; margin-bottom:1rem; }
+  .section-head h2 { margin: 0; font-size:1.05rem; color:var(--logo-color); }
+  .page-title{ font-size:1.25rem; font-weight:700; color:var(--primary-text); }
+  .summary-table{ width:100%; border-collapse:collapse; font-size:0.95rem; }
+  .summary-table th, .summary-table td{
+    padding:0.75rem 0.9rem; text-align:left; border-bottom:1px solid rgba(0,0,0,0.06);
+  }
+  .summary-table th{ background:var(--table-header-bg); color:var(--table-header-text); font-weight:700; }
+  .controls{ display:flex; gap:0.75rem; flex-wrap:wrap; align-items:center; }
+  .input, select, button{
+    padding:0.5rem 0.75rem; border-radius:6px; border:1px solid var(--input-border, rgba(0,0,0,0.08));
+    background:var(--form-bg, #fff); color:var(--primary-text); min-height:38px;
+  }
+  /* responsive form grid for neat alignment inside sections */
+  .form-grid { display: grid; gap: 0.6rem; grid-template-columns: repeat(auto-fit, minmax(160px, 1fr)); align-items: center; }
+  .controls .form-grid > * { width: 100%; }
+  .controls > * { margin: 0; }
+  .grid{ display:grid; gap:0.5rem; grid-template-columns:repeat(1,1fr); }
+  @media(min-width:768px){ .grid-md-3{ grid-template-columns:repeat(3,1fr); } .grid-md-4{ grid-template-columns:repeat(4,1fr); } }
+  .muted{ color:var(--muted); font-size:0.9rem; }
+  .section{ margin-bottom:1.25rem; }
+  .btn{ background:var(--accent); color:#fff; border:none; cursor:pointer; }
+  /* Sidebar/navigation styles (copied from permissions page) */
+  .card { background: var(--container-bg); border-radius: 12px; box-shadow: 0 4px 24px rgba(44,62,80,0.06); padding: 1rem; }
+  .sidebar-nav { list-style: none; padding: 0; margin: 0; }
+  .sidebar-nav .nav-link { display: block; padding: 0.65rem 0.9rem; border-radius: 8px; text-decoration: none; color: var(--secondary-text); font-weight: 600; margin-bottom: 0.4rem; cursor: pointer; transition: all 0.2s ease; }
+  .sidebar-nav .nav-link:hover { background: rgba(0,0,0,0.03); }
+  .sidebar-nav .nav-link.active { background: var(--button-bg); color: var(--button-text); }
+  /* layout helpers and tab pane behavior (match permissions.html) */
+  .row { display: flex; gap: 2rem; }
+  .col-md-3 { flex: 0 0 280px; }
+  .col-md-9 { flex: 1; }
+
+  /* Tabs */
+  .tab-pane { display: none; }
+  .tab-pane.active { display: block; }
+</style>
+
+<div class="page-wrap">
+  <div class="po-table-card">
+    <div class="section-head">
+      <h1 class="page-title">Agricultural Setup</h1>
+      <div class="muted">Manage farms, blocks, seasons and spray methods</div>
+    </div>
+
+    <div class="row">
+      <div class="col-md-3">
+        <div class="card">
+          <ul class="sidebar-nav">
+            <li><a class="nav-link active" data-tab="tab-farms">Farms</a></li>
+            <li><a class="nav-link" data-tab="tab-blocks">Blocks</a></li>
+            <li><a class="nav-link" data-tab="tab-harvests">Harvest Seasons</a></li>
+            <li><a class="nav-link" data-tab="tab-spray">Spray Methods</a></li>
+          </ul>
+        </div>
+      </div>
+
+      <div class="col-md-9">
+        <div class="tab-pane active" id="tab-farms">
+          <div class="section-head">
+            <h2>Farms</h2>
+            <form method="post" action="{{ url_for('agri.add_farm') }}" class="controls">
+              <input name="farm_name" class="input" placeholder="Farm name" required>
+              <button class="btn">Add Farm</button>
+            </form>
+          </div>
+          <div style="overflow:auto;">
+            <table class="summary-table">
+              <thead><tr><th>ID</th><th>Name</th></tr></thead>
+              <tbody>
+                {% for f in farms %}
+                <tr><td>{{ f.IdFarm }}</td><td>{{ f.FarmName }}</td></tr>
+                {% endfor %}
+              </tbody>
+            </table>
+          </div>
+        </div>
+
+        <div class="tab-pane" id="tab-blocks">
+          <div class="section-head">
+            <h2>Blocks</h2>
+            <form method="post" action="{{ url_for('agri.add_block') }}" class="controls">
+              <div style="display:flex;gap:0.5rem;flex-wrap:wrap;">
+                <input name="code" class="input" placeholder="Code" required>
+                <input name="description" class="input" placeholder="Description">
+                <input name="ha" type="number" step="1" class="input" placeholder="Ha">
+                <select name="farm_id" required class="input select2">
+                  {% for f in farms %}<option value="{{ f.IdFarm }}">{{ f.FarmName }}</option>{% endfor %}
+                </select>
+                <button class="btn">Add Block</button>
+              </div>
+            </form>
+          </div>
+          <div style="overflow:auto;">
+            <table class="summary-table">
+              <thead><tr><th>Code</th><th>Description</th><th>Ha</th></tr></thead>
+              <tbody>
+                {% for b in blocks %}
+                <tr><td>{{ b.BlockCode }}</td><td>{{ b.BlockDescription }}</td><td>{{ b.BlockHa }}</td></tr>
+                {% endfor %}
+              </tbody>
+            </table>
+          </div>
+        </div>
+
+        <div class="tab-pane" id="tab-harvests">
+          <div class="section-head">
+            <h2>Block Harvest Seasons</h2>
+            <form method="post" action="{{ url_for('agri.add_bhs') }}" class="controls">
+              <select name="block_id" class="input select2" required>
+                {% for b in blocks %}<option value="{{ b.IdBlock }}">{{ b.BlockCode }}</option>{% endfor %}
+              </select>
+              <select name="crop_id" class="input select2">
+                {% for c in crops %}<option value="{{ c.IdCrop }}">{{ c.CropCode }}</option>{% endfor %}
+              </select>
+              <input type="date" name="plant_date" class="input">
+              <input type="number" step="1" name="ha" class="input" placeholder="Ha">
+              <button class="btn">Add Harvest Season</button>
+            </form>
+          </div>
+
+          <div style="overflow:auto; margin-bottom:1rem;">
+            <table class="summary-table">
+              <thead><tr><th>Block</th><th>Crop</th><th>Plant Date</th><th>Ha</th></tr></thead>
+              <tbody>
+                {% for row in bhs %}
+                <tr>
+                  <td>{{ row.BlockCode }}</td>
+                  <td>{{ row.CropCode }}</td>
+                  <td>{{ row.BHSPlantDate }}</td>
+                  <td>{{ row.BHSHa }}</td>
+                </tr>
+                {% endfor %}
+              </tbody>
+            </table>
+          </div>
+
+          <hr>
+
+          <div class="section-head">
+            <h2>Harvest Season Varieties</h2>
+            <form method="post" action="{{ url_for('agri.add_bhsv') }}" class="controls">
+              <select name="bhs_id" class="input select2" required>
+                {% for row in bhs %}
+                <option value="{{ row.IdBHS }}">{{ row.BlockCode }} - {{ row.CropCode }} - {{ row.BHSPlantDate }}</option>
+                {% endfor %}
+              </select>
+
+              <select name="variety_id" class="input select2" required>
+                {% for v in varieties %}
+                <option value="{{ v.IdVariety }}">{{ v.VarietyCode }}</option>
+                {% endfor %}
+              </select>
+
+              <select name="project_id"
+                      class="input select2"
+                      required
+                      data-placeholder="Select Project">
+                {% for p in projects %}
+                <option value="{{ p.ProjectLink }}">
+                  {{ p.ProjectCode }} - {{ p.ProjectName }}
+                </option>
+                {% endfor %}
+              </select>
+
+              <input type="number" step="1" name="ha" class="input" placeholder="Ha" required>
+
+              <button class="btn">Add Variety Split</button>
+            </form>
+          </div>
+
+          <div style="margin-top:1rem; overflow:auto;">
+            <h3 style="margin:0 0 0.5rem 0; font-size:1rem; color:var(--logo-color);">Harvest Season Varieties</h3>
+            {% if bhsv %}
+            <table class="summary-table">
+              <thead>
+                <tr>
+                  <th>Season</th>
+                  <th>Variety</th>
+                  <th>Project</th>
+                  <th>Ha</th>
+                  <th></th>
+                </tr>
+              </thead>
+              <tbody>
+                {% for v in bhsv %}
+                <tr>
+                  <td>{{ v.BlockCode or v.SeasonName or '' }}{% if v.CropCode %} — {{ v.CropCode }}{% endif %}{% if v.BHSPlantDate %} <span style="color:var(--secondary-text);">({{ v.BHSPlantDate }})</span>{% endif %}</td>
+                  <td>{{ v.VarietyCode or v.VarietyName or '' }}</td>
+                  <td>{{ v.ProjectCode or v.ProjectName or '' }}</td>
+                  <td class="numeric">{{ v.BHSVHa or v.Ha or '' }}</td>
+                  <td style="width:90px; text-align:right;">
+                    <!-- placeholder for actions (edit/delete) -->
+                    <button class="btn" style="padding:6px 8px;">Edit</button>
+                  </td>
+                </tr>
+                {% endfor %}
+              </tbody>
+            </table>
+            {% else %}
+              <p style="color:var(--secondary-text);">No variety splits found.</p>
+            {% endif %}
+          </div>
+        </div>
+
+        <div class="tab-pane" id="tab-spray">
+          <div class="section-head">
+            <h2>Spray Methods</h2>
+            <form method="post" action="{{ url_for('agri.add_spray_method') }}" class="controls">
+              <select name="farm_id" class="input select2">
+                {% for f in farms %}<option value="{{ f.IdFarm }}">{{ f.FarmName }}</option>{% endfor %}
+              </select>
+              <input name="spray_method_name" type="text" class="input" placeholder="Name">
+              <input name="water_per_ha" type="number" step="1" class="input" placeholder="Water / Ha">
+              <input name="tank_size" type="number" step="1" class="input" placeholder="Tank Size(L)">
+              <button class="btn">Add Spray Method</button>
+            </form>
+          </div>
+
+          <div style="overflow:auto;">
+            <table class="summary-table">
+              <thead>
+                <tr>
+                  <th>Farm</th>
+                  <th>Name</th>
+                  <th>Water / Ha</th>
+                  <th>Tank Size</th>
+                </tr>
+              </thead>
+              <tbody>
+                {% for sm in spray_methods %}
+                <tr>
+                  <td>{{ sm.FarmName }}</td>
+                  <td>{{ sm.SprayMethodName }}</td>
+                  <td>{{ sm.SprayMethodWaterPerHa }}</td>
+                  <td>{{ sm.SprayMethodTankSize }}</td>
+                </tr>
+                {% endfor %}
+              </tbody>
+            </table>
+          </div>
+        </div>
+
+      </div>
+    </div>
+  </div>
+</div>
+  <script>
+    document.addEventListener('DOMContentLoaded', () => {
+      // Sidebar tab navigation (mirror permissions page behavior)
+      document.querySelectorAll('.nav-link').forEach(link => {
+        link.addEventListener('click', () => {
+          document.querySelectorAll('.nav-link').forEach(l => l.classList.remove('active'));
+          document.querySelectorAll('.tab-pane').forEach(p => p.classList.remove('active'));
+          link.classList.add('active');
+          const id = link.dataset.tab;
+          const pane = document.getElementById(id);
+          if (pane) pane.classList.add('active');
+          // keep focus/scroll inside the card
+          const card = document.querySelector('.po-table-card');
+          if (card) card.scrollTop = 0;
+        });
+      });
+    });
+  </script>
+
+  <!-- jQuery + Select2 -->
+  <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/select2@4.0.13/dist/js/select2.min.js"></script>
+  <script>
+    // Initialize Select2 on all selects inside the card and auto-focus search on open
+document.addEventListener('DOMContentLoaded', function () {
+
+  const $ = window.jQuery;
+  if (!$ || !$.fn.select2) return;
+
+  $('.select2').select2({
+    dropdownParent: $('.po-table-card'),
+    width: '100%',
+    placeholder: function(){
+      return $(this).data('placeholder');
+    }
+  });
+
+  // Focus search field when opened
+  $(document).on('select2:open', function () {
+    setTimeout(() => {
+      const searchField = document.querySelector('.select2-container--open .select2-search__field');
+      if (searchField) searchField.focus();
+    }, 0);
+  });
+
+});
+
+  </script>
+
+  {% endblock %}

@@ -460,24 +460,24 @@ button:active { transform: scale(0.98); }
 }
 
 /* Remove button styling */
-.ibt-remove-btn {
-    padding: 6px 12px;
-    font-size: 0.85rem;
-    line-height: 1;
-    border-radius: 6px;
-    border: none;
-    cursor: pointer;
-    transition: background 0.2s, transform 0.1s;
-    background: #e74c3c;
-    color: white;
-}
+.issue-remove-btn {
+      padding: 6px 12px;
+      font-size: 0.85rem;
+      line-height: 1;
+      border-radius: 6px;
+      border: none;
+      cursor: pointer;
+      transition: background 0.2s, transform 0.1s;
+      background: #e74c3c;
+      color: white;
+    }
 
-.ibt-remove-btn:hover {
-    background: #c0392b;
-    transform: scale(1.05);
-}
+    .issue-remove-btn:hover {
+      background: #c0392b;
+      transform: scale(1.05);
+    }
 
-.ibt-remove-btn:active {
+    .issue-remove-btn:active {
     transform: scale(0.95);
 }
 
@@ -518,13 +518,12 @@ button:active { transform: scale(0.98); }
 /* Product Row — Compact & Beautiful (matching stock_count.html) */
     .product-row {
       display: grid;
-      grid-template-columns: 1fr 70px auto 36px;
-      align-items: center;
+      grid-template-columns: 1fr;
       gap: 8px;
-      padding: 8px 10px;
+      padding: 10px;
       background: var(--form-bg);
       border: 1px solid var(--input-border);
-      border-radius: 6px;
+      border-radius: 8px;
       margin-bottom: 6px;
       transition: all 0.15s ease;
       min-height: 44px;
@@ -542,7 +541,24 @@ button:active { transform: scale(0.98); }
       box-shadow: 0 2px 8px rgba(0,0,0,0.15);
     }
 
-    .product-select-wrapper {
+    /* second row container */
+    .product-row-bottom {
+        display: grid;
+        grid-template-columns: 1fr auto 36px;
+        gap: 8px;
+        align-items: center;
+    }
+
+    /* Desktop layout */
+    @media (min-width: 768px) {
+        .product-row {
+            grid-template-columns: 2fr 100px 70px 36px;
+            align-items: center;
+        }
+
+        .product-row-bottom {
+            display: contents;
+        }
       width: 100%;
     }
 
@@ -618,7 +634,7 @@ button:active { transform: scale(0.98); }
       justify-content: center;
     }
 
-    .ibt-remove-btn {
+    .issue-remove-btn {
       width: 36px;
       height: 36px;
       border: none;
@@ -634,16 +650,16 @@ button:active { transform: scale(0.98); }
       transition: background 0.2s, transform 0.1s;
     }
 
-    .ibt-remove-btn:hover {
+    .issue-remove-btn:hover {
       background: #c82333;
       transform: translateY(-1px);
     }
 
-    .ibt-remove-btn:active {
+    .issue-remove-btn:active {
       transform: translateY(0);
     }
 
-    .ibt-remove-btn i {
+    .issue-remove-btn i {
       display: flex;
       align-items: center;
       justify-content: center;
@@ -670,37 +686,46 @@ button:active { transform: scale(0.98); }
     }
 
     /* Add Line Button */
-    #add-line-btn {
-      background: #28a745;
-      color: white;
-      border: none;
-      padding: 12px 16px;
-      border-radius: 6px;
-      font-size: 0.95rem;
-      cursor: pointer;
-      font-weight: 600;
-      transition: background 0.2s, transform 0.1s;
-      margin: 15px 0;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      gap: 8px;
-      width: 100%;
+    .add-line-container {
+        display: flex;
+        justify-content: center;
+        margin: 20px 0;
     }
 
-    #add-line-btn:hover {
-      background: #218838;
-      transform: translateY(-2px);
+    .add-line-btn {
+        background: #f8f9fa;
+        color: #495057;
+        border: 2px dashed #dee2e6;
+        padding: 12px 24px;
+        border-radius: 8px;
+        font-size: 0.95rem;
+        font-weight: 600;
+        cursor: pointer;
+        display: inline-flex;
+        align-items: center;
+        gap: 8px;
+        transition: all 0.2s ease;
+        box-shadow: 0 1px 3px rgba(0,0,0,0.1);
     }
 
-    #add-line-btn:active {
-      transform: translateY(0);
+    .add-line-btn:hover {
+        background: #e9ecef;
+        border-color: #adb5bd;
+        transform: translateY(-1px);
+        box-shadow: 0 2px 6px rgba(0,0,0,0.15);
+    }
+
+    .add-line-btn:active {
+        transform: translateY(0);
+    }
+
+    .add-line-btn i {
+        font-size: 1rem;
     }
 
     /* Responsive */
     @media (max-width: 480px) {
       .product-row {
-        grid-template-columns: 1fr 60px auto 32px;
         gap: 6px;
         padding: 6px 8px;
         margin-bottom: 4px;
@@ -722,7 +747,7 @@ button:active { transform: scale(0.98); }
         height: 32px;
       }
 
-      .ibt-remove-btn {
+      .issue-remove-btn {
         width: 32px;
         height: 32px;
         font-size: 12px;
@@ -778,10 +803,12 @@ button:active { transform: scale(0.98); }
             <!-- Product Lines Container -->
             <div id="ibt-lines-container"></div>
 
-            <button id="add-line-btn" type="button">
-                <span>➕</span>
-                Add Product Line
-            </button>
+            <div class="add-line-container">
+                <button id="add-line-btn" type="button" class="add-line-btn">
+                    <i class="fas fa-plus"></i>
+                    Add Product Line
+                </button>
+            </div>
 
             <div class="button-group">
                 <button id="step-2-back-btn" type="button" class="btn-secondary">← Back</button>

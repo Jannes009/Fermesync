@@ -47,9 +47,10 @@ def add_service():
     try:
         encrypted = encrypt_password(password)
 
-        conn, cursor = create_db_connection()
+        conn = create_db_connection()
+        cursor = conn.cursor()
         cursor.execute("""
-            INSERT INTO connectedServices (UserId, ServiceType, Username, EncryptedPassword)
+            INSERT INTO users.connectedServices (UserId, ServiceType, Username, EncryptedPassword)
             VALUES (?, ?, ?, ?)
         """, (current_user.id, service_type, username, encrypted))
         conn.commit()
@@ -67,10 +68,11 @@ def add_service():
 def remove_service():
     data = request.json
     service_id = data.get('service_id')
-    conn, cursor = create_db_connection()
+    conn = create_db_connection()
+    cursor = conn.cursor()
     try:
         cursor.execute("""
-            DELETE FROM connectedServices
+            DELETE FROM users.connectedServices
             WHERE Id = ? AND UserId = ?
         """, (service_id, current_user.id))
         deleted = cursor.rowcount

@@ -99,14 +99,14 @@ def insert_data(file, current_user):
         df['SupplierRef'] = df['SupplierRef'].astype(str).str.replace('*', '-', regex=False)
         df['PaymentReference'] = df['PaymentReference'].astype(str).str.replace('*', '-', regex=False)
 
-        cursor.execute("TRUNCATE TABLE market.MarketData")
+        cursor.execute("TRUNCATE TABLE [mkt].MarketData")
 
         count = 0
         for _, row in df.iterrows():
             count += 1
             row_data = {col: (None if pd.isna(val) else val) for col, val in row.items()}
             cursor.execute("""
-                INSERT INTO market.MarketData (
+                INSERT INTO [mkt].MarketData (
                     Market, Agent, Product, Variety, Size, Class, Container, Mass_kg, Count,
                     DeliveryID, ConsignmentID, SupplierRef, QtySent, QtyAmendedTo, QtySold,
                     DeliveryDate, DateSold, DatePaid, DocketNumber, PaymentReference,

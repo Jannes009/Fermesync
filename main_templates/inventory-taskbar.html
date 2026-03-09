@@ -5,14 +5,14 @@
     <a href="/inventory/dashboard" class="logo-link">
       <img src="{{ url_for('inventory.static', filename='Image/HorizontalLogoAndText.svg') }}" alt="Fermesync Logo" class="taskbar-logo">
       <!-- Mobile-only status indicators -->
-      <div class="mobile-status-indicators">
+      <!-- <div class="mobile-status-indicators">
         <div class="connection-indicator mobile-only" id="connection-indicator-mobile">
           <span class="dot"></span>
         </div>
         <div class="pending-indicator mobile-only" id="pending-indicator-mobile">
           <span id="pending-count-mobile">0</span>
         </div>
-      </div>
+      </div> -->
     </a>
   </div>
 
@@ -32,6 +32,9 @@
         </ul>
       </li>
       {% endif %}
+      {% if "WHSE_TRANSFER" in current_user.permissions %}
+      <li><a href="/inventory/warehouse-transfer" class="taskbar-link">Whse Transfer</a></li>
+      {% endif %}
       <li><a href="/inventory/qty-summary" class="taskbar-link">Warehouse Qty's</a></li>
       {% if "GRV_CREATE" in current_user.permissions %}
       <li><a href="/inventory/grv" class="taskbar-link">GRV</a></li>
@@ -40,11 +43,17 @@
       <li><a href="/inventory/stock-counts" class="taskbar-link">Stock Count</a></li>
       {% endif %}
       {% if "STOCK_ISSUE" in current_user.permissions %}
-      <li><a href="/inventory/SDK/stock_issue" class="taskbar-link">Stock Issue</a></li>
+      <li><a href="/inventory/SDK/stock_issue_summary" class="taskbar-link">Stock Issue</a></li>
       {% endif %}
-      {% if "PO_REQUISITION_CREATE" in current_user.permissions or "PO_CREATE" in current_user.permissions or "PO_EDIT" in current_user.permissions or "PO_VIEW" in current_user.permissions %}
+      {% if "SPRAY_REC" in current_user.permissions %}
+      <li><a href="/agri/spray-recommendations-summary" class="taskbar-link">Spray</a></li>
+        {% endif %}
+      {% if "AGRI_MAIN" in current_user.permissions %}
+      <li><a href="/agri/setup" class="taskbar-link">Agri Maintanance</a></li>
+      {% endif %}
+      <!-- {% if "PO_REQUISITION_CREATE" in current_user.permissions or "PO_CREATE" in current_user.permissions or "PO_EDIT" in current_user.permissions or "PO_VIEW" in current_user.permissions %}
       <li><a href="/inventory/po/requisition" class="taskbar-link">Purchase Order</a></li>
-      {% endif %}
+      {% endif %} -->
       <!-- <li><a href="/inventory/barcode_scanner" class="taskbar-link">Barcode Scanner</a></li> -->
     </ul>
   </nav>
@@ -161,6 +170,26 @@
           </div>
         </a>
       </li>
+      {% if "WHSE_TRANSFER" in current_user.permissions %}
+      <li class="mobile-nav-item">
+        <a href="/inventory/warehouse-transfer" class="mobile-nav-link">
+          <div class="mobile-nav-content">
+            <span class="mobile-nav-icon">🏬</span>
+            <span>Whse Transfer</span>
+          </div>
+        </a>
+      </li>
+      {% endif %}
+       {% if "SPRAY_REC" in current_user.permissions %}
+      <li class="mobile-nav-item">
+        <a href="/agri/spray-recommendations-summary" class="mobile-nav-link">
+          <div class="mobile-nav-content">
+            <span class="mobile-nav-icon">🧪</span>
+            <span>Spray</span>
+          </div>
+        </a>
+      </li>
+        {% endif %}
       {% if "GRV_CREATE" in current_user.permissions %}
       <li class="mobile-nav-item">
         <a href="/inventory/grv" class="mobile-nav-link">
@@ -183,7 +212,7 @@
       {% endif %}
       {% if "STOCK_ISSUE" in current_user.permissions %}
       <li class="mobile-nav-item">
-        <a href="/inventory/SDK/stock_issue" class="mobile-nav-link">
+        <a href="/inventory/SDK/stock_issue_summary" class="mobile-nav-link">
           <div class="mobile-nav-content">
             <span class="mobile-nav-icon">🛠️</span>
             <span>Stock Issue</span>
@@ -191,7 +220,7 @@
         </a>
       </li>
       {% endif %}
-      {% if "PO_REQUISITION_CREATE" in current_user.permissions or "PO_CREATE" in current_user.permissions or "PO_EDIT" in current_user.permissions or "PO_VIEW" in current_user.permissions %}
+      <!-- {% if "PO_REQUISITION_CREATE" in current_user.permissions or "PO_CREATE" in current_user.permissions or "PO_EDIT" in current_user.permissions or "PO_VIEW" in current_user.permissions %}
       <li class="mobile-nav-item">
         <a href="/inventory/po/requisition" class="mobile-nav-link">
           <div class="mobile-nav-content">
@@ -200,7 +229,7 @@
           </div>
         </a>
       </li>
-      {% endif %}
+      {% endif %} -->
       <!-- <li class="mobile-nav-item">
         <a href="/inventory/barcode_scanner" class="mobile-nav-link">
           <div class="mobile-nav-content">

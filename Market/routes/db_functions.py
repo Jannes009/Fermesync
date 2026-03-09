@@ -1,11 +1,11 @@
 ﻿def get_header_by_id(entry_id, cursor):
-    # Fetch the entry data from market.the header table
+    # Fetch the entry data from [mkt].the header table
     cursor.execute("SELECT * FROM [market].[ZZDeliveryNoteHeader] WHERE [DelIndex] = ?", (entry_id,))
     entry = cursor.fetchone()
     return entry
 
 def del_note_number_to_del_id(header_number, cursor):
-    # Fetch the entry data from market.the header table
+    # Fetch the entry data from [mkt].the header table
     cursor.execute("SELECT DelIndex FROM [market].[ZZDeliveryNoteHeader] WHERE [DelNoteNo] = ?", (header_number,))
     entry = cursor.fetchone()
     return entry
@@ -27,7 +27,7 @@ def get_agent_codes(cursor):
 
 def get_transporter_codes(cursor):
     query = """
-    SELECT [TransporterAccount], [TransporterAccount] + '-' + [TransporterName] AS display_name FROM market._uvMarketTransporter
+    SELECT [TransporterAccount], [TransporterAccount] + '-' + [TransporterName] AS display_name FROM [mkt]._uvMarketTransporter
     ORDER BY display_name 
     """
     cursor.execute(query)
@@ -46,7 +46,7 @@ def get_market_codes(cursor):
 
 def get_destinations(cursor):
     query = """
-    SELECT idDestination, DestinationCode FROM market._uvDestination
+    SELECT idDestination, DestinationCode FROM [mkt]._uvDestination
     ORDER BY DestinationCode
     """
     cursor.execute(query)
@@ -85,7 +85,7 @@ def market_Id_to_market_name(marketId,cursor):
     return market_name
 
 def transporter_account_to_transporter_name(transporterAccount,cursor):
-    query = "SELECT [TransporterAccount], [TransporterAccount] + '-' + [TransporterName] AS display_name FROM market._uvMarketTransporter WHERE [TransporterAccount] = ?"
+    query = "SELECT [TransporterAccount], [TransporterAccount] + '-' + [TransporterName] AS display_name FROM [mkt]._uvMarketTransporter WHERE [TransporterAccount] = ?"
     cursor.execute(query,(transporterAccount,))
     transporter_name = cursor.fetchone()
     return transporter_name

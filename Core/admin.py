@@ -71,7 +71,7 @@ def manage_users():
         permissions = cursor.fetchall()
 
         # Warehouses
-        cursor.execute("SELECT WhseLink, Name FROM common._uvWhseMst ORDER BY Name")
+        cursor.execute("SELECT WhseLink, Name FROM cmn._uvWhseMst ORDER BY Name")
         warehouses = cursor.fetchall()
 
         # Notification Types
@@ -86,7 +86,7 @@ def manage_users():
         # Project Groups (NEW)
         cursor.execute("""
         Select DISTINCT MainProjectLink, MainProjectCode, MainProjectName 
-        from common._uvProject 
+        from cmn._uvProject 
         ORDER BY MainProjectCode
         """)
         project_groups = cursor.fetchall()

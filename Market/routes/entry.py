@@ -50,7 +50,7 @@ def fetch_lines_data(request_form):
 
 def store_header(cursor, form_data):
     cursor.execute("""
-        INSERT INTO market.ZZDeliveryNoteHeader 
+        INSERT INTO [mkt].ZZDeliveryNoteHeader 
         (DeliClientId, DelNoteNo, DelDate, DelFarmId, DelTransporter, DelTransportCostExcl, DelMarketId, DelDestinationId)
         VALUES (?, ?, ?, ?, ?, ?, ?, ?)
     """, tuple(form_data.values()))
@@ -64,14 +64,14 @@ def store_lines(cursor, header_id, line_data, linesId=None):
         total_quantity += float(quantity)
         if linesId == None or len(linesId) <= count:
             cursor.execute("""
-                INSERT INTO market.ZZDeliveryNoteLines 
+                INSERT INTO [mkt].ZZDeliveryNoteLines 
                 (DelHeaderId, DelLineStockId, DelLineQuantityBags, DelLinePriceEstimate, DelLineFarmId)
                 VALUES (?, ?, ?, ?, ?)
             """, (header_id, product, quantity, price, unit))
         else:
             
             cursor.execute("""
-                        UPDATE market.ZZDeliveryNoteLines 
+                        UPDATE [mkt].ZZDeliveryNoteLines 
                         SET DelLineStockId = ?, DelLineQuantityBags = ?, DelLinePriceEstimate = ?, DelLineFarmId = ?
                         WHERE DelLineIndex = ?
             """, (product, quantity, price, unit, linesId[count]))
@@ -81,12 +81,12 @@ def store_lines(cursor, header_id, line_data, linesId=None):
 
 def update_header_quantity(cursor, header_id, total_quantity):
     cursor.execute("""
-        UPDATE market.ZZDeliveryNoteHeader SET DelQuantityBags = ? WHERE DelIndex = ?
+        UPDATE [mkt].ZZDeliveryNoteHeader SET DelQuantityBags = ? WHERE DelIndex = ?
     """, (total_quantity, header_id))
     cursor.connection.commit()
 
 def fetch_lines(cursor, entry_id):
-    cursor.execute("SELECT * FROM market.ZZDeliveryNoteLines WHERE DelHeaderId = ?", (entry_id,))
+    cursor.execute("SELECT * FROM [mkt].ZZDeliveryNoteLines WHERE DelHeaderId = ?", (entry_id,))
     return cursor.fetchall()
 
 @market_bp.route('/create_entry', methods=['GET', 'POST'])
@@ -109,7 +109,7 @@ def create_entry():
             # Store header
             store_header(cursor, form_data)
 
-            cursor.execute("SELECT DelIndex FROM market.ZZDeliveryNoteHeader WHERE DelNoteNo = ?", 
+            cursor.execute("SELECT DelIndex FROM [mkt].ZZDeliveryNoteHeader WHERE DelNoteNo = ?", 
                            (form_data['ZZDelNoteNo'],))
             header_row = cursor.fetchone()
             if not header_row:
@@ -197,9 +197,9 @@ def run_background_procedures(del_note_no):
         cursor = conn.cursor()
         print(f"Running stored procedures for DelNoteNo {del_note_no}...")
 
-        cursor.execute("EXEC market.IGCreateTransportPO")
-        cursor.execute("EXEC market.SIGUpdateDelQuantities")
-        cursor.execute("EXEC market.SIGUpdateWeightTransport")
+        cursor.execute("EXEC [mkt].IGCreateTransportPO")
+        cursor.execute("EXEC [mkt].SIGUpdateDelQuantities")
+        cursor.execute("EXEC [mkt].SIGUpdateWeightTransport")
         cursor.execute("EXEC [market].[SIGUpdatePackagingCost]")
         cursor.execute("EXEC [market].[SIGUpdateWeightTransport]")
 
@@ -280,7 +280,7 @@ def check_delivery_note():
     conn = create_db_connection()
     cursor = conn.cursor()
     
-    cursor.execute("SELECT COUNT(*) FROM market.ZZDeliveryNoteHeader WHERE DelNoteNo = ?", (del_note_no,))
+    cursor.execute("SELECT COUNT(*) FROM [mkt].ZZDeliveryNoteHeader WHERE DelNoteNo = ?", (del_note_no,))
     exists = cursor.fetchone()[0] > 0
 
     conn.close()
@@ -299,7 +299,7 @@ def get_last_sales_price():
     cursor = conn.cursor()
     cursor.execute("""
         SELECT LastSalesPrice 
-        FROM market._uvMarketProductWhse 
+        FROM [mkt]._uvMarketProductWhse 
         WHERE StockLink = ? AND WhseLink = ?
     """, (stock_link, whse_link))
     result = cursor.fetchone()
@@ -328,7 +328,7 @@ def get_default_transport_cost_api():
         
         # fetch agent destination
         query = """
-        Select AgentDestination from market._uvMarketAgent
+        Select AgentDestination from [mkt]._uvMarketAgent
         Where DCLink = ?
         """
         cursor.execute(query, (agent_code,))

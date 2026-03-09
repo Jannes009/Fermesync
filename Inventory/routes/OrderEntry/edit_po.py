@@ -19,7 +19,7 @@ def po_change_review(request_id):
             Id, PONumber, SupplierRef,
             RequestedByUserId, RequestedAt, Status,
             ReviewedByUserId, ReviewedAt
-        FROM inventory.POChangeRequest
+        FROM [stk].POChangeRequest
         WHERE Id = ?
     """, (request_id,)).fetchone()
 
@@ -33,7 +33,7 @@ def po_change_review(request_id):
             StockId,
             OrderedQty,
             DeliveredQty
-        FROM inventory.POChangeRequestLine
+        FROM [stk].POChangeRequestLine
         WHERE RequestId = ?
     """, (request_id,)).fetchall()
 
@@ -54,7 +54,7 @@ def approve_po_change(request_id):
     try:
         req = cursor.execute("""
             SELECT PONumber, Status, RequestedByUserId
-            FROM inventory.POChangeRequest
+            FROM [stk].POChangeRequest
             WHERE Id = ?
         """, (request_id,)).fetchone()
 
@@ -63,7 +63,7 @@ def approve_po_change(request_id):
 
         lines = cursor.execute("""
             SELECT POLineId, DeliveredQty
-            FROM inventory.POChangeRequestLine
+            FROM [stk].POChangeRequestLine
             WHERE RequestId = ?
         """, (request_id,)).fetchall()
 
@@ -81,7 +81,7 @@ def approve_po_change(request_id):
             PO.Save()
 
         cursor.execute("""
-            UPDATE inventory.POChangeRequest
+            UPDATE [stk].POChangeRequest
             SET Status = 'APPLIED',
                 ReviewedByUserId = ?,
                 ReviewedAt = GETDATE()
@@ -115,11 +115,11 @@ def reject_po_change(request_id):
     conn = create_db_connection()
     cursor = conn.cursor()
 
-    cursor.execute("Select RequestedByUserId, PONumber From inventory.POChangeRequest Where Id = ?", (request_id,))
+    cursor.execute("Select RequestedByUserId, PONumber From [stk].POChangeRequest Where Id = ?", (request_id,))
     req = cursor.fetchone()
 
     cursor.execute("""
-        UPDATE inventory.POChangeRequest
+        UPDATE [stk].POChangeRequest
         SET Status = 'REJECTED',
             ReviewedByUserId = ?,
             ReviewedAt = SYSDATETIME()
@@ -152,7 +152,7 @@ def incorrect_po():
     # try:
     # 1️⃣ Insert header
     cursor.execute("""
-        INSERT INTO inventory.POChangeRequest
+        INSERT INTO [stk].POChangeRequest
         (PONumber, SupplierRef, RequestedByUserId)
         OUTPUT INSERTED.Id
         VALUES (?, ?, ?)
@@ -167,7 +167,7 @@ def incorrect_po():
     # 2️⃣ Insert lines
     for q in overQtys:
         cursor.execute("""
-            INSERT INTO inventory.POChangeRequestLine
+            INSERT INTO [stk].POChangeRequestLine
             (RequestId, StockId, [POLineId], [OrderedQty], [DeliveredQty])
             VALUES (?, ?, ?, ?, ?)
         """, (

@@ -21,7 +21,7 @@ def update_purchase_order(order_id):
     conn = create_db_connection()
     cursor = conn.cursor()
     cursor.execute("""
-    Select TOP 1 OrderNum from inventory._uvPO_Outstanding
+    Select TOP 1 OrderNum from [stk]._uvPO_Outstanding
 	Where AutoIndex = ?
     """, order_id)
     order_no = cursor.fetchone().OrderNum
@@ -178,7 +178,7 @@ def fetch_purchase_order(po_id):
     cursor.execute("""
     Select iLineID LineId, iStockCodeID ProductId,  fQuantity Quantity, fQtyProcessed QtyProcessed, fUnitPriceExcl Price
     ,ProjectId, UomId, WhseLink WarehouseId
-    from inventory.[_uvPurchaseOrders]
+    from [stk].[_uvPurchaseOrders]
     Where AutoIndex = ?
     """, po_id)
     lines = cursor.fetchall()
@@ -189,8 +189,8 @@ def fetch_purchase_order(po_id):
         U.idInvoiceLines LineId,
         U.FieldName,
         U.FieldValue
-    FROM inventory.._uvPurchaseOrderLineUDFs U
-    JOIN inventory.._uvPurchaseOrders L
+    FROM [stk].._uvPurchaseOrderLineUDFs U
+    JOIN [stk].._uvPurchaseOrders L
         ON L.iLineID = U.idInvoiceLines
     WHERE L.AutoIndex = ?
     """, po_id)

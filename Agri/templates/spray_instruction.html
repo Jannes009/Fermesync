@@ -1,0 +1,311 @@
+{% extends 'inventory_base.html' %}
+{% block content %}
+
+<link rel="stylesheet" href="{{ url_for('market.static', filename='color-template.css') }}">
+
+<style>
+.page-wrap{ padding:1.5rem; max-width:1300px; margin:0 auto; }
+
+.main-card{
+    background:var(--container-bg);
+    border-radius:16px;
+    box-shadow:0 8px 30px rgba(20,30,50,0.06);
+    padding:1.75rem;
+}
+
+/* Header Layout */
+.header-grid{
+    display:grid;
+    grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+    gap:1rem;
+}
+
+.header-item{
+    background:white;
+    padding:1rem;
+    border-radius:12px;
+    box-shadow:0 2px 8px rgba(0,0,0,0.05);
+}
+
+.header-item h4{
+    margin:0 0 5px 0;
+    font-size:0.85rem;
+    color:var(--secondary-text);
+    text-transform:uppercase;
+}
+
+.header-item p{
+    margin:0;
+    font-weight:600;
+    font-size:1rem;
+}
+
+/* Controls */
+.controls{
+    display:flex;
+    flex-wrap:wrap;
+    gap:1.5rem;
+    margin-top:1.5rem;
+    margin-bottom:1.5rem;
+    align-items:flex-end;
+}
+
+.control-group{
+    display:flex;
+    flex-direction:column;
+}
+
+.control-group label{
+    font-size:0.8rem;
+    margin-bottom:4px;
+    color:var(--secondary-text);
+}
+
+.control-group select{
+    padding:7px 10px;
+    border-radius:8px;
+    border:1px solid #ddd;
+    min-width:160px;
+}
+
+/* Mix Cards */
+.mix-card{
+    background:white;
+    border-radius:14px;
+    box-shadow:0 3px 12px rgba(0,0,0,0.05);
+    margin-bottom:1.5rem;
+    overflow:hidden;
+}
+
+.mix-header{
+    background:linear-gradient(90deg, #2d6cdf, #1e4fa3);
+    color:white;
+    padding:0.9rem 1.2rem;
+    font-weight:600;
+    display:flex;
+    justify-content:space-between;
+    align-items:center;
+}
+
+.mix-body{
+    padding:1rem;
+}
+
+table{
+    width:100%;
+    border-collapse:collapse;
+}
+
+th{
+    text-align:left;
+    font-size:0.8rem;
+    text-transform:uppercase;
+    color:var(--secondary-text);
+    padding:8px;
+    border-bottom:1px solid #eee;
+}
+
+td{
+    padding:8px;
+    border-bottom:1px solid #f2f2f2;
+}
+
+tr:hover{
+    background:#f9fbff;
+}
+
+.no-data{
+    text-align:center;
+    padding:2rem;
+    color:var(--secondary-text);
+}
+</style>
+
+<div class="page-wrap">
+  <div class="main-card">
+
+    <h2 style="margin-bottom:1.5rem;">Spray Execution</h2>
+
+    <!-- HEADER -->
+    <div id="spray-header"></div>
+
+    <!-- CONTROLS -->
+    <div class="controls">
+        <div class="control-group">
+            <label>Method</label>
+            <select id="method-select"></select>
+        </div>
+
+        <div class="control-group">
+            <label>Operator</label>
+            <select id="operator-select"></select>
+        </div>
+
+        <div class="control-group">
+            <label>Weather</label>
+            <select id="weather-select">
+                <option>Sunny</option>
+                <option>Cloudy</option>
+                <option>Windy</option>
+                <option>Rain Threat</option>
+            </select>
+        </div>
+    </div>
+
+    <!-- MIX TABLE -->
+    <div id="mix-container"></div>
+
+  </div>
+</div>
+
+<script>
+
+const sprayId = {{ spray_id }};
+let sprayData = null;
+
+document.addEventListener("DOMContentLoaded", async () => {
+    await renderMixHeader();
+    await renderMixLines();
+    populateMethods();
+    document.getElementById("method-select").addEventListener("change", recalculate);
+});
+
+
+async function renderMixHeader() {
+    header = await fetchHeader(sprayId)
+
+    document.getElementById("spray-header").innerHTML = `
+        <div class="header-grid">
+            <div class="header-item"><h4>Block</h4><p>${header.block}</p></div>
+            <div class="header-item"><h4>Crop</h4><p>${header.crop}</p></div>
+            <div class="header-item"><h4>Spray Date</h4><p>${header.spray_date}</p></div>
+            <div class="header-item"><h4>Plant Date</h4><p>${header.plant_date}</p></div>
+            <div class="header-item"><h4>Manager</h4><p>${header.manager_id}</p></div>
+            <div class="header-item"><h4>Agriculturist</h4><p>${header.agriculturist_id}</p></div>
+            <div class="header-item"><h4>Hectares</h4><p>${header.ha}</p></div>
+            <div class="header-item"><h4>Method</h4><p>${header.method_name}</p></div>
+            <div class="header-item"><h4>Tank Size</h4><p>${header.tank_size} L</p></div>
+            <div class="header-item"><h4>Water / Ha</h4><p>${header.water_per_ha} L</p></div>
+        </div>
+    `;
+}
+
+async function renderMixLines() {
+    lines = await fetchLines(sprayId)
+
+    if (!lines || lines.length === 0) {
+        document.getElementById("mix-container").innerHTML = 
+            "<div class='no-data'>No spray lines found.</div>";
+        return;
+    }
+
+    const mixGroups = {};
+    lines.forEach(line => {
+        if (!mixGroups[line.mix_number]) {
+            mixGroups[line.mix_number] = [];
+        }
+        mixGroups[line.mix_number].push(line);
+    });
+
+    let html = "";
+
+    Object.keys(mixGroups).sort((a,b)=>a-b).forEach(mixNo => {
+        const mixLines = mixGroups[mixNo];
+        const firstLine = mixLines[0];
+
+        html += `
+            <div class="mix-card">
+                <div class="mix-header">
+                    <span>Mix ${mixNo}</span>
+                    <span>${firstLine.water} L Water | ${firstLine.qty_per_ha} Ha</span>
+                </div>
+                <div class="mix-body">
+                    <table>
+                        <thead>
+                            <tr>
+                                <th>Stock Code</th>
+                                <th>Active Ingredient</th>
+                                <th>Reason</th>
+                                <th>Withholding</th>
+                                <th>Qty</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+        `;
+
+        mixLines.forEach(line => {
+            html += `
+                <tr>
+                    <td>${line.stock_code || '-'}</td>
+                    <td>${line.active_ingr || '-'}</td>
+                    <td>${line.reason || '-'}</td>
+                    <td>${line.withholding_period || '-'}</td>
+                    <td><b>${line.qty || '-'}</b></td>
+                </tr>
+            `;
+        });
+
+        html += `
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        `;
+    });
+
+    document.getElementById("mix-container").innerHTML = html;
+}
+
+
+/* ---- YOUR ORIGINAL FUNCTIONS BELOW (UNCHANGED) ---- */
+
+function populateMethods(){
+    fetch("/agri/spray/methods")
+    .then(res => res.json())
+    .then(methods => {
+        const select = document.getElementById("method-select");
+        methods.forEach(m => {
+            const option = document.createElement("option");
+            option.value = m.id;
+            option.textContent = m.method_name;
+            select.appendChild(option);
+        });
+    });
+}
+
+async function fetchHeader(sprayId) {
+    return fetch(`/agri/spray/${sprayId}/spray_header`)
+    .then(res => res.json())
+    .then(data => data);
+}
+
+async function fetchLines(sprayId) {
+    return fetch(`/agri/spray/${sprayId}/spray_lines`)
+    .then(res => res.json())
+    .then(data => data);
+}
+
+function recalculate() {
+    if (!sprayData) return;
+    
+    const methodId = document.getElementById("method-select").value;
+    
+    fetch(`/agri/spray/recalculate`, {
+        method: "POST",
+        headers: {"Content-Type":"application/json"},
+        body: JSON.stringify({
+            method_id: methodId,
+            bhs_id: sprayData.header.bhs_id,
+            lines: sprayData.lines
+        })
+    })
+    .then(res => res.json())
+    .then(result => {
+        renderMixLines(sprayId);
+    })
+    .catch(err => console.error("Error recalculating:", err));
+}
+
+</script>
+
+{% endblock %}

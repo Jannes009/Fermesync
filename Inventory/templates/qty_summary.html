@@ -1,10 +1,10 @@
 {% extends "inventory_base.html" %}
 {% block content %}
-
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
 <div class="main-content">
   <div class="container-wide">
     <div class="page-header">
-      <h1><i class="fas fa-box"></i> Inventory Quantity Summary</h1>
+      <h1></i> Inventory Quantity Summary</h1>
     </div>
 
     <div class="warehouse-list">
@@ -48,12 +48,20 @@
       <div id="selectedItemsList" style="margin-bottom: 1.5rem; max-height: 200px; overflow-y: auto; padding: 1rem; background: var(--table-row-uneven); border-radius: 6px;">
       </div>
 
-      <div class="form-group">
-        <label>Category</label>
-        <select id="bulkCategory" class="form-control">
+    <div class="form-group">
+      <label>Category</label>
+
+      <div style="display:flex; gap:8px;">
+        <select id="bulkCategory" class="form-control" style="flex:1;">
           <option value="">-- Keep Current --</option>
         </select>
+
+        <button type="button" class="btn-submit" onclick="openAddCategoryModal()" style="padding:0 14px;">
+          <i class="fas fa-plus"></i>
+        </button>
       </div>
+    </div>
+
 
       <div class="form-row">
         <div class="form-group" style="flex: 1;">
@@ -78,13 +86,44 @@
   </div>
 </div>
 
+<!-- Add Category Modal -->
+<div id="addCategoryModal" class="modal hidden">
+  <div class="modal-content" style="max-width: 400px;">
+    <div class="modal-header">
+      <h2><i class="fas fa-tag"></i> Add Category</h2>
+      <button class="modal-close" onclick="closeAddCategoryModal()">
+        <i class="fas fa-times"></i>
+      </button>
+    </div>
+
+    <div class="modal-body">
+      <div class="form-group">
+        <label>Category Name</label>
+        <input type="text" id="newCategoryName" class="form-control">
+      </div>
+
+      <div class="form-group">
+        <label>Description</label>
+        <input type="text" id="newCategoryDescription" class="form-control">
+      </div>
+    </div>
+
+    <div class="modal-actions">
+      <button class="btn-cancel" onclick="closeAddCategoryModal()">Cancel</button>
+      <button class="btn-submit" onclick="saveNewCategory()">Save</button>
+    </div>
+  </div>
+</div>
+
+
 <script>
 let selectedRows = [];
 
 function updateBulkActions() {
   const checkboxes = document.querySelectorAll(".row-checkbox:checked");
   const bulkBtn = document.getElementById("bulk-edit-btn");
-  const countSpan = document.querySelector(".selection-count");
+  const selectionBadge = document.querySelector(".selection-count");
+  const badgeSpan = selectionBadge?.querySelector("span");
 
   selectedRows = Array.from(checkboxes).map(cb => {
     const tr = cb.closest("tr");
@@ -95,15 +134,18 @@ function updateBulkActions() {
     };
   });
 
-  if (selectedRows.length > 0) {
-    bulkBtn.style.display = "inline-flex";
-    countSpan.style.display = "inline-block";
-    countSpan.textContent = `${selectedRows.length} item${selectedRows.length !== 1 ? 's' : ''} selected`;
+  if (selectedRows.length > 0 && selectionMode) {
+    selectionBadge.classList.remove("hidden");
+    bulkBtn.classList.remove("hidden");
+    if (badgeSpan) {
+      badgeSpan.textContent = `${selectedRows.length} item${selectedRows.length !== 1 ? 's' : ''} selected`;
+    }
   } else {
-    bulkBtn.style.display = "none";
-    countSpan.style.display = "none";
+    selectionBadge.classList.add("hidden");
+    bulkBtn.classList.add("hidden");
   }
 }
+
 
 function toggleAllRows(checkbox) {
   const tbody = checkbox.closest("table").querySelector("tbody");
@@ -124,7 +166,7 @@ async function openBulkEditModal() {
   const warehouseId = openBody ? openBody.id.replace("wh-", "") : null;
 
   if (!warehouseId) {
-    alert("Please open a warehouse first");
+    swal.fire("Please open a warehouse first");
     return;
   }
 
@@ -137,13 +179,7 @@ async function openBulkEditModal() {
 
   // Load categories for this warehouse
   try {
-    const res = await fetch("/inventory/fetch_categories", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        whse_id: warehouseId
-      })
-    });
+    const res = await fetch("/inventory/fetch_all_categories");
     const data = await res.json();
     const cats = data["categories"] || [];
     const select = document.getElementById("bulkCategory");
@@ -175,7 +211,16 @@ async function saveBulkEdit() {
   const reorderQty = document.getElementById("bulkReorderQty").value;
 
   if (!category && !reorderLevel && !reorderQty) {
-    alert("Please enter at least one field to update");
+    swal.fire("Please enter at least one field to update");
+    return;
+  }
+
+  // Get the currently open warehouse
+  const openBody = document.querySelector(".warehouse-body:not([hidden])");
+  const warehouseId = openBody ? openBody.id.replace("wh-", "") : null;
+
+  if (!warehouseId) {
+    swal.fire("Please open a warehouse first");
     return;
   }
 
@@ -185,6 +230,7 @@ async function saveBulkEdit() {
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
         stockIds: selectedRows.map(r => r.stockId),
+        warehouseId: parseInt(warehouseId),  // Add warehouse ID to the request
         category: category || null,
         reorderLevel: reorderLevel ? parseInt(reorderLevel) : null,
         reorderQty: reorderQty ? parseInt(reorderQty) : null
@@ -193,21 +239,26 @@ async function saveBulkEdit() {
 
     const data = await res.json();
     if (data.success) {
-      alert("Updated successfully!");
+      swal.fire("Updated successfully!");
       closeBulkEditModal();
-      // Reload the current warehouse
-      const openBody = document.querySelector(".warehouse-body:not([hidden])");
+      
+      // Exit selection mode
+      if (selectionMode) {
+        selectionMode = false;
+        toggleSelectionMode();
+      }
+      
+      // Reload the current warehouse only
       if (openBody) {
         openBody.innerHTML = '<div class="loading"><i class="fas fa-spinner fa-spin"></i> Loading…</div>';
-        const warehouseId = openBody.id.replace("wh-", "");
         await loadWarehouse(warehouseId, openBody);
       }
     } else {
-      alert("Error: " + (data.error || "Unknown error"));
+      swal.fire("Error: " + (data.error || "Unknown error"));
     }
   } catch (err) {
     console.error("Error saving bulk edit:", err);
-    alert("Failed to save changes");
+    swal.fire("Failed to save changes");
   }
 }
 
@@ -239,6 +290,7 @@ document.addEventListener("click", (e) => {
   /* modal styles */
   .modal { position: fixed; inset: 0; display: flex; align-items: center; justify-content: center; z-index: 2000; background: rgba(0,0,0,0.5); }
   .modal.hidden { display: none; }
+  .hidden { display: none !important; }
   .modal-content { background: var(--container-bg); border-radius: 12px; box-shadow: 0 20px 40px rgba(0,0,0,0.3); width: 90%; max-width: 600px; }
   .modal-header { display: flex; justify-content: space-between; align-items: center; padding: 1.5rem; border-bottom: 1px solid var(--border-color); }
   .modal-header h2 { margin: 0; font-size: 1.1rem; }
@@ -389,18 +441,34 @@ function renderTable(rows, body) {
     return `<span class="date-badge ${statusClass}" title="${formatted}">${daysText}</span>`;
   }
 
+  // Replace the existing table-actions div with this:
   let html = `
     <div class="table-wrapper">
       <div class="table-actions">
-        <button class="btn-action-small" id="bulk-edit-btn" onclick="openBulkEditModal()" style="display:none;">
-          <i class="fas fa-edit"></i> Edit Selected
-        </button>
-        <span class="selection-count" style="display:none; margin-left:8px; color:var(--secondary-text);"></span>
+        <div class="table-actions-left">
+          <button class="btn-action ${!selectionMode ? 'primary' : 'secondary'}" onclick="toggleSelectionMode()" id="select-mode-btn">
+            <i class="fas ${selectionMode ? 'fa-times' : 'fa-check-square'}"></i>
+            ${selectionMode ? 'Cancel Selection' : 'Select Items'}
+          
+          </button>
+
+          <button class="btn-action primary hidden" id="bulk-edit-btn" onclick="openBulkEditModal()">
+            <i class="fas fa-edit"></i> Edit Selected
+          </button>
+        </div>
+
+        <span class="selection-badge selection-count hidden">
+          <i class="fas fa-check-circle"></i>
+          <span></span>
+        </span>
       </div>
+
       <table class="table">
         <thead>
           <tr>
-            <th style="width:40px;"><input type="checkbox" class="select-all" onchange="toggleAllRows(this)"></th>
+            <th style="width:40px; display:none;" class="selection-cell">
+              <input type="checkbox" class="select-all" onchange="toggleAllRows(this)">
+            </th>
   `;
 
   columns.forEach(col => {
@@ -412,9 +480,13 @@ function renderTable(rows, body) {
   rows.forEach((r, idx) => {
     const toOrder = Number(r.ToBeOrdered) || 0;
     const rowClass = toOrder > 0 ? 'warning' : '';
+    console.log(r)
+  
     html += `
-      <tr class="${rowClass}" data-stock-code="${r.StockCode}" data-stock-id="${r.StockId || idx}">
-        <td style="width:40px;"><input type="checkbox" class="row-checkbox" onchange="updateBulkActions()"></td>
+      <tr class="${rowClass}" data-stock-code="${r.StockCode}" data-stock-id="${r.StockLink}">
+        <td class="selection-cell" style="width:40px; display:none;">
+          <input type="checkbox" class="row-checkbox" onchange="updateBulkActions()">
+        </td>
         <td><strong>${r.StockCode || '—'}</strong></td>
         <td>${r.StockDescription || '—'}</td>
         <td>${r.cCategoryName || '—'}</td>
@@ -460,6 +532,36 @@ function renderTable(rows, body) {
   });
 }
 
+let selectionMode = false;
+
+function toggleSelectionMode() {
+  selectionMode = !selectionMode;
+
+  const selectBtn = document.getElementById("select-mode-btn");
+  const bulkBtn = document.getElementById("bulk-edit-btn");
+  const countSpan = document.querySelector(".selection-count");
+
+  // Toggle selection column
+  document.querySelectorAll(".selection-cell").forEach(cell => {
+    cell.style.display = selectionMode ? "" : "none";
+  });
+
+  // Add/remove selection-mode class for mobile styling
+  if (selectionMode) {
+    document.body.classList.add("selection-mode");
+    bulkBtn.classList.remove("hidden");
+    selectBtn.innerHTML = `<i class="fas fa-times"></i> Cancel Selection`;
+    selectBtn.className = "btn-action secondary";
+  } else {
+    document.body.classList.remove("selection-mode");
+    document.querySelectorAll(".row-checkbox").forEach(cb => cb.checked = false);
+    selectedRows = [];
+    bulkBtn.classList.add("hidden");
+    countSpan.classList.add("hidden");
+    selectBtn.innerHTML = `<i class="fas fa-check-square"></i> Select Items`;
+    selectBtn.className = "btn-action primary";
+  }
+}
 /* perform sort and re-render using stored rows */
 function sortAndRender(body) {
   const key = body.dataset.sortKey;
@@ -491,7 +593,59 @@ function sortAndRender(body) {
 
   renderTable(body.tableData, body);
 }
-</script>
+
+function openAddCategoryModal() {
+  document.getElementById("newCategoryName").value = "";
+  document.getElementById("newCategoryDescription").value = "";
+  document.getElementById("addCategoryModal").classList.remove("hidden");
+}
+
+function closeAddCategoryModal() {
+  document.getElementById("addCategoryModal").classList.add("hidden");
+}
+
+async function saveNewCategory() {
+  const name = document.getElementById("newCategoryName").value.trim();
+  const desc = document.getElementById("newCategoryDescription").value.trim();
+
+  if (!name) {
+    swal.fire("Category name is required");
+    return;
+  }
+
+  try {
+    const res = await fetch("/inventory/add-category", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        name: name,
+        description: desc
+      })
+    });
+
+    const data = await res.json();
+
+    if (data.success) {
+      closeAddCategoryModal();
+
+    const select = document.getElementById("bulkCategory");
+
+    const opt = document.createElement("option");
+    opt.value = data.category_id;
+    opt.textContent = data.category_name;
+
+    select.appendChild(opt);
+    select.value = data.category_id;
+
+
+    } else {
+      swal.fire(data.error || "Failed to add category");
+    }
+  } catch (err) {
+    console.error(err);
+    swal.fire("Error adding category");
+  }
+}</script>
 
 <style>
 /* reuse stock-count look & feel, compact and professional */
@@ -550,7 +704,22 @@ function sortAndRender(body) {
         justify-items: end;
     }
 }
+/* Selection count badge */
+.selection-badge {
+    background: var(--accent-color);
+    color: white;
+    padding: 0.25rem 0.75rem;
+    border-radius: 999px;
+    font-size: 0.8rem;
+    font-weight: 600;
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+}
 
+.selection-badge.hidden {
+    display: none !important;
+}
 /* table */
 .table-wrapper { padding:12px; }
 .table { width:100%; border-collapse:collapse; }
@@ -568,27 +737,235 @@ function sortAndRender(body) {
 .table th .sort-indicator { font-size: 0.75rem; margin-left: 6px; color: var(--secondary-text); }
 
 /* responsive: compact two-column rows on small screens */
+/* responsive: compact two-column rows on small screens */
 @media (max-width: 700px) {
   .wh-desc { display:none; }
   .table th, .table td { padding:8px 6px; font-size:0.85rem; }
   .table thead { display:none; }
 
   .table tbody tr {
-    display:grid;
+    display: grid;
     grid-template-columns: 1fr auto;
-    gap:8px;
-    align-items:center;
-    padding:8px;
-    margin-bottom:8px;
-    border:1px solid var(--border-color);
-    border-radius:8px;
-    background:var(--container-bg);
+    gap: 8px;
+    align-items: center;
+    padding: 12px;
+    margin-bottom: 8px;
+    border: 1px solid var(--border-color);
+    border-radius: 8px;
+    background: var(--container-bg);
   }
-  .table td { padding:0; border:none; display:block; font-size:0.9rem; }
-  .table td:nth-child(1), .table td:nth-child(2) { grid-column:1; }
-  .table td:nth-child(1) { font-weight:700; }
-  .table td:nth-child(2) { color:var(--secondary-text); margin-top:2px; }
-  .table td:nth-child(n+3) { grid-column:2; display:flex; gap:8px; align-items:center; justify-content:flex-end; white-space:nowrap; font-weight:600; }
+
+  /* Hide all table cells by default */
+  .table td {
+    display: none;
+    padding: 0;
+    border: none;
+  }
+
+  /* Show Stock Code (col 2) in left column */
+  .table td:nth-child(2) {
+    display: block;
+    grid-column: 1;
+    font-weight: 700;
+    font-size: 0.95rem;
+  }
+
+  /* Show On Hand (col 5) and To Order (col 9) in right column */
+  .table td:nth-child(5) {  /* On Hand */
+    display: flex;
+    grid-column: 2;
+    align-items: center;
+    justify-content: flex-end;
+    gap: 12px;
+    font-weight: 600;
+    color: var(--primary-text);
+  }
+
+  .table td:nth-child(9) {  /* To Order */
+    display: flex;
+    grid-column: 2;
+    align-items: center;
+    justify-content: flex-end;
+    gap: 12px;
+    margin-top: -8px;
+  }
+
+  /* Style the numeric values */
+  .table td.numeric {
+    text-align: right;
+  }
+
+  /* Add labels for mobile */
+  .table td:nth-child(5)::before {
+    content: "OH: ";
+    font-weight: 400;
+    color: var(--secondary-text);
+    font-size: 0.8rem;
+  }
+
+  .table td:nth-child(9)::before {
+    content: "TO: ";
+    font-weight: 400;
+    color: var(--secondary-text);
+    font-size: 0.8rem;
+  }
+
+  /* Style To Order when it's a warning */
+  .table td:nth-child(9) strong.danger {
+    color: #dc2626;
+    font-weight: 700;
+  }
+
+  /* Hide selection checkbox on mobile when not in selection mode */
+  .selection-cell {
+    display: none !important;
+  }
+
+  /* Show selection checkbox when in selection mode */
+  .selection-mode .selection-cell {
+    display: table-cell !important;
+  }
+}
+
+/* ========== ACTION BUTTONS - CONSISTENT STYLING ========== */
+.btn-action {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 6px;
+    padding: 0.5rem 1rem;
+    font-size: 0.85rem;
+    font-weight: 600;
+    border-radius: 6px;
+    border: none;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    white-space: nowrap;
+    background: var(--button-bg, #3b82f6);
+    color: var(--button-text, white);
+    box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+}
+
+.btn-action i {
+    font-size: 0.9rem;
+}
+
+.btn-action:hover {
+    opacity: 0.9;
+    transform: translateY(-1px);
+    box-shadow: 0 4px 8px rgba(0,0,0,0.15);
+}
+
+.btn-action:active {
+    transform: translateY(0);
+}
+
+/* Primary action button */
+.btn-action.primary {
+    background: var(--button-bg, #3b82f6);
+    color: white;
+}
+
+/* Secondary/outline button */
+.btn-action.secondary {
+    background: transparent;
+    color: var(--primary-text);
+    border: 1px solid var(--border-color);
+    box-shadow: none;
+}
+
+.btn-action.secondary:hover {
+    background: var(--table-row-hover);
+    border-color: var(--accent-color);
+}
+
+/* Danger button (delete, discard) */
+.btn-action.danger {
+    background: #dc2626;
+    color: white;
+}
+
+.btn-action.danger:hover {
+    background: #b91c1c;
+}
+
+/* Success button */
+.btn-action.success {
+    background: #10b981;
+    color: white;
+}
+
+/* Small variant */
+.btn-action.small {
+    padding: 0.35rem 0.75rem;
+    font-size: 0.78rem;
+    gap: 4px;
+}
+
+.btn-action.small i {
+    font-size: 0.75rem;
+}
+
+/* Button group */
+.btn-group {
+    display: flex;
+    gap: 6px;
+    flex-wrap: wrap;
+}
+
+/* Compact action buttons for tables */
+.table-actions {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 12px;
+    background: var(--table-row-uneven);
+    border-bottom: 1px solid var(--border-color);
+    flex-wrap: wrap;
+}
+
+.table-actions-left {
+    display: flex;
+    gap: 8px;
+    align-items: center;
+}
+
+.table-actions-right {
+    margin-left: auto;
+    display: flex;
+    gap: 8px;
+    align-items: center;
+}
+
+/* Selection count badge */
+.selection-badge {
+    background: var(--accent-color);
+    color: white;
+    padding: 0.25rem 0.75rem;
+    border-radius: 999px;
+    font-size: 0.8rem;
+    font-weight: 600;
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+}
+
+/* Responsive buttons */
+@media (max-width: 600px) {
+    .btn-action {
+        padding: 0.4rem 0.8rem;
+        font-size: 0.8rem;
+    }
+    
+    .btn-group {
+        flex-direction: column;
+        width: 100%;
+    }
+    
+    .btn-action {
+        width: 100%;
+        justify-content: center;
+    }
 }
 </style>
 

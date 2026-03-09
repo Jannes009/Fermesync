@@ -18,7 +18,7 @@ def fetch_all_warehouses():
     cursor = conn.cursor() 
     query = f""" 
     Select WhseLink, WhseCode, WhseDescription
-    from common.[_uvWarehouses] 
+    from cmn.[_uvWarehouses] 
     """ 
     cursor.execute(query) 
     warehouses = [ 
@@ -38,10 +38,10 @@ def fetch_products_in_both_whses():
 
     cursor.execute("""
     SELECT FROMQTY.StockCode FromStockCode, FROMQTY.StockDescription, FROMQTY.QtyOnHand, FROMQTY.StockingUnitCode
-    FROM inventory._uvInventoryQty FROMQTY
+    FROM [stk]._uvInventoryQty FROMQTY
     WHERE  EXISTS(
         SELECT StockLink ToStckLink
-        FROM inventory._uvInventoryQty TOQTY
+        FROM [stk]._uvInventoryQty TOQTY
         where TOQTY.WhseCode = ? and TOQTY.StockLink = FROMQTY.StockLink
     )
     And FROMQTY.QtyOnHand > 0 And FROMQTY.WhseCode = ? And FROMQty.ItemActive = 1
@@ -90,7 +90,7 @@ def submit_ibt():
         cursor = conn.cursor()
 
         cursor.execute("""
-        INSERT INTO inventory.[IBT](
+        INSERT INTO [stk].[IBT](
         [IBTDispatchUserId],
         [IBTDispatchTimeStamp],
         [IBTNo],
@@ -131,7 +131,7 @@ def fetch_issued_ibts():
 
     cursor.execute("""
     Select Distinct cIBTNumber, cIBTDescription, FromWhseName, ToWhseName
-    from [inventory].[_uvIBTSummary]
+    from [stk].[_uvIBTSummary]
     Where StatusID = 1
     """)
     ibts = [
@@ -159,7 +159,7 @@ def display_ibt():
     Select 
     cIBTNumber, cIBTDescription, FromWhseName, ToWhseName
     ,StockLink, StockDesc ,cDescription, cReference, fQtyIssued
-    from [inventory].[_uvIBTSummary]
+    from [stk].[_uvIBTSummary]
     Where StatusID = 1 and cIBTNumber = ?
     """, (ibt_number,))
 
@@ -208,7 +208,7 @@ def submit_ibt_receive():
         conn = create_db_connection()
         cursor = conn.cursor()
         cursor.execute("""
-        UPDATE inventory.[IBT]
+        UPDATE [stk].[IBT]
         SET [IBTRecUserId] = ?, [IBTRecTimeStamp] = GETDATE(),
         [IBTRecAuditNo] = ?
         WHERE [IBTNo] = ?

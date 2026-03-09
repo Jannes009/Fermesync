@@ -23,7 +23,7 @@ def inventory_qty_summary():
         --SUM(IncompleteIssuesQty) IncompleteIssuesQty,
         --SUM(QtyOnPo) QtyOnPo,
         SUM(ToBeOrdered) ToBeOrdered
-    FROM inventory._uvInventoryQty
+    FROM [stk]._uvInventoryQty
     WHERE WhseLink IN ({','.join(['?'] * len(current_user.warehouses))}) 
     GROUP BY WhseLink, WhseCode, WhseName
     ORDER BY WhseName, WhseCode
@@ -46,6 +46,7 @@ def inventory_qty_summary_warehouse(warehouse_id):
         
         sql = """
         SELECT
+            QTY.StockLink,
             QTY.StockCode,
             QTY.StockDescription,
             QTY.cCategoryName,
@@ -55,12 +56,12 @@ def inventory_qty_summary_warehouse(warehouse_id):
             QTY.ReorderLevel,
             QTY.ToBeOrdered,
             CNT.DateLastCounted
-        FROM inventory._uvInventoryQty QTY
+        FROM [stk]._uvInventoryQty QTY
         LEFT JOIN (
             SELECT 
                 InvCountCatId,
                 MAX(InvCountTimeFinalised) AS DateLastCounted
-            FROM inventory.InventoryCountHeaders
+            FROM [stk].InventoryCountHeaders
             WHERE InvCountWhseId = ?
             AND InvCountStatus = 'FINALISED'
             GROUP BY InvCountCatId
@@ -87,15 +88,13 @@ def inventory_qty_summary_warehouse(warehouse_id):
     except Exception as e:
         print(f"Error fetching inventory qty: {e}")
         return jsonify({"error": str(e)}), 500
-
-
-# Add new endpoint
 @inventory_bp.route("/bulk-update-stock", methods=["POST"])
 @login_required
 def bulk_update_stock():
     try:
         data = request.get_json()
         stock_ids = data.get("stockIds", [])
+        warehouse_id = data.get("warehouseId")  # Get warehouse ID from request
         category = data.get("category")
         reorder_level = data.get("reorderLevel")
         reorder_qty = data.get("reorderQty")
@@ -106,31 +105,96 @@ def bulk_update_stock():
         conn = create_db_connection()
         cursor = conn.cursor()
 
-        for stock_id in stock_ids:
-            updates = []
-            params = []
+        # 1️⃣ Create temp table
+        cursor.execute("CREATE TABLE #StockIds (StockId INT);")
 
-            if category:
-                updates.append("cCategoryLink = ?")
-                params.append(category)
-            if reorder_level is not None:
-                updates.append("ReorderLevel = ?")
-                params.append(reorder_level)
-            if reorder_qty is not None:
-                updates.append("ReorderQty = ?")
-                params.append(reorder_qty)
+        # 2️⃣ Bulk insert IDs
+        cursor.fast_executemany = True
+        cursor.executemany(
+            "INSERT INTO #StockIds (StockId) VALUES (?)",
+            [(sid,) for sid in stock_ids]
+        )
 
-            if updates:
-                params.append(stock_id)
-                sql = f"UPDATE inventory._uvInventoryQty SET {', '.join(updates)} WHERE StockId = ?"
-                cursor.execute(sql, params)
+        # 3️⃣ Call stored procedure with warehouse filter
+        cursor.execute("""
+            EXEC [stk].sp_BulkUpdateStock
+                @Category = ?,
+                @ReorderLevel = ?,
+                @ReorderQty = ?,
+                @WarehouseId = ?
+        """, (category, reorder_level, reorder_qty, warehouse_id))
 
         conn.commit()
         cursor.close()
         conn.close()
 
-        return jsonify({"success": True, "message": f"Updated {len(stock_ids)} items"})
+        return jsonify({
+            "success": True,
+            "message": f"Updated {len(stock_ids)} items"
+        })
 
     except Exception as e:
-        print(f"Error bulk updating stock: {e}")
         return jsonify({"success": False, "error": str(e)}), 500
+
+@inventory_bp.route("/fetch_all_categories", methods=["GET"])
+def fetch_all_categories():
+    conn = create_db_connection()
+    cursor = conn.cursor()
+    try:
+
+        cursor.execute("""
+        Select Distinct idStockCategories, cCategoryName
+        from common.[_uvCategories]
+        """)
+
+        rows = cursor.fetchall()
+
+        conn.close()
+
+        categories_list = [
+            {
+                "category_id": row.idStockCategories,
+                "category_name": row.cCategoryName,
+            }
+            for row in rows
+        ]
+        return jsonify({"categories": categories_list})
+    except Exception as e:
+        print(f"Error fetching categories: {e}")
+        return jsonify({"error": str(e)}), 500
+    
+@inventory_bp.route("/add-category", methods=["POST"])
+@login_required
+def add_category():
+    data = request.get_json()
+
+    name = data.get("name")
+    description = data.get("description")
+
+    if not name:
+        return jsonify(success=False, error="Category name required")
+
+    try:
+        conn = create_db_connection()
+        cursor = conn.cursor()
+
+        cursor.execute("""
+            EXEC [stk].sp_InsertStockCategory
+            @CategoryName = ?,
+            @CategoryDescription = ?;
+        """, (name, description))
+
+        row = cursor.fetchone()
+
+        conn.commit()
+        cursor.close()
+        conn.close()
+
+        return jsonify(
+            success=True,
+            category_id=row.CategoryId,
+            category_name=row.CategoryName
+        )
+
+    except Exception as e:
+        return jsonify(success=False, error=str(e))
