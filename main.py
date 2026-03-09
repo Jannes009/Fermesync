@@ -2,7 +2,7 @@ from flask import Flask, render_template, request, redirect, session, url_for, m
 from flask_login import login_user, logout_user, current_user, login_required
 from Core.auth import login_manager, authenticate_user
 import os
-from Core.config import DevelopmentConfig, ProductionConfig, TestingConfig
+from Instance.config import DevelopmentConfig, ProductionConfig, TestingConfig
 import subprocess
 
 # -----------------------------

@@ -46,7 +46,7 @@ def create_db_connection():
     conn_str = (
         f"DRIVER={{{os.getenv('DB_DRIVER')}}};"
         f"SERVER={os.getenv('DB_SERVER')};"
-        "DATABASE=FERMESYNC;"
+        f"DATABASE={os.getenv('DB_NAME')};"
         f"UID={os.getenv('DB_USERNAME')};"
         f"PWD={decrypt_password(os.getenv('DB_PASSWORD'))};"
         f"Trust_Connection=no;"

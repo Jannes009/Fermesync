@@ -2,7 +2,7 @@
 
 {% block body %}
 <style>
-    @import url('../static/color-template.css');
+    @import url("{{ url_for('market.static', filename='color-template.css') }}");
     body {
         font-family: Arial, sans-serif;
         background-color: var(--primary-bg);
