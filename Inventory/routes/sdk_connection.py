@@ -7,13 +7,14 @@ clr.AddReference("Pastel.Evolution.Common")
 clr.AddReference("Pastel.Evolution")
 import Pastel.Evolution as Evo
 from Core.key_manager import decrypt_password
+from Instance.config import COMMON_DB, COMPANY_DB
 
 class EvolutionConnection:
     def __init__(
         self,
-        server="SIGMAFIN-RDS\\EVOLUTION",
-        common_db="SageCommon",
-        company_db="UB_UITDRAAI_BDY",
+        server=os.getenv("DB_SERVER"),
+        common_db=COMMON_DB,
+        company_db=COMPANY_DB,
         username=os.getenv("DB_USERNAME"),
         password=decrypt_password(os.getenv("DB_PASSWORD")),
         license_key=os.getenv("DB_LICENCE_KEY"),

@@ -1,4 +1,4 @@
-import {
+﻿import {
   db
 } from '/main_static/offline/db.js?v=44';
 let supplierRef = "";
@@ -188,6 +188,10 @@ function validateAndContinue() {
 
 // ---------------- SUBMIT ----------------
 function submitGRV(lines) {
+    const button = document.getElementById("next-to-summary");
+    button.disabled = true;
+    button.textContent = "Creating...";
+
     fetch("/inventory/submit_grv", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -199,6 +203,9 @@ function submitGRV(lines) {
     })
     .then(r => r.json())
     .then(res => {
+        button.disabled = false;
+        button.textContent = "Submit GRV";
+
         if (res.success) {
             clearGrvDraft(currentPoNumber);
             Swal.fire({
@@ -211,11 +218,20 @@ function submitGRV(lines) {
         } else {
             Swal.fire("Error", res.message || res.error || "Failed", "error");
         }
+    })
+    .catch(err => {
+        button.disabled = false;
+        button.textContent = "Submit GRV";
+        Swal.fire("Error", "Network error or server issue", "error");
     });
 }
 
 async function sendToSupervisor(overQtys) {
     await saveGrvDraft(currentPoNumber);
+
+    const button = document.getElementById("next-to-summary");
+    button.disabled = true;
+    button.textContent = "Sending to Supervisor...";
 
     fetch("/inventory/incorrect_po", {
         method: "POST",
@@ -228,6 +244,9 @@ async function sendToSupervisor(overQtys) {
     })
     .then(r => r.json())
     .then(res => {
+        button.disabled = false;
+        button.textContent = "Submit GRV";
+
         if (res.success) {
             Swal.fire({
                 icon: "info",
@@ -240,6 +259,11 @@ async function sendToSupervisor(overQtys) {
         } else {
             Swal.fire("Error", res.message || res.error || "Failed", "error");
         }
+    })
+    .catch(err => {
+        button.disabled = false;
+        button.textContent = "Submit GRV";
+        Swal.fire("Error", "Network error or server issue", "error");
     });
 }
 

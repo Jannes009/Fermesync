@@ -128,6 +128,7 @@ def submit_grv():
     po_number = data.get("poNumber")
     supplierRef = data.get("supplierRef")
     lines = data.get("lines")  # list of { ProductId, QtyReceived }
+    print(po_number, supplierRef, lines)
 
     # -------------------------
     # Basic validation
@@ -160,6 +161,7 @@ def submit_grv():
             # audit_trail = PO.GetAuditTrail()
             grv_number = PO.Reference
             audit_number = PO.Audit
+            print("Evo processed")
             
         conn = create_db_connection()
         cursor = conn.cursor()
@@ -170,6 +172,7 @@ def submit_grv():
         conn.commit()
         conn.close()
 
+        print("Emitting event")
         emit_event(
             event_code="GRV_CREATE",
             entity_id=grv_number,
