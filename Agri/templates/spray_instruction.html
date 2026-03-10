@@ -174,6 +174,10 @@ document.addEventListener("DOMContentLoaded", async () => {
 async function renderMixHeader() {
     header = await fetchHeader(sprayId)
 
+    // store header globally for other actions (eg. prefill stock issue)
+    sprayData = sprayData || {};
+    sprayData.header = header;
+
     document.getElementById("spray-header").innerHTML = `
         <div class="header-grid">
             <div class="header-item"><h4>Block</h4><p>${header.block}</p></div>
@@ -192,6 +196,10 @@ async function renderMixHeader() {
 
 async function renderMixLines() {
     lines = await fetchLines(sprayId)
+
+    // store lines for recalc / prefill
+    sprayData = sprayData || {};
+    sprayData.lines = lines;
 
     if (!lines || lines.length === 0) {
         document.getElementById("mix-container").innerHTML = 
@@ -228,6 +236,7 @@ async function renderMixLines() {
                                 <th>Reason</th>
                                 <th>Withholding</th>
                                 <th>Qty</th>
+                                <th>Actions</th>
                             </tr>
                         </thead>
                         <tbody>
@@ -241,6 +250,10 @@ async function renderMixLines() {
                     <td>${line.reason || '-'}</td>
                     <td>${line.withholding_period || '-'}</td>
                     <td><b>${line.qty || '-'}</b></td>
+                    <td>
+                      <button class="btn-primary create-issue-btn" data-stock="${line.stock_id}" data-qty="${line.qty}">Create Issue</button>
+                      <button class="btn-secondary" onclick="window.location.href='/agri/spray/${sprayId}'">View</button>
+                    </td>
                 </tr>
             `;
         });
@@ -254,6 +267,23 @@ async function renderMixLines() {
     });
 
     document.getElementById("mix-container").innerHTML = html;
+    // Attach create-issue handlers
+    document.querySelectorAll('.create-issue-btn').forEach(btn => {
+        btn.addEventListener('click', function (e) {
+            e.stopPropagation();
+            const product_link = Number(this.dataset.stock);
+            const qty = Number(this.dataset.qty);
+            const header = sprayData && sprayData.header ? sprayData.header : {};
+            const warehouse = header.warehouse_id || '';
+            const project = header.project_id || '';
+            const linesParam = encodeURIComponent(JSON.stringify([{ product_link: product_link, qty: qty }]));
+            const next = encodeURIComponent(window.location.href);
+            let url = `/inventory/SDK/stock_issue_wizard?lines=${linesParam}&next=${next}`;
+            if (warehouse) url += `&warehouse=${warehouse}`;
+            if (project) url += `&project=${project}`;
+            window.open(url, '_blank');
+        });
+    });
 }
 
 

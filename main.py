@@ -152,6 +152,20 @@ def ensure_playwright_browsers_installed():
 # RUN APP
 # -----------------------------
 app = create_app()
+
 if __name__ == "__main__":
     ensure_playwright_browsers_installed()
-    app.run(host='0.0.0.0', port=5001, debug=True)
+
+    from waitress import serve
+
+    env = os.getenv("FLASK_ENV", "development")
+    print(env)
+    if env == "production":
+        serve(
+            app,
+            host="0.0.0.0",
+            port=5001,
+            threads=8
+        )
+    else:
+        app.run(debug=True, host="0.0.0.0", port=5001)

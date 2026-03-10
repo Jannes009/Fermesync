@@ -3,486 +3,432 @@
 
 <link rel="stylesheet" href="{{ url_for('market.static', filename='color-template.css') }}">
 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
+
 <style>
-    /* ---------------------------
-       Base / Variables (uses site vars)
-    --------------------------- */
-    body {
-        background: var(--primary-bg);
-        font-size: 0.95rem;
-        min-height: 100vh;
-        color: var(--primary-text);
-    }
 
-    /* ---------------------------
-       Layout
-    --------------------------- */
-    .main-content { padding: 2rem 0; }
-    .container-wide { max-width: 1200px; margin: 0 auto; padding: 0 1.2rem; }
+/* =========================
+   PAGE BASE
+========================= */
 
-    /* ---------------------------
-       Cards
-    --------------------------- */
-    .stock-card {
-        background: var(--container-bg);
-        border-radius: 12px;
-        box-shadow: 0 4px 24px rgba(44,62,80,0.08);
-        padding: 1.5rem 2rem;
-        margin-bottom: 2rem;
-        transition:box-shadow .3s ease, padding .2s ease, max-height .25s ease;
-        overflow: hidden;
-    }
-    .stock-card:hover { box-shadow: 0 8px 32px rgba(44,62,80,0.12); }
+body{
+    background:var(--primary-bg);
+    color:var(--primary-text);
+    font-size:.95rem;
+}
 
-    /* collapsible helpers */
-    .stock-card.collapsible .section-title {
-        cursor: pointer;
-        display: flex;
-        justify-content: space-between;
-        align-items: center;
-        gap: 12px;
-    }
-    .stock-card.collapsible .section-title .title-main { display:flex; align-items:center; gap:10px; }
-    .stock-card.collapsible .card-body { display: none; margin-top: 0.75rem; }
-    .stock-card.collapsible.open .card-body { display: block; }
+.main-content{
+    padding:2rem 0;
+}
 
-    /* Arrow visibility & animation */
-    .stock-card .arrow {
-        color: var(--secondary-text);
-        font-size: 0.95rem;
-        transition: transform 0.25s ease, color 0.2s ease;
-    }
-    .stock-card.open .arrow { transform: rotate(180deg); color: var(--accent-color); }
+.container-wide{
+    max-width:1200px;
+    margin:auto;
+    padding:0 1rem;
+}
 
-    /* Closed card compact appearance */
-    .stock-card.collapsible:not(.open) {
-        padding: 0.9rem 1rem;
-        max-height: 64px;
-        box-shadow: 0 2px 8px rgba(0,0,0,0.06);
-    }
-    .stock-card.collapsible:not(.open) .section-title { padding: 0; }
-    .stock-card.collapsible:not(.open) .section-title .summary {
-        color: var(--secondary-text);
-        font-size: 0.9rem;
-        font-weight:600;
-        opacity:0.95;
-    }
+/* =========================
+   PAGE HEADER
+========================= */
 
-    /* ---------------------------
-       Page header / Titles
-    --------------------------- */
-    .page-header { display:flex; justify-content:space-between; align-items:center; margin-bottom:2rem; flex-wrap:wrap; gap:1rem; }
-    .page-header h1 { font-size:1.5rem; font-weight:700; color:var(--logo-color); margin:0; }
-    .section-title {
-        font-size:1.2rem; font-weight:700; color:var(--logo-color);
-        margin:0 0 1rem 0; padding-bottom:0.5rem; border-bottom:2px solid var(--accent-color);
-    }
+.page-header{
+    display:flex;
+    justify-content:space-between;
+    align-items:center;
+    margin-bottom:2rem;
+    flex-wrap:wrap;
+    gap:1rem;
+}
 
-    /* ---------------------------
-       Filters
-    --------------------------- */
-    .filters { display:flex; gap:10px; align-items:center; flex-wrap:wrap; }
-    .filters select, .filters input[type="date"] {
-        padding:0.5rem 0.75rem; border:1px solid var(--input-border); border-radius:6px;
-        font-size:0.95rem; background:var(--container-bg); color:var(--primary-text);
-    }
-    .filters select:focus, .filters input[type="date"]:focus {
-        outline:none; border-color:var(--accent-color); box-shadow:0 0 0 3px rgba(var(--accent-rgb),0.1);
-    }
-    .filters label { font-size:0.95rem; display:flex; align-items:center; gap:0.5rem; cursor:pointer; }
+.page-header h1{
+    font-size:1.5rem;
+    color:var(--logo-color);
+}
 
-    /* ---------------------------
-       KPI Cards
-    --------------------------- */
-    .kpi-row { display:grid; grid-template-columns:repeat(auto-fit,minmax(200px,1fr)); gap:1.5rem; margin-bottom:2rem; }
-    .kpi-card {
-        background:var(--container-bg); border:1px solid var(--border-color); border-radius:8px;
-        padding:1.5rem; text-align:center; font-size:0.95rem; box-shadow:0 2px 8px rgba(0,0,0,0.05);
-        transition:transform .2s ease, box-shadow .2s ease;
-    }
-    .kpi-card:hover { transform:translateY(-4px); box-shadow:0 4px 16px rgba(0,0,0,0.1); }
-    .kpi-card span { display:block; margin-top:.5rem; font-size:1.8rem; font-weight:700; }
+/* =========================
+   CARD
+========================= */
 
-    /* ---------------------------
-       Tables
-    --------------------------- */
-    .table-wrapper { overflow-x:auto; }
-    .table { width:100%; border-collapse:collapse; background:var(--container-bg); }
-    .table th, .table td {
-        padding:0.75rem 1rem; border-bottom:1px solid var(--border-color); font-size:0.95rem;
-    }
-    .table th { background:var(--table-header-bg); color:var(--table-header-text); font-weight:700; text-align:left; }
-    .table tbody tr { background:var(--table-row-uneven); transition:background .18s, box-shadow .18s; }
-    .table tbody tr:nth-child(even) { background:var(--table-row-even); }
+.stock-card{
+    background:var(--container-bg);
+    border-radius:12px;
+    box-shadow:0 4px 18px rgba(0,0,0,.08);
+    padding:1.4rem;
+    margin-bottom:1.5rem;
+    transition:.25s;
+}
 
-    .table.clickable tbody tr { cursor:pointer; }
-    .table.clickable tbody tr:hover { background:var(--table-row-hover) !important; box-shadow:0 2px 12px rgba(160,150,115,0.3); }
+.stock-card.collapsible .section-title{
+    cursor:pointer;
+    display:flex;
+    justify-content:space-between;
+    align-items:center;
+}
 
-    .table tr.ok td { color:#065f46; }
-    .table tr.warn td { color:#92400e; font-weight:600; }
+.stock-card .arrow{
+    transition:.25s;
+}
 
-    /* responsive table — compact, two-column grid on mobile */
-    @media (max-width: 600px) {
-        .table thead { display: none; }
+.stock-card.open .arrow{
+    transform:rotate(180deg);
+}
 
-        /* make each row a compact two-column card:
-           left column = primary identifiers (date / name)
-           right column = meta / actions (status, progress, buttons) */
-        .table tbody tr {
-            display: grid;
-            grid-template-columns: 1fr auto;
-            gap: 8px;
-            align-items: center;
-            padding: 8px;
-            margin-bottom: 8px;
-            border: 1px solid var(--border-color);
-            border-radius: 8px;
-            background: var(--container-bg);
-        }
+.card-body{
+    margin-top:1rem;
+}
 
-        /* clear default cell styling, use compact typography */
-        .table td {
-            padding: 0;
-            border: none;
-            display: block;
-            font-size: 0.9rem;
-            color: var(--primary-text);
-        }
+.stock-card:not(.open) .card-body{
+    display:none;
+}
 
-        /* first two cells go to the left column stacked */
-        .table td:nth-child(1),
-        .table td:nth-child(2) {
-            grid-column: 1;
-        }
-        .table td:nth-child(1) { font-weight:700; }
-        .table td:nth-child(2) { color:var(--secondary-text); font-weight:600; margin-top:2px; }
+/* =========================
+   TABLE
+========================= */
 
-        /* all remaining cells flow to the right column and align horizontally */
-        .table td:nth-child(n+3) {
-            grid-column: 2;
-            display: flex;
-            gap: 8px;
-            align-items: center;
-            justify-content: flex-end;
-            white-space: nowrap;
-            font-weight:600;
-        }
+.table{
+    width:100%;
+    border-collapse:collapse;
+}
 
-        /* small helper for labels inside cells if needed */
-        .table td .meta {
-            display: inline-block;
-            font-size: 0.82rem;
-            color: var(--secondary-text);
-            font-weight:500;
-        }
+.table th,
+.table td{
+    padding:.7rem .9rem;
+    border-bottom:1px solid var(--border-color);
+}
 
-        /* tighten buttons and progress display */
-        .btn-action-small {
-            padding: 0.25rem 0.6rem;
-            font-size: 0.78rem;
-            border-radius: 6px;
-        }
+.table th{
+    background:var(--table-header-bg);
+    color:var(--table-header-text);
+}
 
-        /* compact progress bar */
-        .progress-compact { height: 18px; border-radius: 6px; overflow: hidden; }
-        .progress-compact > div { height: 100%; font-size: 0.72rem; font-weight:700; }
+.table.clickable tbody tr{
+    cursor:pointer;
+}
 
-        /* reduce vertical spacing on cards */
-        .stock-card { padding: 0.9rem 1rem; }
-        .section-title { margin-bottom: 0; padding-bottom: 0; }
+.table.clickable tbody tr:hover{
+    background:var(--table-row-hover);
+}
 
-        /* show filter button only when section open */
-        .stock-card .mobile-filter-btn { display: none !important; }
-        .stock-card.open .mobile-filter-btn { display: inline-flex !important; }
-    }
+/* =========================
+   MOBILE TABLE
+========================= */
 
-    @media (min-width: 601px) {
-        .mobile-filter-btn { display: none; }
-    }
+@media(max-width:600px){
 
-    /* ---------------------------
-       Badges / Status
-    --------------------------- */
-    .badge { display:inline-block; padding:.3rem .75rem; border-radius:999px; font-weight:600; font-size:.85rem; }
-    .badge-pending { background:#fef3c7; color:#92400e; border:1px solid #fde68a; }
-    .badge-completed { background:#d1fae5; color:#065f46; border:1px solid #6ee7b7; }
-    .badge-variance-slight { background:#fed7aa; color:#b45309; border:1px solid #fdba74; }
-    .badge-variance-big, .badge-overdue { background:#fecaca; color:#991b1b; border:1px solid #fca5a5; }
+.table thead{
+    display:none;
+}
 
-    /* ---------------------------
-       Buttons
-    --------------------------- */
-    .btn-create-count {
-        background:var(--button-bg); color:var(--button-text); border:none; padding:.65rem 1.5rem;
-        border-radius:6px; font-weight:600; font-size:0.95rem; cursor:pointer; display:flex; align-items:center; gap:.5rem;
-        box-shadow:0 2px 8px rgba(0,0,0,0.1); transition:opacity .2s ease, transform .2s ease;
-    }
-    .btn-create-count:hover { opacity:.9; transform:translateY(-2px); box-shadow:0 4px 12px rgba(0,0,0,0.15); }
-    .btn-add-schedule { background:var(--button-bg); color:var(--button-text); border:none; padding:.5rem 1rem; border-radius:6px; font-weight:600; cursor:pointer; }
-    .btn-add-schedule:hover { opacity:.9; transform:translateY(-2px); }
+.table tbody tr{
+    display:block;
+    border:1px solid var(--border-color);
+    border-radius:8px;
+    padding:10px;
+    margin-bottom:10px;
+    position:relative;
+}
 
-    .btn-continue, .btn-action-small {
-        background:var(--button-bg); color:var(--button-text); border:none; padding:.35rem .9rem; border-radius:6px;
-        font-size:0.85rem; font-weight:600; cursor:pointer; display:inline-flex; align-items:center; gap:.4rem;
-    }
-    .btn-action-small { padding:.4rem .8rem; border-radius:5px; font-size:0.8rem; gap:.3rem; white-space:nowrap; }
-    .btn-action-small:hover, .btn-continue:hover { opacity:.9; transform:translateY(-1px); }
-    .btn-action-small:active { transform:translateY(0); }
+/* hide additional details until expanded */
+.table td.detail-cell{ display:none; }
+.table tr.expanded td.detail-cell{ display:block; }
 
-    .btn-action-small.danger { background:#dc2626; color:white; }
-    .btn-action-small.danger:hover { background:#b91c1c; }
+/* arrow indicator */
+.mobile-arrow{
+    font-size:0.9rem;
+    margin-left:6px;
+    transition: transform .2s ease;
+    display:inline-block;
+}
+.table tr.expanded .mobile-arrow{ transform:rotate(90deg); }
 
-    .btn-cancel { background:var(--secondary-color,#6c757d); color:white; border:none; padding:.75rem 1.5rem; border-radius:6px; font-weight:600; cursor:pointer; }
-    .btn-submit { background:var(--button-bg); color:var(--button-text); border:none; padding:.75rem 1.5rem; border-radius:6px; font-weight:600; cursor:pointer; }
+.table td{
+    display:block;
+    padding:3px 0;
+}
 
-    /* ---------------------------
-       Modal
-    --------------------------- */
-    .modal { position:fixed; inset:0; background:rgba(0,0,0,0.5); display:flex; align-items:center; justify-content:center; z-index:1000; }
-    .modal.hidden { display:none; }
-    .modal-content {
-        background:var(--container-bg); width:90%; max-width:900px; border-radius:12px; padding:2rem;
-        box-shadow:0 20px 40px rgba(0,0,0,0.3);
-    }
-    .modal-content h3 { margin:0 0 1.5rem 0; font-size:1.3rem; font-weight:700; color:var(--logo-color); }
-    .modal-content button { margin-top:1.5rem; padding:.75rem 1.5rem; background:var(--button-bg); border:none; color:var(--button-text); border-radius:6px; cursor:pointer; font-weight:600; }
-    .modal-content button:hover { opacity:.9; }
+.table td::before{
+    content:attr(data-label) ": ";
+    font-weight:600;
+}
 
-    /* ---------------------------
-       Loading / Errors
-    --------------------------- */
-    .loading { text-align:center; font-size:1.1rem; color:var(--secondary-text); padding:2rem; }
-    .error { color:#dc2626; text-align:center; padding:1rem; background:#fee2e2; border-radius:6px; border:1px solid #fecaca; margin-bottom:1rem; }
+}
 
-    /* ---------------------------
-       Small helpers
-    --------------------------- */
-    .status-overdue { color:#dc2626; font-weight:600; }
-    .status-dueSoon { color:#f59e0b; font-weight:600; }
-    .status-onSchedule { color:#10b981; }
+/* =========================
+   BADGES
+========================= */
 
-    /* Filters modal */
-    .filter-modal { position: fixed; inset: 0; display:flex; align-items:center; justify-content:center; z-index:1200; background: rgba(0,0,0,0.45); }
-    .filter-modal.hidden { display:none; }
-    .filter-modal .modal-card {
-        width: 92%; max-width: 640px; background:var(--container-bg); border-radius:10px; padding:1.25rem; box-shadow:0 10px 30px rgba(0,0,0,0.3);
-    }
-    .filter-modal .modal-card h3 { margin:0 0 .5rem 0; font-size:1.05rem; }
-    .filter-modal .modal-actions { display:flex; gap:8px; justify-content:flex-end; margin-top: 1rem; }
+.badge{
+    padding:.25rem .7rem;
+    border-radius:999px;
+    font-size:.8rem;
+    font-weight:600;
+}
 
-    /* small tweak for filter button position */
-    .mobile-filter-btn { margin-left: .5rem; }
+.badge-clean{
+    background:#d1fae5;
+    color:#065f46;
+}
 
-    /* Arrow only headers, hide summary text and hide filters when closed */
-    .stock-card .summary { display: none; }
+.badge-warn{
+    background:#fed7aa;
+    color:#92400e;
+}
 
-    /* hide filter button by default; show only when the card is open */
-    .stock-card .mobile-filter-btn { display: none !important; }
-    .stock-card.open .mobile-filter-btn { display: inline-flex !important; }
+.badge-danger{
+    background:#fecaca;
+    color:#991b1b;
+}
 
-    /* ensure arrow rotates when open (already present but kept for clarity) */
-    .stock-card .arrow { color: var(--secondary-text); font-size: 0.95rem; transition: transform 0.25s ease, color 0.2s ease; }
-    .stock-card.open .arrow { transform: rotate(180deg); color: var(--accent-color); }
+/* =========================
+   BUTTONS
+========================= */
+
+/* color-coded history rows based on status badges */
+.table.clickable tbody tr.ok { background: #e6ffed; }
+.table.clickable tbody tr.warn { background: #fff4e5; }
+.table.clickable tbody tr.danger { background: #ffe6e6; }
+
+
+.btn-create-count{
+    background:var(--button-bg);
+    color:var(--button-text);
+    border:none;
+    padding:.65rem 1.4rem;
+    border-radius:6px;
+    font-weight:600;
+    cursor:pointer;
+}
+
+.btn-action-small{
+    background:var(--button-bg);
+    color:var(--button-text);
+    border:none;
+    padding:.35rem .8rem;
+    border-radius:6px;
+    font-size:.8rem;
+    cursor:pointer;
+}
+
+.btn-action-small.danger{
+    background:#dc2626;
+}
+
+/* =========================
+   MODAL
+========================= */
+
+.modal{
+    position:fixed;
+    inset:0;
+    background:rgba(0,0,0,.45);
+    display:flex;
+    align-items:center;
+    justify-content:center;
+    z-index:1000;
+}
+
+/* schedule modal form tweaks */
+#scheduleModal .form-group {
+    display:flex;
+    flex-direction:column;
+    margin-bottom:1rem;
+}
+#scheduleModal label {
+    margin-bottom:.25rem;
+    font-weight:600;
+}
+#scheduleModal select,
+#scheduleModal input[type="number"] {
+    padding:.5rem .75rem;
+    border:1px solid var(--border-color);
+    border-radius:6px;
+    width:100%;
+    box-sizing:border-box;
+}
+#scheduleModal .modal-content {
+    max-width:500px; /* narrower than other modals */
+}
+
+.modal.hidden{
+    display:none;
+}
+
+.modal-content{
+    background:var(--container-bg);
+    width:90%;
+    max-width:800px;
+    border-radius:10px;
+    padding:2rem;
+}
 
 </style>
 
+
 <div class="main-content with-fixed-taskbar">
-    <div class="container-wide">
+<div class="container-wide">
 
-        <!-- Page Header -->
-        <div class="page-header">
-            <h1><i class="fas fa-box-check"></i> Stock Counts</h1>
-            <button class="btn-create-count" onclick="window.location.href='{{ url_for('inventory.stock_count_start') }}'">
-                <i class="fas fa-plus"></i> Start Stock Count
-            </button>
-        </div>
+<div class="page-header">
+<h1><i class="fas fa-box-check"></i> Stock Counts</h1>
 
-        <!-- Due & Overdue Section -->
-        <div class="stock-card collapsible open" data-section="due">
-            <div class="section-title toggle">
-                <div class="title-main"><span><i class="fas fa-calendar-times"></i></span><span>Due & Overdue Shelves</span></div>
-                <div class="summary-and-arrow">
-                    <i class="fas fa-chevron-down arrow" aria-hidden="true"></i>
-                </div>
-            </div>
-            <div style="display: flex; justify-content: flex-end; margin-bottom: 1rem;">
-                <button class="btn-action-small" onclick="openScheduleModal()">
-                    <i class="fas fa-calendar-plus"></i> Create Schedule
-                </button>
-            </div>
-            <div class="table-wrapper card-body">
-                <table class="table" id="dueTable">
-                    <thead>
-                        <tr>
-                            <th>Warehouse</th>
-                            <th>Shelf / Category</th>
-                            <th>Frequency</th>
-                            <th>Last Count</th>
-                            <th>Next Due</th>
-                            <th>Status</th>
-                            <th style="text-align: center;">Action</th>
-                        </tr>
-                    </thead>
-                    <tbody></tbody>
-                </table>
-            </div>
-        </div>
+<button class="btn-create-count"
+onclick="window.location.href='{{ url_for('inventory.stock_count_start') }}'">
+<i class="fas fa-plus"></i> Start Stock Count
+</button>
 
-        <!-- Schedule Modal (existing) -->
-        <div id="scheduleModal" class="modal hidden">
-            <div class="modal-content">
-                <h3><i class="fas fa-calendar-plus"></i> Create Count Schedule</h3>
-                
-                <form id="scheduleForm">
-                    <div class="form-group">
-                        <label for="scheduleWarehouse">Warehouse *</label>
-                        <select id="scheduleWarehouse" required>
-                            <option value="">-- Select Warehouse --</option>
-                        </select>
-                    </div>
-
-                    <div class="form-group">
-                        <label for="scheduleCategory">Shelf / Category *</label>
-                        <select id="scheduleCategory" required>
-                            <option value="">-- Select Category --</option>
-                        </select>
-                    </div>
-
-                    <div class="form-group">
-                        <label for="scheduleFrequency">Frequency (Days) *</label>
-                        <input type="number" id="scheduleFrequency" min="1" required placeholder="e.g., 30">
-                    </div>
-
-                    <div style="display: flex; gap: 1rem; justify-content: flex-end; margin-top: 2rem;">
-                        <button type="button" class="btn-cancel" onclick="closeScheduleModal()">Cancel</button>
-                        <button type="submit" class="btn-submit">Create Schedule</button>
-                    </div>
-                </form>
-            </div>
-        </div>
-
-        <!-- Incomplete Counts Section -->
-        <div class="stock-card collapsible open" data-section="incomplete">
-            <div class="section-title toggle">
-                <div class="title-main"><span><i class="fas fa-hourglass-half"></i></span><span>Incomplete Counts</span></div>
-                <div class="summary-and-arrow">
-                    <i class="fas fa-chevron-down arrow" aria-hidden="true"></i>
-                </div>
-            </div>
-            <div class="table-wrapper card-body">
-                <table class="table" id="incompleteTable">
-                    <thead>
-                        <tr>
-                            <th>Date Started</th>
-                            <th>Warehouse</th>
-                            <th>Shelf</th>
-                            <th>Progress</th>
-                            <th style="text-align: center;">Actions</th>
-                        </tr>
-                    </thead>
-                    <tbody></tbody>
-                </table>
-            </div>
-        </div>
-
-        <!-- History Section -->
-        <div class="stock-card collapsible open" data-section="history">
-            <div class="section-title toggle">
-                <div class="title-main"><span><i class="fas fa-history"></i></span><span>Stock Count History</span></div>
-                <div class="summary-and-arrow">
-                    <button class="btn-action-small mobile-filter-btn" onclick="openFilterModal()">
-                        <i class="fas fa-filter"></i> Filters
-                    </button>
-                    <i class="fas fa-chevron-down arrow" aria-hidden="true"></i>
-                </div>
-            </div>
-
-            <div class="card-body">
-                <div class="table-wrapper">
-                    <table class="table clickable" id="historyTable">
-                        <thead>
-                            <tr>
-                                <th>Date</th>
-                                <th>Warehouse</th>
-                                <th>Shelf</th>
-                                <th>System Qty</th>
-                                <th>Counted Qty</th>
-                                <th>Variance</th>
-                                <th>Status / Action</th>
-                            </tr>
-                        </thead>
-                        <tbody></tbody>
-                    </table>
-                </div>
-            </div>
-        </div>
-
-        <!-- Filters Modal (moved from inline filters into modal) -->
-        <div id="filterModal" class="filter-modal hidden" aria-hidden="true">
-            <div class="modal-card">
-                <h3><i class="fas fa-filter"></i> Filters</h3>
-                <div style="display:flex; flex-direction:column; gap:8px; margin-top:.5rem;">
-                    <label>Warehouse
-                        <select id="warehouseFilter">
-                            <option value="">All Warehouses</option>
-                        </select>
-                    </label>
-
-                    <label>Shelf / Category
-                        <select id="shelfFilter">
-                            <option value="">All Shelves</option>
-                        </select>
-                    </label>
-
-                    <div style="display:flex; gap:8px;">
-                        <label style="flex:1">From
-                            <input type="date" id="fromDate">
-                        </label>
-                        <label style="flex:1">To
-                            <input type="date" id="toDate">
-                        </label>
-                    </div>
-
-                    <label style="display:flex; align-items:center; gap:8px;">
-                        <input type="checkbox" id="varianceOnly">
-                        Variance only
-                    </label>
-                </div>
-
-                <div class="modal-actions">
-                    <button class="btn-cancel" onclick="closeFilterModal()">Close</button>
-                    <button class="btn-submit" onclick="applyAndCloseFilters()">Apply</button>
-                </div>
-            </div>
-        </div>
-
-    </div>
 </div>
 
-<!-- Expanded Row Modal -->
+
+<!-- DUE COUNTS -->
+
+<div class="stock-card collapsible open" data-section="due">
+
+<div class="section-title toggle">
+<div><i class="fas fa-calendar-times"></i> Due & Overdue Shelves</div>
+<span class="summary"></span>
+<button class="btn-action-small" onclick="openScheduleModal()"><i class="fas fa-calendar-plus"></i> Schedule</button>
+<i class="fas fa-chevron-down arrow"></i>
+</div>
+
+<div class="card-body">
+
+<table class="table" id="dueTable">
+<thead>
+<tr>
+<th>Warehouse</th>
+<th>Shelf</th>
+<th>Frequency</th>
+<th>Last Count</th>
+<th>Next Due</th>
+<th>Status</th>
+<th>Action</th>
+</tr>
+</thead>
+<tbody></tbody>
+</table>
+
+</div>
+</div>
+
+<!-- Schedule Modal -->
+<div id="scheduleModal" class="modal hidden">
+  <div class="modal-content">
+      <h3><i class="fas fa-calendar-plus"></i> Create Count Schedule</h3>
+      <form id="scheduleForm">
+          <div class="form-group">
+              <label for="scheduleWarehouse">Warehouse *</label>
+              <select id="scheduleWarehouse" required>
+                  <option value="">-- Select Warehouse --</option>
+              </select>
+          </div>
+          <div class="form-group">
+              <label for="scheduleCategory">Shelf / Category *</label>
+              <select id="scheduleCategory" required>
+                  <option value="">-- Select Category --</option>
+              </select>
+          </div>
+          <div class="form-group">
+              <label for="scheduleFrequency">Frequency (Days) *</label>
+              <input type="number" id="scheduleFrequency" min="1" required placeholder="e.g., 30">
+          </div>
+          <div style="display:flex; gap:1rem; justify-content:flex-end; margin-top:1.5rem;">
+              <button type="button" class="btn-action-small" onclick="closeScheduleModal()">Cancel</button>
+              <button type="submit" class="btn-action-small">Create Schedule</button>
+          </div>
+      </form>
+  </div>
+</div>
+
+
+<!-- INCOMPLETE -->
+
+<div class="stock-card collapsible open" data-section="incomplete">
+
+<div class="section-title toggle">
+<div><i class="fas fa-hourglass-half"></i> Incomplete Counts</div>
+<i class="fas fa-chevron-down arrow"></i>
+</div>
+
+<div class="card-body">
+
+<table class="table" id="incompleteTable">
+<thead>
+<tr>
+<th>Date</th>
+<th>Warehouse</th>
+<th>Shelf</th>
+<th>Progress</th>
+</tr>
+</thead>
+<tbody></tbody>
+</table>
+
+</div>
+</div>
+
+
+<!-- HISTORY -->
+
+<div class="stock-card collapsible open" data-section="history">
+
+<div class="section-title toggle">
+<div><i class="fas fa-history"></i> History</div>
+<i class="fas fa-chevron-down arrow"></i>
+</div>
+
+<div class="card-body">
+
+<table class="table clickable" id="historyTable">
+<thead>
+<tr>
+<th>Date</th>
+<th>Warehouse</th>
+<th>Shelf</th>
+<th>System</th>
+<th>Counted</th>
+<th>Variance</th>
+</tr>
+</thead>
+<tbody></tbody>
+</table>
+
+</div>
+</div>
+
+</div>
+</div>
+
+
+<!-- DETAILS MODAL -->
+
 <div id="countModal" class="modal hidden">
-    <div class="modal-content">
-        <h3 id="modalTitle"><i class="fas fa-clipboard-list"></i> Stock Count Details</h3>
 
-        <div class="table-wrapper">
-            <table class="table">
-                <thead>
-                    <tr>
-                        <th>Stock Code</th>
-                        <th>Description</th>
-                        <th>System Qty</th>
-                        <th>Counted Qty</th>
-                        <th>Variance</th>
-                    </tr>
-                </thead>
-                <tbody id="modalLines"></tbody>
-            </table>
-        </div>
+<div class="modal-content">
 
-        <button onclick="closeModal()"><i class="fas fa-times"></i> Close</button>
-    </div>
+<h3 id="modalTitle">Stock Count Details</h3>
+
+<table class="table">
+
+<thead>
+<tr>
+<th>Stock</th>
+<th>Description</th>
+<th>System</th>
+<th>Counted</th>
+<th>Variance</th>
+</tr>
+</thead>
+
+<tbody id="modalLines"></tbody>
+
+</table>
+
+<button onclick="closeModal()" class="btn-action-small">
+Close
+</button>
+
+</div>
 </div>
 
-<script src="{{ url_for('inventory.static', filename='stock_count/stock_counts.js') }}?{{ filemtime('inventory', 'stock_count/stock_counts.js') }}"></script>
+
+<script src="{{ url_for('inventory.static', filename='stock_count/stock_counts.js') }}"></script>
 
 {% endblock %}

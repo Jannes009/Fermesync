@@ -70,7 +70,7 @@ def setup():
         JOIN agr.Block b ON b.IdBlock = bhs.BHSBlockId
         JOIN agr.Crop c ON c.IdCrop = bhs.BHSCropId
         JOIN agr.Variety v ON v.IdVariety = bsv.BHSVVarietyId
-        LEFT JOIN [mkt]._uvProject p ON p.ProjectLink = bsv.BHSVProjectId
+        LEFT JOIN [cmn]._uvProject p ON p.ProjectLink = bsv.BHSVProjectId
         ORDER BY b.BlockCode, bhs.BHSPlantDate
     """)
 
@@ -78,7 +78,7 @@ def setup():
 
     cur.execute("""
         SELECT ProjectLink, ProjectCode, ProjectName
-        FROM [mkt]._uvProject
+        FROM [cmn]._uvProject
         ORDER BY ProjectCode
     """)
     projects = cur.fetchall()

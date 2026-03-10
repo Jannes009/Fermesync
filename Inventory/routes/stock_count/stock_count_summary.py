@@ -31,7 +31,7 @@ def stock_counts_due():
                 ICS.LastCountDate,
                 ICS.NextDueDate
             FROM [stk].InventoryCountSchedule ICS
-            JOIN common._uvWarehouses WH ON WH.WhseLink = ICS.WhseId
+            JOIN cmn._uvWarehouses WH ON WH.WhseLink = ICS.WhseId
             WHERE ICS.IsActive = 1 AND WH.WhseLink IN ({','.join(['?'] * len(current_user.warehouses))}) 
             ORDER BY ICS.NextDueDate ASC
         """, current_user.warehouses)
@@ -187,7 +187,7 @@ def stock_count_detail(header_id):
                 l.InvCountLineQtyOnHand,
                 l.InvCountLineQtyCounted
             FROM [stk].InventoryCountLines l
-            LEFT JOIN [stk]._uvStockItems STK ON STK.StockCode = l.InvCountLineStockCode
+            LEFT JOIN [cmn]._uvStockItems STK ON STK.StockCode = l.InvCountLineStockCode
             WHERE l.InvCountLineHeaderId = ?
             ORDER BY l.InvCountLineStockCode
         """, (header_id,))
@@ -261,7 +261,7 @@ def create_stock_count_schedule():
     # Get the most recent count date for this category
     cursor.execute("""
         SELECT TOP 1 InvCountTimeFinalised 
-        FROM [inventory].[InventoryCountHeaders]
+        FROM [stk].[InventoryCountHeaders]
         WHERE InvCountCatId = ? AND InvCountWhseId = ?
         ORDER BY InvCountTimeFinalised DESC
     """, (category_id, warehouse_id))

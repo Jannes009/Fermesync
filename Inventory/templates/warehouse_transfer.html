@@ -133,19 +133,34 @@
         margin: 1rem 0;
     }
 
-    .product-row {
-        display: grid;
-        grid-template-columns: 1fr 160px 36px;
-        gap: 8px;
-        align-items: center;
-        padding: 10px;
-        background: var(--form-bg);
-        border: 1px solid var(--input-border);
-        border-radius: 8px;
-        width: 100%;
-        max-width: 100%;
-        overflow: hidden;
-    }
+.product-row {
+    display: grid;
+    grid-template-columns: 1fr auto;
+    gap: 10px;
+    align-items: center;
+    padding: 10px;
+    background: var(--form-bg);
+    border: 1px solid var(--input-border);
+    border-radius: 8px;
+}
+
+.row-controls {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.row-controls .qty-input {
+    width: 90px;
+}
+
+.row-controls .uom-label {
+    min-width: 50px;
+}
+
+.row-controls .remove-btn {
+    flex-shrink: 0;
+}
 
     @media (max-width: 768px) {
         .product-row {

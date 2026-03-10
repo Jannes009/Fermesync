@@ -288,13 +288,14 @@ async function loadRecommendations() {
 
         // Populate table
         tbody.innerHTML = recommendations.map(rec => `
-            <tr onclick="goToSpray(${rec.id})">
+            <tr>
                 <td><strong>${rec.id}</strong></td>
                 <td>${rec.block}</td>
                 <td>${rec.crop}</td>
                 <td>${rec.spray_date}</td>
                 <td>${rec.plant_date}</td>
                 <td>${rec.ha}</td>
+                <td><button type="button" onclick="issueStock(${rec.id})">Issue Stock</button><button type="button" onclick="goToSpray(${rec.id})">View Details</button></td>
                 <td><span class="status-badge status-${rec.status.toLowerCase()}">${rec.status}</span></td>
             </tr>
         `).join('');
@@ -341,6 +342,52 @@ async function loadRecommendations() {
 
 function goToSpray(recId) {
     window.location.href = `/agri/spray/${recId}`;
+}
+
+function issueStock(recId) {
+    fetch(`/agri/spray/${recId}/issue_stock`)
+        .then(r => r.json())
+        .then(data => {
+
+        if (!data.success) {
+
+            if (data.shortages) {
+
+                let msg = "Insufficient stock:<br><br>";
+
+                data.shortages.forEach(s => {
+                    msg += `Product ${s.product_link}: Required ${s.required}, Available ${s.available}<br>`;
+                });
+
+                Swal.fire({
+                    title: "Stock Shortage",
+                    html: msg,
+                    icon: "warning"
+                });
+
+            } else {
+                Swal.fire("Error", data.message || "Error fetching stock data", "error");
+            }
+
+            return;
+        }
+
+            const linesEncoded = encodeURIComponent(JSON.stringify(data.lines));
+            const nextEncoded = encodeURIComponent(`/agri/spray/${recId}`);
+
+            const url =
+                `/inventory/SDK/stock_issue_wizard` +
+                `?warehouse=${data.warehouse}` +
+                `&project=${data.project}` +
+                `&lines=${linesEncoded}` +
+                `&next=${nextEncoded}`;
+
+            window.location.href = url;
+        })
+        .catch(err => {
+            console.error(err);
+            Swal.fire("Error", "Error creating stock issue", "error");
+        });
 }
 
 </script>

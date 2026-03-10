@@ -140,3 +140,79 @@ def get_spray_methods():
             "tank_size": float(method.SprayMethodTankSize)
         })
     return jsonify(methods_list)
+
+
+@agri_bp.route("/spray/<int:spray_id>/issue_stock", methods=["GET"])
+@login_required
+def issue_stock_for_spray(spray_id):
+
+    conn = create_db_connection()
+    cursor = conn.cursor()
+
+    try:
+        cursor.execute("""
+        Select 
+            LIN.SprayLineStkId,
+            LIN.SprayLineQtyPerHa * BHSHa QtyToBeSprayed,
+            ISNULL(QTY.QtyOnHand, 0) QtyAvailable,
+            BHSV.BHSVProjectId,
+            HEA.SprayHWhseId
+        FROM agr.SprayHeader HEA
+        JOIN agr.BlockHarvestSeason BHS on BHS.IdBHS = HEA.SprayHBHSId
+        JOIN agr.BlockHarvestSeasonVariety BHSV on BHSV.BHSVBlockHarvestSeasonId = BHS.IdBHS
+        JOIN agr.SprayLines LIN on LIN.SprayLineHeaderId = HEA.IdSprayH
+        LEFT JOIN stk._uvInventoryQty QTY 
+            ON QTY.StockLink = LIN.SprayLineStkId 
+            AND QTY.WhseLink = HEA.SprayHWhseId
+        Where HEA.IdSprayH = ?
+        """, spray_id)
+
+        lines = cursor.fetchall()
+
+        if not lines:
+            return jsonify({
+                "success": False,
+                "message": "No stock lines found for this spray recommendation."
+            }), 400
+
+        # -----------------------------
+        # CHECK FOR INSUFFICIENT STOCK
+        # -----------------------------
+        shortages = []
+
+        for line in lines:
+            if line.QtyToBeSprayed > line.QtyAvailable:
+                shortages.append({
+                    "product_link": line.SprayLineStkId,
+                    "required": float(line.QtyToBeSprayed),
+                    "available": float(line.QtyAvailable)
+                })
+
+        if shortages:
+            return jsonify({
+                "success": False,
+                "message": "Not enough stock available for one or more products.",
+                "shortages": shortages
+            }), 400
+
+        # -----------------------------
+        # SUCCESS
+        # -----------------------------
+        return jsonify({
+            "success": True,
+            "warehouse": lines[0].SprayHWhseId,
+            "project": lines[0].BHSVProjectId,
+            "lines": [
+                {
+                    "product_link": line.SprayLineStkId,
+                    "qty": float(line.QtyToBeSprayed)
+                }
+                for line in lines
+            ]
+        })
+
+    except Exception as ex:
+        return jsonify({
+            "success": False,
+            "message": str(ex)
+        }), 400

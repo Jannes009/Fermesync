@@ -44,6 +44,11 @@ function loadPrefill() {
     const warehouse = params.get("warehouse");
     const project = params.get("project");
     const lines = params.get("lines");
+    const next = params.get("next");
+
+    if (next) {
+        window.nextUrl = decodeURIComponent(next);
+    }
 
     if (warehouse) {
         selectedWarehouse = Number(warehouse);
@@ -335,6 +340,10 @@ async function submitIssue() {
     // fetchProducts(); // Refresh local products
     // fetchIncompleteIssues(); // Refresh incomplete issues
     await Swal.fire("Success", "Stock issue created", "success");
-    window.location.href = '/inventory/SDK/stock_issue_summary';
+    if (window.nextUrl) {
+        window.location.href = window.nextUrl;
+    } else {
+        window.location.href = '/inventory/SDK/stock_issue_summary';
+    }
 
 }

@@ -73,12 +73,12 @@ for _, row in df.iterrows():
     cursor.execute("""
         SELECT IdChemType 
         FROM agr.ChemType 
-        WHERE ChemTypeDescription = ?
+        WHERE ChemTypeName = ?
     """, (kateg,))
     type_result = cursor.fetchone()
     if not type_result:
         cursor.execute("""
-            INSERT INTO agr.ChemType (ChemTypeDescription)
+            INSERT INTO agr.ChemType (ChemTypeName)
             OUTPUT inserted.IdChemType
             VALUES (?)
         """, (kateg,))
@@ -93,15 +93,15 @@ for _, row in df.iterrows():
         colour_id = None
     else:
         cursor.execute("""
-            SELECT IdChemColourCode
-            FROM agr.ChemColourCode
-            WHERE ChemColourCodeDescription = ?
+            SELECT IdChemCol
+            FROM agr.ChemColour
+            WHERE ChemColCode = ?
         """, (label,))
         colour_result = cursor.fetchone()
         if not colour_result:
             cursor.execute("""
-                INSERT INTO agr.ChemColourCode (ChemColourCodeDescription)
-                OUTPUT inserted.IdChemColourCode
+                INSERT INTO agr.ChemColour (ChemColCode)
+                OUTPUT inserted.IdChemCol
                 VALUES (?)
             """, (label,))
             colour_result = cursor.fetchone()
@@ -121,8 +121,8 @@ for _, row in df.iterrows():
 
     cursor.execute("""
         INSERT INTO agr.ChemStock
-        (ChemActiveIngr, ChemRegNumber, ChemColourCodeId,
-        ChemTypeId, ChemReason, ChemWitholdingPeriod)
+        (ChemStockActiveIngr, ChemStockRegNumber, ChemStockColourCodeId,
+        ChemStockTypeId, ChemStockReason, ChemStockWitholdingPeriod)
         VALUES (?, ?, ?, ?, ?, ?)
     """, (aktief, nr, colour_id, chem_type_id, rede, withholding))
 

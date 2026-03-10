@@ -53,10 +53,10 @@ def create_stock_count():
     cursor.execute("""
         INSERT INTO [stk].InventoryCountLines (
             InvCountLineHeaderId,
-            InvCountLineStockCode,
+            InvCountLineStockId,
             InvCountLineQtyOnHand
         )
-        SELECT ?, StockCode, QtyOnHand
+        SELECT ?, StockLink, QtyOnHand
         FROM [stk]._uvInventoryQty
         WHERE WhseLink = ?
           AND idStockCategories = ?
@@ -125,11 +125,13 @@ def fetch_session_products(header_id):
     cursor = conn.cursor()
 
     cursor.execute("""
-        SELECT
-            InvCountLineStockCode,
+        SELECT DISTINCT
+            InvCountLineStockId,
+			QTY.StockDescription, QTY.StockingUnitCode,
             InvCountLineQtyOnHand,
             InvCountLineQtyCounted
-        FROM [stk].InventoryCountLines
+        FROM [stk].InventoryCountLines LIN
+		JOIN stk._uvInventoryQty QTY on QTY.StockLink = LIN.InvCountLineStockId
         WHERE InvCountLineHeaderId = ?
     """, (header_id,))
 
@@ -138,7 +140,9 @@ def fetch_session_products(header_id):
 
     return jsonify({
         "products": [{
-            "product_code": r.InvCountLineStockCode,
+            "product_id": r.InvCountLineStockId,
+            "product_desc": r.StockDescription,
+            "stocking_unit": r.StockingUnitCode,
             "system_qty": float(r.InvCountLineQtyOnHand),
             "counted_qty": r.InvCountLineQtyCounted
         } for r in rows]
@@ -158,11 +162,11 @@ def save_count_lines(header_id):
             UPDATE [stk].InventoryCountLines
             SET InvCountLineQtyCounted = ?
             WHERE InvCountLineHeaderId = ?
-              AND InvCountLineStockCode = ?
+              AND InvCountLineStockId = ?
         """, (
             l["counted_qty"],
             header_id,
-            l["product_code"]
+            l["product_id"]
         ))
 
     conn.commit()
@@ -192,7 +196,7 @@ def finalise_stock_count(header_id):
             abort(400, "Stock count already finalised or missing")
 
         cursor.execute("""
-            SELECT InvCountLineStockCode, InvCountLineQtyOnHand, InvCountLineQtyCounted
+            SELECT InvCountLineStockId, InvCountLineQtyOnHand, InvCountLineQtyCounted
             FROM [stk].InventoryCountLines
             WHERE InvCountLineQtyOnHand <> InvCountLineQtyCounted
               AND InvCountLineHeaderId = ?
@@ -211,7 +215,7 @@ def finalise_stock_count(header_id):
 
         with EvolutionConnection():
             for item in products:
-                code = item.InvCountLineStockCode
+                product_id = item.InvCountLineStockId
                 system_qty = float(item.InvCountLineQtyOnHand)
                 counted_qty = float(item.InvCountLineQtyCounted)
                 diff = counted_qty - system_qty
@@ -221,7 +225,7 @@ def finalise_stock_count(header_id):
 
                 trans = Evo.InventoryTransaction()
                 trans.TransactionCode = Evo.TransactionCode(Evo.Module.Inventory, "ADJ")
-                trans.InventoryItem = Evo.InventoryItem(code)
+                trans.InventoryItem = Evo.InventoryItem(int(product_id))
                 trans.Quantity = abs(diff)
                 trans.Operation = (
                     Evo.InventoryOperation.Increase

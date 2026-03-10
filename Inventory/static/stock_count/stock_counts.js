@@ -160,7 +160,7 @@ function renderHistoryTable(rows) {
     if (completedRows.length === 0) {
         tbody.insertAdjacentHTML("beforeend", `
             <tr>
-                <td colspan="7" style="text-align: center; padding: 2rem; color: var(--secondary-text);">
+                <td colspan="6" style="text-align: center; padding: 2rem; color: var(--secondary-text);">
                     <i class="fas fa-inbox"></i> No completed stock counts found
                 </td>
             </tr>
@@ -185,16 +185,32 @@ function renderHistoryTable(rows) {
         }
 
         tbody.insertAdjacentHTML("beforeend", `
-            <tr class="${rowClass}" onclick="openModal(${r.headerId})" style="cursor: pointer;">
-                <td>${r.date}</td>
-                <td>${r.warehouse}</td>
-                <td>${r.shelf}</td>
-                <td>${r.systemQty}</td>
-                <td>${r.countedQty}</td>
-                <td>${r.variance}</td>
-                <td>${statusBadge}</td>
+            <tr class="${rowClass}" data-header-id="${r.headerId}" style="cursor: pointer;">
+                <td data-label="Date">${r.date}</td>
+                <td data-label="Warehouse">${r.warehouse}</td>
+                <td data-label="Shelf">${r.shelf}</td>
+                <td class="detail-cell" data-label="System Qty">${r.systemQty}</td>
+                <td class="detail-cell" data-label="Counted Qty">${r.countedQty}</td>
+                <td data-label="Variance">${r.variance}</td>
+                <td data-label="Status">${statusBadge}</td>
             </tr>
         `);
+    });
+
+    // attach mobile listeners
+    tbody.querySelectorAll('tr').forEach(row => {
+        const id = row.dataset.headerId;
+        row.addEventListener('click', e => {
+            if (window.innerWidth <= 600) {
+                if (!row.classList.contains('expanded')) {
+                    row.classList.add('expanded');
+                } else {
+                    openModal(id);
+                }
+            } else {
+                openModal(id);
+            }
+        });
     });
 }
 
@@ -209,7 +225,7 @@ function renderIncompleteTable(rows) {
     if (incompleteRows.length === 0) {
         tbody.insertAdjacentHTML("beforeend", `
             <tr>
-                <td colspan="6" style="text-align: center; padding: 2rem; color: var(--secondary-text);">
+                <td colspan="4" style="text-align: center; padding: 2rem; color: var(--secondary-text);">
                     <i class="fas fa-check-circle"></i> No incomplete counts
                 </td>
             </tr>
@@ -227,11 +243,11 @@ function renderIncompleteTable(rows) {
         const progressPercent = Math.round((productsCountedLines / totalProducts) * 100);
         
         tbody.insertAdjacentHTML("beforeend", `
-            <tr class="in-progress">
-                <td>${r.date}</td>
-                <td>${r.warehouse}</td>
-                <td>${r.shelf}</td>
-                <td>
+            <tr class="in-progress" data-header-id="${r.headerId}">
+                <td data-label="Date Started">${r.date}</td>
+                <td data-label="Warehouse">${r.warehouse}</td>
+                <td data-label="Shelf">${r.shelf}</td>
+                <td data-label="Progress" class="detail-cell">
                     <div style="display: flex; align-items: center; gap: 0.5rem;">
                         <div style="flex: 1; height: 24px; background: #e5e7eb; border-radius: 4px; overflow: hidden;">
                             <div style="height: 100%; width: ${progressPercent}%; background: #10b981; display: flex; align-items: center; justify-content: center; font-size: 0.7rem; font-weight: 600; color: white;">
@@ -241,7 +257,7 @@ function renderIncompleteTable(rows) {
                         <span style="font-size: 0.85rem; font-weight: 600; min-width: 50px; text-align: right;">${productsCountedLines}/${totalProducts}</span>
                     </div>
                 </td>
-                <td style="text-align: center;">
+                <td data-label="Actions" style="text-align: center;" class="detail-cell">
                     <div style="display: flex; gap: 4px; justify-content: center; flex-wrap: wrap;">
                         <button class="btn-action-small" onclick="continueCount(event, ${r.headerId})" title="Continue Counting">
                             <i class="fas fa-play"></i> Continue
@@ -254,7 +270,26 @@ function renderIncompleteTable(rows) {
             </tr>
         `);
     });
+
+    // mobile toggle for incomplete rows
+    tbody.querySelectorAll('tr').forEach(row => {
+        const id = row.dataset.headerId;
+        row.addEventListener('click', e => {
+            if (window.innerWidth <= 600) {
+                if (!row.classList.contains('expanded')) {
+                    row.classList.add('expanded');
+                } else {
+                    row.classList.remove('expanded');
+                }
+            }
+        });
+    });
 }
+
+function continueCount(event, headerId) {
+    event.stopPropagation();
+    window.location.href = `/inventory/stock-counts/${headerId}`;
+}   
 
 async function discardCount(event, headerId) {
     event.stopPropagation(); // Prevent row click
@@ -263,14 +298,26 @@ async function discardCount(event, headerId) {
     }).then(res => res.json())
     .then(data => {
         if (data.success) {
-            alert("Stock count discarded.");
+            Swal.fire({
+                icon: 'success',
+                title: 'Discarded',
+                text: 'Stock count discarded.'
+            });
             loadHistory();
         } else {
-            alert("Error discarding stock count: " + (data.message || "Unknown error"));
+            Swal.fire({
+                icon: 'error',
+                title: 'Discard Failed',
+                text: data.message || 'Unknown error'
+            });
         }
     }).catch(err => {
         console.error("Error discarding stock count:", err);
-        alert("Error discarding stock count.");
+        Swal.fire({
+            icon: 'error',
+            title: 'Network Error',
+            text: 'Error discarding stock count.'
+        });
     }
     );
 }
@@ -298,6 +345,12 @@ async function loadDue() {
             return;
         }
 
+        // update summary counters
+        const overdueCount = rows.filter(r => r.status === "Overdue").length;
+        const dueSoonCount = rows.filter(r => r.status === "DueSoon").length;
+        const summaryEl = document.querySelector('.stock-card[data-section="due"] .summary');
+        if (summaryEl) summaryEl.textContent = `${overdueCount} overdue • ${dueSoonCount} due soon`;
+
         rows.forEach(r => {
             let badge = '';
             
@@ -310,20 +363,35 @@ async function loadDue() {
             }
 
             tbody.insertAdjacentHTML("beforeend", `
-                <tr>
-                    <td>${r.warehouse} – ${r.warehouseDesc}</td>
-                    <td>${r.shelf}</td>
-                    <td>${r.frequency} days</td>
-                    <td>${r.lastCount}</td>
-                    <td>${r.nextDue}</td>
-                    <td>${badge}</td>
-                    <td style="text-align: center;">
+                <tr data-shelf="${r.shelf}">
+                    <td data-label="Warehouse">${r.warehouse} – ${r.warehouseDesc}</td>
+                    <td data-label="Shelf" class="detail-cell">${r.shelf}</td>
+                    <td data-label="Frequency" class="detail-cell">${r.frequency} days</td>
+                    <td data-label="Last Count" class="detail-cell">${r.lastCount}</td>
+                    <td data-label="Next Due" class="detail-cell">${r.nextDue}</td>
+                    <td data-label="Status">${badge}</td>
+                    <td data-label="Action" style="text-align: center;" class="detail-cell">
                         <button class="btn-action-small" onclick="startCountFromSchedule('${r.shelf}')" title="Start Count">
                             <i class="fas fa-play-circle"></i> Start Count
                         </button>
                     </td>
                 </tr>
             `);
+        });
+        // mobile toggle for due rows
+        tbody.querySelectorAll('tr').forEach(row => {
+            const shelf = row.dataset.shelf;
+            row.addEventListener('click', e => {
+                if (window.innerWidth <= 600) {
+                    if (!row.classList.contains('expanded')) {
+                        row.classList.add('expanded');
+                    } else {
+                        startCountFromSchedule(shelf);
+                    }
+                } else {
+                    startCountFromSchedule(shelf);
+                }
+            });
         });
     } catch (err) {
         console.warn("Error loading due counts:", err);
@@ -371,7 +439,8 @@ async function loadScheduleOptions() {
             $(warehouseSelect).select2({
                 placeholder: "Select warehouse",
                 allowClear: false,
-                width: '100%'
+                width: '100%',
+                dropdownParent: $('#scheduleModal')
             })
         }
 
@@ -398,7 +467,8 @@ async function loadScheduleOptions() {
                         $(categorySelect).select2({
                             placeholder: "Select category",
                             allowClear: false,
-                            width: '100%'
+                            width: '100%',
+                            dropdownParent: $('#scheduleModal')
                         })
                     }
                 });
@@ -420,7 +490,11 @@ document.addEventListener("DOMContentLoaded", () => {
             const frequency = document.getElementById("scheduleFrequency").value;
 
             if (!warehouse || !category || !frequency) {
-                alert("Please fill in all required fields");
+                Swal.fire({
+                    icon: 'warning',
+                    title: 'Missing information',
+                    text: 'Please fill in all required fields'
+                });
                 return;
             }
 
@@ -438,15 +512,27 @@ document.addEventListener("DOMContentLoaded", () => {
                 const data = await res.json();
 
                 if (data.success) {
-                    alert("Schedule created successfully!");
+                    Swal.fire({
+                        icon: 'success',
+                        title: 'Schedule Created',
+                        text: 'Schedule created successfully!'
+                    });
                     closeScheduleModal();
                     loadDue(); // Reload the table
                 } else {
-                    alert("Error: " + (data.message || "Failed to create schedule"));
+                    Swal.fire({
+                        icon: 'error',
+                        title: 'Create Failed',
+                        text: data.message || 'Failed to create schedule'
+                    });
                 }
             } catch (err) {
                 console.error("Error creating schedule:", err);
-                alert("Error creating schedule");
+                Swal.fire({
+                    icon: 'error',
+                    title: 'Request Error',
+                    text: 'Error creating schedule'
+                });
             }
         });
     }
@@ -541,7 +627,11 @@ async function openModal(headerId) {
         document.getElementById("countModal").classList.remove("hidden");
     } catch (err) {
         console.error("Error loading count details:", err);
-        alert("Error loading count details");
+        Swal.fire({
+            icon: 'error',
+            title: 'Load Error',
+            text: 'Error loading count details'
+        });
     }
 }
 

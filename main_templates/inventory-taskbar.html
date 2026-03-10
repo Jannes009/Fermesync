@@ -48,7 +48,7 @@
       {% if "SPRAY_REC" in current_user.permissions %}
       <li><a href="/agri/spray-recommendations-summary" class="taskbar-link">Spray</a></li>
         {% endif %}
-      {% if "AGRI_MAIN" in current_user.permissions %}
+      {% if "AGR_MAIN" in current_user.permissions %}
       <li><a href="/agri/setup" class="taskbar-link">Agri Maintanance</a></li>
       {% endif %}
       <!-- {% if "PO_REQUISITION_CREATE" in current_user.permissions or "PO_CREATE" in current_user.permissions or "PO_EDIT" in current_user.permissions or "PO_VIEW" in current_user.permissions %}

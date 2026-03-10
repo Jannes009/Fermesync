@@ -363,19 +363,13 @@ function displayProducts() {
         console.log("Displaying product:", p);
         container.innerHTML += `
             <div class="product-row">
-                <div class="product-desc" title="${p.product_desc || p.product_code}">
-                    ${p.product_desc || p.product_code}
+                <div class="product-desc" title="${p.product_desc}">
+                    ${p.product_desc}
                 </div>
-                <input
-                type="number"
-                id="qty-${i}"
-                class="qty-input"
-                min="0"
-                step="1"
-                placeholder="0"
+                <input type="number" id="qty-${i}" class="qty-input" min="0" step="1" placeholder="0"
                 value="${p.counted_qty !== null ? p.counted_qty : ""}"
                 >
-
+                <div class="uom-label">${p.stocking_unit || "EA"}</div>
             </div>`;
     });
 
@@ -405,7 +399,7 @@ function displayProducts() {
         document.querySelectorAll(".qty-input").forEach((input, i) => {
             if (input.value !== "") {
                 lines.push({
-                    product_code: products[i].product_code,
+                    product_id: products[i].product_id,
                     counted_qty: Number(input.value)
                 });
             }
@@ -513,7 +507,7 @@ function displayRecounts() {
             const input = document.getElementById(`recount-${i}`);
             if (input && input.value !== "") {
                 lines.push({
-                    product_code: item.product_code,
+                    product_id: item.product_id,
                     counted_qty: Number(input.value)
                 });
             }
@@ -538,8 +532,7 @@ function displayRecounts() {
         row.style.background = "#fff9e6";
         row.innerHTML = `
             <div class="product-desc" title="${item.product_desc || ''}">
-                <strong>${item.product_code}</strong><br>
-                <small style="color:#856404;">${item.product_desc || ''}</small>
+                <strong>${item.product_desc}</strong><br>
             </div>
             <input type="number" 
                    id="recount-${i}" 
@@ -548,7 +541,7 @@ function displayRecounts() {
                    step="1" 
                    placeholder="0"
                    style="border-color:#f39c12; font-size:1.2rem;">
-            <div class="uom-label">${item.stock_unit || "EA"}</div>
+            <div class="uom-label">${item.stocking_unit || "EA"}</div>
         `;
 
         container.appendChild(row);
@@ -561,8 +554,8 @@ function displayRecounts() {
         const value = Number(e.target.value);
 
         if (!isNaN(value)) {
-            const productCode = discrepancies[index].product_code;
-            const prod = products.find(p => p.product_code === productCode);
+            const productId = discrepancies[index].product_id;
+            const prod = products.find(p => p.product_id === productId);
             if (prod) {
                 prod.counted_qty = value;
             }
@@ -608,7 +601,7 @@ async function onFinalizeClicked() {
 
     if (data.success) {
       Swal.fire("Success!", data.message || "Stock count completed", "success")
-        .then(() => window.Location.href = "/inventory/stock-counts");
+        .then(() => window.location.href = "/inventory/stock-counts");
     } else {
       throw new Error(data.error || "Server error");
     }
