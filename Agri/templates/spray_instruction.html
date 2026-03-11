@@ -180,10 +180,8 @@ async function renderMixHeader() {
 
     document.getElementById("spray-header").innerHTML = `
         <div class="header-grid">
-            <div class="header-item"><h4>Block</h4><p>${header.block}</p></div>
-            <div class="header-item"><h4>Crop</h4><p>${header.crop}</p></div>
+            <div class="header-item"><h4>Projects</h4><p>${header.projects}</p></div>
             <div class="header-item"><h4>Spray Date</h4><p>${header.spray_date}</p></div>
-            <div class="header-item"><h4>Plant Date</h4><p>${header.plant_date}</p></div>
             <div class="header-item"><h4>Manager</h4><p>${header.manager_id}</p></div>
             <div class="header-item"><h4>Agriculturist</h4><p>${header.agriculturist_id}</p></div>
             <div class="header-item"><h4>Hectares</h4><p>${header.ha}</p></div>
@@ -324,8 +322,8 @@ function recalculate() {
         method: "POST",
         headers: {"Content-Type":"application/json"},
         body: JSON.stringify({
+            spray_id: sprayId,
             method_id: methodId,
-            bhs_id: sprayData.header.bhs_id,
             lines: sprayData.lines
         })
     })

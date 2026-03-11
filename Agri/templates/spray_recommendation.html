@@ -99,11 +99,14 @@
           <input id="spray_date" type="date" name="spray_date" required>
         </div>
         <div>
-          <label for="bhs_id">Block Harvest Season</label>
-          <select id="bhs_id" name="bhs_id" class="select2" required>
-            {% for bhs in bhs_list %}
-            <option value="{{ bhs.IdBHS }}">
-              {{ bhs.BlockCode }} - {{ bhs.CropCode }} - {{ bhs.BHSPlantDate }}
+          <label for="project_ids">Project(s)</label>
+          <select id="project_ids" name="project_ids" class="select2" data-placeholder="Select project(s)" multiple required>
+            {% for p in projects %}
+            <option value="{{ p.ProjectLink }}">
+              {{ p.ProjectCode }}
+              {% if p.CropCode %}- {{ p.CropCode }}{% endif %}
+              {% if p.VarietyCode %}/{{ p.VarietyCode }}{% endif %}
+              ({{ p.ProjAttrHa }} ha)
             </option>
             {% endfor %}
           </select>
@@ -279,7 +282,7 @@ document.addEventListener('DOMContentLoaded', function(){
 
 function collectFormData() {
 
-    const bhs_id = document.getElementById("bhs_id").value;
+    const project_ids = $('#project_ids').val() || [];
     const method_id = document.getElementById("method_id").value;
 
     const lines = [];
@@ -302,7 +305,7 @@ function collectFormData() {
     });
 
     return {
-        bhs_id: bhs_id,
+        project_ids: project_ids,
         method_id: method_id,
         lines: lines
     };
@@ -312,7 +315,7 @@ function fetchPreview() {
 
     const data = collectFormData();
 
-    if (!data.bhs_id || !data.method_id || data.lines.length === 0) {
+    if (!data.project_ids || data.project_ids.length === 0 || !data.method_id || data.lines.length === 0) {
         document.getElementById("mix-preview").innerHTML = "";
         return;
     }
@@ -378,7 +381,7 @@ function renderPreview(data) {
 
 document.addEventListener("change", function(e){
     if (
-        e.target.matches("#bhs_id") ||
+        e.target.matches("#project_ids") ||
         e.target.matches("#method_id") ||
         e.target.matches(".product-select") ||
         e.target.matches(".qty-input")
@@ -407,7 +410,7 @@ document.addEventListener('DOMContentLoaded', function() {
         
         // Validate all required fields
         const sprayDate = document.getElementById('spray_date').value;
-        const bhsId = document.getElementById('bhs_id').value;
+        const projectIds = $('#project_ids').val() || [];
         const methodId = document.getElementById('method_id').value;
         const warehouseId = document.getElementById('warehouse_id').value;
         
@@ -421,11 +424,11 @@ document.addEventListener('DOMContentLoaded', function() {
             return;
         }
         
-        if (!bhsId) {
+        if (!projectIds || projectIds.length === 0) {
             Swal.fire({
                 icon: 'warning',
                 title: 'Missing Field',
-                text: 'Please select a Block Harvest Season.',
+                text: 'Please select at least one project.',
                 confirmButtonColor: '#f59e0b'
             });
             return;

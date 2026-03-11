@@ -12,19 +12,24 @@ def create_spray_recommendation():
     conn = create_db_connection()
     cur = conn.cursor()
 
-    # Block Harvest Seasons
+    # project attributes – each row joins a project to its crop/variety/ha
     cur.execute("""
-        SELECT
-            bhs.IdBHS,
-            b.BlockCode,
-            c.CropCode,
-            bhs.BHSPlantDate
-        FROM agr.BlockHarvestSeason bhs
-        JOIN agr.Block b ON b.IdBlock = bhs.BHSBlockId
-        JOIN agr.Crop c ON c.IdCrop = bhs.BHSCropId
-        ORDER BY bhs.BHSPlantDate DESC
+    SELECT 
+        p.ProjectLink,
+        p.ProjectCode,
+        pa.ProjAttrCropId,
+        c.CropCode,
+        pa.ProjAttrVarietyId,
+        v.VarietyCode,
+        pa.ProjAttrHa
+    FROM cmn._uvProject p
+    JOIN agr.ProjectAttributes pa
+        ON pa.ProjAttrProjectId = p.ProjectLink
+    LEFT JOIN agr.Crop c ON c.IdCrop = pa.ProjAttrCropId
+    LEFT JOIN agr.Variety v ON v.IdVariety = pa.ProjAttrVarietyId
+    ORDER BY p.ProjectCode
     """)
-    bhs_list = cur.fetchall()
+    projects = cur.fetchall()
 
     # Chem stock
     cur.execute("""
@@ -67,7 +72,7 @@ def create_spray_recommendation():
 
     return render_template(
         "spray_recommendation.html",
-        bhs_list=bhs_list,
+        projects=projects,
         chem_stock=chem_stock,
         scouts=scouts,
         methods=spray_methods,
@@ -82,51 +87,54 @@ def save_spray_recommendation():
 
     try:
         spray_date = request.form.get("spray_date")
-        bhs_id = request.form.get("bhs_id")
+        project_ids = request.form.getlist("project_ids")  # multiple projects
         method_id = request.form.get("method_id")
         warehouse_id = request.form.get("warehouse_id")
 
-        if not spray_date or not bhs_id:
-            return jsonify({"success": False, "message": "Date and Block Harvest Season are required."}), 400
-        
+        if not spray_date or not project_ids:
+            return jsonify({"success": False, "message": "Date and at least one project are required."}), 400
+
         if not method_id:
             return jsonify({"success": False, "message": "Spray Method is required."}), 400
 
-        # Insert header
+        # insert header row (no BHS reference any more)
         cur.execute("""
             INSERT INTO agr.SprayHeader
-            (SprayHDate, SprayHBHSId, SprayHRecUserId, SprayHMethodId, [SprayHWhseId], SprayHStatus)
+            (SprayHDate, SprayHRecUserId, SprayHMethodId, SprayHWhseId, SprayHStatus)
             OUTPUT INSERTED.IdSprayH
-            VALUES (?, ?, ?, ?, ?, ?)
-        """, spray_date, bhs_id, current_user.id, method_id, warehouse_id, "RECOMMENDED")
-
+            VALUES (?, ?, ?, ?, ?)
+        """, spray_date, current_user.id, method_id, warehouse_id, "RECOMMENDED")
         spray_header_id = cur.fetchone()[0]
 
-        # Get all line indexes from form
-        line_indexes = request.form.getlist("line_index[]")
+        # link projects
+        for project_id in project_ids:
+            cur.execute("""
+                INSERT INTO agr.SprayProjects
+                (SprayPSprayId, SprayPProjectId)
+                VALUES (?, ?)
+            """, spray_header_id, project_id)
 
+        # process line items
+        line_indexes = request.form.getlist("line_index[]")
         for idx in line_indexes:
             stk_id = request.form.get(f"product_{idx}")
             qty = request.form.get(f"qty_{idx}")
-            
             if not stk_id or not qty:
-                # skip incomplete row
                 continue
 
-            # Insert spray line
+            # insert spray line
             cur.execute("""
                 INSERT INTO agr.SprayLines
                 (SprayLineHeaderId, SprayLineStkId, SprayLineQtyPerHa)
                 OUTPUT INSERTED.IdSprayLine
                 VALUES (?, ?, ?)
             """, spray_header_id, stk_id, qty)
-
             spray_line_id = cur.fetchone()[0]
 
-            # Get scout IDs for this specific line
+            # attach any scout selections
             scout_ids = request.form.getlist(f"scout_{idx}_id[]")
             for scout_id in scout_ids:
-                if scout_id:  # skip empty scout selections
+                if scout_id:
                     cur.execute("""
                         INSERT INTO agr.SprayScoutLines
                         (SprayScoutLineRecId, SprayScoutLinePestId)
@@ -137,8 +145,6 @@ def save_spray_recommendation():
         conn.close()
 
         recalculate_and_store_mix(spray_header_id, method_id)
-        
-        
         return jsonify({"success": True, "message": "Spray recommendation saved successfully!", "id": spray_header_id})
 
     except Exception as e:
@@ -151,12 +157,24 @@ def spray_recommendation_preview():
 
     data = request.get_json(silent=True) or {}
 
-    bhs_id = data.get("bhs_id")
+    project_ids = data.get("project_ids", [])
     method_id = data.get("method_id")
     lines = data.get("lines", [])
 
-    if not bhs_id or not method_id or not lines:
+    if not project_ids or not method_id or not lines:
         return {"mixes": []}
+
+    # compute total hectares for selected projects
+    conn = create_db_connection()
+    cur = conn.cursor()
+    placeholders = ','.join('?' for _ in project_ids)
+    cur.execute(f"""
+        SELECT SUM(ProjAttrHa) 
+        FROM agr.ProjectAttributes 
+        WHERE ProjAttrProjectId IN ({placeholders})
+    """, project_ids)
+    total_ha = cur.fetchone()[0] or 0
+    conn.close()
 
     # Build simple line structure
     calc_lines = []
@@ -170,7 +188,7 @@ def spray_recommendation_preview():
 
     result = calculate_spray_mixes(
         method_id=method_id,
-        harvest_season_id=bhs_id,
+        total_ha=total_ha,
         lines=calc_lines
     )
 
@@ -197,12 +215,14 @@ def recalculate_and_store_mix(spray_header_id, method_id):
     """, spray_header_id)
 
 
+    # determine total hectares from linked projects
     cur.execute("""
-        SELECT SprayHBHSId
-        FROM agr.SprayHeader
-        WHERE IdSprayH = ?
+        SELECT SUM(pa.ProjAttrHa)
+        FROM agr.ProjectAttributes pa
+        JOIN agr.SprayProjects sp ON sp.SprayProjectProjectId = pa.ProjAttrProjectId
+        WHERE sp.SprayProjectSprayId = ?
     """, spray_header_id)
-    bhs_id = cur.fetchone()[0]
+    total_ha = cur.fetchone()[0] or 0
 
     cur.execute("""
         SELECT SprayLineStkId, SprayLineQtyPerHa
@@ -219,7 +239,7 @@ def recalculate_and_store_mix(spray_header_id, method_id):
 
     result = calculate_spray_mixes(
         method_id=method_id,
-        harvest_season_id=bhs_id,
+        total_ha=total_ha,
         lines=calc_lines
     )
 
@@ -245,13 +265,15 @@ def recalculate_and_store_mix(spray_header_id, method_id):
     conn.commit()
     conn.close()
 
-def calculate_spray_mixes(method_id, harvest_season_id, lines):
+def calculate_spray_mixes(method_id, lines, total_ha=None, harvest_season_id=None):
     """
     lines = list of dicts:
         [
             {"stock_id": 1, "qty_per_ha": 2.5},
             ...
         ]
+    Either provide total_ha directly (new project-based flow) or supply
+    harvest_season_id for backwards compatibility.
     """
 
     # Fetch method details
@@ -264,14 +286,19 @@ def calculate_spray_mixes(method_id, harvest_season_id, lines):
     """, method_id)
     water_per_ha, tank_size = cur.fetchone()
 
-    # Get total hectares
-    cur.execute("""
-        SELECT bhs.BHSHa
-        FROM agr.BlockHarvestSeason bhs
-        WHERE bhs.IdBHS = ?
-    """, harvest_season_id)
+    # Determine hectares
+    if total_ha is None and harvest_season_id is not None:
+        cur.execute("""
+            SELECT bhs.BHSHa
+            FROM agr.BlockHarvestSeason bhs
+            WHERE bhs.IdBHS = ?
+        """, harvest_season_id)
+        total_ha = float(cur.fetchone()[0])
+    elif total_ha is None:
+        total_ha = 0
+    else:
+        total_ha = float(total_ha)
 
-    total_ha = float(cur.fetchone()[0])
     conn.close()
 
 
@@ -328,34 +355,6 @@ def spray_recommendations_summary():
     return render_template("spray_recommendation_summary.html")
 
 
-@agri_bp.route("/spray-recommendations/filter-data", methods=["GET"])
-@login_required
-def get_filter_data():
-    conn = create_db_connection()
-    cur = conn.cursor()
-
-    # Get all blocks
-    cur.execute("""
-        SELECT DISTINCT b.IdBlock, b.BlockCode
-        FROM agr.Block b
-        JOIN agr.BlockHarvestSeason bhs ON bhs.BHSBlockId = b.IdBlock
-        ORDER BY b.BlockCode
-    """)
-    blocks = [{"id": row[0], "code": row[1]} for row in cur.fetchall()]
-
-    # Get all crops
-    cur.execute("""
-        SELECT DISTINCT c.IdCrop, c.CropCode
-        FROM agr.Crop c
-        JOIN agr.BlockHarvestSeason bhs ON bhs.BHSCropId = c.IdCrop
-        ORDER BY c.CropCode
-    """)
-    crops = [{"id": row[0], "code": row[1]} for row in cur.fetchall()]
-
-    conn.close()
-    return jsonify({"blocks": blocks, "crops": crops})
-
-
 @agri_bp.route("/spray-recommendations", methods=["GET"])
 @login_required
 def get_spray_recommendations():
@@ -363,18 +362,17 @@ def get_spray_recommendations():
     cur = conn.cursor()
 
     query = """
-        SELECT 
+       SELECT
             sh.IdSprayH,
-            b.BlockCode,
-            c.CropCode,
+            STRING_AGG(p.ProjectCode, ', ') AS project_codes,
+            ISNULL(SUM(pa.ProjAttrHa),0) AS total_ha,
             sh.SprayHDate,
-            bhs.BHSPlantDate,
-            bhs.BHSHa,
             sh.SprayHStatus
         FROM agr.SprayHeader sh
-        JOIN agr.BlockHarvestSeason bhs ON bhs.IdBHS = sh.SprayHBHSId
-        JOIN agr.Block b ON b.IdBlock = bhs.BHSBlockId
-        JOIN agr.Crop c ON c.IdCrop = bhs.BHSCropId
+        LEFT JOIN agr.SprayProjects sp ON sp.SprayPSprayId = sh.IdSprayH
+        LEFT JOIN cmn._uvProject p ON p.ProjectLink = sp.SprayPProjectId
+        LEFT JOIN agr.ProjectAttributes pa ON pa.ProjAttrProjectId = sp.SprayPProjectId
+        GROUP BY sh.IdSprayH, sh.SprayHDate, sh.SprayHStatus
         ORDER BY sh.SprayHDate DESC
     """
     cur.execute(query)
@@ -383,12 +381,10 @@ def get_spray_recommendations():
     recommendations = [
         {
             "id": row[0],
-            "block": row[1],
-            "crop": row[2],
+            "projects": row[1] or "",
+            "ha": float(row[2]),
             "spray_date": str(row[3]),
-            "plant_date": str(row[4]),
-            "ha": float(row[5]),
-            "status": row[6]
+            "status": row[4]
         }
         for row in rows
     ]

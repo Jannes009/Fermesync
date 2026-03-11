@@ -239,11 +239,10 @@
           <thead>
             <tr>
               <th>ID</th>
-              <th>Block</th>
-              <th>Crop</th>
+              <th>Projects</th>
               <th>Date</th>
-              <th>Plant Date</th>
               <th>Ha</th>
+              <th>Actions</th>
               <th>Status</th>
             </tr>
           </thead>
@@ -290,10 +289,8 @@ async function loadRecommendations() {
         tbody.innerHTML = recommendations.map(rec => `
             <tr>
                 <td><strong>${rec.id}</strong></td>
-                <td>${rec.block}</td>
-                <td>${rec.crop}</td>
+                <td>${rec.projects}</td>
                 <td>${rec.spray_date}</td>
-                <td>${rec.plant_date}</td>
                 <td>${rec.ha}</td>
                 <td><button type="button" onclick="issueStock(${rec.id})">Issue Stock</button><button type="button" onclick="goToSpray(${rec.id})">View Details</button></td>
                 <td><span class="status-badge status-${rec.status.toLowerCase()}">${rec.status}</span></td>
@@ -309,20 +306,12 @@ async function loadRecommendations() {
                 </div>
                 <div class="rec-details">
                     <div class="rec-detail">
-                        <div class="rec-detail-label">Block</div>
-                        <div class="rec-detail-value">${rec.block}</div>
-                    </div>
-                    <div class="rec-detail">
-                        <div class="rec-detail-label">Crop</div>
-                        <div class="rec-detail-value">${rec.crop}</div>
+                        <div class="rec-detail-label">Projects</div>
+                        <div class="rec-detail-value">${rec.projects}</div>
                     </div>
                     <div class="rec-detail">
                         <div class="rec-detail-label">Spray Date</div>
                         <div class="rec-detail-value">${rec.spray_date}</div>
-                    </div>
-                    <div class="rec-detail">
-                        <div class="rec-detail-label">Plant Date</div>
-                        <div class="rec-detail-value">${rec.plant_date}</div>
                     </div>
                     <div class="rec-detail">
                         <div class="rec-detail-label">Area (Ha)</div>

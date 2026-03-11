@@ -23,13 +23,9 @@ def get_spray_header(spray_id):
     cur.execute("""
         SELECT 
             HEA.SprayHDate,
-            BHS.IdBHS,
-            BHS.BHSPlantDate,
             HEA.SprayHProjectManagerId,
             HEA.SprayHAgriculturistId,
-            BLK.BlockDescription,
-            CRP.CropDescription,
-            BHS.BHSHa,
+            HEA.SprayHWhseId,
             HEA.SprayHOperatorId,
             HEA.SprayHWeather,
             MTD.IdSprayMethod,
@@ -37,25 +33,41 @@ def get_spray_header(spray_id):
             MTD.SprayMethodTankSize,
             MTD.SprayMethodWaterPerHa
         FROM agr.SprayHeader HEA
-        JOIN agr.BlockHarvestSeason BHS on BHS.IdBHS = HEA.SprayHBHSId
-        JOIN agr.Block BLK on BLK.IdBlock = BHS.BHSBlockId
-        JOIN agr.Crop CRP on CRP.IdCrop = BHS.BHSCropId
         JOIN agr.SprayMethod MTD on MTD.IdSprayMethod = HEA.SprayHMethodId
         WHERE HEA.IdSprayH = ?
     """, spray_id)
 
     header = cur.fetchone()
+
+    # fetch linked project codes and total hectares
+    cur.execute("""
+        SELECT STRING_AGG(p.ProjectCode, ', '), ISNULL(SUM(pa.ProjAttrHa),0)
+        FROM agr.SprayProjects sp
+        JOIN cmn._uvProject p ON p.ProjectLink = sp.SprayProjectProjectId
+        LEFT JOIN agr.ProjectAttributes pa ON pa.ProjAttrProjectId = p.ProjectLink
+        WHERE sp.SprayProjectSprayId = ?
+    """, spray_id)
+    proj_info = cur.fetchone()
+    project_codes = proj_info[0] or ""
+    total_ha = float(proj_info[1] or 0)
+
+    # also collect project ids array
+    cur.execute("""
+        SELECT SprayProjectProjectId
+        FROM agr.SprayProjects
+        WHERE SprayProjectSprayId = ?
+    """, spray_id)
+    project_ids = [r.SprayProjectProjectId for r in cur.fetchall()]
+
     conn.close()
 
     return jsonify({
             "spray_date": str(header.SprayHDate),
-            "bhs_id": header.IdBHS,
-            "plant_date": str(header.BHSPlantDate),
+            "projects": project_codes,
+            "project_ids": project_ids,
+            "ha": total_ha,
             "manager_id": header.SprayHProjectManagerId,
             "agriculturist_id": header.SprayHAgriculturistId,
-            "block": header.BlockDescription,
-            "crop": header.CropDescription,
-            "ha": float(header.BHSHa),
             "operator_id": header.SprayHOperatorId,
             "weather": header.SprayHWeather,
             "method_id": header.IdSprayMethod,
@@ -101,12 +113,29 @@ def get_spray_lines(spray_id):
 @login_required
 def recalculate_spray():
 
-    data = request.get_json()
+    data = request.get_json() or {}
+    spray_id = data.get("spray_id")
+    method_id = data.get("method_id")
+    lines = data.get("lines", [])
+
+    # calculate total hectares for this spray from linked projects
+    total_ha = 0
+    if spray_id:
+        conn = create_db_connection()
+        cur = conn.cursor()
+        cur.execute("""
+            SELECT SUM(pa.ProjAttrHa)
+            FROM agr.ProjectAttributes pa
+            JOIN agr.SprayProjects sp ON sp.SprayProjectProjectId = pa.ProjAttrProjectId
+            WHERE sp.SprayProjectSprayId = ?
+        """, spray_id)
+        total_ha = cur.fetchone()[0] or 0
+        conn.close()
 
     result = calculate_spray_mixes(
-        method_id=data["method_id"],
-        harvest_season_id=data["bhs_id"],
-        lines=data["lines"]
+        method_id=method_id,
+        total_ha=total_ha,
+        lines=lines
     )
 
     return jsonify(result)
@@ -150,41 +179,49 @@ def issue_stock_for_spray(spray_id):
     cursor = conn.cursor()
 
     try:
+        # compute total hectares from projects
         cursor.execute("""
-        Select 
+            SELECT SUM(pa.ProjAttrHa)
+            FROM agr.ProjectAttributes pa
+            JOIN agr.SprayProjects sp ON sp.SprayProjectProjectId = pa.ProjAttrProjectId
+            WHERE sp.SprayProjectSprayId = ?
+        """, spray_id)
+        total_ha = cursor.fetchone()[0] or 0
+
+        cursor.execute("""
+        SELECT 
             LIN.SprayLineStkId,
-            LIN.SprayLineQtyPerHa * BHSHa QtyToBeSprayed,
+            LIN.SprayLineQtyPerHa,
             ISNULL(QTY.QtyOnHand, 0) QtyAvailable,
-            BHSV.BHSVProjectId,
             HEA.SprayHWhseId
-        FROM agr.SprayHeader HEA
-        JOIN agr.BlockHarvestSeason BHS on BHS.IdBHS = HEA.SprayHBHSId
-        JOIN agr.BlockHarvestSeasonVariety BHSV on BHSV.BHSVBlockHarvestSeasonId = BHS.IdBHS
-        JOIN agr.SprayLines LIN on LIN.SprayLineHeaderId = HEA.IdSprayH
+        FROM agr.SprayLines LIN
+        JOIN agr.SprayHeader HEA ON HEA.IdSprayH = LIN.SprayLineHeaderId
         LEFT JOIN stk._uvInventoryQty QTY 
             ON QTY.StockLink = LIN.SprayLineStkId 
             AND QTY.WhseLink = HEA.SprayHWhseId
-        Where HEA.IdSprayH = ?
+        WHERE LIN.SprayLineHeaderId = ?
         """, spray_id)
 
-        lines = cursor.fetchall()
+        raw_lines = cursor.fetchall()
 
-        if not lines:
+        if not raw_lines:
             return jsonify({
                 "success": False,
                 "message": "No stock lines found for this spray recommendation."
             }), 400
 
-        # -----------------------------
-        # CHECK FOR INSUFFICIENT STOCK
-        # -----------------------------
         shortages = []
-
-        for line in lines:
-            if line.QtyToBeSprayed > line.QtyAvailable:
+        lines = []
+        for line in raw_lines:
+            qty_to_be = line.SprayLineQtyPerHa * total_ha
+            lines.append({
+                "product_link": line.SprayLineStkId,
+                "qty": float(qty_to_be)
+            })
+            if qty_to_be > line.QtyAvailable:
                 shortages.append({
                     "product_link": line.SprayLineStkId,
-                    "required": float(line.QtyToBeSprayed),
+                    "required": float(qty_to_be),
                     "available": float(line.QtyAvailable)
                 })
 
@@ -198,18 +235,33 @@ def issue_stock_for_spray(spray_id):
         # -----------------------------
         # SUCCESS
         # -----------------------------
+        # collect warehouse and project info
+        cursor.execute("""
+            SELECT SprayHWhseId FROM agr.SprayHeader WHERE IdSprayH = ?
+        """, spray_id)
+        warehouse = cursor.fetchone()[0]
+
+        cursor.execute("""
+            SELECT STRING_AGG(ProjectCode, ', ')
+            FROM agr.SprayProjects sp
+            JOIN cmn._uvProject p ON p.ProjectLink = sp.SprayProjectProjectId
+            WHERE sp.SprayProjectSprayId = ?
+        """, spray_id)
+        projects_str = cursor.fetchone()[0] or ""
+
+        cursor.execute("""
+            SELECT SprayProjectProjectId FROM agr.SprayProjects WHERE SprayProjectSprayId = ?
+        """, spray_id)
+        project_ids = [r.SprayProjectProjectId for r in cursor.fetchall()]
+
         return jsonify({
             "success": True,
-            "warehouse": lines[0].SprayHWhseId,
-            "project": lines[0].BHSVProjectId,
-            "lines": [
-                {
-                    "product_link": line.SprayLineStkId,
-                    "qty": float(line.QtyToBeSprayed)
-                }
-                for line in lines
-            ]
+            "warehouse": warehouse,
+            "projects": project_ids,
+            "project": project_ids[0] if project_ids else None,
+            "lines": lines
         })
+
 
     except Exception as ex:
         return jsonify({
