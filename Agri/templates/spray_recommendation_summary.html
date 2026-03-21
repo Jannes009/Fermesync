@@ -242,6 +242,8 @@
               <th>Projects</th>
               <th>Date</th>
               <th>Ha</th>
+              <th>Type</th>
+              <th>Method</th>
               <th>Actions</th>
               <th>Status</th>
             </tr>
@@ -292,6 +294,8 @@ async function loadRecommendations() {
                 <td>${rec.projects}</td>
                 <td>${rec.spray_date}</td>
                 <td>${rec.ha}</td>
+                <td>${rec.application_type || 'spray'}</td>
+                <td>${rec.method_name || '-'}</td>
                 <td><button type="button" onclick="issueStock(${rec.id})">Issue Stock</button><button type="button" onclick="goToSpray(${rec.id})">View Details</button></td>
                 <td><span class="status-badge status-${rec.status.toLowerCase()}">${rec.status}</span></td>
             </tr>
@@ -317,6 +321,14 @@ async function loadRecommendations() {
                         <div class="rec-detail-label">Area (Ha)</div>
                         <div class="rec-detail-value">${rec.ha}</div>
                     </div>
+                    <div class="rec-detail">
+                        <div class="rec-detail-label">Type</div>
+                        <div class="rec-detail-value">${rec.application_type || 'spray'}</div>
+                    </div>
+                    <div class="rec-detail">
+                        <div class="rec-detail-label">Method</div>
+                        <div class="rec-detail-value">${rec.method_name || '-'}</div>
+                    </div>
                 </div>
             </div>
         `).join('');
@@ -337,40 +349,20 @@ function issueStock(recId) {
     fetch(`/agri/spray/${recId}/issue_stock`)
         .then(r => r.json())
         .then(data => {
-
-        if (!data.success) {
-
-            if (data.shortages) {
-
-                let msg = "Insufficient stock:<br><br>";
-
-                data.shortages.forEach(s => {
-                    msg += `Product ${s.product_link}: Required ${s.required}, Available ${s.available}<br>`;
-                });
-
-                Swal.fire({
-                    title: "Stock Shortage",
-                    html: msg,
-                    icon: "warning"
-                });
-
-            } else {
-                Swal.fire("Error", data.message || "Error fetching stock data", "error");
+            if (!data.success) {
+                if (data.shortages) {
+                    let msg = "Insufficient stock:<br><br>";
+                    data.shortages.forEach(s => {
+                        msg += `Product ${s.product_link}: Required ${s.required}, Available ${s.available}<br>`;
+                    });
+                    Swal.fire({ title: "Stock Shortage", html: msg, icon: "warning" });
+                } else {
+                    Swal.fire("Error", data.message || "Error fetching stock data", "error");
+                }
+                return;
             }
 
-            return;
-        }
-
-            const linesEncoded = encodeURIComponent(JSON.stringify(data.lines));
-            const nextEncoded = encodeURIComponent(`/agri/spray/${recId}`);
-
-            const url =
-                `/inventory/SDK/stock_issue_wizard` +
-                `?warehouse=${data.warehouse}` +
-                `&project=${data.project}` +
-                `&lines=${linesEncoded}` +
-                `&next=${nextEncoded}`;
-
+            const url = `/inventory/SDK/stock_issue_wizard?spray_id=${recId}&step=2`;
             window.location.href = url;
         })
         .catch(err => {

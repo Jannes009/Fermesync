@@ -12,6 +12,32 @@ def spray_execution_page(spray_id):
     # render the HTML page; data loaded via separate API
     return render_template("spray_instruction.html", spray_id=spray_id)
 
+@agri_bp.route("/fetch_spray_instructions", methods=["GET"])
+@login_required
+def fetch_spray_instructions():
+    """Fetch all spray instructions for the user to select from"""
+    conn = create_db_connection()
+    cur = conn.cursor()
+
+    cur.execute("""
+        SELECT IdSprayH, SprayHDate
+        FROM agr.SprayHeader
+        ORDER BY SprayHDate DESC
+    """)
+    spray_headers = cur.fetchall()
+    conn.close()
+
+    sprays_list = [
+        {
+            "id": header.IdSprayH,
+            "name": f"Spray {header.IdSprayH} - {header.SprayHDate}"
+        }
+        for header in spray_headers
+    ]
+    
+    return jsonify({"sprays": sprays_list})
+
+
 @agri_bp.route("/spray/<int:spray_id>/spray_header", methods=["GET"])
 @login_required
 def get_spray_header(spray_id):
@@ -22,58 +48,55 @@ def get_spray_header(spray_id):
     # HEADER
     cur.execute("""
         SELECT 
+            HEA.SprayHNo,
+            HEA.SprayHDescription,
             HEA.SprayHDate,
-            HEA.SprayHProjectManagerId,
-            HEA.SprayHAgriculturistId,
             HEA.SprayHWhseId,
-            HEA.SprayHOperatorId,
+            HEA.SprayHOperator,
             HEA.SprayHWeather,
-            MTD.IdSprayMethod,
-            MTD.SprayMethodName,
-            MTD.SprayMethodTankSize,
-            MTD.SprayMethodWaterPerHa
+            HEA.SprayHApplicationType,
+            HEA.SprayHMethodId
         FROM agr.SprayHeader HEA
-        JOIN agr.SprayMethod MTD on MTD.IdSprayMethod = HEA.SprayHMethodId
         WHERE HEA.IdSprayH = ?
     """, spray_id)
 
     header = cur.fetchone()
 
-    # fetch linked project codes and total hectares
+    # fetch linked project codes and total hectares plus per-project breakdown
     cur.execute("""
-        SELECT STRING_AGG(p.ProjectCode, ', '), ISNULL(SUM(pa.ProjAttrHa),0)
+        SELECT p.ProjectCode, ISNULL(sp.SprayPHa, 0) AS SprayPHa, ISNULL(sp.SprayPWaterPerHa, 0) AS SprayPWaterPerHa
         FROM agr.SprayProjects sp
-        JOIN cmn._uvProject p ON p.ProjectLink = sp.SprayProjectProjectId
-        LEFT JOIN agr.ProjectAttributes pa ON pa.ProjAttrProjectId = p.ProjectLink
-        WHERE sp.SprayProjectSprayId = ?
+        JOIN cmn._uvProject p ON p.ProjectLink = sp.SprayPProjectId
+        WHERE sp.SprayPSprayId = ?
     """, spray_id)
-    proj_info = cur.fetchone()
-    project_codes = proj_info[0] or ""
-    total_ha = float(proj_info[1] or 0)
+    proj_rows = cur.fetchall()
+    project_list = [
+        {"project_code": row.ProjectCode, "ha": float(row.SprayPHa or 0), "water_per_ha": float(row.SprayPWaterPerHa or 0)}
+        for row in proj_rows
+    ]
+    print(project_list)
+    total_ha = sum([p["ha"] for p in project_list])
 
-    # also collect project ids array
     cur.execute("""
-        SELECT SprayProjectProjectId
+        SELECT SprayPProjectId
         FROM agr.SprayProjects
-        WHERE SprayProjectSprayId = ?
+        WHERE SprayPSprayId = ?
     """, spray_id)
-    project_ids = [r.SprayProjectProjectId for r in cur.fetchall()]
+    project_ids = [r.SprayPProjectId for r in cur.fetchall()]
 
     conn.close()
 
     return jsonify({
             "spray_date": str(header.SprayHDate),
-            "projects": project_codes,
+            "projects": project_list,
+            "total_ha": total_ha,
             "project_ids": project_ids,
-            "ha": total_ha,
-            "manager_id": header.SprayHProjectManagerId,
-            "agriculturist_id": header.SprayHAgriculturistId,
-            "operator_id": header.SprayHOperatorId,
+            "application_type": header.SprayHApplicationType,
+            "operator": header.SprayHOperator,
             "weather": header.SprayHWeather,
-            "method_id": header.IdSprayMethod,
-            "method_name": header.SprayMethodName,
-            "tank_size": float(header.SprayMethodTankSize),
-            "water_per_ha": float(header.SprayMethodWaterPerHa)
+            "method_id": header.SprayHMethodId,
+            "spray_no": header.SprayHNo,
+            "spray_description": header.SprayHDescription
     })
 
 @agri_bp.route("/spray/<int:spray_id>/spray_lines", methods=["GET"])
@@ -83,31 +106,159 @@ def get_spray_lines(spray_id):
     cur = conn.cursor()
 
     cur.execute("""
-        Select LIN.SprayMixLineStockId,  EVOSTK.StockCode, STK.ChemStockActiveIngr, STK.ChemStockReason, STK.ChemStockWitholdingPeriod
-        ,LIN.SprayMixLineQty
-        ,SprayMixNumber, SprayMixWater, SprayMixHa
-        from [agr].SprayMixLines LIN
-        JOIN [common].[_uvStockItems] EVOSTK on EVOSTK.StockLink = LIN.SprayMixLineStockId
-        JOIN [agr].[ChemStock] STK on STK.IdChemStock = LIN.SprayMixLineStockId
-        JOIN [agr].[SprayMix] HEA on LIN.SprayMixLineMixId = HEA.IdSprayMix
-        Where HEA.SprayMixHeaderId = ?
+        SELECT SprayHApplicationType FROM agr.SprayHeader WHERE IdSprayH = ?
     """, spray_id)
+    row = cur.fetchone()
+    application_type = row.SprayHApplicationType
+    lines = []
+    if application_type == 'spray':
+        cur.execute("""
+            SELECT LIN.SprayMixLineStockId, EVOSTK.StockCode, STK.ChemStockActiveIngr, STK.ChemStockReason, STK.ChemStockWitholdingPeriod,
+                   LIN.SprayMixLineQty, UOM.cUnitCode, SME.SprayMixNumber, SME.SprayMixWater, SME.SprayMixHa,
+                   SM.SprayMethodName, SM.SprayMethodTankSize
+            FROM [agr].SprayMixLines LIN
+            JOIN [agr].SprayMix SME ON LIN.SprayMixLineMixId = SME.IdSprayMix
+            JOIN agr.SprayHeader SH ON SH.IdSprayH = SME.SprayMixHeaderId
+            LEFT JOIN agr.SprayMethod SM ON SM.IdSprayMethod = SH.SprayHMethodId
+            JOIN [cmn].[_uvStockItems] EVOSTK ON EVOSTK.StockLink = LIN.SprayMixLineStockId
+            LEFT JOIN [agr].[ChemStock] STK ON STK.IdChemStock = LIN.SprayMixLineStockId
+            LEFT JOIN [cmn]._uvUOM UOM ON UOM.idUnits = LIN.SprayMixLineUoMId
+            WHERE SME.SprayMixHeaderId = ?
+        """, spray_id)
+        lines = [
+            {"stock_id": row.SprayMixLineStockId,
+             "stock_code": row.StockCode,
+             "active_ingr": row.ChemStockActiveIngr,
+             "reason": row.ChemStockReason,
+             "qty": float(row.SprayMixLineQty),
+             "uom": row.cUnitCode,
+             "withholding_period": row.ChemStockWitholdingPeriod,
+             "mix_number": row.SprayMixNumber,
+             "water": float(row.SprayMixWater),
+             "mix_ha": float(row.SprayMixHa),
+             "method_name": row.SprayMethodName,
+             "method_tank_size": float(row.SprayMethodTankSize) if row.SprayMethodTankSize is not None else None
+            }
+            for row in cur.fetchall()
+        ]
+    elif application_type == 'direct':
+        cur.execute("""
+            SELECT LIN.SprayLineStkId, EVOSTK.StockCode, STK.ChemStockActiveIngr, STK.ChemStockReason, STK.ChemStockWitholdingPeriod,
+                   LIN.SprayLineQtyPerHa, UOM.cUnitCode, SUM(SPJ.SprayPHa) AS TotalHa,
+                   SM.SprayMethodName, SM.SprayMethodTankSize
+            FROM [agr].SprayLines LIN
+            JOIN [agr].SprayHeader HEA ON LIN.SprayLineHeaderId = HEA.IdSprayH
+            LEFT JOIN agr.SprayMethod SM ON SM.IdSprayMethod = HEA.SprayHMethodId
+            JOIN [agr].SprayProjects SPJ ON SPJ.SprayPSprayId = HEA.IdSprayH
+            JOIN [cmn].[_uvStockItems] EVOSTK ON EVOSTK.StockLink = LIN.SprayLineStkId
+            LEFT JOIN [agr].[ChemStock] STK ON STK.IdChemStock = LIN.SprayLineStkId
+            LEFT JOIN [cmn]._uvUOM UOM ON UOM.idUnits = LIN.SprayLineUoMId
+            WHERE HEA.IdSprayH = ?
+            GROUP BY LIN.SprayLineStkId, EVOSTK.StockCode, STK.ChemStockActiveIngr, STK.ChemStockReason, STK.ChemStockWitholdingPeriod, LIN.SprayLineQtyPerHa, UOM.cUnitCode, SM.SprayMethodName, SM.SprayMethodTankSize
+        """, spray_id)
+        lines = [
+            {"stock_id": row.SprayLineStkId,
+             "stock_code": row.StockCode,
+             "active_ingr": row.ChemStockActiveIngr,
+             "reason": row.ChemStockReason,
+             "qty_per_ha": float(row.SprayLineQtyPerHa),
+             "total_qty": float(row.SprayLineQtyPerHa) * float(row.TotalHa),
+             "uom": row.cUnitCode,
+             "withholding_period": row.ChemStockWitholdingPeriod,
+             "method_name": row.SprayMethodName,
+             "method_tank_size": float(row.SprayMethodTankSize) if row.SprayMethodTankSize is not None else None
+            }
+            for row in cur.fetchall()
+        ]
+        print(lines)
 
-    lines = [
-        {"stock_id": row.SprayMixLineStockId, 
-         "stock_code": row.StockCode, 
-         "active_ingr": row.ChemStockActiveIngr, 
-         "reason": row.ChemStockReason, 
-         "qty": float(row.SprayMixLineQty),
-         "withholding_period": row.ChemStockWitholdingPeriod, 
-         "mix_number": row.SprayMixNumber, 
-         "water": float(row.SprayMixWater),
-         "qty_per_ha": float(row.SprayMixHa)}
-        for row in cur.fetchall()
-    ]
 
     conn.close()
     return lines
+
+
+@agri_bp.route("/spray/<int:spray_id>/issued_stock", methods=["GET"])
+@login_required
+def get_spray_issued_stock(spray_id):
+    conn = create_db_connection()
+    cur = conn.cursor()
+
+    # Get application type
+    cur.execute("SELECT SprayHApplicationType, SprayHWhseId FROM agr.SprayHeader WHERE IdSprayH = ?", spray_id)
+    spray_row = cur.fetchone()
+    if spray_row is None:
+        conn.close()
+        return jsonify({"stock_movement": []})
+
+    app_type = spray_row.SprayHApplicationType
+    whse_id = spray_row.SprayHWhseId
+
+    instruction_totals = {}
+    if app_type == 'spray':
+        cur.execute("""
+        SELECT LIN.SprayMixLineStockId AS StockLink,
+               SUM(LIN.SprayMixLineQty) AS TotalQty
+        FROM agr.SprayMixLines LIN
+        JOIN agr.SprayMix HEA on HEA.IdSprayMix = LIN.SprayMixLineMixId
+        WHERE HEA.SprayMixHeaderId = ?
+        GROUP BY LIN.SprayMixLineStockId
+        """, spray_id)
+    else:
+        cur.execute("""
+        SELECT LIN.SprayLineStkId AS StockLink,
+               ISNULL(SUM(LIN.SprayLineQtyPerHa * PA.ProjAttrHa), 0) AS TotalQty
+        FROM agr.SprayLines LIN
+        JOIN agr.SprayProjects SP ON SP.SprayPSprayId = LIN.SprayLineHeaderId
+        JOIN agr.ProjectAttributes PA ON PA.ProjAttrProjectId = SP.SprayPProjectId
+        WHERE LIN.SprayLineHeaderId = ?
+        GROUP BY LIN.SprayLineStkId
+        """, spray_id)
+
+    for row in cur.fetchall():
+        instruction_totals[row.StockLink] = float(row.TotalQty or 0)
+
+    # Fetch issued/received/finalised totals by stock link
+    cur.execute("""
+        SELECT ISSLIN.IssLineStockLink AS StockLink,
+               SUM(ISSLIN.IssLineQtyIssued) AS TotalQtyIssued,
+               SUM(ISSLIN.IssLineQtyReceived) AS TotalQtyReceived,
+               SUM(ISSLIN.IssLineQtyFinalised) AS TotalQtyFinalised
+        FROM stk.IssueHeader ISSHEA
+        JOIN stk.IssueLines ISSLIN ON ISSLIN.IssLineIssueId = ISSHEA.IdIssue
+        WHERE ISSHEA.IssSprayId = ?
+        GROUP BY ISSLIN.IssLineStockLink
+    """, spray_id)
+
+    issue_totals = {
+        row.StockLink: {
+            "issued": float(row.TotalQtyIssued or 0),
+            "received": float(row.TotalQtyReceived or 0),
+            "finalised": float(row.TotalQtyFinalised or 0)
+        }
+        for row in cur.fetchall()
+    }
+
+    # Build combined movement list
+    stock_links = set(list(instruction_totals.keys()) + list(issue_totals.keys()))
+    movement_rows = []
+    for stock_link in sorted(stock_links):
+        cur.execute("SELECT StockCode, StockDescription FROM cmn._uvStockItems WHERE StockLink = ?", stock_link)
+        stock_row = cur.fetchone()
+        stock_desc = stock_row.StockDescription if stock_row and stock_row.StockDescription else (stock_row.StockCode if stock_row else "Unknown")
+
+        totals = issue_totals.get(stock_link, {"issued": 0.0, "received": 0.0, "finalised": 0.0})
+        movement_rows.append({
+            "stock_link": stock_link,
+            "stock_desc": stock_desc,
+            "total_qty_on_instruction": float(instruction_totals.get(stock_link, 0)),
+            "qty_issued": totals["issued"],
+            "qty_received": totals["received"],
+            "qty_finalised": totals["finalised"]
+        })
+
+    conn.close()
+    return jsonify({"stock_movement": movement_rows})
+
 
 @agri_bp.route("/spray/recalculate", methods=["POST"])
 @login_required
@@ -124,18 +275,56 @@ def recalculate_spray():
         conn = create_db_connection()
         cur = conn.cursor()
         cur.execute("""
-            SELECT SUM(pa.ProjAttrHa)
-            FROM agr.ProjectAttributes pa
-            JOIN agr.SprayProjects sp ON sp.SprayProjectProjectId = pa.ProjAttrProjectId
-            WHERE sp.SprayProjectSprayId = ?
+            SELECT SUM(sp.SprayPHa)
+            FROM agr.SprayProjects sp
+            WHERE sp.SprayPSprayId = ?
         """, spray_id)
         total_ha = cur.fetchone()[0] or 0
+        conn.close()
+
+    # if we have a spray id, fetch per-100L product lines from this spray recommendation
+    if spray_id:
+        conn = create_db_connection()
+        cur = conn.cursor()
+        cur.execute("""
+            SELECT SprayLineStkId, SprayLineQtyPer100L
+            FROM agr.SprayLines
+            WHERE SprayLineHeaderId = ?
+        """, spray_id)
+        spray_lines = cur.fetchall()
+        conn.close()
+
+        lines = []
+        spray_lines = spray_lines or []
+        for line in spray_lines:
+            if line.SprayLineQtyPer100L is None:
+                continue
+            lines.append({
+                "stock_id": line.SprayLineStkId,
+                "qty_per_100l": float(line.SprayLineQtyPer100L)
+            })
+
+    # use method water per ha to compute total water for spray recalc
+    total_water = 0
+    if method_id:
+        conn = create_db_connection()
+        cur = conn.cursor()
+        cur.execute("""
+            SELECT SprayMethodWaterPerHa
+            FROM agr.SprayMethod
+            WHERE IdSprayMethod = ?
+        """, method_id)
+        row = cur.fetchone()
+        if row and row[0] is not None:
+            total_water = float(row[0]) * float(total_ha or 0)
         conn.close()
 
     result = calculate_spray_mixes(
         method_id=method_id,
         total_ha=total_ha,
-        lines=lines
+        total_water=total_water,
+        lines=lines,
+        application_type='spray'
     )
 
     return jsonify(result)
@@ -181,10 +370,9 @@ def issue_stock_for_spray(spray_id):
     try:
         # compute total hectares from projects
         cursor.execute("""
-            SELECT SUM(pa.ProjAttrHa)
-            FROM agr.ProjectAttributes pa
-            JOIN agr.SprayProjects sp ON sp.SprayProjectProjectId = pa.ProjAttrProjectId
-            WHERE sp.SprayProjectSprayId = ?
+            SELECT SUM(sp.SprayPHa)
+            FROM agr.SprayProjects sp
+            WHERE sp.SprayPSprayId = ?
         """, spray_id)
         total_ha = cursor.fetchone()[0] or 0
 
@@ -192,6 +380,7 @@ def issue_stock_for_spray(spray_id):
         SELECT 
             LIN.SprayLineStkId,
             LIN.SprayLineQtyPerHa,
+            LIN.SprayLineQtyPer100L,
             ISNULL(QTY.QtyOnHand, 0) QtyAvailable,
             HEA.SprayHWhseId
         FROM agr.SprayLines LIN
@@ -213,7 +402,15 @@ def issue_stock_for_spray(spray_id):
         shortages = []
         lines = []
         for line in raw_lines:
-            qty_to_be = line.SprayLineQtyPerHa * total_ha
+            per_ha = line.SprayLineQtyPerHa
+            per_100l = line.SprayLineQtyPer100L if hasattr(line, 'SprayLineQtyPer100L') else None
+            if per_ha is not None and per_ha != 0:
+                qty_to_be = per_ha * total_ha
+            elif per_100l is not None and total_ha > 0:
+                # approximate per ha from total water if spray method provided? fallback to 0
+                qty_to_be = 0
+            else:
+                qty_to_be = 0
             lines.append({
                 "product_link": line.SprayLineStkId,
                 "qty": float(qty_to_be)
@@ -244,15 +441,15 @@ def issue_stock_for_spray(spray_id):
         cursor.execute("""
             SELECT STRING_AGG(ProjectCode, ', ')
             FROM agr.SprayProjects sp
-            JOIN cmn._uvProject p ON p.ProjectLink = sp.SprayProjectProjectId
-            WHERE sp.SprayProjectSprayId = ?
+            JOIN cmn._uvProject p ON p.ProjectLink = sp.SprayPProjectId
+            WHERE sp.SprayPSprayId = ?
         """, spray_id)
         projects_str = cursor.fetchone()[0] or ""
 
         cursor.execute("""
-            SELECT SprayProjectProjectId FROM agr.SprayProjects WHERE SprayProjectSprayId = ?
+            SELECT SprayPProjectId FROM agr.SprayProjects WHERE SprayPSprayId = ?
         """, spray_id)
-        project_ids = [r.SprayProjectProjectId for r in cursor.fetchall()]
+        project_ids = [r.SprayPProjectId for r in cursor.fetchall()]
 
         return jsonify({
             "success": True,

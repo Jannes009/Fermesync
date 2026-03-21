@@ -148,6 +148,10 @@
                 {% for v in varieties %}<option value="{{ v.IdVariety }}">{{ v.VarietyCode }} - {{ v.VarietyDescription }}</option>{% endfor %}
               </select>
               <input name="ha" type="number" step="0.01" class="input" placeholder="Hectares" required>
+              <input name="plant_date" type="date" class="input" required>
+              <input name="project_manager" type="text" class="input" placeholder="Project Manager" required>
+              <input name="agriculturist" type="text" class="input" placeholder="Agriculturist" required>
+              <input name="block_no" type="text" class="input" placeholder="Block No" required>
               <button class="btn">Add Project Attribute</button>
             </form>
           </div>
@@ -160,6 +164,10 @@
                   <th>Crop ID</th>
                   <th>Variety ID</th>
                   <th>Hectares</th>
+                  <th>Plant Date</th>
+                  <th>Project Manager</th>
+                  <th>Agriculturist</th>
+                  <th>Block No</th>
                 </tr>
               </thead>
               <tbody>
@@ -169,6 +177,10 @@
                   <td>{{ pa.ProjAttrCropId }}</td>
                   <td>{{ pa.ProjAttrVarietyId }}</td>
                   <td>{{ pa.ProjAttrHa }}</td>
+                  <td>{{ pa.ProjAttrPlantDate }}</td>
+                  <td>{{ pa.ProjAttrProjectManager }}</td>
+                  <td>{{ pa.ProjAttrAgriculturist }}</td>
+                  <td>{{ pa.ProjAttrBlockNo }}</td>
                 </tr>
                 {% endfor %}
               </tbody>

@@ -34,6 +34,7 @@ def setup():
     """)
     varieties = cur.fetchall()
 
+    # Projects
     cur.execute("""
         SELECT ProjectLink, ProjectCode, ProjectName
         FROM [cmn]._uvProject
@@ -54,10 +55,19 @@ def setup():
     """)
     spray_methods = cur.fetchall()
 
+    # Spray Projects
     cur.execute("""
-    SELECT
-    IdProjAttr, ProjAttrProjectId, ProjAttrCropId, ProjAttrVarietyId, ProjAttrHa
-    FROM agr.ProjectAttributes
+        SELECT
+            pa.IdProjAttr,
+            pa.ProjAttrProjectId,
+            pa.ProjAttrCropId,
+            pa.ProjAttrVarietyId,
+            pa.ProjAttrHa,
+            pa.ProjAttrPlantDate,
+            pa.ProjAttrProjectManager,
+            pa.ProjAttrAgriculturist,
+            pa.ProjAttrBlockNo
+        FROM agr.ProjectAttributes pa
     """)
     spray_projects = cur.fetchall()
 
@@ -121,14 +131,18 @@ def add_project_attr():
     crop_id = request.form["crop_id"]
     variety_id = request.form["variety_id"]
     ha = request.form["ha"]
+    plant_date = request.form["plant_date"]
+    project_manager = request.form["project_manager"]
+    agriculturist = request.form["agriculturist"]
+    block_no = request.form["block_no"]
 
     conn = create_db_connection()
     cur = conn.cursor()
     cur.execute("""
         INSERT INTO agr.ProjectAttributes
-        (ProjAttrProjectId, ProjAttrCropId, ProjAttrVarietyId, ProjAttrHa)
-        VALUES (?, ?, ?, ?)
-    """, project_id, crop_id, variety_id, ha)
+        (ProjAttrProjectId, ProjAttrCropId, ProjAttrVarietyId, ProjAttrHa, ProjAttrPlantDate, ProjAttrProjectManager, ProjAttrAgriculturist, ProjAttrBlockNo)
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+    """, project_id, crop_id, variety_id, ha, plant_date, project_manager, agriculturist, block_no)
     conn.commit()
     conn.close()
 

@@ -76,81 +76,42 @@ def fetch_products():
     ]
     return jsonify({"products": products_list})
 
+@inventory_bp.route("/fetch_products_linked_with_warehouse", methods=["GET"])
+@login_required
+def fetch_products_linked_with_warehouse():
+    whse_id = request.args.get("warehouse_id")
+    if not whse_id:
+        return jsonify({"status": "error", "message": "Warehouse ID is required"}), 400
 
-@inventory_bp.route("/SDK/incomplete_issues", methods=["GET"])
-def incomplete_issues():
     conn = create_db_connection()
-    cur = conn.cursor()
+    cursor = conn.cursor()
+    cursor.execute(f"""
+        SELECT StockLink, StockCode, StockDescription,
+        WhseLink, WhseCode, WhseName, QtyOnHand
+        ,StockingUnitId, StockingUnitCode
+        ,PurchaseUnitId, PurchaseUnitCode
+        ,PurchaseUnitCatId
+        FROM [stk]._uvInventoryQty
+        Where WhseLink = ?
+    """, (whse_id,))
+    rows = cursor.fetchall()
+    conn.close()
 
-    sql = """
-        SELECT Distinct IssueId, IssueTimeStamp, ProjectName, IssueToName, IssueWhseId
-        FROM [stk].[_uvStockIssue]
-        WHERE IssueFinalised = 0
-        ORDER BY IssueId, IssueTimeStamp, ProjectName, IssueToName
-    """
-
-    cur.execute(sql)
-    rows = cur.fetchall()
-
-    # build grouped structure: one issue → many lines
-    issues = [{
-        "IssueId": r.IssueId,
-        "IssueTimeStamp": r.IssueTimeStamp,
-        "ProjectName": r.ProjectName,
-        "IssueToName": r.IssueToName,
-        "WhseId": r.IssueWhseId,
-        "isReturned": False,
-        "lines": []
-    } for r in rows
+    products_list = [
+        {
+            "product_link": row.StockLink,
+            "product_code": row.StockCode,
+            "product_desc": row.StockDescription,
+            "WhseLink": row.WhseLink,
+            "WhseCode": row.WhseCode,
+            "WhseName": row.WhseName,
+            "qty_in_whse": row.QtyOnHand,
+            "stocking_uom_id": row.StockingUnitId,
+            "stocking_uom_code": row.StockingUnitCode,
+            "purchase_uom_id": row.PurchaseUnitId,
+            "purchase_uom_code": row.PurchaseUnitCode,
+            "uom_cat_id": row.PurchaseUnitCatId,
+        }
+        for row in rows
     ]
-
-    return jsonify({"issues": issues})
-
-
-@inventory_bp.route("/SDK/incomplete_issue_lines", methods=["GET"])
-def incomplete_issue_lines():
-    if "STOCK_ISSUE" not in current_user.permissions:
-        abort(403)  # Forbidden
-
-    results = []
-    conn = None
-    cursor = None
-    try:
-        conn = create_db_connection()
-        if conn is None:
-            return jsonify([]), 500
-
-        cursor = conn.cursor()
-        cursor.execute("""  
-        Select IssueId, IssLineId, IssLineStockLink, StockDescription, 
-                IssLineUOMID, ISSLineUOMCode, ISSLineQtyIssued 
-        from [stk].[_uvStockIssue]
-        Where IssLineQtyFinalised Is NULL
-        """)
-
-        rows = cursor.fetchall()
-        results = [{
-            "header_id": r.IssueId,
-            "line_id": r.IssLineId,
-            "product_link": r.IssLineStockLink,
-            "product_desc": r.StockDescription,
-            "uom_id": r.IssLineUOMID,
-            "uom_code": r.ISSLineUOMCode,
-            "qty_issued": r.ISSLineQtyIssued
-        } for r in rows]
-    except Exception as e:
-        print("fetch_products_for_return error:", e)
-    finally:
-        if cursor:
-            try:
-                cursor.close()
-            except Exception:
-                pass
-        if conn:
-            try:
-                conn.close()
-            except Exception:
-                pass
-
-    # return {"issue_lines": results}
-    return jsonify({"issue_lines": results})
+    return jsonify({"products": products_list})

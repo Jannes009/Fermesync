@@ -1,510 +1,718 @@
 {% extends 'inventory_base.html' %}
 {% block content %}
+
 <link rel="stylesheet" href="{{ url_for('market.static', filename='color-template.css') }}">
-<!-- Select2 CSS -->
-<link href="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/css/select2.min.css" rel="stylesheet" />
-<!-- SweetAlert2 CSS -->
-<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/sweetalert2@11/dist/sweetalert2.min.css" />
+<link href="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/css/select2.min.css" rel="stylesheet"/>
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/sweetalert2@11/dist/sweetalert2.min.css"/>
+
 <style>
-  :root{
-    --card-bg: var(--container-bg);
-    --muted: var(--secondary-text);
-    --accent: #2563eb;
-    --danger: #dc2626;
-  }
-  .page-wrap{ padding:1.5rem; max-width:1100px; margin:0 auto; }
-  .po-card{
-    background:var(--card-bg);
-    border-radius:12px;
-    box-shadow:0 6px 20px rgba(20,30,50,0.06);
-    padding:1.25rem;
-  }
-  .header{ display:flex; justify-content:space-between; align-items:center; gap:1rem; margin-bottom:1rem; }
-  .title{ font-size:1.15rem; font-weight:700; color:var(--primary-text); }
-  .muted{ color:var(--muted); font-size:0.95rem; }
 
-  label{ font-size:0.9rem; color:var(--muted); margin-bottom:0.25rem; display:block; }
-  input[type="text"], input[type="date"], input[type="number"], select, textarea{
-    width:100%; padding:0.5rem 0.6rem; border-radius:8px; border:1px solid rgba(0,0,0,0.08);
-    background:var(--form-bg, #fff); color:var(--primary-text); box-sizing:border-box;
-  }
+:root{
+  --accent:#2563eb;
+  --danger:#dc2626;
+}
 
-  .lines{ margin-top:0.5rem; display:flex; flex-direction:column; gap:0.75rem; }
+.page-wrap{
+  max-width:1100px;
+  margin:auto;
+  padding:1.5rem;
+}
 
-  /* Product row styling (match IBT issue) */
-  .product-row {
-    display: grid;
-    grid-template-columns: 1fr 90px 80px 40px;
-    align-items: center;
-    gap: 8px;
-    padding: 8px 10px;
-    background: var(--form-bg);
-    border: 1px solid var(--input-border);
-    border-radius: 6px;
-    margin-bottom: 6px;
-    transition: all 0.15s ease;
-    min-height: 44px;
-  }
-  @media (max-width: 480px) {
-    .product-row { grid-template-columns: 1fr 70px 60px 36px; gap:6px; padding:6px 8px; }
-  }
+.po-card{
+  background:var(--container-bg);
+  border-radius:12px;
+  padding:1.3rem;
+  box-shadow:0 6px 20px rgba(0,0,0,0.06);
+}
 
-  .product-select { width:100% !important; padding:8px 10px !important; font-size:0.95rem !important; border-radius:5px !important; }
-  .qty-input {
-    height:36px; font-size:1rem; font-weight:600; text-align:center;
-    border:1px solid var(--input-border); border-radius:6px; padding:4px;
-  }
-  .uom-label {
-    background:#f0f2f5; padding:6px 8px; border-radius:6px; font-size:0.85rem; text-align:center;
-    min-height:36px; display:flex; align-items:center; justify-content:center; color:var(--primary-text);
-  }
-  .ibt-remove-btn {
-    width:36px; height:36px; border:none; border-radius:5px; background:#dc3545; color:#fff;
-    display:flex; align-items:center; justify-content:center; cursor:pointer;
-  }
+.header{
+  margin-bottom:1rem;
+}
 
-  .scouts{ display:flex; flex-direction:column; gap:0.5rem; margin-top:0.5rem; }
-  .scout-row{ display:flex; gap:0.5rem; align-items:flex-start; }
-  .scout-row select{ flex:0 0 240px; max-width:40%; }
-  .scout-row textarea{ flex:1; min-height:40px; }
-  .controls{ display:flex; gap:0.5rem; align-items:center; flex-wrap:wrap; margin-top:0.75rem; }
-  .btn{ padding:0.5rem 0.75rem; border-radius:8px; border:none; cursor:pointer; background:var(--accent); color:#fff; }
-  .btn.ghost{ background:transparent; color:var(--accent); border:1px solid rgba(37,99,235,0.12); }
-  .btn.danger{ background:var(--danger); }
-  .small{ padding:0.35rem 0.5rem; font-size:0.9rem; border-radius:6px; }
+.title{
+  font-size:1.2rem;
+  font-weight:700;
+}
 
-  /* select2 fixes */
-  .select2-container { width:100% !important; }
-  .select2-container--default .select2-selection--single {
-    border-radius:6px; height:36px; padding:2px 6px;
-  }
-  .select2-container--default .select2-selection--single .select2-selection__rendered {
-    line-height:32px;
-  }
+.muted{
+  font-size:.9rem;
+  color:var(--secondary-text);
+}
+
+.section-title{
+  font-weight:700;
+  font-size:.95rem;
+  margin:.8rem 0 .4rem;
+}
+
+/* Application Type */
+
+.app-type-group{
+  display:flex;
+  gap:12px;
+}
+
+.app-type-card{
+  display:flex;
+  align-items:center;
+  gap:10px;
+  padding:10px 14px;
+  border-radius:8px;
+  border:1px solid #e2e8f0;
+  cursor:pointer;
+}
+
+.app-type-card input{
+  accent-color:var(--accent);
+}
+
+/* Inputs */
+
+input,select{
+  width:100%;
+  padding:6px;
+  border-radius:6px;
+  border:1px solid #e2e8f0;
+}
+.select2-container{
+  width:100% !important;
+  max-width:100% !important;
+}
+.select2-container--default .select2-selection--multiple{
+  min-height:38px;
+  overflow:auto;
+  white-space:normal;
+}
+.select2-container--default .select2-selection__choice{
+  white-space:nowrap;
+}
+.select2-container .select2-dropdown {
+  max-width:calc(100vw - 32px) !important;
+  word-wrap: break-word;
+}
+.page-wrap, .po-card {
+  overflow-x:hidden;
+}
+
+/* Project table */
+
+.project-table{
+  border:1px solid #e5e7eb;
+  border-radius:8px;
+  overflow:hidden;
+}
+
+.project-row{
+  display:grid;
+  grid-template-columns:1fr 80px 120px;
+  gap:10px;
+  padding:8px 10px;
+  align-items:center;
+  border-bottom:1px solid #f1f5f9;
+}
+
+.project-header{
+  background:#f8fafc;
+  font-weight:700;
+}
+
+.project-water-input{
+  text-align:center;
+  height:34px;
+}
+
+/* product lines */
+
+.product-row{
+  display:grid;
+  grid-template-columns:1fr;
+  gap:6px;
+  padding:10px;
+  border:1px solid #e5e7eb;
+  border-radius:8px;
+  background:#fff;
+}
+.product-row-top{ display:grid; grid-template-columns:1fr; }
+.product-row-bottom{ display:grid; grid-template-columns: 1fr 90px 36px; gap:8px; align-items:center; }
+
+.product-row-bottom .uom-label{ display:flex; align-items:center; justify-content:center; background:#f0f2f5; border-radius:6px; padding:0 8px; min-height:38px; }
+.product-row-bottom .ibt-remove-btn{ width:36px; height:36px; border-radius:6px; }
+
+@media (max-width: 760px) {
+  .product-row-bottom{ grid-template-columns: 1fr 90px 36px; }
+}
+
+.qty-input{
+  text-align:center;
+}
+
+.uom-label{
+  background:#f0f2f5;
+  border-radius:6px;
+  display:flex;
+  align-items:center;
+  justify-content:center;
+}
+
+.ibt-remove-btn{
+  background:#dc3545;
+  border:none;
+  color:white;
+  border-radius:6px;
+  cursor:pointer;
+}
+
+/* buttons */
+
+.btn{
+  background:var(--accent);
+  color:white;
+  border:none;
+  padding:.5rem .7rem;
+  border-radius:7px;
+  cursor:pointer;
+}
+
+.btn.ghost{
+  background:transparent;
+  border:1px solid #dbeafe;
+  color:var(--accent);
+}
+
+.lines{
+  display:flex;
+  flex-direction:column;
+  gap:8px;
+}
+
+.controls{
+  margin-top:.6rem;
+}
+
 </style>
 
-<div class="page-wrap">
-  <div class="po-card">
-    <div class="header">
-      <div>
-        <div class="title">Create Spray Recommendation</div>
-        <div class="muted">Add header and product lines for the recommendation</div>
-      </div>
-    </div>
 
-    <form method="post" id="spray-form">
-      <section style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:12px;">
-        <div>
-          <label for="spray_date">Date</label>
-          <input id="spray_date" type="date" name="spray_date" required>
-        </div>
-        <div>
-          <label for="project_ids">Project(s)</label>
-          <select id="project_ids" name="project_ids" class="select2" data-placeholder="Select project(s)" multiple required>
-            {% for p in projects %}
-            <option value="{{ p.ProjectLink }}">
-              {{ p.ProjectCode }}
-              {% if p.CropCode %}- {{ p.CropCode }}{% endif %}
-              {% if p.VarietyCode %}/{{ p.VarietyCode }}{% endif %}
-              ({{ p.ProjAttrHa }} ha)
-            </option>
-            {% endfor %}
-          </select>
-        </div>
-      </section>
-        <section style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:12px;">
-  <div>
-    <label>Spray Method</label>
-    <select id="method_id" class="select2" required>
-      <option value="">-- select method --</option>
-      {% for m in methods %}
-        <option value="{{ m.IdSprayMethod }}" {% if loop.first %}selected{% endif %}>
-          {{ m.SprayMethodName }}
-        </option>
-      {% endfor %}
-    </select>
-  </div>
-  <div>
-    <label>Warehouse</label>
-    <select id="warehouse_id" class="select2" required>
-      <option value="">-- select warehouse --</option>
-      {% for w in warehouses %}
-        <option value="{{ w.WhseLink }}">
-          {{ w.WhseDescription }}
-        </option>
-      {% endfor %}
-    </select>
-  </div>
+<div class="page-wrap">
+
+<div class="po-card">
+
+<div class="header" style="display:flex;justify-content:space-between;align-items:flex-start;gap:12px;">
+<div>
+<div class="title">Create Spray Recommendation</div>
+<div class="muted">Define projects and products to generate spray mixes</div>
+</div>
+<div style="text-align:right;">
+  <div style="font-size:1.1rem;font-weight:700;">{{ spray_no }}</div>
+</div>
+</div>
+
+
+<form id="spray-form">
+
+<!-- APPLICATION TYPE -->
+
+<label class="section-title">Application Type</label>
+
+<div class="app-type-group">
+
+<label class="app-type-card">
+<input type="radio" name="application_type" value="spray" checked>
+<div>
+<strong>Spray</strong><br>
+<small>Water based spraying</small>
+</div>
+</label>
+
+<label class="app-type-card">
+<input type="radio" name="application_type" value="direct">
+<div>
+<strong>Direct</strong><br>
+<small>Granular / direct application</small>
+</div>
+</label>
+
+</div>
+
+
+<!-- DATE + DESCRIPTION + PROJECT -->
+
+<section style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-top:12px">
+
+<div>
+<label>Date</label>
+<input type="date" id="spray_date" required>
+</div>
+
+<div>
+<label>Spray Description</label>
+<input type="text" id="spray_description" placeholder="Enter spray description">
+</div>
+
 </section>
 
-      <hr style="border:none;border-top:1px solid rgba(0,0,0,0.06); margin:0.75rem 0;">
+<section style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-top:12px">
+<div>
+<label>Projects</label>
+<select id="project_ids" multiple class="select2">
 
-      <section>
-        <h3 style="margin:0 0 0.5rem 0; font-size:1rem;">Spray Lines</h3>
-        <div class="lines" id="lines"></div>
+{% for p in projects %}
+<option value="{{p.ProjectLink}}" data-ha="{{p.ProjAttrHa}}">
+{{p.ProjectCode}}
+{% if p.CropCode %}- {{p.CropCode}}{% endif %}
+{% if p.VarietyCode %}/{{p.VarietyCode}}{% endif %}
+({{p.ProjAttrHa}} ha)
+</option>
+{% endfor %}
 
-        <div class="controls">
-          <button type="button" class="btn" onclick="addLine()">Add Product</button>
-          <button type="button" class="btn ghost small" onclick="clearLines()">Clear Lines</button>
-        </div>
-      </section>
+</select>
+</div>
+<div id="method-wrapper">
 
-      <hr style="border:none;border-top:1px solid rgba(0,0,0,0.06); margin:0.75rem 0;">
-      <div style="display:flex; justify-content:flex-end; gap:0.5rem;">
-        <button type="submit" class="btn">Save Recommendation</button>
-      </div>
-    </form>
-  </div>
-<hr>
-<h3 style="margin-top:1rem;">Mix Preview</h3>
+<label>Spray Method</label>
+<select id="method_id" class="select2">
+<option value="">Select method</option>
+{% for m in methods %}
+<option value="{{m.IdSprayMethod}}">{{m.SprayMethodName}}</option>
+{% endfor %}
+</select>
+</div>
+</section>
+
+<!-- PROJECT CONFIG TABLE -->
+
+<div id="project-configs" style="margin-top:10px"></div>
+
+
+<!-- METHOD + WAREHOUSE -->
+
+<section style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-top:10px">
+
+
+
+
+<div>
+
+<label>Warehouse</label>
+
+<select id="warehouse_id" class="select2">
+<option value="" selected disabled>Please select warehouse</option>
+{% for w in warehouses %}
+<option value="{{w.WhseLink}}">{{w.WhseDescription}}</option>
+{% endfor %}
+
+</select>
+
+</div>
+
+<div>
+<label>Scouting Note</label>
+<input id="scouting_note" type="text" maxlength="100" placeholder="Optional scouting note (max 100 chars)">
+</div>
+
+</section>
+
+
+<hr style="margin:12px 0">
+
+
+<!-- PRODUCT LINES -->
+
+<h3>Products</h3>
+
+<div id="lines" class="lines"></div>
+
+<div class="controls">
+<button type="button" class="btn" onclick="addLine()">Add Product</button>
+<button type="button" class="btn ghost" onclick="clearLines()">Clear</button>
+</div>
+
+
+<hr style="margin:12px 0">
+
+<div style="display:flex;justify-content:flex-end">
+<button type="submit" class="btn">Save Recommendation</button>
+</div>
+
+</form>
+
+</div>
+
+
+<!-- MIX PREVIEW -->
+
+<div id="mix-preview-wrapper" style="margin-top:16px">
+
+<h3>Mix Preview</h3>
+
 <div id="mix-preview"></div>
 
 </div>
 
-<!-- jQuery + Select2 -->
+</div>
+
+
 <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/js/select2.min.js"></script>
-<!-- SweetAlert2 -->
 <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
 
+
 <script>
-/* product options include data-uom attribute for display-only UoM */
-const PRODUCT_OPTIONS = `
-  {% for c in chem_stock %}
-  <option value="{{ c.IdChemStock }}" stock-description="{{ c.StockDescription }}" data-uom="{{ (c.StockingUnitCode if c.StockingUnitCode is defined else '') | e }}">{{ c.StockDescription }}-{{ c.ChemStockActiveIngr }}{% if c.ChemTypeName %} ({{ c.ChemTypeName }}){% endif %}</option>
-  {% endfor %}
-`;
 
-const SCOUT_OPTIONS = `
-  <option value="">-- select scout issue --</option>
-  {% for s in scouts %}
-  <option value="{{ s.IdScoutMstr }}">{{ s.ScoutMstrName }}</option>
-  {% endfor %}
-`;
+/* SELECT2 */
 
-/* initialize select2 within root element (or whole document) */
-function initSelect2(root){
-  const $root = root ? $(root) : $(document);
-  $root.find('select.select2, select.product-select, select.scout-select').each(function(){
-    if (!$(this).hasClass('select2-hidden-accessible')) {
-      $(this).select2({ width: 'resolve', placeholder: $(this).find('option:first').text() || '' });
-      
-      // Auto-focus search when dropdown opens
-      $(this).on('select2:open', function() {
-        setTimeout(() => {
-          document.querySelector('.select2-container--open .select2-search__field')?.focus();
-        }, 0);
-      });
-    }
+$('.select2').select2({width:'100%'}).on('select2:open', function(){
+  setTimeout(()=>{
+    const search = document.querySelector('.select2-container--open .select2-search__field');
+    if(search) search.focus();
+  }, 0);
+});
+
+/* PRODUCT OPTIONS */
+
+let PRODUCT_OPTIONS = "";
+let waterPerHaDefault = null;
+
+async function loadProductsForWarehouse(warehouseId) {
+  if (!warehouseId) {
+    PRODUCT_OPTIONS = "";
+    document.getElementById('lines').innerHTML = '';
+    return;
+  }
+  try {
+    const res = await fetch(`/inventory/fetch_products_linked_with_warehouse?warehouse_id=${warehouseId}`);
+    const data = await res.json();
+    const products = data.products || [];
+    PRODUCT_OPTIONS = products.map(p => `
+      <option value="${p.product_link}" data-uom-id="${p.stocking_uom_id || ''}" data-uom="${p.stocking_uom_code || ''}">
+        ${p.product_code} - ${p.product_desc}(${p.qty_in_whse} ${p.stocking_uom_code || ''} available)
+      </option>
+    `).join('');
+  } catch (error) {
+    console.error('Failed to load products for warehouse', error);
+    PRODUCT_OPTIONS = "";
+  }
+}
+
+
+/* PROJECT CONFIG TABLE */
+
+function updateProjectConfigs(){
+  const ids = $('#project_ids').val() || []
+  const container = document.getElementById('project-configs')
+  container.innerHTML = ''
+
+  if(ids.length === 0) return
+
+  const header = document.createElement('div')
+  header.className = 'project-row project-header'
+  header.innerHTML = `
+  <div>Project</div>
+  <div>Ha</div>
+  <div class="water-col">Water/Ha</div>
+  `
+  container.appendChild(header)
+
+  ids.forEach(id=>{
+    const option = document.querySelector(`#project_ids option[value="${id}"]`)
+    const ha = option.dataset.ha
+    const name = option.textContent
+
+    const row = document.createElement('div')
+    row.className = 'project-row'
+
+    row.innerHTML = `
+    <input type="hidden" name="project_id[]" value="${id}">
+    <input type="hidden" name="project_ha[]" value="${ha}">
+    <div>${name}</div>
+    <div>${ha}</div>
+    <div class="water-col">
+      <input type="number" step="0.01" name="project_water_per_ha[]" class="project-water-input">
+    </div>
+    `
+    row.querySelector('.project-water-input').value = waterPerHaDefault !== null ? waterPerHaDefault : ''
+    container.appendChild(row)
+  })
+  
+  toggleWaterColumn()
+}
+
+
+/* APPLICATION TYPE */
+function getApplicationType(){
+  return document.querySelector('input[name="application_type"]:checked').value
+}
+
+function toggleWaterColumn(){
+  const spray=getApplicationType()==='spray'
+  document.querySelectorAll('.water-col').forEach( el => {
+    el.style.display = spray ? '' : 'none'
+  })
+}
+
+function setQtyPlaceholders(){
+  const spray = getApplicationType() === 'spray';
+  document.querySelectorAll('.qty-input').forEach(input => {
+    input.placeholder = spray ? 'Qty per 100L' : 'Qty per Ha';
   });
 }
 
-/* update UoM label next to qty when product changes */
-$(document).on('change', '.product-select', function(){
-  const uom = $(this).find('option:selected').data('uom') || '';
-  const row = $(this).closest('.product-row');
-  row.find('.uom-label').text(uom || '');
-});
+function toggleMethodAndPreview(){
+  const spray=getApplicationType()==='spray'
+  document.getElementById('method-wrapper').style.display = spray ? '' : 'none'
+  document.getElementById('mix-preview-wrapper').style.display = spray ? '' : 'none'
+  setQtyPlaceholders();
+}
 
-/* add/remove lines */
-let lineIndex = 0;
+
+/* PRODUCT LINES */
+
+let lineIndex=0
+
 function addLine(){
-  const idx = lineIndex++;
-  const container = document.createElement('div');
-  container.className = 'product-row';
-  container.dataset.index = idx;
-  container.innerHTML = `
-    <div class="product-select-wrapper">
-      <label class="sr-only">Product</label>
-      <select name="product_${idx}" class="product-select select2">${PRODUCT_OPTIONS}</select>
-    </div>
-    <div>
-      <label class="sr-only">Qty(per HA)</label>
-      <input type="number" step="0.01" name="qty_${idx}" class="qty-input" placeholder="Qty" required>
-    </div>
-    <div>
-      <label class="sr-only">UoM</label>
-      <div class="uom-label"></div>
-    </div>
-    <div>
-      <button type="button" class="ibt-remove-btn" onclick="removeLine(this)">✕</button>
-    </div>
+  if (!document.getElementById('warehouse_id').value) {
+    Swal.fire('Select Warehouse', 'Please select a warehouse before adding product lines.', 'warning');
+    return;
+  }
+  const row=document.createElement('div')
+  row.className='product-row'
 
-    <div class="scouts" id="scouts_${idx}">
-      <div style="display:flex;justify-content:flex-end;margin-top:6px;">
-        <button type="button" class="btn ghost small" onclick="addScout(${idx})">Add Scout</button>
-      </div>
-    </div>
+  row.innerHTML=`
+  <input type="hidden" name="line_uom_id[]" class="uom-id" value="">
+  <div class="product-row-top">
+    <div class="product-select-wrapper"><select class="product-select">${PRODUCT_OPTIONS}</select></div>
+  </div>
+  <div class="product-row-bottom">
+    <input type="number" step="0.01" class="qty-input" placeholder="Qty per 100L">
+    <div class="uom-label"></div>
+    <button type="button" class="ibt-remove-btn" onclick="this.parentElement.parentElement.remove(); fetchPreview();">✕</button>
+  </div>
+  `
+  document.getElementById('lines').appendChild(row)
+  setQtyPlaceholders();
+  const select2el = $(row).find('.product-select').select2({width:'100%'});
+  const selected = row.querySelector('.product-select').selectedOptions?.[0];
+  row.querySelector('.uom-label').textContent = selected?.dataset.uom || '';
+  select2el.on('change', function(){
+    const sel = this.selectedOptions?.[0];
+    row.querySelector('.uom-label').textContent = sel?.dataset.uom || '';
+    row.querySelector('.uom-id').value = sel?.dataset.uomId || '';
+    fetchPreview();
+  });
+  if (!PRODUCT_OPTIONS) {
+    row.querySelector('.product-select').innerHTML = '<option value="">Select warehouse first</option>';
+    row.querySelector('.qty-input').disabled = true;
+  }
 
-    <input type="hidden" name="line_index[]" value="${idx}">
-  `;
-  document.getElementById('lines').appendChild(container);
-  initSelect2(container);
-  // trigger change to set initial UoM
-  $(container).find('.product-select').trigger('change');
-}
-
-function removeLine(btn){
-  const row = btn.closest('.product-row');
-  if(row) row.remove();
-}
-
-/* scouting rows (as before) */
-function addScout(lineIdx){
-  const container = document.getElementById(`scouts_${lineIdx}`);
-  if(!container) return;
-  const row = document.createElement('div');
-  row.className = 'scout-row';
-  row.innerHTML = `
-    <select name="scout_${lineIdx}_id[]" class="select2 scout-select">${SCOUT_OPTIONS}</select>
-    <button type="button" class="btn danger small" onclick="removeScout(this)">Remove</button>
-  `;
-  container.appendChild(row);
-  initSelect2(row);
-}
-
-function removeScout(btn){
-  const row = btn.closest('.scout-row');
-  if(row) row.remove();
+  select2el.on('select2:open', function(){
+    setTimeout(()=>{
+      const search = document.querySelector('.select2-container--open .select2-search__field');
+      if(search) search.focus();
+    }, 0);
+  });
 }
 
 function clearLines(){
+  document.getElementById('lines').innerHTML=''
+  fetchPreview();
+}
+
+function collectFormData(){
+  const appType = getApplicationType();
+  const methodId = document.getElementById('method_id').value;
+  const methodName = document.getElementById('method_id').selectedOptions?.[0]?.text || '';
+  const warehouseId = document.getElementById('warehouse_id').value;
+
+  const projects=[];
+  const projectIds = document.querySelectorAll('input[name="project_id[]"]');
+  const projectHas = document.querySelectorAll('input[name="project_ha[]"]');
+  const projectWaters = document.querySelectorAll('input[name="project_water_per_ha[]"]');
+
+  for(let i = 0; i < projectIds.length; i++){
+    projects.push({
+      project_id: projectIds[i].value,
+      ha: parseFloat(projectHas[i]?.value||0)||0,
+      water_per_ha: appType==='spray' ? parseFloat(projectWaters[i]?.value||0)||0 : null
+    });
+  }
+
+  const lines = [];
+  document.querySelectorAll('.product-row').forEach(row=>{
+    const select = row.querySelector('.product-select');
+    const product = select?.value;
+    const option = select?.selectedOptions?.[0];
+    const qty = parseFloat(row.querySelector('.qty-input')?.value || 0);
+    if(!product || !qty) return;
+    const productText = option?.text || '';
+    const [product_code, ...descParts] = productText.split(' - ');
+    lines.push({
+      stock_id: product,
+      product_code: product_code ? product_code.trim() : '',
+      stock_description: descParts.join(' - ').trim() || productText,
+      uom_id: option?.dataset.uomId || '',
+      uom: option?.dataset.uom || '',
+      qty: qty,
+      qty_type: appType === 'spray' ? 'per100l' : 'perha'
+    });
+  });
+
+  return {
+    application_type: appType,
+    method_id: methodId,
+    method_name: methodName,
+    warehouse_id: warehouseId,
+    spray_description: document.getElementById('spray_description').value || '',
+    projects: projects,
+    lines: lines
+  };
+}
+
+function renderPreview(data, appType){
+  const wrapper = document.getElementById('mix-preview-wrapper');
+  if(appType!=='spray'){
+    wrapper.style.display = 'none';
+    return;
+  }
+  wrapper.style.display = 'block';
+
+  if(!data.mixes || data.mixes.length===0){
+    document.getElementById('mix-preview').innerHTML = '<div style="font-size:.9rem;color:#6b7280;">No mix preview yet.</div>';
+    return;
+  }
+
+  let html = `<div style="margin-bottom:8px;font-size:.95rem;">Method: <strong>${data.method_name || 'N/A'}</strong> | Total Ha: <strong>${data.total_ha}</strong> | Total Water: <strong>${data.total_water} L</strong> | Mixes: <strong>${data.number_of_mixes}</strong></div>`;
+  data.mixes.forEach(mix=>{
+    html += `<div style="border:1px solid #e5e7eb;border-radius:8px;padding:8px;margin-bottom:8px;"><strong>Mix ${mix.mix_no}</strong><div>${mix.ha} Ha | ${mix.water} L</div><table style="width:100%;border-collapse:collapse;margin-top:6px;"><thead><tr><th align="left">Product</th><th align="right">Qty</th></tr></thead><tbody>`;
+    mix.products.forEach(p=>{
+      const productLabel = p.product_code ? `${p.product_code} - ${p.stock_description || ''}` : `${p.stock_description || p.stock_id}`;
+      html += `<tr><td>${productLabel}</td><td align="right">${p.qty} ${p.uom||''}</td></tr>`;
+    });
+    html += '</tbody></table></div>';
+  });
+  document.getElementById('mix-preview').innerHTML=html;
+}
+
+function fetchPreview(){
+  const data = collectFormData();
+  const appType = data.application_type;
+
+  if(appType !== 'spray'){
+    document.getElementById('mix-preview-wrapper').style.display = 'none';
+    return;
+  }
+
+  if(!data.projects.length || !data.lines.length || !data.method_id){
+    document.getElementById('mix-preview').innerHTML = '<div style="font-size:.9rem;color:#6b7280;">Complete spray details to view mix preview.</div>';
+    document.getElementById('mix-preview-wrapper').style.display = 'block';
+    return;
+  }
+
+  fetch('/agri/spray-recommendation/preview',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(data)})
+    .then(r=>r.json()).then(result=>renderPreview(result,appType)).catch(()=>{
+      document.getElementById('mix-preview').innerHTML='<div style="color:#b91c1c;">Preview error.</div>';
+    });
+}
+
+/* EVENTS */
+$('#project_ids').on('change', () => { updateProjectConfigs(); fetchPreview();});
+$('input[name="application_type"]').on('change', () => { updateProjectConfigs(); toggleMethodAndPreview(); fetchPreview();});
+$('#warehouse_id').on('change', async function(){
+  const wid = this.value;
+  await loadProductsForWarehouse(wid);
   document.getElementById('lines').innerHTML = '';
-  lineIndex = 0;
-}
-
-document.addEventListener('DOMContentLoaded', function(){
-  initSelect2();
   addLine();
+  fetchPreview();
 });
-</script>
-<script>
+$('#toggle-scouting').on('click', () => {
+  const ta = document.getElementById('scouting_note');
+  ta.style.display = ta.style.display === 'none' ? 'block' : 'none';
+  if (ta.style.display !== 'none') ta.focus();
+});
+$('#method_id').on('change', function(){
+  fetchMethodWater();
+  fetchPreview();
+});
+$('#lines').on('input', '.qty-input', fetchPreview);
+$('#lines').on('change', '.product-select', function(){
+  const row = this.closest('.product-row');
+  const selected = this.selectedOptions?.[0];
+  if(row && selected){
+    row.querySelector('.uom-label').textContent = selected.dataset.uom || '';
+  }
+  fetchPreview();
+});
+document.getElementById('project-configs').addEventListener('input', function(e){
+  if(e.target.matches('.project-water-input')) fetchPreview();
+});
 
-function collectFormData() {
+function fetchMethodWater(){
+  const methodId = document.getElementById('method_id').value;
+  const waterInputs = document.querySelectorAll('.project-water-input');
 
-    const project_ids = $('#project_ids').val() || [];
-    const method_id = document.getElementById("method_id").value;
-
-    const lines = [];
-
-    document.querySelectorAll(".product-row").forEach(row => {
-
-        const productId = row.querySelector(".product-select").value;
-        const productDescription = row.querySelector(".product-select option:checked").getAttribute("stock-description") || '';
-        const uom = row.querySelector(".product-select option:checked").dataset.uom || '';
-        const qty = row.querySelector(".qty-input").value;
-
-        if (productId && qty && parseFloat(qty) > 0) {
-            lines.push({
-                stock_id: productId,
-                stock_description: productDescription,
-                uom: uom,
-                qty_per_ha: qty
-            });
-        }
-    });
-
-    return {
-        project_ids: project_ids,
-        method_id: method_id,
-        lines: lines
-    };
-}
-
-function fetchPreview() {
-
-    const data = collectFormData();
-
-    if (!data.project_ids || data.project_ids.length === 0 || !data.method_id || data.lines.length === 0) {
-        document.getElementById("mix-preview").innerHTML = "";
-        return;
-    }
-
-    fetch("/agri/spray-recommendation/preview", {
-        method: "POST",
-        headers: {"Content-Type": "application/json"},
-        body: JSON.stringify(data)
-    })
-    .then(res => res.json())
-    .then(data => renderPreview(data));
-}
-
-function renderPreview(data) {
-
-    if (!data.mixes || data.mixes.length === 0) {
-        document.getElementById("mix-preview").innerHTML = "";
-        return;
-    }
-
-    let html = `
-        <div style="margin-bottom:8px;">
-            Total Ha: <strong>${data.total_ha}</strong> |
-            Total Water: <strong>${data.total_water} L</strong> |
-            Mixes: <strong>${data.number_of_mixes}</strong>
-        </div>
-    `;
-
-    data.mixes.forEach(mix => {
-
-        html += `
-        <div style="border:1px solid #e5e7eb;padding:10px;border-radius:8px;margin-bottom:8px;">
-            <strong>Mix ${mix.mix_no}</strong>
-            <div>${mix.ha} Ha | ${mix.water} L</div>
-            <table style="width:100%;margin-top:6px;">
-                <thead>
-                    <tr>
-                        <th align="left">Product</th>
-                        <th align="right">Qty</th>
-                    </tr>
-                </thead>
-                <tbody>
-        `;
-
-        mix.products.forEach(p => {
-            html += `
-                <tr>
-                    <td>${p.stock_description || p.stock_id}</td>
-                    <td align="right">${p.qty} ${p.uom || ''}</td>
-                </tr>
-            `;
+  fetch(`/agri/spray-recommendation/method-water/${methodId}`)
+    .then(r => r.json())
+    .then(result => {
+      if(result.water_per_ha !== null){
+        waterPerHaDefault = result.water_per_ha;
+        waterInputs.forEach(input => {
+          input.value = result.water_per_ha;
         });
-
-        html += `
-                </tbody>
-            </table>
-        </div>
-        `;
+      } 
+    })
+    .catch((e) => {
+      console.error('Failed to fetch method water per ha', e);
     });
-
-    document.getElementById("mix-preview").innerHTML = html;
 }
 
-document.addEventListener("change", function(e){
-    if (
-        e.target.matches("#project_ids") ||
-        e.target.matches("#method_id") ||
-        e.target.matches(".product-select") ||
-        e.target.matches(".qty-input")
-    ){
-        fetchPreview();
+
+/* INIT */
+// Start with no product line until warehouse is selected
+updateProjectConfigs();
+toggleMethodAndPreview();
+fetchPreview();
+
+document.getElementById('spray-form').addEventListener('submit', function(event){
+  event.preventDefault();
+  const data = collectFormData();
+  console.log(data)
+  data.spray_date = document.getElementById('spray_date').value;
+  data.scouting_note = document.getElementById('scouting_note').value || '';
+
+  if(!data.spray_date){
+    Swal.fire('Error', 'Please select a spray date.', 'error');
+    return;
+  }
+
+  if(!data.projects.length){
+    Swal.fire('Error', 'Please select at least one project.', 'error');
+    return;
+  }
+
+  if(data.application_type === 'spray' && !data.method_id){
+    Swal.fire('Error', 'Please select spray method for spray application.', 'error');
+    return;
+  }
+
+  fetch('/agri/spray-recommendation/create', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(data)
+  })
+  .then(r => r.json())
+  .then(result => {
+    if(result.success){
+      Swal.fire('Success', result.message || 'Saved successfully.', 'success');
+      // optionally reset form
+      // window.location.href = '/agri/spray-recommendations-summary';
+    } else {
+      Swal.fire('Error', result.message || 'Save failed.', 'error');
     }
+  })
+  .catch(err => {
+    console.error(err);
+    Swal.fire('Error', 'Unexpected error saving recommendation.', 'error');
+  });
 });
 
-document.addEventListener("input", function(e){
-    if (e.target.matches(".qty-input")){
-        fetchPreview();
-    }
-});
-
-// Handle form submission with fetch and SweetAlert
-document.addEventListener('DOMContentLoaded', function() {
-    const form = document.getElementById('spray-form');
-    if (!form) {
-        console.error('Spray form not found');
-        return;
-    }
-    
-    form.addEventListener('submit', async function(e) {
-        e.preventDefault();
-        console.log('Form submission started');
-        
-        // Validate all required fields
-        const sprayDate = document.getElementById('spray_date').value;
-        const projectIds = $('#project_ids').val() || [];
-        const methodId = document.getElementById('method_id').value;
-        const warehouseId = document.getElementById('warehouse_id').value;
-        
-        if (!sprayDate) {
-            Swal.fire({
-                icon: 'warning',
-                title: 'Missing Field',
-                text: 'Please select a Date.',
-                confirmButtonColor: '#f59e0b'
-            });
-            return;
-        }
-        
-        if (!projectIds || projectIds.length === 0) {
-            Swal.fire({
-                icon: 'warning',
-                title: 'Missing Field',
-                text: 'Please select at least one project.',
-                confirmButtonColor: '#f59e0b'
-            });
-            return;
-        }
-        
-        if (!methodId || methodId === '') {
-            Swal.fire({
-                icon: 'warning',
-                title: 'Missing Field',
-                text: 'Please select a Spray Method.',
-                confirmButtonColor: '#f59e0b'
-            });
-            return;
-        }
-
-        if (!warehouseId || warehouseId === '') {
-            Swal.fire({
-                icon: 'warning',
-                title: 'Missing Field',
-                text: 'Please select a Warehouse.',
-                confirmButtonColor: '#f59e0b'
-            });
-            return;
-        }
-        
-        console.log('All validations passed. Submitting form.');
-        
-        const formData = new FormData(this);
-        // Explicitly add method_id to ensure it's included
-        formData.append('method_id', methodId);
-        formData.append('warehouse_id', warehouseId);
-        
-        console.log('FormData prepared. Sending to server...');
-        
-        try {
-            const response = await fetch('/agri/spray-recommendation/create', {
-                method: 'POST',
-                body: formData
-            });
-            
-            console.log('Response received. Status:', response.status);
-            
-            const data = await response.json();
-            console.log('Response data:', data);
-            
-            if (data.success) {
-                Swal.fire({
-                    icon: 'success',
-                    title: 'Success!',
-                    text: data.message,
-                    confirmButtonColor: '#10b981'
-                }).then(() => {
-                    // Clear form and reload
-                    document.getElementById('spray-form').reset();
-                    clearLines();
-                    location.reload();
-                });
-            } else {
-                Swal.fire({
-                    icon: 'error',
-                    title: 'Error!',
-                    text: data.message,
-                    confirmButtonColor: '#ef4444'
-                });
-            }
-        } catch (error) {
-            console.error('Error during fetch:', error);
-            Swal.fire({
-                icon: 'error',
-                title: 'Error!',
-                text: 'An unexpected error occurred. Please try again. Check browser console for details.',
-                confirmButtonColor: '#ef4444'
-            });
-        }
-    });
-});
 </script>
 
 

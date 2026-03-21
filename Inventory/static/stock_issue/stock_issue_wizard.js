@@ -1,18 +1,62 @@
 let selectedWarehouse = null;
 let selectedProject = null;
+let selectedSpray = null;
+let issueMode = "project"; // "project" or "spray"
 let productsInWhse = [];
 let projects = [];
+let sprays = [];
 let lines = [];
 let lineIndex = 0;
+
+function getUrlParams() {
+  const params = {};
+  window.location.search.replace(/^[?]/, '').split('&').forEach(pair => {
+    if (!pair) return;
+    const [key, value] = pair.split('=');
+    params[decodeURIComponent(key)] = value ? decodeURIComponent(value) : '';
+  });
+  return params;
+}
+
+async function initializeFromUrl() {
+  const params = getUrlParams();
+  if (!params.spray_id) return;
+
+  // Set spray mode and reload spray list
+  document.getElementById('mode-spray').checked = true;
+  handleModeChange();
+
+  // Set selected spray after load
+  const spraySelect = document.getElementById('spray-select');
+  if (spraySelect.querySelector(`option[value="${params.spray_id}"]`)) {
+    $(spraySelect).val(params.spray_id).trigger('change');
+    selectedSpray = params.spray_id;
+  }
+
+  if (params.step === '2' || params.step === '3') {
+    await step1Next();
+    if (params.step === '3') {
+      // Immediately show step 3 summary after validating step 2 lines
+      document.getElementById('step-2').classList.add('hidden');
+      document.getElementById('step-3').classList.remove('hidden');
+    }
+  }
+}
 
 document.addEventListener("DOMContentLoaded", async () => {
   await loadWarehouses();
   await loadProjects();
-  loadPrefill();
+  await loadSprayInstructions();
+  handleModeChange(); // Set initial visibility based on default mode
 
   $("#warehouse-select").select2({ placeholder: "Select warehouse", allowClear: true, width: '100%' });
   $("#project-select").select2({ placeholder: "Select project", allowClear: true, width: '100%' });
+  $("#spray-select").select2({ placeholder: "Select spray instruction", allowClear: true, width: '100%' });
 
+  // Event listeners
+  document.querySelectorAll('input[name="issue-mode"]').forEach(radio => {
+    radio.addEventListener("change", handleModeChange);
+  });
   document.getElementById("step1-next").onclick = step1Next;
   document.getElementById("add-line").onclick = addLine;
   document.getElementById("step2-next").onclick = step2Next;
@@ -26,54 +70,33 @@ document.addEventListener("DOMContentLoaded", async () => {
     document.getElementById("step-3").classList.add("hidden");
     document.getElementById("step-2").classList.remove("hidden");
   };
-  document.getElementById("project-per-line").addEventListener("change", function () {
 
-    const enabled = this.checked;
-
-    document.querySelectorAll(".line-project-wrapper").forEach(el => {
-        el.classList.toggle("hidden", !enabled);
-    });
-
-});
+  await initializeFromUrl();
 });
 
-function loadPrefill() {
+function handleModeChange() {
+    issueMode = document.querySelector('input[name="issue-mode"]:checked').value;
+    const warehouseContainer = document.getElementById("warehouse-select-container");
+    const projectContainer = document.getElementById("project-select-container");
+    const sprayContainer = document.getElementById("spray-select-container");
 
-    const params = new URLSearchParams(window.location.search);
-
-    const warehouse = params.get("warehouse");
-    const project = params.get("project");
-    const lines = params.get("lines");
-    const next = params.get("next");
-
-    if (next) {
-        window.nextUrl = decodeURIComponent(next);
+    if (issueMode === "project") {
+        warehouseContainer.style.display = "flex";
+        projectContainer.style.display = "flex";
+        sprayContainer.style.display = "none";
+        document.getElementById("warehouse-select").focus();
+    } else {
+        warehouseContainer.style.display = "none";
+        projectContainer.style.display = "none";
+        sprayContainer.style.display = "flex";
+        document.getElementById("spray-select").focus();
     }
-
-    if (warehouse) {
-        selectedWarehouse = Number(warehouse);
-        $("#warehouse-select").val(warehouse).trigger("change");
-    }
-
-    if (project) {
-        selectedProject = project;
-        $("#project-select").val(project).trigger("change");
-    }
-
-    if (lines) {
-        window.prefillLines = JSON.parse(lines);
-    }
-    if (warehouse && project && lines) {
-        step1Next();
-    }
-
 }
 
 async function loadWarehouses() {
     const warehouses = await fetch(`/inventory/fetch_warehouses`)
     .then(r => r.json())
     .then(d => d.warehouses);
-    console.log("Warehouses", warehouses);
     const select = document.getElementById('warehouse-select');
     select.innerHTML = '<option></option>';
     warehouses.forEach(w => select.insertAdjacentHTML('beforeend', `<option value="${w.id}">${w.name}</option>`));
@@ -83,60 +106,121 @@ async function loadProjects() {
   projects = await fetch(`/inventory/fetch_projects`)
     .then(r => r.json())
     .then(d => d.prod_projects);
-    console.log("Projects", projects);
 
   const select = document.getElementById('project-select');
   select.innerHTML = '<option></option>';
   projects.forEach(p => select.insertAdjacentHTML('beforeend', `<option value="${p.id}">${p.name}</option>`));
 }
 
+async function loadSprayInstructions() {
+  try {
+    sprays = await fetch(`/agri/fetch_spray_for_issue`)
+      .then(r => r.json())
+      .then(d => d.sprays || []);
+
+    const select = document.getElementById('spray-select');
+    select.innerHTML = '<option></option>';
+    sprays.forEach(s => select.insertAdjacentHTML('beforeend', `<option value="${s.spray_id}" data-warehouse="${s.warehouse_id}">${s.spray_no} - ${s.description}</option>`));
+  } catch (error) {
+    console.error("Error loading spray instructions:", error);
+    sprays = [];
+  }
+}
+
 async function step1Next() {
-    selectedWarehouse = Number($("#warehouse-select").val());
-    selectedProject = $("#project-select").val();
+    if (issueMode === "project") {
+        selectedWarehouse = Number($("#warehouse-select").val());
+        
+        if (!selectedWarehouse) {
+            Swal.fire("Missing Information", "Please select a warehouse.", "warning");
+            return;
+        }
 
-    if (!selectedWarehouse || !selectedProject) {
-        Swal.fire("Missing Information", "Please complete all fields.", "warning");
-        return;
-    }
+        selectedProject = $("#project-select").val();
+        if (!selectedProject) {
+            Swal.fire("Missing Information", "Please select a project.", "warning");
+            return;
+        }
+        productsInWhse = await fetch(`/inventory/SDK/fetch_products_in_warehouse?warehouse_id=${selectedWarehouse}`)
+            .then(res => res.json())
+            .then(d => d.products);
 
-    productsInWhse = await fetch(`/inventory/SDK/fetch_products_in_warehouse?warehouse_id=${selectedWarehouse}`)
-        .then(res => res.json())
-        .then(d => d.products);
-    console.log("Products in selected warehouse", productsInWhse);
-
-    if (!productsInWhse.length) {
-        Swal.fire("No Products", "No products available in this warehouse.", "warning");
-        return;
+        if (!productsInWhse.length) {
+            Swal.fire("No Products", "No products available in this warehouse.", "warning");
+            return;
+        }
+    } else if (issueMode === "spray") {
+        selectedSpray = $("#spray-select").val();
+        if (!selectedSpray) {
+            Swal.fire("Missing Information", "Please select a spray instruction.", "warning");
+            return;
+        }
+        
+        // Get warehouse from spray instruction data attribute
+        const sprayOption = document.querySelector(`#spray-select option[value="${selectedSpray}"]`);
+        console.log(sprayOption);
+        selectedWarehouse = Number(sprayOption.getAttribute("data-warehouse"));
+        
+        if (selectedWarehouse === undefined || isNaN(selectedWarehouse)) {
+            Swal.fire("Error", "Could not retrieve warehouse from spray instruction.", "error");
+            return;
+        }
+        
+        productsInWhse = await fetch(`/agri/fetch_products_for_spray?spray_id=${selectedSpray}`)
+            .then(res => res.json())
+            .then(d => d.products);
+        if (!productsInWhse || !productsInWhse.length) {
+            Swal.fire("No Products", "No products available for this spray instruction.", "warning");
+            return;
+        }
     }
 
     document.getElementById("ibt-lines").innerHTML = "";
-    addLine();
+    console.log("Products in warehouse:", productsInWhse);
+    
+    // If spray mode, auto-populate lines from spray
+    if (issueMode === "spray") {
+        await populateSprayLines();
+    } else {
+        addLine(); // For project mode, start with one empty line
+    }
+
     document.getElementById("step-1").classList.add("hidden");
     document.getElementById("step-2").classList.remove("hidden");
-    if (window.prefillLines) {
-
-    document.getElementById("ibt-lines").innerHTML = "";
-
-    window.prefillLines.forEach(l => {
-        addLine();
-
-        const row = document.querySelector("#ibt-lines .issue-line:last-child");
-
-        const select = row.querySelector(".product-select");
-        const qty = row.querySelector(".qty-input");
-
-        $(select).val(l.product_link).trigger("change");
-        qty.value = l.qty;
-    });
-
 }
+
+async function populateSprayLines() {
+    try {
+        const response = await fetch(`/agri/fetch_spray_products?spray_id=${selectedSpray}`);
+        const data = await response.json();
+        const sprayLines = data.spray_products || [];
+        
+        // Create lines from spray
+        sprayLines.forEach(sprayLine => {
+            addLine();
+            const row = document.querySelector("#ibt-lines .issue-line:last-child");
+            const select = row.querySelector(".product-select");
+            const qty = row.querySelector(".qty-input");
+            const uomLabel = row.querySelector(".stock-unit");
+            
+            // Find the product in warehouse by stock_id
+            const product = productsInWhse.find(p => p.product_link === sprayLine.stock_id);
+            if (product) {
+                $(select).val(sprayLine.stock_id).trigger("change");
+                qty.value = sprayLine.total_qty;
+                uomLabel.textContent = product.stocking_uom_code || "EA";
+            }
+        });
+    } catch (error) {
+        console.error("Error populating spray lines:", error);
+        Swal.fire("Error", "Failed to populate lines from spray instruction.", "error");
+    }
 }
 
 function addLine() {
     lineIndex++;
     const lineId = `issue-line-${lineIndex}`;
     const selectId = `product-select-${lineIndex}`;
-
 
     const lineDiv = document.createElement("div");
     lineDiv.className = "issue-line";
@@ -163,19 +247,10 @@ function addLine() {
 
         </div>
 
-        <div class="line-project-wrapper hidden">
-            <select class="line-project-select">
-                <option></option>
-            </select>
-        </div>
-
     </div>
     `;
 
     document.getElementById("ibt-lines").appendChild(lineDiv);
-
-    const projectSelect = lineDiv.querySelector(".line-project-select");
-    populateLineProjects(projectSelect);
 
     // Remove button handler
     const removeBtn = lineDiv.querySelector('.issue-remove-btn');
@@ -186,17 +261,13 @@ function addLine() {
 
     // Populate select2 dropdown
     populateProductSelect(selectId, lineDiv);
-    if (document.getElementById("project-per-line").checked) {
-    lineDiv.querySelector(".line-project-wrapper").classList.remove("hidden");
-}
 }
 
 function populateProductSelect(selectId, lineDiv) {
     const select = document.getElementById(selectId);
 
     productsInWhse.forEach(p => {
-        console.log(p)
-        const opt = new Option(`${p.product_desc} (${p.qty_in_whse} ${p.stocking_uom_code})`, p.product_link, false, false);
+        const opt = new Option(`${p.product_desc} (${p.qty_in_whse} ${p.stocking_uom_code} available)`, p.product_link, false, false);
         const uom = p.stocking_uom_code || "EA";
         $(opt).data("unit", uom);
         $(opt).data("qty", p.qty_in_whse);
@@ -223,26 +294,6 @@ function populateProductSelect(selectId, lineDiv) {
     });
 }
 
-async function populateLineProjects(selectEl) {
-
-    projects.forEach(p => {
-        const opt = new Option(p.name, p.id, false, false);
-        selectEl.appendChild(opt);
-    });
-
-    $(selectEl).select2({
-        placeholder: "Project",
-        allowClear: true,
-        width: "100%",
-        dropdownParent: document.body
-    });
-
-    // set default
-    if (selectedProject) {
-        $(selectEl).val(selectedProject).trigger("change");
-    }
-}
-
 async function step2Next() {
   lines = [];
   const allLines = document.querySelectorAll("#ibt-lines .product-row");
@@ -252,8 +303,6 @@ async function step2Next() {
     const selectEl = row.querySelector(".product-select");
     const selectedValue = $(selectEl).val();
     const qtyInput = row.querySelector(".qty-input");
-    const lineProjectSelect = row.querySelector(".line-project-select");
-    const lineProject = $(lineProjectSelect).val();
 
     if (!selectedValue || !qtyInput.value || parseFloat(qtyInput.value) <= 0) {
       Swal.fire("Missing Input", "Please select product and enter quantity for all lines.", "warning");
@@ -261,7 +310,6 @@ async function step2Next() {
     }
 
     const product = productsInWhse.find(p => String(p.product_link) === String(selectedValue));
-    console.log(product, selectedValue);
     if (!product) { Swal.fire("Product Error", "Selected product not found.", "error"); return; }
 
     const qtyRequested = parseFloat(qtyInput.value);
@@ -271,7 +319,6 @@ async function step2Next() {
       return;
     }
 
-
     lines.push({
       product_link: product.product_link,
       product_code: product.product_code,
@@ -280,13 +327,16 @@ async function step2Next() {
       uom_id: product.stocking_uom_id,
       uom_code: product.stocking_uom_code,
       qty_issued: qtyRequested,
-      project: lineProject || selectedProject
+      project: issueMode === "project" ? selectedProject : null
     });
   }
 
   const box = document.getElementById("summary-box");
+  const sourceLabel = issueMode === "spray" ? "Spray Instruction" : "Project";
+  const sourceValue = issueMode === "spray" ? selectedSpray : selectedProject;
+  
   box.innerHTML = `<p><strong>Warehouse:</strong> ${selectedWarehouse}</p>
-                   <p><strong>Project:</strong> ${selectedProject}</p>
+                   <p><strong>${sourceLabel}:</strong> ${sourceValue}</p>
                    <hr><h4>Products</h4>`;
   lines.forEach(l => box.innerHTML += `<div class="line-row"><div>${l.product_desc}</div><div>Issue: ${l.qty_issued} ${l.uom_code}</div></div>`);
 
@@ -314,6 +364,9 @@ async function submitIssue() {
   headers: { "Content-Type": "application/json" },
   body: JSON.stringify({
       warehouse: selectedWarehouse,
+      issue_mode: issueMode,
+      project: issueMode === "project" ? selectedProject : null,
+      spray_id: issueMode === "spray" ? selectedSpray : null,
       order_final: orderFinal,
       created_at: new Date().toISOString(),
       lines: lines.map(l => ({
@@ -337,9 +390,8 @@ async function submitIssue() {
     );
     return;
     }
-    // fetchProducts(); // Refresh local products
-    // fetchIncompleteIssues(); // Refresh incomplete issues
-    await Swal.fire("Success", "Stock issue created", "success");
+    const issueNo = data.issue_no ? `Issue ${data.issue_no}` : `Issue #${data.issue_id}`;
+    await Swal.fire("Success", `${issueNo} created`, "success");
     if (window.nextUrl) {
         window.location.href = window.nextUrl;
     } else {

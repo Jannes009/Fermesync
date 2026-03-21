@@ -3,6 +3,7 @@ flask-auth/
 env/
 __pycache__/
 build/
+venv/
 
 # Ignore python configuration and instance files
 config.py

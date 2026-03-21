@@ -493,15 +493,33 @@
         <!-- STEP 1 -->
         <section id="step-1" class="card hidden">
             <h3>Step 1 – Issue Details</h3>
+            <div class="form-row" style="flex-direction: column; align-items: flex-start; gap: 8px;">
+                <label style="width: auto; font-weight: 600; margin-bottom: 4px;">Mode</label>
+                <div style="display: flex; gap: 20px; align-items: center;">
+                    <label style="display: flex; align-items: center; gap: 8px; font-weight: normal; width: auto; cursor: pointer;">
+                        <input type="radio" id="mode-project" name="issue-mode" value="project" checked>
+                        <span>Project-based</span>
+                    </label>
+                    <label style="display: flex; align-items: center; gap: 8px; font-weight: normal; width: auto; cursor: pointer;">
+                        <input type="radio" id="mode-spray" name="issue-mode" value="spray">
+                        <span>Spray Instruction</span>
+                    </label>
+                </div>
+            </div>
 
-            <div class="form-row">
+            <div class="form-row" id="warehouse-select-container">
                 <label>Warehouse</label>
                 <select id="warehouse-select"><option>Loading…</option></select>
             </div>
 
-            <div class="form-row">
+            <div class="form-row" id="project-select-container">
                 <label>Project</label>
                 <select id="project-select"><option>Select…</option></select>
+            </div>
+
+            <div class="form-row hidden" id="spray-select-container">
+                <label>Spray Instruction</label>
+                <select id="spray-select"><option>Select…</option></select>
             </div>
 
             <button id="step1-next" type="button" class="btn-primary">
@@ -513,13 +531,6 @@
         <!-- STEP 2 -->
         <section id="step-2" class="card hidden">
             <h3>Step 2 – Add Products</h3>
-
-            <div class="form-row" style="display: flex; gap: 12px; align-items: center; margin-bottom: 16px; padding: 12px; background: var(--form-bg); border-radius: 6px; border: 1px solid var(--input-border);">
-                <input type="checkbox" id="project-per-line">
-                <label for="project-per-line" style="font-weight: normal; margin: 0; cursor: pointer;">
-                    Select project for each line (optional)
-                </label>
-            </div>
 
             <div id="ibt-lines"></div>
 

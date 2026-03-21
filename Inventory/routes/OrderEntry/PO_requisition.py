@@ -193,7 +193,7 @@ def fetch_suppliers():
 
     cursor.execute("""
     SELECT DISTINCT DCLink, Name
-    FROM common_uvSuppliers
+    FROM cmn._uvSuppliers
     """)
     suppliers = [
         {"id": row[0], "name": row[1]}

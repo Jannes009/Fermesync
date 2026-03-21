@@ -11,6 +11,7 @@
     border-radius:16px;
     box-shadow:0 8px 30px rgba(20,30,50,0.06);
     padding:1.75rem;
+    position: relative;
 }
 
 /* Header Layout */
@@ -50,24 +51,6 @@
     align-items:flex-end;
 }
 
-.control-group{
-    display:flex;
-    flex-direction:column;
-}
-
-.control-group label{
-    font-size:0.8rem;
-    margin-bottom:4px;
-    color:var(--secondary-text);
-}
-
-.control-group select{
-    padding:7px 10px;
-    border-radius:8px;
-    border:1px solid #ddd;
-    min-width:160px;
-}
-
 /* Mix Cards */
 .mix-card{
     background:white;
@@ -96,6 +79,11 @@ table{
     border-collapse:collapse;
 }
 
+.mix-body{ 
+    padding:1rem;
+    overflow-x:auto;
+}
+
 th{
     text-align:left;
     font-size:0.8rem;
@@ -119,38 +107,47 @@ tr:hover{
     padding:2rem;
     color:var(--secondary-text);
 }
+
+.print-btn {
+    position: absolute;
+    top: 1rem;
+    right: 1rem;
+    padding: 0.75rem;
+    background: white;
+    border: 1px solid #ccc;
+    border-radius: 4px;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.print-btn:hover {
+    background: #f0f0f0;
+}
+
+.print-icon {
+    width: 24px;
+    height: 24px;
+    fill: black;
+}
 </style>
 
 <div class="page-wrap">
   <div class="main-card">
+    <button class="print-btn" onclick="window.open('/agri/spray/{{ spray_id }}/instruction_pdf', '_blank')">
+      <svg class="print-icon" viewBox="0 0 24 24">
+        <path d="M19 8H5c-1.66 0-3 1.34-3 3v6h4v4h12v-4h4v-6c0-1.66-1.34-3-3-3zM16 19H8v-5h8v5zm3-7c-.55 0-1-.45-1-1s.45-1 1-1 1 .45 1 1-.45 1-1 1zm-1-9H6v4h12V3z"/>
+      </svg>
+    </button>
 
     <h2 style="margin-bottom:1.5rem;">Spray Execution</h2>
 
     <!-- HEADER -->
     <div id="spray-header"></div>
 
-    <!-- CONTROLS -->
-    <div class="controls">
-        <div class="control-group">
-            <label>Method</label>
-            <select id="method-select"></select>
-        </div>
-
-        <div class="control-group">
-            <label>Operator</label>
-            <select id="operator-select"></select>
-        </div>
-
-        <div class="control-group">
-            <label>Weather</label>
-            <select id="weather-select">
-                <option>Sunny</option>
-                <option>Cloudy</option>
-                <option>Windy</option>
-                <option>Rain Threat</option>
-            </select>
-        </div>
-    </div>
+    <!-- ISSUED STOCK -->
+    <div id="issued-stock-section" style="margin-top:1rem;"></div>
 
     <!-- MIX TABLE -->
     <div id="mix-container"></div>
@@ -162,34 +159,67 @@ tr:hover{
 
 const sprayId = {{ spray_id }};
 let sprayData = null;
+let sprayType = null;
 
 document.addEventListener("DOMContentLoaded", async () => {
     await renderMixHeader();
     await renderMixLines();
-    populateMethods();
-    document.getElementById("method-select").addEventListener("change", recalculate);
+    await renderIssuedStock();
+    const methodSelect = document.getElementById("method-select");
+    if (methodSelect) {
+        methodSelect.addEventListener("change", recalculate);
+    }
 });
 
 
 async function renderMixHeader() {
-    header = await fetchHeader(sprayId)
+    const header = await fetchHeader(sprayId);
 
-    // store header globally for other actions (eg. prefill stock issue)
     sprayData = sprayData || {};
     sprayData.header = header;
+    sprayType = header.application_type;
 
-    document.getElementById("spray-header").innerHTML = `
-        <div class="header-grid">
-            <div class="header-item"><h4>Projects</h4><p>${header.projects}</p></div>
-            <div class="header-item"><h4>Spray Date</h4><p>${header.spray_date}</p></div>
-            <div class="header-item"><h4>Manager</h4><p>${header.manager_id}</p></div>
-            <div class="header-item"><h4>Agriculturist</h4><p>${header.agriculturist_id}</p></div>
-            <div class="header-item"><h4>Hectares</h4><p>${header.ha}</p></div>
-            <div class="header-item"><h4>Method</h4><p>${header.method_name}</p></div>
-            <div class="header-item"><h4>Tank Size</h4><p>${header.tank_size} L</p></div>
-            <div class="header-item"><h4>Water / Ha</h4><p>${header.water_per_ha} L</p></div>
+    const projectRows = (header.projects || []).map(p => {
+        if (header.application_type === 'spray') {
+            return `<tr><td>${p.project_code}</td><td>${p.ha.toFixed(2)}</td><td>${p.water_per_ha ? p.water_per_ha + ' L' : 'N/A'}</td></tr>`;
+        }
+        return `<tr><td>${p.project_code}</td><td>${p.ha.toFixed(2)}</td></tr>`;
+    }).join('');
+
+    let html = `
+        <div style="display:flex;justify-content:space-between;align-items:start;gap:1rem;flex-wrap:wrap;">
+            <div class="header-grid" style="flex:1;min-width:250px;">
+                <div class="header-item"><h4>Spray Date</h4><p>${header.spray_date}</p></div>
+                <div class="header-item"><h4>Application Type</h4><p>${header.application_type}</p></div>
+                <div class="header-item"><h4>Total Hectares</h4><p>${(header.total_ha || 0).toFixed(2)}</p></div>
+            </div>
+            <div style="min-width:220px;text-align:right;">
+                <div style="font-size:1.2rem;font-weight:700;margin-bottom:0.4rem;">${header.spray_no || 'N/A'}</div>
+                <div style="font-size:0.9rem;color:#333;">${header.spray_description || 'No description'}</div>
+            </div>
+        </div>
+
+        <div class="mix-card" style="margin-top:1rem;">
+            <div class="mix-header" style="background:linear-gradient(90deg, #1f7c3c, #155a2d);">
+                <span>Projects</span>
+                <span>${(header.projects || []).length} project(s)</span>
+            </div>
+            <div class="mix-body" style="padding:0.75rem;">
+                <table style="margin-bottom:0;">
+                    <thead>
+                        <tr><th>Project</th><th>Hectares</th>${header.application_type === 'spray' ? '<th>Water / Ha</th>' : ''}</tr>
+                    </thead>
+                    <tbody>
+                        ${projectRows || '<tr><td colspan="' + (header.application_type === 'spray' ? '3' : '2') + '">No projects found</td></tr>'}
+                    </tbody>
+                </table>
+            </div>
         </div>
     `;
+
+    // Method card moved to mix section using line-level method info
+
+    document.getElementById("spray-header").innerHTML = html;
 }
 
 async function renderMixLines() {
@@ -198,6 +228,23 @@ async function renderMixLines() {
     // store lines for recalc / prefill
     sprayData = sprayData || {};
     sprayData.lines = lines;
+
+    let methodHtml = '';
+    if (lines && lines.length > 0 && lines[0].method_name) {
+        methodHtml = `
+            <div class="mix-card" style="margin-top:0.8rem;">
+                <div class="mix-header" style="background:linear-gradient(90deg, #2d6cdf, #1e4fa3);">
+                    <span>Spray Method</span>
+                    <span>${lines[0].method_name || 'Unknown'}</span>
+                </div>
+                <div class="mix-body">
+                    <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:0.5rem;">
+                        <div><strong>Tank Size:</strong> ${lines[0].method_tank_size ? lines[0].method_tank_size + ' L' : 'N/A'}</div>
+                    </div>
+                </div>
+            </div>
+        `;
+    }
 
     if (!lines || lines.length === 0) {
         document.getElementById("mix-container").innerHTML = 
@@ -214,16 +261,51 @@ async function renderMixLines() {
     });
 
     let html = "";
+    if (sprayType === 'spray') {
+        Object.keys(mixGroups).sort((a,b)=>a-b).forEach(mixNo => {
+            const mixLines = mixGroups[mixNo];
+            const firstLine = mixLines[0];
 
-    Object.keys(mixGroups).sort((a,b)=>a-b).forEach(mixNo => {
-        const mixLines = mixGroups[mixNo];
-        const firstLine = mixLines[0];
+            html += `
+                <div class="mix-card">
+                    <div class="mix-header">
+                        <span>Mix ${mixNo}</span>
+                        <span>${firstLine.water} L Water | ${firstLine.mix_ha} Ha</span>
+                    </div>
+                    <div class="mix-body">
+                        <table>
+                            <thead>
+                                <tr>
+                                    <th>Stock Code</th>
+                                    <th>Active Ingredient</th>
+                                    <th>Qty</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+            `;
 
+            mixLines.forEach(line => {
+                html += `
+                    <tr>
+                        <td>${line.stock_code || '-'}</td>
+                        <td>${line.active_ingr || '-'}</td>
+                        <td><b>${line.qty || '-'} ${line.uom || ''}</b></td>
+                    </tr>
+                `;
+            });
+
+            html += `
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            `;
+        });
+    } else if (sprayType === 'direct') {
         html += `
             <div class="mix-card">
                 <div class="mix-header">
-                    <span>Mix ${mixNo}</span>
-                    <span>${firstLine.water} L Water | ${firstLine.qty_per_ha} Ha</span>
+                    <span>Direct Application</span>
                 </div>
                 <div class="mix-body">
                     <table>
@@ -234,71 +316,31 @@ async function renderMixLines() {
                                 <th>Reason</th>
                                 <th>Withholding</th>
                                 <th>Qty</th>
-                                <th>Actions</th>
                             </tr>
                         </thead>
                         <tbody>
         `;
-
-        mixLines.forEach(line => {
+        lines.forEach(line => {
             html += `
                 <tr>
                     <td>${line.stock_code || '-'}</td>
                     <td>${line.active_ingr || '-'}</td>
                     <td>${line.reason || '-'}</td>
                     <td>${line.withholding_period || '-'}</td>
-                    <td><b>${line.qty || '-'}</b></td>
-                    <td>
-                      <button class="btn-primary create-issue-btn" data-stock="${line.stock_id}" data-qty="${line.qty}">Create Issue</button>
-                      <button class="btn-secondary" onclick="window.location.href='/agri/spray/${sprayId}'">View</button>
-                    </td>
+                    <td><b>${line.total_qty || '-'} ${line.uom || ''}</b></td>
                 </tr>
             `;
         });
-
         html += `
                         </tbody>
                     </table>
                 </div>
             </div>
         `;
-    });
+    }
+    
 
-    document.getElementById("mix-container").innerHTML = html;
-    // Attach create-issue handlers
-    document.querySelectorAll('.create-issue-btn').forEach(btn => {
-        btn.addEventListener('click', function (e) {
-            e.stopPropagation();
-            const product_link = Number(this.dataset.stock);
-            const qty = Number(this.dataset.qty);
-            const header = sprayData && sprayData.header ? sprayData.header : {};
-            const warehouse = header.warehouse_id || '';
-            const project = header.project_id || '';
-            const linesParam = encodeURIComponent(JSON.stringify([{ product_link: product_link, qty: qty }]));
-            const next = encodeURIComponent(window.location.href);
-            let url = `/inventory/SDK/stock_issue_wizard?lines=${linesParam}&next=${next}`;
-            if (warehouse) url += `&warehouse=${warehouse}`;
-            if (project) url += `&project=${project}`;
-            window.open(url, '_blank');
-        });
-    });
-}
-
-
-/* ---- YOUR ORIGINAL FUNCTIONS BELOW (UNCHANGED) ---- */
-
-function populateMethods(){
-    fetch("/agri/spray/methods")
-    .then(res => res.json())
-    .then(methods => {
-        const select = document.getElementById("method-select");
-        methods.forEach(m => {
-            const option = document.createElement("option");
-            option.value = m.id;
-            option.textContent = m.method_name;
-            select.appendChild(option);
-        });
-    });
+    document.getElementById("mix-container").innerHTML = methodHtml + html;
 }
 
 async function fetchHeader(sprayId) {
@@ -311,6 +353,62 @@ async function fetchLines(sprayId) {
     return fetch(`/agri/spray/${sprayId}/spray_lines`)
     .then(res => res.json())
     .then(data => data);
+}
+
+async function fetchIssuedStock(sprayId) {
+    return fetch(`/agri/spray/${sprayId}/issued_stock`)
+        .then(res => res.json())
+        .then(data => data.stock_movement || []);
+}
+
+async function renderIssuedStock() {
+    const movement = await fetchIssuedStock(sprayId);
+    const container = document.getElementById("issued-stock-section");
+
+    if (!movement || movement.length === 0) {
+        container.innerHTML = `
+            <div class="mix-card">
+                <div class="mix-header" style="background:linear-gradient(90deg, #9f9f9f, #6f6f6f);">
+                    Stock Movement
+                </div>
+                <div class="mix-body no-data">No stock movement found for this spray.</div>
+            </div>
+        `;
+        return;
+    }
+
+    const rows = movement.map(row => `
+            <tr>
+                <td>${row.stock_desc || 'Unknown'}</td>
+                <td>${row.total_qty_on_instruction.toFixed(2)}</td>
+                <td>${row.qty_issued.toFixed(2)}</td>
+                <td>${row.qty_received.toFixed(2)}</td>
+                <td>${row.qty_finalised.toFixed(2)}</td>
+            </tr>
+    `).join("");
+
+    container.innerHTML = `
+        <div class="mix-card">
+            <div class="mix-header" style="background:linear-gradient(90deg, #2f5e9b, #1d436f);">
+                <span>Stock Movement</span>
+                <span>${movement.length} item(s)</span>
+            </div>
+            <div class="mix-body">
+                <table>
+                    <thead>
+                        <tr>
+                            <th>Stock Description</th>
+                            <th>Total Qty on Instruction</th>
+                            <th>Qty Out (Issued)</th>
+                            <th>Qty In (Received)</th>
+                            <th>Qty Finalised</th>
+                        </tr>
+                    </thead>
+                    <tbody>${rows}</tbody>
+                </table>
+            </div>
+        </div>
+    `;
 }
 
 function recalculate() {

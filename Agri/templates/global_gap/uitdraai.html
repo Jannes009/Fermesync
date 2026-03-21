@@ -1,0 +1,142 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Spray Instruction - {{ spray.spray_no }}</title>
+    <style>
+:root {
+  --primary-bg: #f4f6f9;
+  --primary-text: #333333;
+  --container-bg: #ffffff;
+  --table-header-bg: #e9eff7;
+  --table-header-text: #2b3e51;
+  --table-row-even: #f5f7fa;
+  --table-border: #e2e8f0;
+  --logo-color: #2b6cb0;
+  --muted: #4a5568;
+}
+* { margin:0; padding:0; box-sizing:border-box; }
+body { font-family: Arial, sans-serif; color: var(--primary-text); background: var(--primary-bg); line-height:1.4; }
+.container { width:100%; max-width:210mm; margin:0 auto; padding:10mm; background:var(--container-bg); position:relative; }
+.header { border-bottom:2px solid var(--logo-color); padding-bottom:5mm; margin-bottom:5mm; position:relative; }
+.header .title { font-size:20px; font-weight:900; color:var(--primary-text); }
+.header .subtitle { font-size:10px; color:var(--muted); margin-top:2px; }
+.logo {
+  position:absolute;
+  top:0;
+  right:0;
+  width:45px;
+  opacity:0.5;
+  transform: translate(0px, -10px);
+}
+.info-grid { display:grid; grid-template-columns:repeat(3,minmax(0,1fr)); gap:5mm; margin-bottom:5mm; }
+.info-box { border:1px solid var(--table-border); padding:4mm; background:#f9fbfd; border-radius:5px; }
+.info-label { font-size:8px; font-weight:700; color:var(--logo-color); text-transform:uppercase; margin-bottom:1px; }
+.info-value { font-size:10px; color:var(--primary-text); }
+.section-title { font-size:11px; font-weight:700; color:var(--logo-color); margin-top:5mm; margin-bottom:3mm; border-bottom:1px solid var(--logo-color); padding-bottom:1mm; }
+.projects-table, .products-table { width:100%; border-collapse:collapse; font-size:8px; margin-bottom:5mm; }
+.projects-table th, .products-table th { background:var(--logo-color); color:#fff; padding:2mm; text-align:left; }
+.projects-table td, .products-table td { border-bottom:1px solid var(--table-border); padding:2mm; }
+.projects-table tr:nth-child(even), .products-table tr:nth-child(even) { background:var(--table-row-even); }
+.summary-bar { display:flex; justify-content:space-between; font-size:9px; margin-bottom:2mm; padding:2mm; background:#e9eff7; border:1px solid #e0eaf8; }
+.method-info { font-size:10px; margin-bottom:5mm; text-align:center; background:#f0f0f0; padding:3mm; border:1px solid var(--table-border); }
+.compact-signature { display:grid; gap:3mm; margin-top:8mm; border:1px solid var(--table-border); padding:4mm; background:#fafafa; }
+.compact-signature-item { display:grid; grid-template-columns:30mm auto; align-items:center; gap:5mm; font-size:9px; }
+.compact-signature-line { border-bottom:1px solid #333; height:1.2em; width:100%; }
+.compact-created { margin-top:4mm; font-size:9px; color:#333; }
+@media print { body{margin:0; padding:0;} .container{page-break-after:always;} }
+</style>
+</head>
+<body>
+<div class="container">
+  <div class="header">
+    <div class="title">SPRAY INSTRUCTION {{ spray.spray_no }}</div>
+    <div class="subtitle">Date: {{ spray.date }}</div>
+    {% if spray.logo_data %}
+      <img class="logo" src="{{ spray.logo_data }}" alt="Logo">
+    {% endif %}
+  </div>
+
+  <div class="info-grid">
+    <div class="info-box">
+      <div class="info-label">Farm</div>
+      <div class="info-value">{{ spray.farm_name }}</div>
+    </div>
+    <div class="info-box">
+      <div class="info-label">Water per Ha</div>
+      <div class="info-value">{{ spray.water_per_ha }} L/ha</div>
+    </div>
+    <div class="info-box">
+      <div class="info-label">Description</div>
+      <div class="info-value">{{ spray.description or "N/A" }}</div>
+    </div>
+  </div>
+
+  <div class="section-title">Project Details</div>
+  <div class="summary-bar">
+    <div><strong>Total Projects:</strong> {{ spray.projects | length }}</div>
+    <div><strong>Total Ha:</strong> {{ spray.total_ha }} ha</div>
+  </div>
+  <table class="projects-table">
+    <thead>
+      <tr>
+        <th>Project</th><th>Block</th><th>Crop</th><th>Variety</th>
+        <th>Plant Date</th><th>Ha</th><th>Water/Ha</th><th>Agriculturist</th><th>Manager</th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for project in spray.projects %}
+      <tr>
+        <td>{{ project.code }}</td>
+        <td>{{ project.block_no }}</td>
+        <td>{{ project.crop }}</td>
+        <td>{{ project.variety }}</td>
+        <td>{{ project.plant_date }}</td>
+        <td>{{ project.ha }}</td>
+        <td>{{ project.water_per_ha }}</td>
+        <td>{{ project.agriculturist }}</td>
+        <td>{{ project.project_manager }}</td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+
+  {% if spray.mixes %}
+  <div class="method-info"><strong>Method:</strong> {{ spray.method_name }} | <strong>Tank Size:</strong> {{ spray.tank_size }} L</div>
+  <div class="section-title">Spray Mixes</div>
+  {% for mix_no,mix in spray.mixes.items() %}
+  <div class="mix-card">
+    <div class="mix-header">Mix {{ mix_no }} - {{ mix.water }} L | {{ mix.ha }} ha</div>
+    <div class="mix-body">
+      <table class="products-table">
+        <thead>
+          <tr>
+            <th>Product Code</th><th>Active Ingredient</th><th>Quantity</th><th>Unit</th><th>Withholding</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for line in mix.lines %}
+          <tr>
+            <td>{{ line.code }}</td><td>{{ line.ingredient }}</td><td>{{ line.qty }}</td><td>{{ line.uom }}</td><td>{{ line.withholding_period }}</td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  </div>
+  {% endfor %}
+  {% endif %}
+
+  <div class="compact-signature">
+    <div class="compact-signature-item">
+      <span>Operator Name:</span><span class="compact-signature-line">&nbsp;</span>
+    </div>
+    <div class="compact-signature-item">
+      <span>Operator Signature:</span><span class="compact-signature-line">&nbsp;</span>
+    </div>
+    <div class="compact-created">Created by: <strong>{{ spray.created_by }}</strong></div>
+  </div>
+</div>
+</body>
+</html>
