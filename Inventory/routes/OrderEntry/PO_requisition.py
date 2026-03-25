@@ -174,7 +174,7 @@ def fetch_item_uom_warehouse():
     if row.bUOMItem == 1:
         cursor.execute("""
             SELECT idUnits, cUnitCode
-            FROM [common].[_uvUOM]
+            FROM [cmn].[_uvUOM]
             WHERE iUnitCategoryID = ?
         """, row.PurchaseUnitCatId)
 

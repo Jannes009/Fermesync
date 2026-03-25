@@ -110,8 +110,8 @@ def create_purchase_order(header, lines, header_udfs, line_udfs):
             # -------------------------
             # Header UDFs
             # -------------------------
-            for field_name, field_value in header_udfs.items():
-                PO.SetUserField(field_name, field_value)
+            # for field_name, field_value in header_udfs.items():
+            #     PO.SetUserField(field_name, field_value)
 
             # -------------------------
             # Lines
@@ -136,8 +136,8 @@ def create_purchase_order(header, lines, header_udfs, line_udfs):
 
 
                 # Line UDFs
-                for field_name, field_value in line_udfs.get(line["LineId"], {}).items():
-                    OD.SetUserField(field_name, field_value)
+                # for field_name, field_value in line_udfs.get(line["LineId"], {}).items():
+                #     OD.SetUserField(field_name, field_value)
 
             # -------------------------
             # Save

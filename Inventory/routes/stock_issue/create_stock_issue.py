@@ -65,7 +65,7 @@ def generate_stock_issue_for_project(project_id, warehouse_id, lines_payload, or
     # Create issue header (schema may not have project/spray columns yet)
     cursor.execute("""
     INSERT INTO [stk].IssueHeader( 
-    IssueWhseId, IssueByUserId, [IssueTimeStamp])
+    IssWhseId, IssByUserId, [IssTimeStamp])
     OUTPUT INSERTED.IdIssue 
     VALUES (?, ?, ?) """, 
     (warehouse_id, current_user.id, created_at))
@@ -85,7 +85,7 @@ def generate_stock_issue_for_project(project_id, warehouse_id, lines_payload, or
     if order_final:
         cursor.execute("""
             UPDATE [stk].IssueHeader
-            SET IssueFinalised = 1, IssueFinalisedByUserId = ?, IssueFinalisedTimeStamp = GETDATE()
+            SET IssFinalised = 1, IssFinalisedByUserId = ?, IssFinalisedTimeStamp = GETDATE()
             WHERE IdIssue = ?
         """, (current_user.id, stock_issue_id))
 
@@ -93,26 +93,23 @@ def generate_stock_issue_for_project(project_id, warehouse_id, lines_payload, or
     for line in lines_payload:       
         cursor.execute("""
             INSERT INTO [stk].IssueLines(
-                IssLineHeaderId, IssLineProjectId, IssLineStockLink, IssLineStockCode, IssLineQtyIssued, IssLineUOMId, IssLineUOMCode
+                IssLineIssueId, IssLineProjectId, IssLineStockLink, IssLineQtyIssued, IssLineUOMId
             )
-            OUTPUT INSERTED.IssLineId
-            VALUES (?, ?, ?, ?, ?, ?, ?)
+            OUTPUT INSERTED.IdIssLine
+            VALUES (?, ?, ?, ?, ?)
         """, (
             stock_issue_id,
             project_id,
             line.get("product_link"),
-            line.get("product_code"),
             line.get("qty_to_issue"),
-            line.get("uom_id"),
-            line.get("uom_code"),
-        ))
+            line.get("uom_id"),        ))
         last_line_id = cursor.fetchone()[0]
         # If final, set IssLineQtyFinalised for that newly-inserted line
         if order_final:          
             cursor.execute("""
                 UPDATE [stk].IssueLines
                 SET IssLineQtyFinalised = ?
-                WHERE IssLineId = ?
+                WHERE IdIssLine = ?
             """, (line.get("qty_to_issue"), last_line_id))
             submission_line = {
                 "line_id": last_line_id,
@@ -130,8 +127,8 @@ def generate_stock_issue_for_project(project_id, warehouse_id, lines_payload, or
             print(order_number,stock_issue_id)
             cursor.execute("""
                 UPDATE [stk].IssueHeader
-                SET IssueInvoiceNo = ?
-                WHERE IssueId = ?
+                SET IssInvoiceNo = ?
+                WHERE IdIssue = ?
             """, (order_number, stock_issue_id))
             emit_event(
                 event_code="STOCK_ISSUE",
@@ -147,8 +144,8 @@ def generate_stock_issue_for_project(project_id, warehouse_id, lines_payload, or
             }), 400
 
     cursor.execute("""
-    Select IssLineId, IssLineStockLink from [stk].[IssueLines]
-    Where IssLineHeaderId = ?
+    Select IdIssLine, IssLineStockLink from [stk].[IssueLines]
+    Where IssLineIssueId = ?
     """, (stock_issue_id,))
     issue_lines = cursor.fetchall()
     conn.commit()

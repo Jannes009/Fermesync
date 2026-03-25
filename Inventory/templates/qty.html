@@ -1,0 +1,1456 @@
+{% extends "inventory_base.html" %}
+{% block content %}
+
+<link rel="stylesheet" href="{{ url_for('static', filename='color-template.css') }}">
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+
+<div class="inventory-dashboard">
+  <!-- ===================== -->
+  <!-- HEADER SECTION -->
+  <!-- ===================== -->
+  <div class="dashboard-header">
+    <div class="header-content">
+      <div class="header-title">
+        <i class="fas fa-boxes header-icon"></i>
+        <div>
+          <h1>Warehouse Stock Quantity Center</h1>
+          <p class="header-subtitle">Monitor stock levels, upcoming demand, and warehouse operations</p>
+        </div>
+      </div>
+
+      <div class="header-actions">
+        <div class="select-container">
+          <label for="warehouseSelect">Warehouse</label>
+          <select id="warehouseSelect" onchange="onWarehouseChange()">
+            {% for wh in warehouses %}
+            <option value="{{ wh.WhseLink }}" {% if wh.WhseLink == selected_warehouse %}selected{% endif %}>
+              {{ wh.WhseCode }} - {{ wh.WhseName }}
+            </option>
+            {% endfor %}
+          </select>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ===================== -->
+  <!-- DASHBOARD GRID -->
+  <!-- ===================== -->
+  <div class="dashboard-grid">
+
+    <!-- ⚠️ NEEDS ATTENTION -->
+    <div class="dashboard-card attention-card">
+      <div class="card-header">
+        <div class="card-title">
+          <i class="fas fa-exclamation-triangle"></i>
+          Below Reorder Level
+        </div>
+        <div class="card-badge">{{ low_stock|length }}</div>
+      </div>
+
+      <div class="card-content">
+        {% if low_stock %}
+        <div class="attention-grid">
+          {% for item in low_stock %}
+          <div class="attention-item critical" onclick="openProductModal({{ item.StockLink }})">
+            <div class="item-header">
+              <strong class="item-code">{{ item.StockCode }}</strong>
+            </div>
+            <div class="item-desc">{{ item.StockDescription }}</div>
+            <div class="demand-metrics" style="margin-top:10px;">
+              <div class="metric metric-danger">
+                <span class="metric-label">Reorder Level</span>
+                <span class="metric-value">{{ item.ReorderLevel }}</span>
+              </div>
+              <div class="metric metric-warning">
+                <span class="metric-label">Available</span>
+                <span class="metric-value">{{ item.Available }}</span>
+              </div>
+              <div class="metric metric-success">
+                <span class="metric-label">On PO</span>
+                <span class="metric-value">{{ item.QtyOnPo }}</span>
+              </div>
+            </div>
+          </div>
+          {% endfor %}
+        </div>
+        {% else %}
+        <div class="empty-state">
+          <i class="fas fa-check-circle"></i>
+          <span>All stock levels are adequate</span>
+        </div>
+        {% endif %}
+      </div>
+    </div>
+
+    <!-- 📅 UPCOMING DEMAND -->
+    <div class="dashboard-card demand-card">
+      <div class="card-header">
+        <div class="card-title">
+          <i class="fas fa-calendar-alt"></i>
+          Upcoming Spray Instructions
+        </div>
+        <div class="card-subtitle">Stock requirements for scheduled spray activities</div>
+      </div>
+
+      <div class="card-content">
+        <div class="demand-container">
+          {% for group in demand_groups %}
+          <div class="demand-group collapsed">
+            <div class="demand-group-header" onclick="toggleDemandGroup(this)">
+              <div class="header-content">
+                <h3>{{ group.label }}</h3>
+                <span class="item-count">{{ (group['items'] | rejectattr('Status', 'equalto', 'sufficient') | list | length) }} items need attention</span>
+              </div>
+              <div class="collapse-icon">
+                <i class="fas fa-chevron-down"></i>
+              </div>
+            </div>
+
+            <div class="demand-items">
+              {% set short_need_order_items = group['items'] | selectattr('Status', 'equalto', 'short_need_order') | list %}
+              {% set short_on_order_items = group['items'] | selectattr('Status', 'equalto', 'short_on_order') | list %}
+              {% set sufficient_items = group['items'] | selectattr('Status', 'equalto', 'sufficient') | list %}
+
+              {% if short_need_order_items %}
+              <div class="demand-subgroup">
+                <h4>Need to Reorder</h4>
+                {% for item in short_need_order_items %}
+                <div class="demand-item {{ item.Status }}" onclick="openProductModal({{ item.StockLink }})">
+                  <div class="demand-item-header">
+                    <div class="product-info">
+                      <strong class="product-code">{{ item.StockCode }}</strong>
+                      <span class="product-desc">{{ item.StockDescription }}</span>
+                    </div>
+                    <div class="demand-metrics">
+                      <div class="metric">
+                        <span class="metric-label">Required</span>
+                        <span class="metric-value">{{ item.Required }}</span>
+                      </div>
+                      <div class="metric metric-danger">
+                        <span class="metric-label">Available</span>
+                        <span class="metric-value">{{ item.Available }}</span>
+                      </div>
+                      <div class="metric metric-danger">
+                        <span class="metric-label">On PO</span>
+                        <span class="metric-value">{{ item.OnPO }}</span>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+                {% endfor %}
+              </div>
+              {% endif %}
+
+              {% if short_on_order_items %}
+              <div class="demand-subgroup">
+                <h4>On Order</h4>
+                {% for item in short_on_order_items %}
+                <div class="demand-item {{ item.Status }}" onclick="openProductModal({{ item.StockLink }})">
+                  <div class="demand-item-header">
+                    <div class="product-info">
+                      <strong class="product-code">{{ item.StockCode }}</strong>
+                      <span class="product-desc">{{ item.StockDescription }}</span>
+                    </div>
+                    <div class="demand-metrics">
+                      <div class="metric">
+                        <span class="metric-label">Required</span>
+                        <span class="metric-value">{{ item.Required }}</span>
+                      </div>
+                      <div class="metric metric-warning">
+                        <span class="metric-label">Available</span>
+                        <span class="metric-value">{{ item.Available }}</span>
+                      </div>
+                      <div class="metric metric-warning">
+                        <span class="metric-label">On PO</span>
+                        <span class="metric-value">{{ item.OnPO }}</span>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+                {% endfor %}
+              </div>
+              {% endif %}
+
+              {% if sufficient_items %}
+              <div class="demand-subgroup sufficient-items hidden">
+                <h4>Sufficient Stock</h4>
+                {% for item in sufficient_items %}
+                <div class="demand-item {{ item.Status }}" onclick="openProductModal({{ item.StockLink }})">
+                  <div class="demand-item-header">
+                    <div class="product-info">
+                      <strong class="product-code">{{ item.StockCode }}</strong>
+                      <span class="product-desc">{{ item.StockDescription }}</span>
+                    </div>
+                    <div class="demand-metrics">
+                      <div class="metric">
+                        <span class="metric-label">Required</span>
+                        <span class="metric-value">{{ item.Required }}</span>
+                      </div>
+                      <div class="metric metric-success">
+                        <span class="metric-label">Available</span>
+                        <span class="metric-value">{{ item.Available }}</span>
+                      </div>
+                      <div class="metric metric-success">
+                        <span class="metric-label">On PO</span>
+                        <span class="metric-value">{{ item.OnPO }}</span>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+                {% endfor %}
+              </div>
+              {% endif %}
+
+              {% if sufficient_items %}
+              <div class="show-sufficient-btn">
+                <button onclick="toggleSufficient(this)">Show Items with Sufficient Stock( {{ sufficient_items|length }} )</button>
+              </div>
+              {% endif %}
+
+              {% if not group['items'] %}
+              <div class="no-demand">
+                <i class="fas fa-check-circle"></i>
+                <span>No upcoming demand for {{ group.label|lower }}</span>
+              </div>
+              {% endif %}
+            </div>
+          </div>
+          {% endfor %}
+
+          {% if not demand_groups %}
+          <div class="no-demand global">
+            <i class="fas fa-calendar-times"></i>
+            <span>No upcoming demand found</span>
+          </div>
+          {% endif %}
+        </div>
+      </div>
+    </div>
+
+    <!-- 📦 WAREHOUSE STOCK -->
+    <div class="dashboard-card stock-card">
+      <div class="card-header">
+        <div class="card-title">
+          <i class="fas fa-warehouse"></i>
+          Warehouse Stock
+        </div>
+        <div class="card-badge">{{ warehouse_stock|length }}</div>
+      </div>
+
+      <div class="card-content">
+        <div class="stock-toolbar">
+        <div class="search-container stock-search">
+            <i class="fas fa-search search-icon"></i>
+            <input type="text" id="stockSearch" placeholder="Search code or description..." onkeyup="filterStockTable()" />
+        </div>
+        </div>
+        <div class="table-container">
+          <table class="stock-table">
+            <thead>
+              <tr>
+                <th>Code</th>
+                <th>Description</th>
+                <th>Category</th>
+                <th>Available</th>
+                <th>On PO</th>
+              </tr>
+            </thead>
+            <tbody>
+              {% for row in warehouse_stock %}
+              <tr onclick="openProductModal({{ row.StockLink }})">
+                <td><strong>{{ row.StockCode }}</strong></td>
+                <td>{{ row.StockDescription }}</td>
+                <td>{{ row.Category }}</td>
+                <td>{{ row.Available }}</td>
+                <td>
+                    {{ row.OnPO }}
+                </td>
+              </tr>
+              {% endfor %}
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+
+  </div>
+</div>
+
+<!-- ===================== -->
+<!-- PRODUCT MODAL (GLOBAL) -->
+<!-- ===================== -->
+<div id="productModal" class="modal hidden">
+  <div class="modal-content">
+
+    <div class="modal-header">
+      <h2>Product Details</h2>
+      <button onclick="closeProductModal()">&times;</button>
+    </div>
+
+    <div class="modal-body">
+
+      <!-- PRODUCT HEADER -->
+      <div class="product-header">
+        <h2 id="stockCode"></h2>
+        <p id="stockDesc"></p>
+      </div>
+
+      <!-- SUMMARY -->
+      <div class="modal-summary">
+        <div class="summary-card">
+          <span>On Hand</span>
+          <strong id="productQtyOnHand">0</strong>
+        </div>
+        <div class="summary-card">
+          <span>On PO</span>
+          <strong id="productQtyOnPo">0</strong>
+        </div>
+        <div class="summary-card">
+          <span>Allocated</span>
+          <strong id="productQtyOnIssues">0</strong>
+        </div>
+      </div>
+
+      <!-- SPRAYS -->
+      <div class="modal-section">
+        <div class="section-header">
+          <i class="fas fa-calendar-alt"></i>
+          <h3>Upcoming Spray Demand</h3>
+        </div>
+
+        <div class="table-container compact">
+          <table class="modal-table">
+            <thead>
+              <tr>
+                <th>Spray</th>
+                <th>Date</th>
+                <th class="text-right">Qty</th>
+              </tr>
+            </thead>
+            <tbody id="spraysBody"></tbody>
+          </table>
+        </div>
+      </div>
+
+      <!-- OTHER WH -->
+      <div class="modal-section">
+        <div class="section-header">
+          <i class="fas fa-warehouse"></i>
+          <h3>Other Warehouses</h3>
+        </div>
+
+        <div class="table-container compact">
+          <table class="modal-table">
+            <thead>
+              <tr>
+                <th>Warehouse</th>
+                <th>Name</th>
+                <th class="text-right">On Hand</th>
+                <th class="text-right">On PO</th>
+              </tr>
+            </thead>
+            <tbody id="otherWarehousesBody"></tbody>
+          </table>
+        </div>
+      </div>
+
+    </div>
+  </div>
+</div>
+<!-- ===================== -->
+<!-- JS -->
+<!-- ===================== -->
+<script>
+function getSelectedWarehouseId() {
+  const el = document.getElementById('warehouseSelect');
+  return el ? parseInt(el.value) : null;
+}
+
+function onWarehouseChange() {
+  const wh = getSelectedWarehouseId();
+  if (!wh) { return; }
+  const url = new URL(window.location.href);
+  url.searchParams.set('whse', wh);
+  window.location.href = url.toString();
+}
+
+function openProductModal(id) {
+  const whse = getSelectedWarehouseId();
+  document.getElementById("productModal").classList.remove("hidden");
+  document.getElementById("stockCode").textContent = "Loading...";
+  document.getElementById("stockDesc").textContent = "";
+
+  const query = whse ? `?whse=${whse}` : '';
+  fetch(`/inventory/get-product/${id}${query}`)
+    .then(res => res.json())
+    .then(data => {
+      document.getElementById("stockCode").textContent = data.StockCode;
+      document.getElementById("stockDesc").textContent = data.StockDescription;
+
+      document.getElementById("productQtyOnHand").textContent = data.QtyOnHand;
+      document.getElementById("productQtyOnPo").textContent = data.QtyOnPo;
+      document.getElementById("productQtyOnIssues").textContent = data.QtyOnIssues;
+
+      const otherBody = document.getElementById("otherWarehousesBody");
+      otherBody.innerHTML = '';
+
+      if (data.OtherWarehouses && data.OtherWarehouses.length) {
+        data.OtherWarehouses.forEach(item => {
+          const row = document.createElement('tr');
+          row.innerHTML = `
+            <td>${item.WhseCode}</td>
+            <td>${item.WhseName}</td>
+            <td>${item.QtyOnHand}</td>
+            <td>${item.QtyOnPo}</td>
+          `;
+          otherBody.appendChild(row);
+        });
+      } else {
+        const row = document.createElement('tr');
+        row.innerHTML = `<td colspan="3" style="text-align:center; color:#6b7280;">No other warehouses found</td>`;
+        otherBody.appendChild(row);
+      }
+      if (data.Sprays && data.Sprays.length) {
+        const spraysBody = document.getElementById("spraysBody");
+        spraysBody.innerHTML = '';
+        data.Sprays.forEach(spray => {
+          const row = document.createElement('tr');
+          row.innerHTML = `
+            <td>${spray.SprayNo || spray.SprayId}</td>
+            <td>${spray.SprayHDate || 'N/A'}</td>
+            <td>${spray.TotalQty}</td>
+          `;
+          spraysBody.appendChild(row);
+        });
+      } else {
+        const spraysBody = document.getElementById("spraysBody");
+        spraysBody.innerHTML = `<tr><td colspan="3" style="text-align:center; color:#6b7280;">No upcoming sprays found</td></tr>`;
+      }
+    });
+}
+
+function closeProductModal() {
+  document.getElementById("productModal").classList.add("hidden");
+}
+
+function toggleDemandGroup(header) {
+  const group = header.closest('.demand-group');
+  group.classList.toggle('collapsed');
+}
+
+function filterStockTable() {
+  const input = document.getElementById("stockSearch");
+  const filter = input.value.toLowerCase();
+  const rows = document.querySelectorAll(".stock-table tbody tr");
+
+  rows.forEach(row => {
+    const code = row.cells[0].textContent.toLowerCase();
+    const desc = row.cells[1].textContent.toLowerCase();
+
+    if (code.includes(filter) || desc.includes(filter)) {
+      row.style.display = "";
+    } else {
+      row.style.display = "none";
+    }
+  });
+}
+
+function toggleSufficient(btn) {
+  const group = btn.closest('.demand-group');
+  const sufficient = group.querySelector('.sufficient-items');
+  if (sufficient.classList.contains('hidden')) {
+    sufficient.classList.remove('hidden');
+    btn.textContent = 'Hide Items with Sufficient Stock';
+  } else {
+    sufficient.classList.add('hidden');
+    btn.textContent = 'Show Items with Sufficient Stock';
+  }
+}
+</script>
+
+<!-- ===================== -->
+<!-- STYLING -->
+<!-- ===================== -->
+<style>
+/* ===================== */
+/* RESET & BASE */
+/* ===================== */
+* {
+  box-sizing: border-box;
+}
+
+.inventory-dashboard {
+  max-width: 1400px;
+  margin: 0 auto;
+  padding: 2rem;
+  background: var(--primary-bg, #f8fafc);
+  min-height: 100vh;
+}
+
+/* ===================== */
+/* DASHBOARD HEADER */
+/* ===================== */
+.dashboard-header {
+  background: linear-gradient(135deg, var(--container-bg, #ffffff) 0%, var(--form-bg, #f8fafc) 100%);
+  border-radius: 16px;
+  padding: 2rem;
+  margin-bottom: 2rem;
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.08);
+  border: 1px solid var(--table-border, #e5e7eb);
+}
+
+.header-content {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 2rem;
+}
+
+.header-title {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+}
+
+.header-icon {
+  font-size: 2.5rem;
+  color: var(--logo-color, #2563eb);
+  background: linear-gradient(135deg, var(--button-bg, #2563eb), var(--button-hover, #1d4ed8));
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+}
+
+.header-title h1 {
+  margin: 0;
+  font-size: 2rem;
+  font-weight: 700;
+  color: var(--primary-text, #1f2937);
+  letter-spacing: -0.025em;
+}
+
+.header-subtitle {
+  margin: 0.5rem 0 0 0;
+  color: var(--secondary-text, #6b7280);
+  font-size: 1rem;
+  font-weight: 400;
+}
+
+.header-actions {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+}
+
+.select-container {
+  display: flex;
+  flex-direction: column;
+  margin-right: 1rem;
+  font-size: 0.85rem;
+  color: var(--secondary-text, #6b7280);
+}
+
+.select-container label {
+  margin-bottom: 0.25rem;
+  font-weight: 600;
+}
+
+.select-container select {
+  border: 2px solid var(--input-border, #d1d5db);
+  border-radius: 12px;
+  padding: 0.55rem 0.75rem;
+  background: var(--form-bg, #ffffff);
+  color: var(--primary-text, #1f2937);
+  min-width: 220px;
+}
+
+.search-container {
+  position: relative;
+  display: flex;
+  align-items: center;
+}
+
+.stock-toolbar {
+  display: flex;
+  justify-content: space-between;
+  margin-bottom: 1rem;
+}
+
+.stock-search {
+  width: 100%;
+  max-width: 420px;
+  position: relative;
+}
+
+.stock-search input {
+  width: 100%;
+  padding: 0.65rem 1rem;
+  border: 2px solid #d1d5db;
+  border-radius: 12px;
+  font-size: 0.94rem;
+  color: #1f2937;
+  transition: border-color 0.2s ease, box-shadow 0.2s ease;
+}
+
+.stock-search input:focus {
+  outline: none;
+  border-color: #2563eb;
+  box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.12);
+}
+
+.search-icon {
+  position: absolute;
+  left: 1rem;
+  color: var(--secondary-text, #6b7280);
+  font-size: 1rem;
+  z-index: 1;
+}
+
+#globalSearch {
+  padding: 0.75rem 1rem 0.75rem 2.5rem;
+  border: 2px solid var(--input-border, #d1d5db);
+  border-radius: 12px;
+  background: var(--form-bg, #ffffff);
+  font-size: 1rem;
+  width: 300px;
+  transition: all 0.2s ease;
+}
+
+#globalSearch:focus {
+  outline: none;
+  border-color: var(--button-bg, #2563eb);
+  box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.1);
+}
+
+.btn-primary {
+  background: linear-gradient(135deg, var(--button-bg, #2563eb), var(--button-hover, #1d4ed8));
+  color: var(--button-text, #ffffff);
+  border: none;
+  padding: 0.75rem 1.5rem;
+  border-radius: 12px;
+  font-size: 1rem;
+  font-weight: 600;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  transition: all 0.2s ease;
+  box-shadow: 0 2px 8px rgba(37, 99, 235, 0.2);
+}
+
+.btn-primary:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 4px 16px rgba(37, 99, 235, 0.3);
+}
+
+/* ===================== */
+/* DASHBOARD GRID */
+/* ===================== */
+.dashboard-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  grid-template-rows: auto auto;
+  gap: 2rem;
+}
+
+.dashboard-card {
+  background: var(--container-bg, #ffffff);
+  border-radius: 16px;
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.08);
+  border: 1px solid var(--table-border, #e5e7eb);
+  overflow: hidden;
+  transition: all 0.3s ease;
+}
+
+.dashboard-card:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.12);
+}
+
+.card-header {
+  padding: 1.5rem 2rem;
+  border-bottom: 2px solid var(--input-border, #e5e7eb);
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.card-title {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  font-size: 1.25rem;
+  font-weight: 600;
+  color: var(--primary-text, #1f2937);
+}
+
+.card-title i {
+  color: var(--logo-color, #2563eb);
+  font-size: 1.25rem;
+}
+
+.card-badge {
+  background: var(--button-bg, #2563eb);
+  color: var(--button-text, #ffffff);
+  padding: 0.25rem 0.75rem;
+  border-radius: 20px;
+  font-size: 0.875rem;
+  font-weight: 600;
+}
+
+.card-subtitle {
+  color: var(--secondary-text, #6b7280);
+  font-size: 0.875rem;
+  margin-top: 0.25rem;
+}
+
+.card-content {
+  padding: 1.5rem 2rem;
+}
+
+/* ===================== */
+/* ATTENTION CARD */
+/* ===================== */
+.attention-card {
+  grid-column: 1 / -1;
+}
+
+.attention-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
+  gap: 1rem;
+}
+
+.attention-item {
+  background: var(--form-bg, #f9fafb);
+  border: 2px solid transparent;
+  border-radius: 12px;
+  padding: 1.25rem;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.attention-item:hover {
+  border-color: var(--button-bg, #2563eb);
+  transform: translateY(-1px);
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.1);
+}
+
+.attention-item.critical {
+  border-left: 4px solid #dc2626;
+  background: linear-gradient(135deg, #fef2f2 0%, #fef2f2 100%);
+}
+
+.item-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 0.5rem;
+}
+
+.item-code {
+  font-size: 1.125rem;
+  font-weight: 700;
+  color: var(--primary-text, #1f2937);
+}
+
+.item-status {
+  background: #dc2626;
+  color: white;
+  padding: 0.25rem 0.75rem;
+  border-radius: 20px;
+  font-size: 0.75rem;
+  font-weight: 600;
+}
+
+.item-desc {
+  color: var(--secondary-text, #6b7280);
+  font-size: 0.875rem;
+  margin-bottom: 1rem;
+  line-height: 1.4;
+}
+
+.item-metrics {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 1rem;
+  margin-bottom: 1rem;
+}
+
+.metric {
+  text-align: center;
+  padding: 0.75rem;
+  background: white;
+  border-radius: 8px;
+  border: 1px solid var(--input-border, #d1d5db);
+}
+
+.metric-label {
+  display: block;
+  font-size: 0.75rem;
+  color: var(--secondary-text, #6b7280);
+  margin-bottom: 0.25rem;
+  font-weight: 500;
+}
+
+.metric-value {
+  display: block;
+  font-size: 1.25rem;
+  font-weight: 700;
+  color: var(--primary-text, #1f2937);
+}
+
+.btn-order {
+  width: 100%;
+  background: var(--button-bg, #2563eb);
+  color: var(--button-text, #ffffff);
+  border: none;
+  padding: 0.75rem;
+  border-radius: 8px;
+  font-size: 0.875rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.btn-order:hover {
+  background: var(--button-hover, #1d4ed8);
+  transform: translateY(-1px);
+}
+
+.empty-state {
+  text-align: center;
+  padding: 3rem 2rem;
+  color: var(--secondary-text, #6b7280);
+}
+
+.empty-state i {
+  font-size: 3rem;
+  margin-bottom: 1rem;
+  opacity: 0.5;
+  color: #10b981;
+}
+
+/* ===================== */
+/* DEMAND CARD */
+/* ===================== */
+.demand-card {
+  grid-column: 1 / -1;
+}
+
+/* Demand styles remain the same but with updated colors */
+.demand-container {
+  display: flex;
+  flex-direction: column;
+  gap: 1.5rem;
+}
+
+.demand-group {
+  background: var(--form-bg, #f9fafb);
+  border-radius: 12px;
+  padding: 1.5rem;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
+  border: 1px solid var(--input-border, #d1d5db);
+}
+
+.demand-group-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 1rem;
+  padding-bottom: 0.75rem;
+  border-bottom: 2px solid var(--input-border, #d1d5db);
+  cursor: pointer;
+  transition: background-color 0.2s ease;
+  border-radius: 8px;
+  padding: 1rem;
+  margin: -0.5rem -0.5rem 1rem -0.5rem;
+}
+
+.demand-group-header:hover {
+  background-color: rgba(0, 0, 0, 0.02);
+}
+
+.header-content {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  flex: 1;
+}
+
+.demand-group-header h3 {
+  margin: 0;
+  font-size: 1.1rem;
+  font-weight: 600;
+  color: var(--primary-text, #1f2937);
+}
+
+.item-count {
+  background: var(--button-bg, #2563eb);
+  color: var(--button-text, #ffffff);
+  padding: 0.25rem 0.75rem;
+  border-radius: 20px;
+  font-size: 0.8rem;
+  font-weight: 500;
+}
+
+.collapse-icon {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 24px;
+  height: 24px;
+  transition: transform 0.3s ease;
+}
+
+.demand-group.collapsed .demand-items {
+  display: none;
+}
+
+.demand-group.collapsed .collapse-icon i {
+  transform: rotate(-90deg);
+}
+
+.demand-group.collapsed .demand-group-header {
+  margin-bottom: 0;
+  padding-bottom: 1rem;
+}
+
+.demand-items {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+}
+
+.demand-item {
+  background: white;
+  border: 1px solid var(--input-border, #d1d5db);
+  border-radius: 8px;
+  padding: 1rem;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.demand-item:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.1);
+  border-color: var(--button-bg, #2563eb);
+}
+
+.demand-item-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  margin-bottom: 0.75rem;
+}
+
+.product-info {
+  flex: 1;
+}
+
+.product-code {
+  display: block;
+  font-size: 1rem;
+  color: var(--primary-text, #1f2937);
+  margin-bottom: 0.25rem;
+}
+
+.product-desc {
+  display: block;
+  font-size: 0.85rem;
+  color: var(--secondary-text, #6b7280);
+  line-height: 1.3;
+}
+
+.demand-metrics {
+  display: flex;
+  gap: 1rem;
+  align-items: center;
+}
+
+.metric {
+  text-align: center;
+  padding: 0.5rem;
+  background: var(--form-bg, #f9fafb);
+  border-radius: 6px;
+  border: 1px solid var(--input-border, #d1d5db);
+  min-width: 70px;
+}
+
+.metric.shortage {
+  background: #fef2f2;
+  border-color: #dc2626;
+}
+
+.metric.ordered-enough {
+  background: #fff7e6;
+  border-color: #f59e0b;
+}
+
+.metric.metric-danger {
+  background: #fef2f2;
+  border-color: #dc2626;
+}
+
+.metric.metric-warning {
+  background: #fff7e6;
+  border-color: #f59e0b;
+}
+
+.metric.metric-success {
+  background: #ecfdf5;
+  border-color: #34d399;
+}
+
+.metric-value {
+  display: block;
+  font-size: 1.1rem;
+  font-weight: 700;
+  color: var(--primary-text, #1f2937);
+}
+
+.metric.shortage .metric-value {
+  color: #dc2626;
+}
+
+.demand-progress {
+  margin-top: 0.75rem;
+}
+
+.progress-bar {
+  width: 100%;
+  height: 8px;
+  background: #e5e7eb;
+  border-radius: 4px;
+  overflow: hidden;
+  margin-bottom: 0.5rem;
+}
+
+.progress-fill {
+  height: 100%;
+  background: linear-gradient(90deg, #10b981, #059669);
+  border-radius: 4px;
+  transition: width 0.3s ease;
+}
+
+.progress-text {
+  display: flex;
+  justify-content: space-between;
+  font-size: 0.8rem;
+  color: var(--secondary-text, #6b7280);
+}
+
+.shortage-text {
+  color: #dc2626;
+  font-weight: 600;
+}
+
+.demand-item.short_need_order {
+  border-left: 4px solid #dc2626;
+  background: linear-gradient(135deg, #fef2f2 0%, #fef2f2 100%);
+}
+
+.demand-item.short_on_order {
+  border-left: 4px solid #f59e0b;
+  background: linear-gradient(135deg, #fffbeb 0%, #fffbeb 100%);
+}
+
+.demand-item.sufficient {
+  border-left: 4px solid #10b981;
+  background: linear-gradient(135deg, #f0fdf4 0%, #f0fdf4 100%);
+}
+
+.demand-subgroup {
+  margin-bottom: 1rem;
+}
+
+.demand-subgroup h4 {
+  margin: 0 0 0.5rem 0;
+  font-size: 1rem;
+  font-weight: 600;
+  color: var(--primary-text);
+}
+
+.sufficient-items.hidden {
+  display: none;
+}
+
+.show-sufficient-btn {
+  text-align: center;
+  margin-top: 1rem;
+}
+
+.show-sufficient-btn button {
+  background: var(--button-bg);
+  color: var(--button-text);
+  border: none;
+  padding: 0.5rem 1rem;
+  border-radius: 8px;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.show-sufficient-btn button:hover {
+  background: var(--button-hover);
+}
+
+.no-demand {
+  text-align: center;
+  padding: 2rem;
+  color: var(--secondary-text, #6b7280);
+  font-style: italic;
+}
+
+.no-demand i {
+  display: block;
+  font-size: 2rem;
+  margin-bottom: 0.5rem;
+  opacity: 0.5;
+}
+
+.no-demand.global {
+  background: var(--container-bg, #ffffff);
+  border-radius: 12px;
+  border: 2px dashed var(--input-border, #d1d5db);
+}
+
+/* ===================== */
+/* STOCK CARD */
+/* ===================== */
+.stock-card {
+  grid-column: 1 / -1;
+}
+
+.table-container {
+  overflow-x: auto;
+  border-radius: 8px;
+  border: 1px solid var(--input-border, #d1d5db);
+}
+
+.stock-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.875rem;
+}
+
+.stock-table thead th {
+  background: var(--form-bg, #f9fafb);
+  padding: 1rem;
+  text-align: left;
+  font-weight: 600;
+  color: var(--primary-text, #1f2937);
+  border-bottom: 2px solid var(--input-border, #d1d5db);
+}
+
+.stock-table tbody td {
+  padding: 1rem;
+  border-bottom: 1px solid var(--input-border, #d1d5db);
+  color: var(--primary-text, #1f2937);
+}
+
+.stock-table tbody tr {
+  cursor: pointer;
+  transition: background-color 0.2s ease;
+}
+
+.stock-table tbody tr:hover {
+  background: var(--table-row-hover, #f3f4f6);
+}
+
+.danger-text {
+  color: #dc2626;
+  font-weight: 600;
+}
+
+/* ===================== */
+/* MODAL */
+/* ===================== */
+.modal {
+  position: fixed;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(0, 0, 0, 0.6);
+  backdrop-filter: blur(4px);
+  z-index: 1000;
+}
+
+.modal.hidden {
+  display: none;
+}
+
+.modal-content {
+  background: var(--container-bg, #ffffff);
+  padding: 2rem;
+  border-radius: 16px;
+  width: 90%;
+  max-width: 500px;
+  box-shadow: 0 20px 40px rgba(0, 0, 0, 0.2);
+  border: 1px solid var(--table-border, #e5e7eb);
+}
+
+.modal-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 1.5rem;
+  padding-bottom: 1rem;
+  border-bottom: 2px solid var(--input-border, #d1d5db);
+}
+
+.modal-header h2 {
+  margin: 0;
+  font-size: 1.5rem;
+  font-weight: 700;
+  color: var(--primary-text, #1f2937);
+}
+
+.modal-header button {
+  background: none;
+  border: none;
+  font-size: 1.5rem;
+  cursor: pointer;
+  color: var(--secondary-text, #6b7280);
+  padding: 0.5rem;
+  border-radius: 8px;
+  transition: all 0.2s ease;
+}
+
+.modal-header button:hover {
+  background: var(--form-bg, #f9fafb);
+  color: var(--primary-text, #1f2937);
+}
+
+.modal-summary {
+  display: flex;
+  gap: 1rem;
+  margin-top: 1rem;
+}
+
+.summary-item {
+  background: var(--form-bg, #f9fafb);
+  border: 1px solid var(--input-border, #d1d5db);
+  border-radius: 8px;
+  padding: 0.75rem 1rem;
+  text-align: center;
+  flex: 1;
+}
+
+.summary-item span {
+  display: block;
+  font-size: 0.75rem;
+  color: var(--secondary-text, #6b7280);
+  margin-bottom: 0.25rem;
+}
+
+.summary-item strong {
+  font-size: 1.1rem;
+  color: var(--primary-text, #1f2937);
+}
+
+.other-wh-container {
+  margin-top: 1rem;
+}
+
+.other-wh-container h3 {
+  margin-bottom: 0.5rem;
+  font-size: 0.95rem;
+}
+
+.other-wh-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.85rem;
+}
+
+.other-wh-table th,
+.other-wh-table td {
+  text-align: left;
+  padding: 0.5rem 0.6rem;
+  border: 1px solid var(--input-border, #d1d5db);
+}
+
+.other-wh-table caption {
+  margin-bottom: 0.5rem;
+}
+
+.product-header {
+  margin-bottom: 1.5rem;
+}
+
+.product-header h2 {
+  margin: 0;
+  font-size: 1.6rem;
+  font-weight: 700;
+}
+
+.product-header p {
+  margin: 0.25rem 0 0 0;
+  color: var(--secondary-text);
+  font-size: 0.95rem;
+}
+
+.modal-summary {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 1rem;
+  margin-bottom: 1.5rem;
+}
+
+.summary-card {
+  background: linear-gradient(135deg, #f8fafc, #f1f5f9);
+  border: 1px solid var(--input-border);
+  border-radius: 12px;
+  padding: 1rem;
+  text-align: center;
+}
+
+.summary-card span {
+  display: block;
+  font-size: 0.75rem;
+  color: var(--secondary-text);
+}
+
+.summary-card strong {
+  font-size: 1.3rem;
+  margin-top: 0.25rem;
+  display: block;
+}
+
+.modal-section {
+  margin-top: 1.5rem;
+}
+
+.section-header {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  margin-bottom: 0.75rem;
+  font-weight: 600;
+}
+
+.section-header i {
+  color: var(--button-bg);
+}
+
+.modal-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.85rem;
+}
+
+.modal-table th {
+  background: var(--form-bg);
+  padding: 0.6rem;
+  text-align: left;
+  font-weight: 600;
+}
+
+.modal-table td {
+  padding: 0.6rem;
+  border-top: 1px solid var(--input-border);
+}
+
+.text-right {
+  text-align: right;
+}
+
+.table-container.compact {
+  border-radius: 8px;
+  overflow: hidden;
+  border: 1px solid var(--input-border);
+}
+
+/* ===================== */
+/* RESPONSIVE DESIGN */
+/* ===================== */
+@media (max-width: 1024px) {
+  .dashboard-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .header-content {
+    flex-direction: column;
+    gap: 1.5rem;
+    text-align: center;
+  }
+
+  #globalSearch {
+    width: 100%;
+    max-width: 400px;
+  }
+}
+
+@media (max-width: 768px) {
+  .inventory-dashboard {
+    padding: 1rem;
+  }
+
+  .dashboard-header {
+    padding: 1.5rem;
+  }
+
+  .header-title h1 {
+    font-size: 1.75rem;
+  }
+
+  .attention-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .card-content {
+    padding: 1rem;
+  }
+
+  .demand-item-header {
+    flex-direction: column;
+    gap: 0.75rem;
+  }
+
+  .demand-metrics {
+    width: 100%;
+    justify-content: space-around;
+  }
+
+  .metric {
+    flex: 1;
+    min-width: 0;
+  }
+
+  .progress-text {
+    flex-direction: column;
+    gap: 0.25rem;
+    text-align: center;
+  }
+
+  .table-container {
+    font-size: 0.8rem;
+  }
+
+  .stock-table thead th,
+  .stock-table tbody td {
+    padding: 0.75rem 0.5rem;
+  }
+}
+
+@media (max-width: 480px) {
+  .header-actions {
+    flex-direction: column;
+    width: 100%;
+    gap: 0.75rem;
+  }
+
+  #globalSearch {
+    width: 100%;
+  }
+
+  .btn-primary {
+    width: 100%;
+    justify-content: center;
+  }
+}
+</style>
+
+{% endblock %}

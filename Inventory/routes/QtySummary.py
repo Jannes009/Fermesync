@@ -37,6 +37,7 @@ def inventory_qty_summary():
     )
 
 
+
 @inventory_bp.route("/qty-summary/<int:warehouse_id>")
 @login_required
 def inventory_qty_summary_warehouse(warehouse_id):

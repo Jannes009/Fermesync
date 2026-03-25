@@ -420,7 +420,7 @@ def get_spray_recommendations():
     query = """
        SELECT
             sh.IdSprayH,
-            STRING_AGG(p.ProjectCode, ', ') AS project_codes,
+            sh.SprayHNo,
             ISNULL(SUM(sp.SprayPHa),0) AS total_ha,
             sh.SprayHDate,
             sh.SprayHStatus,
@@ -430,7 +430,7 @@ def get_spray_recommendations():
         LEFT JOIN agr.SprayProjects sp ON sp.SprayPSprayId = sh.IdSprayH
         LEFT JOIN cmn._uvProject p ON p.ProjectLink = sp.SprayPProjectId
         LEFT JOIN agr.SprayMethod m ON m.IdSprayMethod = sh.SprayHMethodId
-        GROUP BY sh.IdSprayH, sh.SprayHDate, sh.SprayHStatus, sh.SprayHApplicationType, m.SprayMethodName
+        GROUP BY sh.IdSprayH, sh.SprayHNo, sh.SprayHDate, sh.SprayHStatus, sh.SprayHApplicationType, m.SprayMethodName
         ORDER BY sh.SprayHDate DESC
     """
     cur.execute(query)
@@ -439,7 +439,7 @@ def get_spray_recommendations():
     recommendations = [
         {
             "id": row[0],
-            "projects": row[1] or "",
+            "spray_no": row[1],
             "ha": float(row[2]),
             "spray_date": str(row[3]),
             "status": row[4],

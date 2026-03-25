@@ -71,6 +71,35 @@
   }
   .btn-info:hover { background: #138496; }
 
+  .btn-action {
+    background: #007bff;
+    color: white;
+    text-decoration: none;
+    padding: 6px 12px;
+    border-radius: 6px;
+    font-size: 0.85rem;
+    cursor: pointer;
+    border: none;
+    transition: all 0.2s;
+    font-weight: 500;
+  }
+
+  .btn-action:hover {
+    background: #0056b3;
+    transform: translateY(-1px);
+    box-shadow: 0 2px 6px rgba(0, 86, 179, 0.2);
+  }
+
+  .btn-action:active {
+    transform: translateY(0);
+  }
+
+  .action-cell {
+    display: flex;
+    gap: 6px;
+    flex-wrap: wrap;
+  }
+
   /* Table */
   #recTableWrapper {
     margin-top: 1rem;
@@ -99,9 +128,6 @@
   #recTable tbody tr {
     transition: background 0.15s;
     cursor: pointer;
-  }
-  #recTable tbody tr:hover {
-    background: var(--muted-bg, #f5f5f5);
   }
 
   .status-badge {
@@ -239,7 +265,7 @@
           <thead>
             <tr>
               <th>ID</th>
-              <th>Projects</th>
+              <th>Spray No</th>
               <th>Date</th>
               <th>Ha</th>
               <th>Type</th>
@@ -282,7 +308,7 @@ async function loadRecommendations() {
         const mobileCards = document.getElementById('mobileCards');
 
         if (!recommendations || recommendations.length === 0) {
-            tbody.innerHTML = '<tr><td class="no-data" colspan="7">No recommendations found</td></tr>';
+            tbody.innerHTML = '<tr><td class="no-data" colspan="8">No recommendations found</td></tr>';
             mobileCards.innerHTML = '<div class="no-data">No recommendations found</div>';
             return;
         }
@@ -291,27 +317,32 @@ async function loadRecommendations() {
         tbody.innerHTML = recommendations.map(rec => `
             <tr>
                 <td><strong>${rec.id}</strong></td>
-                <td>${rec.projects}</td>
+                <td>${rec.spray_no}</td>
                 <td>${rec.spray_date}</td>
                 <td>${rec.ha}</td>
                 <td>${rec.application_type || 'spray'}</td>
                 <td>${rec.method_name || '-'}</td>
-                <td><button type="button" onclick="issueStock(${rec.id})">Issue Stock</button><button type="button" onclick="goToSpray(${rec.id})">View Details</button></td>
+                <td>
+                  <div class="action-cell">
+                    <button type="button" class="btn-action" onclick="issueStock(${rec.id})">Issue Stock</button>
+                    <button type="button" class="btn-action" onclick="goToSpray(${rec.id})">View Details</button>
+                  </div>
+                </td>
                 <td><span class="status-badge status-${rec.status.toLowerCase()}">${rec.status}</span></td>
             </tr>
         `).join('');
 
         // Populate mobile cards
         mobileCards.innerHTML = recommendations.map(rec => `
-            <div class="rec-card" onclick="goToSpray(${rec.id})">
+            <div class="rec-card">
                 <div class="rec-card-header">
                     <div class="rec-id">#${rec.id}</div>
                     <div class="rec-status status-${rec.status.toLowerCase()}">${rec.status}</div>
                 </div>
                 <div class="rec-details">
                     <div class="rec-detail">
-                        <div class="rec-detail-label">Projects</div>
-                        <div class="rec-detail-value">${rec.projects}</div>
+                        <div class="rec-detail-label">Spray No</div>
+                        <div class="rec-detail-value">${rec.spray_no}</div>
                     </div>
                     <div class="rec-detail">
                         <div class="rec-detail-label">Spray Date</div>
@@ -329,6 +360,10 @@ async function loadRecommendations() {
                         <div class="rec-detail-label">Method</div>
                         <div class="rec-detail-value">${rec.method_name || '-'}</div>
                     </div>
+                </div>
+                <div class="action-cell" style="margin-top: 12px; padding-top: 12px; border-top: 1px solid var(--input-border);">
+                    <button type="button" class="btn-action" onclick="issueStock(${rec.id})">Issue Stock</button>
+                    <button type="button" class="btn-action" onclick="goToSpray(${rec.id})">View Details</button>
                 </div>
             </div>
         `).join('');

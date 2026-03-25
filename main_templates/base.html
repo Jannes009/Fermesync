@@ -7,8 +7,29 @@
     <link rel="stylesheet" href="">
 </head>
 <body>
+    {% include "components/product_modal.html" %}
     {%block body%}
 
     {% endblock %}
+    
+<script>
+    
+    // F5 Handler to open product modal
+    let lastSelectedProduct = null;
+
+    // You set this when clicking rows/cards
+    function selectProduct(id) {
+    lastSelectedProduct = id;
+    }
+
+    document.addEventListener("keydown", e => {
+    if (e.key === "F5") {
+        e.preventDefault();
+        if (lastSelectedProduct) {
+        PM.open(lastSelectedProduct);
+        }
+    }
+    });
+</script>
 </body>
 </html>

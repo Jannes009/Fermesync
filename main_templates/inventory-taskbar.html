@@ -35,7 +35,7 @@
       {% if "WHSE_TRANSFER" in current_user.permissions %}
       <li><a href="/inventory/warehouse-transfer" class="taskbar-link">Whse Transfer</a></li>
       {% endif %}
-      <li><a href="/inventory/qty-summary" class="taskbar-link">Warehouse Qty's</a></li>
+      <li><a href="/inventory/qty" class="taskbar-link">Warehouse Qty's</a></li>
       {% if "GRV_CREATE" in current_user.permissions %}
       <li><a href="/inventory/grv" class="taskbar-link">GRV</a></li>
       {% endif %}
@@ -163,7 +163,7 @@
         </ul>
       </li>
       <li class="mobile-nav-item">
-        <a href="/inventory/qty-summary" class="mobile-nav-link">
+        <a href="/inventory/qty" class="mobile-nav-link">
           <div class="mobile-nav-content">
             <span class="mobile-nav-icon">📦</span>
             <span>Warehouse Qty's</span>
