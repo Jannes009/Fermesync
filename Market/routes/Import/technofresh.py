@@ -114,7 +114,7 @@ def insert_data(file, current_user):
                 ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
             """, tuple(row_data.values()))
 
-        cursor.execute("Exec [market].[SIGCopyImprtTrn]")
+        cursor.execute("Exec [mkt].[SIGCopyImprtTrn]")
         cursor.execute("EXEC SIGCreateSalesFromTrn")
 
         conn.commit()

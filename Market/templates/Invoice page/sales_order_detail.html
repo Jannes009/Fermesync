@@ -253,23 +253,23 @@ function renderHeader(header) {
     return `
         <div>
             <h2>Sales Order Date</h2>
-            <p>${header.invoicedate || ''}</p>
+            <p>${header.InvoiceDate || ''}</p>
         </div>
         <div>
             <h2>Delivery Note No</h2>
-            <p><a href="/delivery-note/${header.invoicedelnoteno || ''}" class="detail-link">${header.invoicedelnoteno || ''}</a></p>
+            <p><a href="/delivery-note/${header.InvoiceDelNoteNo || ''}" class="detail-link">${header.InvoiceDelNoteNo || ''}</a></p>
         </div>
         <div>
             <h2>Agent</h2>
-            <p>${header.agentname}</p>
+            <p>${header.AgentName}</p>
         </div>
         <div>
             <h2>Tax Rate</h2>
-            <p>${header.invoicetaxrate || ''}%</p>
+            <p>${header.InvoiceTaxRate || ''}%</p>
         </div>
         <div>
             <h2>Evo Sales Order No</h2>
-            <p>${header.invoiceevosonumber || ''}</p>
+            <p>${header.InvoiceEvoSoNumber || ''}</p>
         </div>
     `;
 }
@@ -280,7 +280,7 @@ function formatCurrency(val) {
 
 function renderLines(lines) {
     const filtered = lines.filter(line => {
-        const desc = (line.productdescription || '').toLowerCase().trim();
+        const desc = (line.ProductDescription || '').toLowerCase().trim();
         return !(
             desc === 'commission market' ||
             desc === 'commission agent' ||
@@ -288,8 +288,8 @@ function renderLines(lines) {
         );
     });
     filtered.sort((a, b) => {
-        const descA = (a.productdescription || '').toLowerCase();
-        const descB = (b.productdescription || '').toLowerCase();
+        const descA = (a.ProductDescription || '').toLowerCase();
+        const descB = (b.ProductDescription || '').toLowerCase();
         if (descA < descB) return -1;
         if (descA > descB) return 1;
         return 0;
@@ -298,16 +298,16 @@ function renderLines(lines) {
     let totalQty = 0;
     let totalAmount = 0;
     let rows = filtered.map(line => {
-        totalQty += Number(line.salesqty) || 0;
-        totalAmount += Number(line.salesamnt) || 0;
+        totalQty += Number(line.SalesQty) || 0;
+        totalAmount += Number(line.SalesAmnt) || 0;
         return `
         <tr>
-            <td>${line.salesdate || ''}</td>
-            <td>${line.productdescription || ''}</td>
-            <td>${line.salesqty || ''}</td>
-            <td>${formatCurrency(line.discountamnt)}</td>
-            <td>${formatCurrency(line.grosssalesamnt)}</td>
-            <td>${formatCurrency(line.salesamnt)}</td>
+            <td>${line.SalesDate || ''}</td>
+            <td>${line.ProductDescription || ''}</td>
+            <td>${line.SalesQty || ''}</td>
+            <td>${formatCurrency(line.DiscountAmnt)}</td>
+            <td>${formatCurrency(line.GrossSalesAmnt)}</td>
+            <td>${formatCurrency(line.SalesAmnt)}</td>
         </tr>
         `;
     }).join('');
@@ -357,12 +357,12 @@ function renderStatusBadge(status) {
 }
 
 function renderHeaderTotals(header, totalAmount) {
-    const totalDeducted = parseFloat(header.invoicetotaldeducted) || 0;
-    const marketComm = parseFloat(header.invoicemarketcommincl) || 0;
-    const agentComm = parseFloat(header.invoiceagentcommincl) || 0;
-    const otherCosts = parseFloat(header.invoiceothercostsincl) || 0;
-    const gross = parseFloat(header.invoicegross) || totalAmount || 0;
-    const nett = parseFloat(header.invoicenett) || (gross - totalDeducted - marketComm - agentComm - otherCosts);
+    const totalDeducted = parseFloat(header.InvoiceTotalDeducted) || 0;
+    const marketComm = parseFloat(header.InvoiceMarketCommIncl) || 0;
+    const agentComm = parseFloat(header.InvoiceAgentCommIncl) || 0;
+    const otherCosts = parseFloat(header.InvoiceOtherCostsIncl) || 0;
+    const gross = parseFloat(header.InvoiceGross) || totalAmount || 0;
+    const nett = parseFloat(header.InvoiceNett) || (gross - totalDeducted - marketComm - agentComm - otherCosts);
     function fmt(val) {
         return formatCurrency(val);
     }

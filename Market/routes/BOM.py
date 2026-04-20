@@ -77,7 +77,7 @@ def create_bom():
 def get_bill_of_materials(cursor):
     query = """
     SELECT ProductDescription, PackHouseName, DeliveredNotInvoiced, QtyToManufacture, QtyOnHand, QtyOnBOM, BOMCreated
-    FROM [market].[_uvManufactureDashboard]
+    FROM [mkt].[_uvManufactureDashboard]
     """
     cursor.execute(query)
     return cursor.fetchall()
@@ -87,7 +87,7 @@ def create_bom_masterfiles():
     try:
         conn = create_db_connection()
         cursor = conn.cursor()
-        cursor.execute("EXEC [market].[SIGCreateBomMasterfiles]")
+        cursor.execute("EXEC [mkt].[SIGCreateBomMasterfiles]")
         drain_resultsets(cursor)  # drain all result sets
         conn.commit()
         return jsonify({'success': True, 'message': 'Masterfiles created successfully.'})

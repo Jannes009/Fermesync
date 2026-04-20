@@ -153,12 +153,12 @@ document.addEventListener('DOMContentLoaded', function() {
 function renderInvoicesTable(invoices) {
     if (!invoices.length) return '<div style="background: var(--container-bg); color: var(--primary-text); padding: 1em; border-radius: 8px;">No invoices found for this delivery note.</div>';
     let rows = invoices.map(inv => `
-        <tr class="invoice-summary-row invoice-line" data-invoice-no="${inv.invoiceno}" style="cursor:pointer;">
-            <td><a href="/sales-order/${inv.invoiceindex}" class="invoice-link" onclick="event.stopPropagation();">${inv.invoiceno}</a></td>
-            <td class="invoice-date">${inv.invoicedate || ''}</td>
-            <td class="invoice-gross">${formatCurrency(inv.invoicegross)}</td>
-            <td class="invoice-nett">${formatCurrency(inv.invoicenett)}</td>
-            <td class="invoice-status">${inv.status}</td>
+        <tr class="invoice-summary-row invoice-line" data-invoice-no="${inv.InvoiceNo}" style="cursor:pointer;">
+            <td><a href="/sales-order/${inv.invoiceindex}" class="invoice-link" onclick="event.stopPropagation();">${inv.InvoiceNo}</a></td>
+            <td class="invoice-date">${inv.InvoiceDate || ''}</td>
+            <td class="invoice-gross">${formatCurrency(inv.InvoiceGross)}</td>
+            <td class="invoice-nett">${formatCurrency(inv.InvoiceNett)}</td>
+            <td class="invoice-status">${inv.Status}</td>
         </tr>
     `).join('');
     return `

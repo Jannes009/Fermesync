@@ -1,12 +1,9 @@
 ﻿from flask import render_template, request, redirect, url_for, session, jsonify, make_response
 from Core.auth import create_db_connection, close_db_connection
-import pypyodbc as odbc
+import pyodbc as odbc
 from Market.routes.db_functions import (
     get_agent_codes, get_transporter_codes, get_production_unit_codes,
-    get_market_codes, get_products, agent_code_to_agent_name,
-    market_Id_to_market_name, transporter_account_to_transporter_name,
-    project_link_to_production_unit_name,
-    get_stock_id, get_destinations
+    get_market_codes, get_products, get_destinations
 )
 import threading
 from flask_login import current_user
@@ -167,21 +164,13 @@ def create_entry():
     finally:
         close_db_connection(dropdown_options_cursor, dropdown_options_conn)
 
-    if not form_data:
-        form_data = {}
-
-    if not form_data.get('ZZDelDate'):
-        import datetime
-        form_data['ZZDelDate'] = datetime.date.today().strftime('%Y-%m-%d')
 
     # Close connection after dropdowns are fetched
     close_db_connection(cursor, connection)
-
+    print(dropdown_options)
     return render_template(
         'Bill Of Lading page/create_entry.html',
         error_message=error_message,
-        form_data=form_data,
-        product_quantity_pairs=[],
         **dropdown_options
     )
 
@@ -200,8 +189,8 @@ def run_background_procedures(del_note_no):
         cursor.execute("EXEC [mkt].IGCreateTransportPO")
         cursor.execute("EXEC [mkt].SIGUpdateDelQuantities")
         cursor.execute("EXEC [mkt].SIGUpdateWeightTransport")
-        cursor.execute("EXEC [market].[SIGUpdatePackagingCost]")
-        cursor.execute("EXEC [market].[SIGUpdateWeightTransport]")
+        cursor.execute("EXEC [mkt].[SIGUpdatePackagingCost]")
+        cursor.execute("EXEC [mkt].[SIGUpdateWeightTransport]")
 
         conn.commit()
         print(f"Finished background procedures for DelNoteNo {del_note_no}")
@@ -337,7 +326,7 @@ def get_default_transport_cost_api():
         if destination_result and destination_result[0] is not None:
             destination = destination_result[0]
             query = """
-            Select LastTransportCost from [market].[_uvLastTransportCost]
+            Select LastTransportCost from [mkt].[_uvLastTransportCost]
             where TransporterAccount = ? AND PackhouseLink = ? AND AgentDestination = ? 
             """
             cursor.execute(query, (transporter_code, packhouse_code, destination))

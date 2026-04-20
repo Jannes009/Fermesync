@@ -122,11 +122,11 @@ function renderTable(purchaseOrders) {
     let rows = purchaseOrders.map(order => {
         return `
             <tr>
-                <td><a href="/market/delivery-note/${order.delnoteno}" class="detail-link">${order.delnoteno}</a></td>
-                <td>${order.deltransporter}</td>
-                <td>${formatAmount(order.deltransportcostexcl)}</td>
-                <td>${order.transportevoponumber}</td>
-                <td>${statusBadge(order.status)}</td>
+                <td><a href="/market/delivery-note/${order.DelNoteNo}" class="detail-link">${order.DelNoteNo}</a></td>
+                <td>${order.DelTransporter}</td>
+                <td>${formatAmount(order.DelTransportCostExcl)}</td>
+                <td>${order.TransportEvoPONumber}</td>
+                <td>${statusBadge(order.Status)}</td>
             </tr>
         `;
     }).join('');

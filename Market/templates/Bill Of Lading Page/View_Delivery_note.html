@@ -202,34 +202,34 @@
   <div class="main-content with-fixed-taskbar">
     <div class="container-wide">
       <!-- Header -->
-      <div class="delivery-header" onclick="editDeliveryHeader('{{ header.delnoteno }}')">
-        <h1>Delivery Note #{{ header.delnoteno }}</h1>
-        <p>Date: <strong>{{ header.deldate }}</strong></p>
+      <div class="delivery-header" onclick="editDeliveryHeader('{{ header.DelNoteNo }}')">
+        <h1>Delivery Note #{{ header.DelNoteNo }}</h1>
+        <p>Date: <strong>{{ header.DelDate }}</strong></p>
 
         <div class="delivery-grid">
           <div>
             <h2>Agent</h2>
-            <p>{{ header.agentname }} ({{ header.agentaccount }})</p>
+            <p>{{ header.AgentName }} ({{ header.AgentAccount }})</p>
           </div>
           <div>
             <h2>Packhouse</h2>
-            <p>{{ header.packhousename }} ({{ header.packhousecode }})</p>
+            <p>{{ header.PackhouseName }} ({{ header.PackhouseCode }})</p>
           </div>
           <div>
             <h2>Total Quantity</h2>
-            <p>{{ header.deltotalquantity or 0 }}</p>
+            <p>{{ header.DelTotalQuantity or 0 }}</p>
           </div>
           <div>
             <h2>Destination</h2>
-            <p>{{ header.destinationdescription }}</p>
+            <p>{{ header.DestinationDescription }}</p>
           </div>
           <div>
             <h2>Transporter</h2>
-            <p>{{ header.transportername }} ({{ header.transporteraccount }})</p>
+            <p>{{ header.TransporterName }} ({{ header.TransporterAccount }})</p>
           </div>
           <div>
             <h2>Transport Cost</h2>
-            <p>{{ header.deltransportcostexcl }}</p>
+            <p>{{ header.DelTransportCostExcl }}</p>
           </div>
         </div>
       </div>
@@ -268,7 +268,7 @@
             </button>
           </div>
           <div style="display: flex; gap: 0.5rem;">
-            <button class="sales-btn" onclick="addSale('{{ header.delnoteno }}')">
+            <button class="sales-btn" onclick="addSale('{{ header.DelNoteNo }}')">
               <i class="fas fa-plus"></i> Add Sale
             </button>
           </div>
@@ -352,7 +352,7 @@ function filterSalesTableByInvoice(row, invoiceNo) {
 
 
 document.addEventListener('DOMContentLoaded', function() {
-    window.delNoteNo = "{{ header.delnoteno }}";
+    window.delNoteNo = "{{ header.DelNoteNo }}";
     fetch(`/market/api/invoices-for-delivery-note/${window.delNoteNo}`)
         .then(r => r.json())
         .then(data => {

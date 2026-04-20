@@ -63,17 +63,16 @@ def incomplete_issue_lines(header_id):
         conn = create_db_connection()
         if conn is None:
             return jsonify([]), 500
-
+        print(f"Fetching issue lines for header_id: {header_id}")
         cursor = conn.cursor()
         cursor.execute("""  
-        Select IdIssue, IssLineStockLink, QTY.StockDescription,SUM(LIN.IssLineQtyIssued) QtyIssued
+        Select IdIssue, IssLineStockLink, STK.StockDescription, LIN.IssLineQtyIssued
         ,LIN.IssLineUoMId, UOM.cUnitCode
         from stk.IssueHeader HEA
         JOIN stk.IssueLines LIN on LIN.IssLineIssueId = HEA.IdIssue
-        JOIN stk._uvInventoryQty QTY on QTY.StockLink = LIN.IssLineStockLink
+        JOIN cmn._uvStockItems STK on STK.StockLink = LIN.IssLineStockLink
         JOIN cmn._uvUOM UOM on UOM.idUnits = LIN.IssLineUoMId
         Where HEA.IdIssue = ?
-        GROUP BY IssLineStockLink, IdIssue, StockDescription, IssLineUoMId, cUnitCode
         """, (header_id,))
 
         rows = cursor.fetchall()
@@ -83,7 +82,7 @@ def incomplete_issue_lines(header_id):
             "product_desc": r.StockDescription,
             "uom_id": r.IssLineUoMId,
             "uom_code": r.cUnitCode,
-            "qty_issued": r.QtyIssued
+            "qty_issued": r.IssLineQtyIssued
         } for r in rows]
     except Exception as e:
         print("fetch_products_for_return error:", e)
@@ -102,130 +101,164 @@ def incomplete_issue_lines(header_id):
     # return {"issue_lines": results}
     return jsonify({"issue_lines": results})
 
-def submit_stock_issue(warehouse_id, lines):
+def submit_stock_issue(issue_id, cursor):
+    cursor.execute("""
+        SELECT IssWhseId
+        FROM stk.IssueHeader
+        WHERE IdIssue = ?
+    """, (issue_id,))
+    issue = cursor.fetchone()
+    warehouse_id = issue.IssWhseId if issue else None
+
     description = f"Stock Issue from warehouse {warehouse_id}"
+
     try:
         with EvolutionConnection():
             SO = Evo.SalesOrder()
             SO.Customer = Evo.Customer("ZZZ001")
             SO.Description = description
 
-            conn = create_db_connection()
-            cursor = conn.cursor()
+            cursor.execute("""              
+            Select IssLineStockLink, IssLinProjProjectId, SUM(IssLinProjWeight) as TotalWeight, IssLineQtyFinalised
+            from [stk].[IssueHeader] HEA
+            JOIN [stk].[IssueLines] LIN on HEA.IdIssue = LIN.IssLineIssueId
+            JOIN stk.IssueLineProjects PROJ on PROJ.IssLinProjLineId = LIN.IdIssLine
+            Where HEA.IdIssue = ?
+            Group by IssLineStockLink, IssLinProjProjectId, IssLineQtyFinalised
+            """, (issue_id,))
+            lines = cursor.fetchall()
 
             for line in lines:
+                total_qty = float(line.IssLineQtyFinalised or 0)
+
                 OD = Evo.OrderDetail()
                 SO.Detail.Add(OD)
 
-                stock_code = stock_link_to_code(line["product_link"], cursor)
-                OD.InventoryItem = Evo.InventoryItem(stock_code)
-                OD.Quantity = float(line.get("finalised_qty") or 0)
+                weighted_qty = total_qty * line.TotalWeight
+
+                OD.InventoryItem = Evo.InventoryItem(int(line.IssLineStockLink))
+                OD.Quantity = weighted_qty
                 OD.Warehouse = Evo.Warehouse(int(warehouse_id))
-                OD.Project = Evo.Project(int(line.get("project")))
+                OD.Project = Evo.Project(int(line.IssLinProjProjectId))
 
             SO.Complete()
             return SO.OrderNo
+
     except Exception as ex:
         print("Stock Issue Submission Error:", str(ex))
         raise ex
 
+    
 @inventory_bp.route("/process_return", methods=["POST"])
 @login_required
 def process_return():
     data = request.json
     issue_id = data.get("issue_id")
     created_at = data.get("created_at")
+    print(data)
     if created_at:
         created_at = datetime.fromisoformat(created_at.replace("Z", ""))
     else:
-        print("No created_at provided, using current time.")
         created_at = datetime.now()
-    lines = data.get("returns") or []
-    submission_lines = []
-    containsQty = False
 
+    lines = data.get("returns") or []
     conn = None
     cursor = None
+
     try:
         conn = create_db_connection()
-        if conn is None:
-            return jsonify({"success": False, "message": "Database connection could not be established."}), 500
-
         cursor = conn.cursor()
 
-        # check if issue was already processed
-        cursor.execute("Select IssFinalised from [stk].IssueHeader where IdIssue = ?", (issue_id,))
-        order_finalised = int(cursor.fetchone()[0]) > 0
-        if order_finalised:
-            return jsonify({"success": False, "message": "This issue was already finalised. Please refresh page."})
-        
+        # =====================================
+        # Check already finalised
+        # =====================================
         cursor.execute("""
-            Update [stk].IssueHeader
-            SET IssFinalised = 1, 
-                IssFinalisedByUserId = ?, IssFinalisedTimeStamp = ?
+            SELECT IssFinalised
+            FROM stk.IssueHeader
+            WHERE IdIssue = ?
+        """, (issue_id,))
+        order_finalised = int(cursor.fetchone()[0]) > 0
+
+        if order_finalised:
+            return jsonify({
+                "success": False,
+                "message": "This issue was already finalised. Please refresh page."
+            })
+
+        # =====================================
+        # Finalise header
+        # =====================================
+        cursor.execute("""
+            UPDATE stk.IssueHeader
+            SET IssFinalised = 1,
+                IssFinalisedByUserId = ?,
+                IssFinalisedTimeStamp = ?
             WHERE IdIssue = ?
         """, (current_user.id, created_at, issue_id))
+
+        # =====================================
+        # Process returns
+        # =====================================
         for line in lines:
-            qty_returned = line.get("qty_returned")
+            qty_returned = float(line.get("qty_returned") or 0)
             product_link = line.get("product_link")
-            
-            # Find all IssueLines for this stock_link and this issue
+
+            # -----------------------------
+            # Get issue line for product
+            # -----------------------------
             cursor.execute("""
-                Select IdIssLine, IssLineProjectId, IssLineQtyIssued
-                from [stk].IssueLines
-                where IssLineIssueId = ? AND IssLineStockLink = ?
+                SELECT IdIssLine, IssLineQtyIssued
+                FROM stk.IssueLines
+                WHERE IssLineIssueId = ?
+                  AND IssLineStockLink = ?
             """, (issue_id, product_link))
-            
-            issue_lines = cursor.fetchall()
-            if not issue_lines:
-                raise Exception(f"No stock lines found for product {product_link}")
-            
-            # Calculate total issued for this product across all projects
-            total_issued = sum(row[2] for row in issue_lines)
-            
-            # Distribute return proportionally by project
-            for issue_line in issue_lines:
-                line_id = issue_line[0]
-                project_id = issue_line[1]
-                qty_issued_for_project = issue_line[2]
-                
-                # Proportion of this project's issue
-                proportion = qty_issued_for_project / total_issued
-                qty_returned_for_project = qty_returned * proportion
-                qty_finalised = qty_issued_for_project - qty_returned_for_project
-                
-                if qty_finalised > 0:
-                    containsQty = True
-                
-                submission_lines.append({
-                    "line_id": line_id,
-                    "product_link": product_link,
-                    "project": project_id,
-                    "finalised_qty": qty_finalised
-                })
-                
-                # Update this line with proportional quantities
-                cursor.execute("""
-                    UPDATE [stk].IssueLines
-                    SET IssLineQtyReceived = ?, IssLineQtyFinalised = ?
-                    WHERE IdIssLine = ?
-                """, (qty_returned_for_project, qty_finalised, line_id))
-        # get Issue details
+
+            issue_line = cursor.fetchone()
+
+            if not issue_line:
+                raise Exception(f"No stock line found for product {product_link}")
+
+            line_id = issue_line.IdIssLine
+            qty_issued = float(issue_line.IssLineQtyIssued or 0)
+
+            qty_finalised = qty_issued - qty_returned
+            if qty_finalised < 0:
+                raise Exception(f"Returned quantity for product {product_link} cannot be greater than issued quantity.")
+
+            # -----------------------------
+            # Update issue line
+            # -----------------------------
+            cursor.execute("""
+                UPDATE stk.IssueLines
+                SET IssLineQtyReceived = ?,
+                    IssLineQtyFinalised = ?
+                WHERE IdIssLine = ?
+            """, (
+                qty_returned,
+                qty_finalised,
+                line_id
+            ))
+
+        # =====================================
+        # Get issue details
+        # =====================================
         cursor.execute("""
-            Select IssWhseId, IssToName
-            from [stk].IssueHeader
-            where IdIssue = ?
+            SELECT IssWhseId
+            FROM stk.IssueHeader
+            WHERE IdIssue = ?
         """, (issue_id,))
+
         issue = cursor.fetchone()
         if not issue:
             raise Exception(f"Issue {issue_id} not found.")
 
-        if containsQty:
-            order_number = submit_stock_issue(issue.IssWhseId, submission_lines)
-        else:
-            order_number = "No Order Created"
+        # =====================================
+        # Submit remaining qty before committing DB updates
+        # =====================================
+        order_number = submit_stock_issue(issue_id, cursor)
+
         cursor.execute("""
-            UPDATE [stk].IssueHeader
+            UPDATE stk.IssueHeader
             SET IssInvoiceNo = ?
             WHERE IdIssue = ?
         """, (order_number, issue_id))
@@ -237,24 +270,33 @@ def process_return():
             entity_id=issue_id,
             entity_desc=order_number,
         )
-        print("Return processed, order number:", order_number)
-        return jsonify({"success": True, "order_number": order_number})
+
+        return jsonify({
+            "success": True,
+            "order_number": order_number
+        })
 
     except Exception as e:
         print("process_return error:", e)
+
         if conn:
             try:
                 conn.rollback()
             except Exception:
                 pass
-        return jsonify({"success": False, "message": str(e)})
-    
+
+        return jsonify({
+            "success": False,
+            "message": str(e)
+        })
+
     finally:
         if cursor:
             try:
                 cursor.close()
             except Exception:
                 pass
+
         if conn:
             try:
                 conn.close()

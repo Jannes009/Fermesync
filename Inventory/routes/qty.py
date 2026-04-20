@@ -247,7 +247,7 @@ def get_upcoming_demand(warehouse_id=None):
             MAX(QtyAvailable) AS QtyAvailable
 
         FROM agr._uvSprayStockRequirements QTY
-        JOIN stk._uvInventoryQty STK on STK.StockLink = QTY.StockId
+        JOIN stk._uvInventoryQty STK on STK.StockLink = QTY.StockId AND QTY.WhseId = STK.WhseLink
         """
 
         params = []

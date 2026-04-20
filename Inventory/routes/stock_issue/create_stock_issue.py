@@ -33,7 +33,6 @@ def create_stock_issue():
 
     
     order_final = data.get("order_final", False)
-    created_at = data.get("created_at", datetime.now().isoformat())
     lines_payload = data.get("lines", [])
     
     issue_mode = data.get("issue_mode", "project")  # "project" or "spray"
@@ -42,270 +41,356 @@ def create_stock_issue():
     if issue_mode not in ["project", "spray"]:
         return jsonify({"status": "error", "message": "Invalid issue mode"}), 400
     elif issue_mode == "project":
-        project_id = data.get("project")
-        if not project_id:
-            return jsonify({"status": "error", "message": "Project ID required for project mode"}), 400
+        projects = data.get("projects")
+        if not projects or not isinstance(projects, list) or len(projects) == 0:
+            return jsonify({"status": "error", "message": "Projects list required for project mode"}), 400
         warehouse_id = data.get("warehouse")
         if not warehouse_id or not lines_payload:
             return jsonify({"status": "error", "message": "Missing required data"}), 400
 
-        return generate_stock_issue_for_project(project_id, warehouse_id, lines_payload, order_final, created_at)
+        return generate_stock_issue_for_projects(projects, warehouse_id, lines_payload, order_final)
     elif issue_mode == "spray":
         spray_id = data.get("spray_id")    
         if not spray_id:
             return jsonify({"status": "error", "message": "Spray ID required for spray mode"}), 400
-        return generate_stock_issue_for_spray(spray_id, lines_payload, order_final, created_at)
+        return generate_stock_issue_for_spray(spray_id, lines_payload, order_final)
 
 
-def generate_stock_issue_for_project(project_id, warehouse_id, lines_payload, order_final, created_at):
-    submission_lines = []
+def generate_stock_issue_for_projects(project_ids, warehouse_id, lines_payload, order_final):
     conn = create_db_connection()
     cursor = conn.cursor()
 
-    # Create issue header (schema may not have project/spray columns yet)
-    cursor.execute("""
-    INSERT INTO [stk].IssueHeader( 
-    IssWhseId, IssByUserId, [IssTimeStamp])
-    OUTPUT INSERTED.IdIssue 
-    VALUES (?, ?, ?) """, 
-    (warehouse_id, current_user.id, created_at))
-
-    stock_issue_id = cursor.fetchone()[0]
-    issue_no = f"ISS-{int(stock_issue_id):03d}"
     try:
+        # =========================
+        # Create issue header
+        # =========================
+        cursor.execute("""
+            INSERT INTO [stk].IssueHeader (
+                IssWhseId, IssByUserId, IssTimeStamp
+            )
+            OUTPUT INSERTED.IdIssue
+            VALUES (?, ?, GETDATE())
+        """, (warehouse_id, current_user.id))
+
+        stock_issue_id = cursor.fetchone()[0]
+        issue_no = f"ISS-{int(stock_issue_id):03d}"
+
         cursor.execute("""
             UPDATE [stk].IssueHeader
             SET IssNo = ?
             WHERE IdIssue = ?
         """, (issue_no, stock_issue_id))
-    except Exception as e:
-        print("Failed to set issue number, continuing with blank IssNo", e)
 
-    # If order is final, mark header final now
-    if order_final:
-        cursor.execute("""
-            UPDATE [stk].IssueHeader
-            SET IssFinalised = 1, IssFinalisedByUserId = ?, IssFinalisedTimeStamp = GETDATE()
-            WHERE IdIssue = ?
-        """, (current_user.id, stock_issue_id))
-
-    # Insert each line
-    for line in lines_payload:       
-        cursor.execute("""
-            INSERT INTO [stk].IssueLines(
-                IssLineIssueId, IssLineProjectId, IssLineStockLink, IssLineQtyIssued, IssLineUOMId
-            )
-            OUTPUT INSERTED.IdIssLine
-            VALUES (?, ?, ?, ?, ?)
-        """, (
-            stock_issue_id,
-            project_id,
-            line.get("product_link"),
-            line.get("qty_to_issue"),
-            line.get("uom_id"),        ))
-        last_line_id = cursor.fetchone()[0]
-        # If final, set IssLineQtyFinalised for that newly-inserted line
-        if order_final:          
+        if order_final:
             cursor.execute("""
-                UPDATE [stk].IssueLines
-                SET IssLineQtyFinalised = ?
-                WHERE IdIssLine = ?
-            """, (line.get("qty_to_issue"), last_line_id))
-            submission_line = {
-                "line_id": last_line_id,
-                "project": project_id,
-                "product_link": line.get("product_link"),
-                "finalised_qty": line.get("qty_to_issue")
-            }
-            submission_lines.append(submission_line)
+                UPDATE [stk].IssueHeader
+                SET IssFinalised = 1,
+                    IssFinalisedByUserId = ?,
+                    IssFinalisedTimeStamp = GETDATE()
+                WHERE IdIssue = ?
+            """, (current_user.id, stock_issue_id))
 
-    # If order_final we can attempt to submit to Evolution in the background call;
-    # keep it synchronous here for simplicity. If submit_stock_issue raises, log it but do not fail DB insert.
-    if order_final:
-        try:
-            order_number = submit_stock_issue(warehouse_id, submission_lines)
-            print(order_number,stock_issue_id)
+        # =========================
+        # Equal weight per project
+        # =========================
+        weight = 1 / len(project_ids) if project_ids else 0
+
+        # =========================
+        # Insert lines
+        # =========================
+        for line in lines_payload:
+            cursor.execute("""
+                INSERT INTO [stk].IssueLines(
+                    IssLineIssueId,
+                    IssLineStockLink,
+                    IssLineQtyIssued,
+                    IssLineUOMId
+                )
+                OUTPUT INSERTED.IdIssLine
+                VALUES (?, ?, ?, ?)
+            """, (
+                stock_issue_id,
+                line.get("product_link"),
+                line.get("qty_to_issue"),
+                line.get("uom_id"),
+            ))
+
+            last_line_id = cursor.fetchone()[0]
+
+            # =========================
+            # Insert project allocations
+            # =========================
+            for project_id in project_ids:
+                cursor.execute("""
+                    INSERT INTO [stk].IssueLineProjects(
+                        IssLinProjLineId,
+                        IssLinProjProjectId,
+                        IssLinProjWeight
+                    )
+                    VALUES (?, ?, ?)
+                """, (
+                    last_line_id,
+                    project_id,
+                    weight
+                ))
+
+            # =========================
+            # Finalised qty
+            # =========================
+            if order_final:
+                cursor.execute("""
+                    UPDATE [stk].IssueLines
+                    SET IssLineQtyFinalised = ?
+                    WHERE IdIssLine = ?
+                """, (line.get("qty_to_issue"), last_line_id))
+
+        # =========================
+        # Submit to Evolution
+        # =========================
+        if order_final:
+            order_number = submit_stock_issue(stock_issue_id, cursor)
+
             cursor.execute("""
                 UPDATE [stk].IssueHeader
                 SET IssInvoiceNo = ?
                 WHERE IdIssue = ?
             """, (order_number, stock_issue_id))
+
             emit_event(
                 event_code="STOCK_ISSUE",
                 entity_id=stock_issue_id,
                 entity_desc=order_number,
             )
-            conn.commit()
-        except Exception as ex:
-            conn.rollback()
-            return jsonify({
-                "status": "error",
-                "message": str(ex)
-            }), 400
 
-    cursor.execute("""
-    Select IdIssLine, IssLineStockLink from [stk].[IssueLines]
-    Where IssLineIssueId = ?
-    """, (stock_issue_id,))
-    issue_lines = cursor.fetchall()
-    conn.commit()
-    return jsonify({
-        "status": "success", 
-        "message": "Stock issue created.", 
-        "issue_id": stock_issue_id, 
-        "issue_no": issue_no,
-        "project_id": project_id,
-        "issue_lines": [{"issue_line_id": issue_line[0], "issue_product_link": issue_line[1]} for issue_line in issue_lines]
-    }), 200
+        conn.commit()
 
-def generate_stock_issue_for_spray(spray_id, lines_payload, order_final, created_at):
-    submission_lines = []
+        cursor.execute("""
+            SELECT IdIssLine, IssLineStockLink
+            FROM [stk].[IssueLines]
+            WHERE IssLineIssueId = ?
+        """, (stock_issue_id,))
+
+        issue_lines = cursor.fetchall()
+
+        return jsonify({
+            "status": "success",
+            "message": "Stock issue created.",
+            "issue_id": stock_issue_id,
+            "issue_no": issue_no,
+            "project_ids": project_ids,
+            "issue_lines": [
+                {
+                    "issue_line_id": row[0],
+                    "issue_product_link": row[1]
+                } for row in issue_lines
+            ]
+        }), 200
+
+    except Exception as ex:
+        conn.rollback()
+        return jsonify({
+            "status": "error",
+            "message": str(ex)
+        }), 400
+    finally:
+        if cursor:
+            try:
+                cursor.close()
+            except Exception:
+                pass
+        if conn:
+            try:
+                conn.close()
+            except Exception:
+                pass
+
+
+def generate_stock_issue_for_spray(execution_id, lines_payload, order_final):
     conn = create_db_connection()
     cursor = conn.cursor()
 
-    cursor.execute("Select SprayHWhseId from [agr].[SprayHeader] Where IdSprayH = ?", (spray_id,))
-    warehouse_id = cursor.fetchone()[0]
-
-
-    # Create issue header (schema may not have project/spray columns yet)
-    cursor.execute("""
-    INSERT INTO [stk].IssueHeader( 
-    IssWhseId, IssByUserId, [IssTimeStamp], IssSprayId)
-    OUTPUT INSERTED.IdIssue 
-    VALUES (?,?, ?, ?) """, 
-    (warehouse_id, current_user.id, created_at, spray_id))
-
-    stock_issue_id = cursor.fetchone()[0]
-    issue_no = f"ISS-{int(stock_issue_id):03d}"
     try:
+        # check if execution exists and is open
         cursor.execute("""
-            UPDATE [stk].IssueHeader
+            SELECT COUNT(1)
+            FROM agr.SprayExecution
+            WHERE IdSprExec = ? AND SprExecFinalised = 0
+        """, (execution_id,))
+        if cursor.fetchone()[0] == 0:
+            return jsonify({"status": "error", "message": "Spray execution not found or already finalised"}), 400
+        # =====================================
+        # Get warehouse
+        # =====================================
+        cursor.execute("""
+            SELECT TOP 1 HEA.SprayHWhseId
+            FROM agr.SprayExecution EXE
+            JOIN agr.SprayHeader HEA
+                ON EXE.IdSprExec = HEA.SprayHExecutionId
+            WHERE EXE.IdSprExec = ?
+        """, (execution_id,))
+        warehouse_id = cursor.fetchone()[0]
+
+        # =====================================
+        # Create issue header
+        # =====================================
+        cursor.execute("""
+            INSERT INTO stk.IssueHeader(
+                IssWhseId,
+                IssByUserId,
+                IssTimeStamp,
+                IssSprayExecutionId
+            )
+            OUTPUT INSERTED.IdIssue
+            VALUES (?, ?, GETDATE(), ?)
+        """, (
+            warehouse_id,
+            current_user.id,
+            execution_id
+        ))
+
+        stock_issue_id = cursor.fetchone()[0]
+        issue_no = f"ISS-{int(stock_issue_id):03d}"
+
+        cursor.execute("""
+            UPDATE stk.IssueHeader
             SET IssNo = ?
             WHERE IdIssue = ?
         """, (issue_no, stock_issue_id))
-    except Exception as e:
-        print("Failed to set issue number, continuing with blank IssNo", e)
 
-    # If order is final, mark header final now
-    if order_final:
-        cursor.execute("""
-            UPDATE [stk].IssueHeader
-            SET IssueFinalised = 1, IssueFinalisedByUserId = ?, IssueFinalisedTimeStamp = GETDATE()
-            WHERE IssueId = ?
-        """, (current_user.id, stock_issue_id))
-
-    cursor.execute("""
-        Select SprayPProjectId,SprayPHa, SprayPWaterPerHa
-        from [agr].[SprayProjects]
-        Where SprayPSprayId = ?
-    """, (spray_id,))
-    spray_project_rows = cursor.fetchall()
-
-    # Determine spray type
-    cursor.execute("""
-        SELECT SprayHApplicationType
-        FROM [agr].[SprayHeader]
-        WHERE IdSprayH = ?
-    """, (spray_id,))
-    spray_type = cursor.fetchone()[0]
-
-    projects = []
-    total_weight = 0
-
-    for row in spray_project_rows:
-        ha = float(row.SprayPHa or 0)
-        water_per_ha = float(row.SprayPWaterPerHa or 0)
-
-        if spray_type == "direct":
-            weight = ha
-        else:  # "spray"
-            weight = ha * water_per_ha
-
-        projects.append({
-            "project_id": row.SprayPProjectId,  # <-- make sure you SELECT this!
-            "weight": weight
-        })
-
-        total_weight += weight
-
-    # Insert each line
-    for line in lines_payload:
-        total_qty = float(line.get("qty_to_issue") or 0)
-
-        for proj in projects:
-            if total_weight == 0:
-                project_qty = 0
-            else:
-                project_qty = (proj["weight"] / total_weight) * total_qty
-
-            project_id = proj["project_id"]
-
+        if order_final:
             cursor.execute("""
-                INSERT INTO [stk].IssueLines(
-                    IssLineIssueId, IssLineProjectId, IssLineStockLink, 
-                    IssLineQtyIssued, IssLineUOMId
+                UPDATE stk.IssueHeader
+                SET IssFinalised = 1,
+                    IssFinalisedByUserId = ?,
+                    IssFinalisedTimeStamp = GETDATE()
+                WHERE IdIssue = ?
+            """, (current_user.id, stock_issue_id))
+
+        # =====================================
+        # Insert issue lines
+        # =====================================
+        for line in lines_payload:
+            stock_id = line.get("product_link")
+            total_qty = float(line.get("qty_to_issue") or 0)
+
+            # ---------------------------------
+            # Create ONE issue line per product
+            # ---------------------------------
+            cursor.execute("""
+                INSERT INTO stk.IssueLines(
+                    IssLineIssueId,
+                    IssLineStockLink,
+                    IssLineQtyIssued,
+                    IssLineUOMId
                 )
                 OUTPUT INSERTED.IdIssLine
-                VALUES (?, ?, ?, ?, ?)
+                VALUES (?, ?, ?, ?)
             """, (
                 stock_issue_id,
-                project_id,
-                line.get("product_link"),
-                project_qty,
+                stock_id,
+                total_qty,
                 line.get("uom_id"),
             ))
-            last_line_id = cursor.fetchone()[0]
-            if order_final:          
+
+            issue_line_id = cursor.fetchone()[0]
+
+            if order_final:
                 cursor.execute("""
-                    UPDATE [stk].IssueLines
+                    UPDATE stk.IssueLines
                     SET IssLineQtyFinalised = ?
-                    WHERE IssLineId = ?
-                """, (project_qty, last_line_id))
-                submission_line = {
-                    "line_id": last_line_id,
-                    "project": project_id,
-                    "product_link": line.get("product_link"),
-                    "finalised_qty": project_qty
-                }
-                submission_lines.append(submission_line)
-    # If order_final we can attempt to submit to Evolution in the background call;
-    # keep it synchronous here for simplicity. If submit_stock_issue raises, log it but do not fail DB insert.
-    if order_final:
-        try:
-            order_number = submit_stock_issue(warehouse_id, submission_lines)
-            print(order_number,stock_issue_id)
+                    WHERE IdIssLine = ?
+                """, (total_qty, issue_line_id))
+
+            # =====================================
+            # Get project-specific weights for this stock
+            # =====================================
             cursor.execute("""
-                UPDATE [stk].IssueHeader
-                SET IssueInvoiceNo = ?
-                WHERE IssueId = ?
+                SELECT ProjectId, ProjectWeight, IdSprayH
+                FROM [agr].[_uvSprayExecutionProjectWeights]
+                WHERE IdSprExec = ? AND StockId = ?
+            """, (execution_id, stock_id))
+
+            project_rows = cursor.fetchall()
+
+            # =====================================
+            # Insert project allocations
+            # =====================================
+            for row in project_rows:
+                cursor.execute("""
+                    INSERT INTO [stk].[IssueLineProjects](
+                        [IssLinProjLineId],
+                        [IssLinProjProjectId],
+                        [IssLinProjWeight],
+                        [IssLinProjSprayId]
+                    )
+                    VALUES (?, ?, ?, ?)
+                """, (
+                    issue_line_id,
+                    row.ProjectId,
+                    row.ProjectWeight,
+                    row.IdSprayH
+                ))
+            
+
+        # =====================================
+        # Submit to Evolution
+        # =====================================
+        if order_final:
+            order_number = submit_stock_issue(stock_issue_id, cursor)
+
+            cursor.execute("""
+                UPDATE stk.IssueHeader
+                SET IssInvoiceNo = ?
+                WHERE IdIssue = ?
             """, (order_number, stock_issue_id))
+
             emit_event(
                 event_code="STOCK_ISSUE",
                 entity_id=stock_issue_id,
                 entity_desc=order_number,
             )
-            conn.commit()
-        except Exception as ex:
-            conn.rollback()
-            return jsonify({
-                "status": "error",
-                "message": str(ex)
-            }), 400
 
-    cursor.execute("""
-    Select IdIssLine, IssLineStockLink from [stk].[IssueLines]
-    Where IssLineIssueId = ?
-    """, (stock_issue_id,))
-    issue_lines = cursor.fetchall()
-    conn.commit()
-    return jsonify({
-        "status": "success", 
-        "message": "Stock issue created.", 
-        "issue_id": stock_issue_id,
-        "issue_no": issue_no,
-        "issue_lines": [{"issue_line_id": issue_line[0], "issue_product_link": issue_line[1]} for issue_line in issue_lines]
-    }), 200
+        conn.commit()
 
+        cursor.execute("""
+            SELECT IdIssLine, IssLineStockLink
+            FROM stk.IssueLines
+            WHERE IssLineIssueId = ?
+        """, (stock_issue_id,))
+
+        issue_lines = cursor.fetchall()
+
+        return jsonify({
+            "status": "success",
+            "message": "Stock issue created.",
+            "issue_id": stock_issue_id,
+            "issue_no": issue_no,
+            "issue_lines": [
+                {
+                    "issue_line_id": row[0],
+                    "issue_product_link": row[1]
+                } for row in issue_lines
+            ]
+        }), 200
+
+    except Exception as ex:
+        conn.rollback()
+        return jsonify({
+            "status": "error",
+            "message": str(ex)
+        }), 400
+    finally:
+        if cursor:
+            try:
+                cursor.close()
+            except Exception:
+                pass
+        if conn:
+            try:
+                conn.close()
+            except Exception:
+                pass
+    
 @inventory_bp.route("/SDK/fetch_products_in_warehouse", methods=["GET"])
 def fetch_products_in_warehouse():
 

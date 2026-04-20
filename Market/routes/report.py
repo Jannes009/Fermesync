@@ -49,7 +49,7 @@ def fetch_delivery_note_report():
         
         # Parameterized query to prevent SQL injection
         query = """
-            SELECT * FROM [market].[_uvMarketDeliveryNotetbl]
+            SELECT * FROM [mkt].[_uvMarketDeliveryNotetbl]
             WHERE DelDate BETWEEN ? AND ?
         """
         cursor.execute(query, (start_date, end_date))

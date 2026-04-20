@@ -162,7 +162,7 @@ def get_consignment_details(consignment_id):
     query = """
     SELECT DISTINCT 
         Product ,Variety ,Class ,Mass_kg ,Size ,QtySent ,Brand ,DelNoteNo
-    FROM [market].[ZZMarketDataTrn]
+    FROM [mkt].[ZZMarketDataTrn]
     WHERE ConsignmentID = ?
     """
     
@@ -261,9 +261,9 @@ def match_consignment():
         
         cursor.execute("EXEC SIGCreateSalesFromTrn")
         cursor.execute("""
-            EXEC [market].[SIGUpdatePackagingCost]
-            EXEC [market].[SIGUpdateWeightTransport]
-            EXEC [market].[SIGUpdateDeliveryNoteLineTotals]
+            EXEC [mkt].[SIGUpdatePackagingCost]
+            EXEC [mkt].[SIGUpdateWeightTransport]
+            EXEC [mkt].[SIGUpdateDeliveryNoteLineTotals]
         """)
         conn.commit()
 

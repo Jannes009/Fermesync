@@ -10,7 +10,7 @@ def view_entries():
     query = """
     SELECT DelIndex, DelDate, DelNoteNo, AgentName, PackhouseName, ProdUnitName,
         QtyLoaded,QtySold,QtyInvoiced
-    FROM [market].[_uvViewEntriesPage]
+    FROM [mkt].[_uvViewEntriesPage]
     """
 
     # Connect to the database
@@ -40,20 +40,20 @@ def get_sales_entries(lineId):
         if(view_mode != True):
             query = """
             SELECT SalesDate, SalesQty, SalesPrice, DiscountPercent, SalesAmnt, SalesStockId, SalesLineIndex, Destroyed
-            FROM [market].[_uvMarketSales]
+            FROM [mkt].[_uvMarketSales]
             WHERE SalesDelLineId = ? AND Invoiced = 'FALSE'
             """
         elif(view_mode == True):
            query = """
             SELECT SalesDate, SalesQty, SalesPrice, DiscountPercent, SalesAmnt, SalesStockId, SalesLineIndex, Destroyed
-            FROM [market].[ZZSalesLines]
+            FROM [mkt].[ZZSalesLines]
             WHERE SalesDelLineId = ?
             """ 
         cursor.execute(query, (lineId,))
         rows = cursor.fetchall()
         print(rows)
         query = """
-        Select AvailableQtyForSale from [market].[_uvDelQuantities] Where DelLineIndex = ?
+        Select AvailableQtyForSale from [mkt].[_uvDelQuantities] Where DelLineIndex = ?
         """
         cursor.execute(query, (lineId,))
         available_for_sale = cursor.fetchone()

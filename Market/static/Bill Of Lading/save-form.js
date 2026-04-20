@@ -119,29 +119,28 @@ document.addEventListener("DOMContentLoaded", () => {
         `);
     
         // Populate product dropdown with selected product
-        populateDropdownOptions(newRow.find("select.product-select"), product.ZZProduct, productOptions);
+        const productDropdown = newRow.find("select.product-select")
+        productDropdown.empty();
+        productDropdown.append('<option value="" disabled>Select an option</option>');
+        productOptions.forEach(p => {
+            productDropdown.append(new Option(p.display_name, p.StockLink));
+        });
+        productDropdown.val(product.ZZProduct);
     
         // Populate production unit dropdown with selected production unit
-        populateDropdownOptions(newRow.find("select.production-unit-select"), product.ZZProductionUnitLine, unitOptions);
+        const unitDropdown = newRow.find("select.production-unit-select")
+        unitDropdown.empty();
+        unitDropdown.append('<option value="" disabled>Select an option</option>');
+        unitOptions.forEach(u => {
+            const option = new Option(u.display_name, u.ProjectLink);
+            if (u.ProjectLink === product.ZZProductionUnitLine) {
+                option.selected = true;
+            }
+            unitDropdown.append(option);
+        });
+        unitDropdown.val(product.ZZProductionUnitLine);
     
         return newRow;
-    }
-    
-    // Generic helper for dropdowns
-    function populateDropdownOptions(dropdown, selectedValue, optionsArray) {
-        dropdown.empty(); // Clear existing options
-    
-        // Add default placeholder
-        dropdown.append('<option value="" disabled>Select an option</option>');
-    
-        // Add new options
-        optionsArray.forEach(([value, text]) => {
-            dropdown.append(new Option(text, value, false, value === selectedValue));
-        });
-    
-        if (selectedValue) {
-            dropdown.val(selectedValue);
-        }
     }
     
 

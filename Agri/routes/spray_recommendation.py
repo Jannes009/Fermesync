@@ -168,6 +168,8 @@ def save_spray_recommendation():
             """, spray_no, spray_description, spray_date, current_user.id, application_type, method_id, warehouse_id, "RECOMMENDED")
         spray_header_id = cur.fetchone()[0]
 
+        total_ha = sum(float(proj.get("ha") or 0) for proj in projects)
+        total_water = 0
         for project in projects:
             project_id = project.get("project_id")
             ha = float(project.get("ha") or 0)
@@ -175,6 +177,8 @@ def save_spray_recommendation():
             water = None
             if application_type == "spray" and water_per_ha not in [None, ""]:
                 water = float(water_per_ha)
+                total_water += ha * water
+
 
             cur.execute("""
             INSERT INTO agr.SprayProjects
@@ -197,14 +201,15 @@ def save_spray_recommendation():
                 qty = float(qty)
                 qty_per_100l = qty if qty_type == "per100l" else None
                 qty_per_ha = qty if qty_type == "perha" else None
+                total_qty = qty_per_100l * (total_water / 100) if qty_per_100l is not None else qty_per_ha * total_ha if qty_per_ha is not None else None
                 print(line.get("uom_id"))
 
                 cur.execute("""
                     INSERT INTO agr.SprayLines
-                    (SprayLineHeaderId, SprayLineStkId, SprayLineQtyPer100L, SprayLineQtyPerHa, SprayLineUoMId)
+                    (SprayLineHeaderId, SprayLineStkId, SprayLineQtyPer100L, SprayLineQtyPerHa, SprayLineUoMId, SprayLIneTotalQty)
                     OUTPUT INSERTED.IdSprayLine
-                    VALUES (?, ?, ?, ?, ?)
-                """, spray_header_id, stk_id, qty_per_100l, qty_per_ha, line.get("uom_id"))
+                    VALUES (?, ?, ?, ?, ?, ?)
+                """, spray_header_id, stk_id, qty_per_100l, qty_per_ha, line.get("uom_id"), total_qty)
 
         conn.commit()
 
@@ -418,39 +423,73 @@ def get_spray_recommendations():
     cur = conn.cursor()
 
     query = """
-       SELECT
-            sh.IdSprayH,
-            sh.SprayHNo,
-            ISNULL(SUM(sp.SprayPHa),0) AS total_ha,
-            sh.SprayHDate,
-            sh.SprayHStatus,
-            sh.SprayHApplicationType,
-            m.SprayMethodName
-        FROM agr.SprayHeader sh
-        LEFT JOIN agr.SprayProjects sp ON sp.SprayPSprayId = sh.IdSprayH
-        LEFT JOIN cmn._uvProject p ON p.ProjectLink = sp.SprayPProjectId
-        LEFT JOIN agr.SprayMethod m ON m.IdSprayMethod = sh.SprayHMethodId
-        GROUP BY sh.IdSprayH, sh.SprayHNo, sh.SprayHDate, sh.SprayHStatus, sh.SprayHApplicationType, m.SprayMethodName
-        ORDER BY sh.SprayHDate DESC
+    SELECT
+        HEA.IdSprayH,
+        HEA.SprayHNo,
+        HEA.SprayHDate,
+        HEA.SprayHStatus,
+        HEA.SprayHDescription,
+        WHSE.WhseDescription,
+        WHSE.WhseLink,
+        DATEPART(WEEK, HEA.SprayHDate) AS week_number,
+        DATEPART(YEAR, HEA.SprayHDate) AS year,
+        CASE WHEN SUM(CASE WHEN REQ.QtyAvailable >= REQ.TotalQty THEN 0 ELSE 1 END) = 0 THEN 1 ELSE 0 END AS sufficient_stock
+    FROM agr.SprayHeader HEA
+    JOIN [agr].[_uvSprayStockRequirements] REQ on REQ.SprayId = HEA.IdSprayH
+    JOIN cmn._uvWarehouses WHSE on WHSE.WhseLink = REQ.WhseId
+    WHERE HEA.SprayHExecutionId IS NULL  -- Only show recommendations not already in a execution
+    GROUP BY HEA.IdSprayH, HEA.SprayHNo, HEA.SprayHDate, HEA.SprayHStatus, HEA.SprayHDescription, HEA.SprayHApplicationType, WHSE.WhseDescription, WHSE.WhseLink
+    ORDER BY WHSE.WhseDescription, HEA.SprayHDate DESC
     """
     cur.execute(query)
     rows = cur.fetchall()
 
-    recommendations = [
-        {
-            "id": row[0],
-            "spray_no": row[1],
-            "ha": float(row[2]),
-            "spray_date": str(row[3]),
-            "status": row[4],
-            "application_type": row[5] or 'spray',
-            "method_name": row[6] or ''
-        }
-        for row in rows
-    ]
+    # Group by warehouse, then by week
+    warehouses = {}
+    for row in rows:
+        whse_name = row.WhseDescription
+        whse_id = row.WhseLink
+        week_key = f"Week {row.week_number}, {row.year}"
+        
+        if whse_name not in warehouses:
+            warehouses[whse_name] = {
+                "id": whse_id,
+                "name": whse_name,
+                "weeks": {}
+            }
+        
+        if week_key not in warehouses[whse_name]["weeks"]:
+            warehouses[whse_name]["weeks"][week_key] = {
+                "week": week_key,
+                "recommendations": []
+            }
+        
+        warehouses[whse_name]["weeks"][week_key]["recommendations"].append({
+            "id": row.IdSprayH,
+            "spray_no": row.SprayHNo,
+            "spray_date": str(row.SprayHDate) if row.SprayHDate else None,
+            "status": row.SprayHStatus,
+            "description": row.SprayHDescription,
+            "sufficient_stock": row.sufficient_stock
+        })
+
+    # Convert to list format
+    result = []
+    for whse_name, whse_data in warehouses.items():
+        weeks_list = []
+        for week_key, week_data in whse_data["weeks"].items():
+            weeks_list.append({
+                "week": week_key,
+                "recommendations": week_data["recommendations"]
+            })
+        result.append({
+            "id": whse_data["id"],
+            "name": whse_data["name"],
+            "weeks": weeks_list
+        })
 
     conn.close()
-    return jsonify(recommendations)
+    return jsonify(result)
 
 @agri_bp.route("/spray-recommendation/method-water/<int:method_id>", methods=["GET"])
 @login_required
@@ -464,3 +503,126 @@ def get_method_water(method_id):
         return jsonify({"water_per_ha": row[0]})
     else:
         return jsonify({"water_per_ha": None}), 404
+
+
+@agri_bp.route("/execution/responsible-persons", methods=["GET"])
+@login_required
+def get_responsible_persons():
+    conn = create_db_connection()
+    cur = conn.cursor()
+    
+    # Get users who can be responsible for executions - you might want to filter by role or department
+    cur.execute("""
+        SELECT IdPerson, PersonName
+        FROM agr.People
+        WHERE PersonSprayExecutionResponsible = 1 
+        ORDER BY PersonName
+    """)
+    
+    persons = [{"id": row.IdPerson, "name": row.PersonName} for row in cur.fetchall()]
+    conn.close()
+    return jsonify(persons)
+
+
+@agri_bp.route("/execution/create", methods=["POST"])
+@login_required
+def create_execution():
+    data = request.get_json()
+    execution_date = data.get("execution_date")
+    responsible_person = data.get("responsible_person")
+    recommendation_ids = data.get("recommendation_ids", [])
+    
+    if not execution_date or not responsible_person or not recommendation_ids:
+        return jsonify({"success": False, "message": "Missing required fields"}), 400
+    
+    conn = create_db_connection()
+    cur = conn.cursor()
+    
+    try:
+        # Create the execution
+        cur.execute("""
+            INSERT INTO agr.SprayExecution (SprExecDate, SprExecResponsiblePerson)
+            OUTPUT INSERTED.IdSprExec
+            VALUES (?, ?)
+        """, execution_date, responsible_person)
+        
+        execution_id = cur.fetchone()[0]
+        
+        # Update the spray headers to link them to the execution
+        # Note: This assumes SprayHeader has a column called SprayHExecutionId (int, nullable)
+        # If this column doesn't exist, you'll need to add it: ALTER TABLE agr.SprayHeader ADD SprayHExecutionId int NULL
+        for rec_id in recommendation_ids:
+            cur.execute("""
+                UPDATE agr.SprayHeader 
+                SET SprayHExecutionId = ? 
+                WHERE IdSprayH = ?
+            """, execution_id, rec_id)
+        
+        conn.commit()
+        conn.close()
+        
+        return jsonify({"success": True, "message": "Execution created successfully", "execution_id": execution_id})
+    
+    except Exception as e:
+        conn.rollback()
+        conn.close()
+        return jsonify({"success": False, "message": f"Error creating execution: {str(e)}"}), 500
+
+
+@agri_bp.route("/executions/pending", methods=["GET"])
+@login_required
+def get_pending_executions():
+    conn = create_db_connection()
+    cur = conn.cursor()
+    
+    cur.execute("""
+        SELECT b.IdSprExec, b.SprExecDate, b.SprExecResponsiblePerson, p.PersonName,
+               COUNT(h.IdSprayH) as rec_count
+        FROM agr.SprayExecution b
+        LEFT JOIN agr.People p ON p.IdPerson = b.SprExecResponsiblePerson
+        LEFT JOIN agr.SprayHeader h ON h.SprayHExecutionId = b.IdSprExec
+        WHERE b.SprExecFinalised != 1
+        GROUP BY b.IdSprExec, b.SprExecDate, b.SprExecResponsiblePerson, p.PersonName
+        ORDER BY b.SprExecDate DESC
+    """)
+    
+    executions = []
+    for row in cur.fetchall():
+        executions.append({
+            "id": row.IdSprExec,
+            "date": row.SprExecDate.isoformat() if row.SprExecDate else None,
+            "responsible_person": row.PersonName,
+            "recommendation_count": row.rec_count
+        })
+    
+    conn.close()
+    return jsonify(executions)
+
+@agri_bp.route("/executions/completed", methods=["GET"])
+@login_required
+def get_completed_executions():
+    conn = create_db_connection()
+    cur = conn.cursor()
+
+    cur.execute("""
+        SELECT b.IdSprExec, b.SprExecDate, b.SprExecResponsiblePerson, p.PersonName,
+               COUNT(h.IdSprayH) as rec_count
+        FROM agr.SprayExecution b
+        LEFT JOIN agr.People p ON p.IdPerson = b.SprExecResponsiblePerson
+        LEFT JOIN agr.SprayHeader h ON h.SprayHExecutionId = b.IdSprExec
+        WHERE b.SprExecFinalised = 1
+        GROUP BY b.IdSprExec, b.SprExecDate, b.SprExecResponsiblePerson, p.PersonName
+        ORDER BY b.SprExecDate DESC
+    """)
+
+    executions = []
+    for row in cur.fetchall():
+        executions.append({
+            "id": row.IdSprExec,
+            "date": row.SprExecDate.isoformat() if row.SprExecDate else None,
+            "responsible_person": row.PersonName,
+            "recommendation_count": row.rec_count
+        })
+
+    conn.close()
+    return jsonify(executions)

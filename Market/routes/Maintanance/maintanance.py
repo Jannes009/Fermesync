@@ -20,7 +20,7 @@ def fetch_data(cursor):
         SELECT * FROM [mkt].ZZProductWeight;
         SELECT * FROM [mkt].ZZProductBrand;
         Select * from [mkt].ZZProductClass;
-        Select OutputidTaxRate, OutputTaxRate from [market].[_uvMarketTaxRates]
+        Select OutputidTaxRate, OutputTaxRate from [mkt].[_uvMarketTaxRates]
     """)
 
     # Initialize an empty dictionary to store the results
@@ -102,7 +102,7 @@ def create_product():
     output_tax_rate = request.form.get('taxRate')
 
     print(output_tax_rate, stock_item_code, product_code, type_code)
-    query = "SELECT InputidTaxRate FROM [market].[_uvTaxRates] WHERE OutputidTaxRate = ?"
+    query = "SELECT InputidTaxRate FROM [mkt].[_uvTaxRates] WHERE OutputidTaxRate = ?"
     cursor.execute(query, (output_tax_rate,))
     input_tax_rate = cursor.fetchone()
 
@@ -112,7 +112,7 @@ def create_product():
 
     # SQL Insert Query
     query = """
-    INSERT INTO [market].[ZZProductStockItem] (ProductStockItemCode, ProductIndex, ProductClassIndex, ProductWeightIndex, 
+    INSERT INTO [mkt].[ZZProductStockItem] (ProductStockItemCode, ProductIndex, ProductClassIndex, ProductWeightIndex, 
     ProductSizeIndex, ProductTypeIndex, ProductBrandIndex,
     [ProductOutputidTaxRate], [ProductInputidTaxRate])
     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
@@ -124,7 +124,7 @@ def create_product():
 
         cursor.execute(query, values)
         conn.commit()
-        cursor.execute("EXEC [market].[SIGCreateEvoStockItem]")
+        cursor.execute("EXEC [mkt].[SIGCreateEvoStockItem]")
         conn.commit()
     except IntegrityError as e:
         print(e)

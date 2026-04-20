@@ -207,13 +207,13 @@ function renderTable(salesOrders) {
     let rows = salesOrders.map(order => {
         const status = (order.status || 'Unprocessed').toLowerCase();
         return `
-            <tr class="clickable-row" data-sales-order-id="${order.invoiceindex}" data-status="${status}">
-                <td>${order.invoiceno}</td>
-                <td>${order.invoicedate || ''}</td>
-                <td>${order.agentname}</td>
-                <td><a href="/market/delivery-note/${order.invoicedelnoteno}" class="text-blue-600 hover:underline" onclick="event.stopPropagation();">${order.invoicedelnoteno}</a></td>
-                <td>${order.invoiceqty || ''}</td>
-                <td>${formatAmount(order.invoicenett)}</td>
+            <tr class="clickable-row" data-sales-order-id="${order.InvoiceIndex}" data-status="${status}">
+                <td>${order.InvoiceNo}</td>
+                <td>${order.InvoiceDate || ''}</td>
+                <td>${order.AgentName}</td>
+                <td><a href="/market/delivery-note/${order.InvoiceDelNoteNo}" class="text-blue-600 hover:underline" onclick="event.stopPropagation();">${order.InvoiceDelNoteNo}</a></td>
+                <td>${order.InvoiceQty || ''}</td>
+                <td>${formatAmount(order.InvoiceNett)}</td>
                 <td>${statusBadge(order.status)}</td>
             </tr>
         `;

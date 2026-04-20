@@ -18,7 +18,7 @@ def delivery_note(del_note_no):
         ,PackhouseCode, PackhouseName,
         TransporterAccount, TransporterName, 
         DelTransportCostExcl, DestinationId, DestinationDescription
-    FROM [mkt].[mkt]._uvDeliveryNoteHeader
+    FROM [mkt]._uvDeliveryNoteHeader
     WHERE DelNoteNo = ?
     """, (del_note_no,))
     header = cursor.fetchone()
@@ -29,8 +29,8 @@ def delivery_note(del_note_no):
     # Get linked count
     cursor.execute("""
         Select Count(ConsignmentID) 
-        from [mkt].[mkt].ZZDeliveryNoteLines LIN
-        JOIN [mkt].[mkt].ZZDeliveryNoteHeader HEA on HEA.DelIndex = LIN.DelHeaderId
+        from [mkt].ZZDeliveryNoteLines LIN
+        JOIN [mkt].ZZDeliveryNoteHeader HEA on HEA.DelIndex = LIN.DelHeaderId
         where DelNoteNo = ? AND ConsignmentID Is Not NULL
     """, (del_note_no,))
     linked_count = cursor.fetchone()[0] or 0
@@ -38,14 +38,14 @@ def delivery_note(del_note_no):
     # Get matched count
     cursor.execute("""
         SELECT Count(TrnConsignmentID)
-        FROM [mkt].[mkt]._uvDelNoteVSMktTrn
+        FROM [mkt]._uvDelNoteVSMktTrn
         WHERE TrnDelNoteNo = ? AND DelNoteNo IS NULL
     """, (del_note_no,))
     matched_count = cursor.fetchone()[0] or 0
 
     # Get discount percent
     cursor.execute("""
-    Select DiscountPercent from [mkt].[mkt]._uvMarketAgent
+    Select DiscountPercent from [mkt]._uvMarketAgent
     WHERE Account = ?
     """, ( header[2],))
     discount_percent = cursor.fetchone()
@@ -66,7 +66,7 @@ def fetch_delivery_note_lines(del_note_no):
     cursor.execute("""
         SELECT DelLineIndex, ProductDescription,ProdUnitName,
                DelLineQuantityBags, TotalQtySold, TotalQtyInvoiced
-        FROM [market].[_uvMarketDeliveryNote]
+        FROM [mkt].[_uvMarketDeliveryNote]
         WHERE DelNoteNo = ?
         ORDER BY DelLineIndex
     """, (del_note_no,))
@@ -105,7 +105,7 @@ def fetch_sales_lines(del_note_no):
             InvoiceNo,
             AutoSale,
             SalesDelLineId
-        FROM [mkt].[mkt]._uvMarketSales
+        FROM [mkt]._uvMarketSales
         WHERE DelNoteNo = ?
         ORDER BY AutoSale DESC, SalesDate
     """, (del_note_no,))
@@ -142,7 +142,7 @@ def submit_sales_entry():
     try:
         total_quantity = sum(float(item['quantity']) for item in lines)
     
-        # cursor.execute("Select TotalQtyInvoiced, TotalQtyDelivered from [market].[_uvDelQuantities] WHERE DelLineIndex = ?",
+        # cursor.execute("Select TotalQtyInvoiced, TotalQtyDelivered from [mkt].[_uvDelQuantities] WHERE DelLineIndex = ?",
         # (lines[0]['lineId'],))
         # quantities = cursor.fetchone()
         # if(quantities[1] - quantities[0] - total_quantity < 0):
@@ -168,7 +168,7 @@ def submit_sales_entry():
             discountAmnt = gross_amount * (float(discount) / 100)
 
             cursor.execute("""
-            SELECT AgentComm, MarketComm FROM [market].[_uvDelLinCommission]
+            SELECT AgentComm, MarketComm FROM [mkt].[_uvDelLinCommission]
             WHERE DelLineIndex = ?
             """,(lineId,))
             row = cursor.fetchone()
@@ -177,7 +177,7 @@ def submit_sales_entry():
             net_sales = float(amount) - (float(amount) * (float(agent_commission) + float(market_commission)) / 100)
             if salesId != None:
                 cursor.execute("""
-                UPDATE [mkt].[mkt].ZZSalesLines
+                UPDATE [mkt].ZZSalesLines
                     SET SalesDate = ?, SalesQty = ?, DiscountPercent = ?, DiscountAmnt = ?, 
                     SalesAmnt = ?, SalesStockId = ?, SalesPrice = ?, GrossSalesAmnt = ?, 
                     SalesMarketComPercent = ?, SalesAgentComPercent = ?, NettSalesAmnt = ?,
@@ -187,7 +187,7 @@ def submit_sales_entry():
                       gross_amount, market_commission, agent_commission, net_sales, destroyed, salesId, ))
             else:  
                 cursor.execute("""
-                INSERT INTO [mkt].[mkt].ZZSalesLines (
+                INSERT INTO [mkt].ZZSalesLines (
                 SalesDelLineId, SalesDate, SalesQty, SalesAmnt,
                 SalesPrice, SalesStockId, AutoSale, DiscountPercent,
                 DiscountAmnt, GrossSalesAmnt,
@@ -201,9 +201,9 @@ def submit_sales_entry():
                         market_commission, agent_commission, net_sales, destroyed,))
             cursor.execute("SELECT DB_NAME()")
             print(cursor.fetchone())
-            cursor.execute("EXEC [market].[SIGUpdatePackagingCost]")
-            cursor.execute("EXEC [market].[SIGUpdateWeightTransport]")
-            cursor.execute("EXEC [market].[SIGUpdateDeliveryNoteLineTotals]")
+            cursor.execute("EXEC [mkt].[SIGUpdatePackagingCost]")
+            cursor.execute("EXEC [mkt].[SIGUpdateWeightTransport]")
+            cursor.execute("EXEC [mkt].[SIGUpdateDeliveryNoteLineTotals]")
         conn.commit()
     finally:
         cursor.close()
@@ -223,7 +223,7 @@ def get_available_lines(del_note_no):
             DelLineQuantityBags,
             TotalQtySold,
             (DelLineQuantityBags - TotalQtySold) as available_qty
-        FROM [market].[_uvMarketDeliveryNote]
+        FROM [mkt].[_uvMarketDeliveryNote]
         WHERE DelNoteNo = ?
         AND (DelLineQuantityBags - TotalQtySold) > 0
         ORDER BY DelLineIndex
@@ -252,7 +252,7 @@ def delete_sales_entry(sales_id):
 
         cursor.execute("""
             Select DocketNumber 
-            from [market].[ZZSalesLines]
+            from [mkt].[ZZSalesLines]
             where SalesLineIndex = ?
         """,(sales_id,))
         docket_number = cursor.fetchone()
@@ -260,14 +260,14 @@ def delete_sales_entry(sales_id):
         # Delete the entry from [mkt].the database
         cursor.execute("""
             Delete
-            from [market].[ZZSalesLines]
+            from [mkt].[ZZSalesLines]
             where SalesLineIndex = ?
 
             Update [mkt].TRN SET Deleted = 1
-            from [market].[ZZMarketDataTrn] TRN 
+            from [mkt].[ZZMarketDataTrn] TRN 
             where DocketNumber = ?;
         """, (sales_id, docket_number[0]))
-        cursor.execute("EXEC [market].[SIGUpdateDeliveryNoteLineTotals]")
+        cursor.execute("EXEC [mkt].[SIGUpdateDeliveryNoteLineTotals]")
         conn.commit()
 
         # Check if any rows were deleted
@@ -290,7 +290,7 @@ def unlink_consignment(consignment_id):
 
         # Execute the stored procedure to unlink the consignment
         cursor.execute("EXEC [mkt].SIGUnlinkConsignment @ConsignmentID = ?", (consignment_id,))
-        cursor.execute("EXEC [market].[SIGUpdateDeliveryNoteLineTotals]")
+        cursor.execute("EXEC [mkt].[SIGUpdateDeliveryNoteLineTotals]")
         conn.commit()
 
         return jsonify({'success': True, 'message': 'Consignment unlinked successfully'})
@@ -309,8 +309,8 @@ def update_counts(del_note_no):
     # Get linked count
     cursor.execute("""
         Select Count(ConsignmentID) 
-        from [mkt].[mkt].ZZDeliveryNoteLines LIN
-        JOIN [mkt].[mkt].ZZDeliveryNoteHeader HEA on HEA.DelIndex = LIN.DelHeaderId
+        from [mkt].ZZDeliveryNoteLines LIN
+        JOIN [mkt].ZZDeliveryNoteHeader HEA on HEA.DelIndex = LIN.DelHeaderId
         where DelNoteNo = ? AND ConsignmentID Is Not NULL
     """, (del_note_no,))
     linked_count = cursor.fetchone()[0] or 0
@@ -318,7 +318,7 @@ def update_counts(del_note_no):
     # Get matched count
     cursor.execute("""
         SELECT Count(TrnConsignmentID)
-        FROM [mkt].[mkt]._uvDelNoteVSMktTrn
+        FROM [mkt]._uvDelNoteVSMktTrn
         WHERE TrnDelNoteNo = ? AND DelNoteNo IS NULL
     """, (del_note_no,))
     matched_count = cursor.fetchone()[0] or 0
@@ -347,8 +347,8 @@ def save_product():
         """
         cursor.execute(query, (product_id, line_id))
         cursor.execute("""
-        EXEC [market].[SIGUpdatePackagingCost]
-        EXEC [market].[SIGUpdateWeightTransport]
+        EXEC [mkt].[SIGUpdatePackagingCost]
+        EXEC [mkt].[SIGUpdateWeightTransport]
         EXEC [mkt]..[SIGUpdateDeliveryNoteLineTotals]
         """)
         conn.commit()
@@ -369,7 +369,7 @@ def save_productuction_unit():
 
     try:
         query = """
-            UPDATE [mkt].[mkt].ZZDeliveryNoteLines
+            UPDATE [mkt].ZZDeliveryNoteLines
             SET DelLineFarmId = ?
             WHERE DelLineIndex = ?
         """
@@ -437,7 +437,7 @@ def get_delivery_header(delnote_no):
         cursor.execute("""
         SELECT DelNoteNo, DelDate, DeliClientId, DelMarketId,
                DelTransporter, DelQuantityBags, DelTransportCostExcl, DelDestinationId
-        From [mkt].[mkt].ZZDeliveryNoteHeader	
+        From [mkt].ZZDeliveryNoteHeader	
         WHERE DelNoteNo = ?
         """, (delnote_no,))
         
@@ -473,13 +473,13 @@ def save_delivery_header(delnote_no):
         # If the delivery note number is being changed, update [mkt].it everywhere
         if new_delnoteno != delnote_no:
             # Check if the new DelNoteNo already exists (prevent duplicates)
-            cursor.execute("SELECT COUNT(*) FROM [mkt].[mkt].ZZDeliveryNoteHeader WHERE DelNoteNo = ?", (new_delnoteno,))
+            cursor.execute("SELECT COUNT(*) FROM [mkt].ZZDeliveryNoteHeader WHERE DelNoteNo = ?", (new_delnoteno,))
             if cursor.fetchone()[0] > 0:
                 return jsonify({'success': False, 'message': 'A delivery note with this number already exists.'}), 400
 
             # Update [mkt].the header
             cursor.execute("""
-                UPDATE [mkt].[mkt].ZZDeliveryNoteHeader
+                UPDATE [mkt].ZZDeliveryNoteHeader
                 SET DelNoteNo = ?
                 WHERE DelNoteNo = ?
             """, (new_delnoteno, delnote_no))
@@ -487,7 +487,7 @@ def save_delivery_header(delnote_no):
         delnote_no = new_delnoteno  # For the next update
         # Update [mkt].the rest of the fields
         cursor.execute("""
-            UPDATE [mkt].[mkt].ZZDeliveryNoteHeader
+            UPDATE [mkt].ZZDeliveryNoteHeader
             SET DelDate = ?,
                 DeliClientId = ?,
                 DelMarketId = ?,
@@ -514,10 +514,10 @@ def save_delivery_header(delnote_no):
         conn.commit()
 
         # Edit Transport PO
-        cursor.execute("EXEC [market].[SIGCreateTransportPO]")
+        cursor.execute("EXEC [mkt].[SIGCreateTransportPO]")
         cursor.execute("""
-        EXEC [market].[SIGUpdateWeightTransport]
-        EXEC [market].[SIGUpdateDeliveryNoteLineTotals]
+        EXEC [mkt].[SIGUpdateWeightTransport]
+        EXEC [mkt].[SIGUpdateDeliveryNoteLineTotals]
         """)
 
         conn.commit()
@@ -638,11 +638,11 @@ def update_line_quantities():
             header_id = header_row[0]
             production_unit_id = production_unit_name_to_production_unit_id(new_line_info['prod_unit'], cursor)
             cursor.execute(
-                "INSERT INTO [mkt].[mkt].ZZDeliveryNoteLines (DelHeaderId, DelLineStockId, DelLineFarmId, DelLineQuantityBags) VALUES (?, ?, ?, ?)",
+                "INSERT INTO [mkt].ZZDeliveryNoteLines (DelHeaderId, DelLineStockId, DelLineFarmId, DelLineQuantityBags) VALUES (?, ?, ?, ?)",
                 (header_id, new_line_info['product_id'], production_unit_id, new_line_info['quantity'])
             )
             conn.commit()  # commit insert so subsequent select finds it
-            cursor.execute("SELECT TOP 1 DelLineIndex FROM [mkt].[mkt].ZZDeliveryNoteLines WHERE DelHeaderId = ? ORDER BY DelLineIndex DESC", (header_id,))
+            cursor.execute("SELECT TOP 1 DelLineIndex FROM [mkt].ZZDeliveryNoteLines WHERE DelHeaderId = ? ORDER BY DelLineIndex DESC", (header_id,))
             new_line_id = cursor.fetchone()[0]
             quantities[new_line_id] = quantities['new']
             del quantities['new']
@@ -651,8 +651,8 @@ def update_line_quantities():
         first_line_id = next(iter(quantities.keys()))
         cursor.execute("""
             SELECT DelHeaderId, DelQuantityBags
-            FROM [mkt].[mkt].ZZDeliveryNoteLines LIN
-            JOIN [mkt].[mkt].ZZDeliveryNoteHeader HEA ON HEA.DelIndex = LIN.DelHeaderId
+            FROM [mkt].ZZDeliveryNoteLines LIN
+            JOIN [mkt].ZZDeliveryNoteHeader HEA ON HEA.DelIndex = LIN.DelHeaderId
             WHERE DelLineIndex = ?
         """, (first_line_id,))
         result = cursor.fetchone()
@@ -666,7 +666,7 @@ def update_line_quantities():
 
         # Validate individual line constraints
         for line_id, new_qty in quantities.items():
-            cursor.execute("SELECT TotalQtySold, TotalQtyInvoiced FROM [mkt].[mkt]._uvMarketDeliveryNote WHERE DelLineIndex = ?", (line_id,))
+            cursor.execute("SELECT TotalQtySold, TotalQtyInvoiced FROM [mkt]._uvMarketDeliveryNote WHERE DelLineIndex = ?", (line_id,))
             row = cursor.fetchone()
             if not row:
                 return jsonify({'success': False, 'message': f'Line {line_id} not found'}), 404
@@ -677,13 +677,13 @@ def update_line_quantities():
 
         # Perform updates inside transaction and run maintenance stored procs individually
         for line_id, new_qty in quantities.items():
-            cursor.execute("UPDATE [mkt].[mkt].ZZDeliveryNoteLines SET DelLineQuantityBags = ? WHERE DelLineIndex = ?", (new_qty, line_id))
+            cursor.execute("UPDATE [mkt].ZZDeliveryNoteLines SET DelLineQuantityBags = ? WHERE DelLineIndex = ?", (new_qty, line_id))
 
         # run maintenance procedures one by one and check for errors
         try:
-            cursor.execute("EXEC [market].[SIGUpdatePackagingCost]")
-            cursor.execute("EXEC [market].[SIGUpdateWeightTransport]")
-            cursor.execute("EXEC [market].[SIGUpdateDeliveryNoteLineTotals]")
+            cursor.execute("EXEC [mkt].[SIGUpdatePackagingCost]")
+            cursor.execute("EXEC [mkt].[SIGUpdateWeightTransport]")
+            cursor.execute("EXEC [mkt].[SIGUpdateDeliveryNoteLineTotals]")
             conn.commit()
         except Exception as dbexc:
             conn.rollback()
@@ -723,8 +723,8 @@ def delete_delivery_line(line_id):
         cursor = conn.cursor()
         # Optionally, add safety checks here (e.g., not deleting if sold/invoiced qty > 0)
         cursor.execute("""
-            DELETE FROM [mkt].[mkt].ZZDeliveryNoteLines WHERE DelLineIndex = ?
-            DELETE FROM [market].[ZZDeliveryNoteLineTotals] WHERE DelLineId = ?
+            DELETE FROM [mkt].ZZDeliveryNoteLines WHERE DelLineIndex = ?
+            DELETE FROM [mkt].ZZDeliveryNoteLineTotals WHERE DelLineId = ?
         """, (line_id, line_id,))
         conn.commit()
         if cursor.rowcount == 0:
@@ -748,7 +748,7 @@ def api_linked_lines():
     SELECT DelHeaderId, DelNoteNo, DelLineStockId, DelProductDescription, DelQtySent, TotalSalesQty, TotalInvoicedQty,
            TrnConsignmentID, TrnDelNoteNo, TrnProduct, TrnVariety, TrnSize, TrnClass, TrnMass, TrnBrand, TrnQtySent,
            DelLineIndex
-    FROM [mkt].[mkt]._uvDelNoteVSMktTrn
+    FROM [mkt]._uvDelNoteVSMktTrn
     WHERE DelNoteNo = ? OR TrnDelNoteNo = ?
     '''
     cursor.execute(query, (delnote_no, delnote_no))
@@ -767,7 +767,7 @@ def api_dockets():
     # Replace DocketsTable and fields with your actual table/fields
     query = '''
     SELECT DocketNumber, QtySold, Price, SalesValue, DateSold
-    FROM [mkt].[mkt].ZZMarketDataTrn
+    FROM [mkt].ZZMarketDataTrn
     WHERE ConsignmentID = ?
     '''
     cursor.execute(query, (consignment_id,))
@@ -785,7 +785,7 @@ def api_delivery_note_lines():
     cursor = conn.cursor()
     query = '''
     SELECT SalesQty, SalesPrice, GrossSalesAmnt, DiscountPercent, DiscountAmnt, AutoSale, SalesDate, InvoiceNo
-    FROM [mkt].[mkt]._uvMarketSales
+    FROM [mkt]._uvMarketSales
     WHERE SalesDelLineId = ?
     ORDER BY AutoSale DESC
     '''
@@ -805,7 +805,7 @@ def get_order_status(delnote_no):
         # Transport PO Status
         cursor.execute("""
             SELECT TOP 1 Status
-            FROM [mkt].[mkt]._uvTransportPOStatus
+            FROM [mkt]._uvTransportPOStatus
             WHERE DelNoteNo = ?
         """, (delnote_no,))
         result = cursor.fetchone()
@@ -814,7 +814,7 @@ def get_order_status(delnote_no):
         # Invoice existence
         cursor.execute("""
             SELECT COUNT(*) 
-            FROM [mkt].[mkt].ZZInvoiceHeader
+            FROM [mkt].ZZInvoiceHeader
             WHERE InvoiceDelNoteNo = ?
         """, (delnote_no,))
         invoice_count = cursor.fetchone()[0]

@@ -1,0 +1,1102 @@
+{% extends 'inventory_base.html' %}
+{% block content %}
+
+<link rel="stylesheet" href="{{ url_for('market.static', filename='color-template.css') }}">
+<link href="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/css/select2.min.css" rel="stylesheet" />
+
+<style>
+  * { box-sizing: border-box; }
+  body { background: var(--primary-bg); color: var(--primary-text); font-size: 0.9rem; margin: 0; padding: 0; min-height: 100vh; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; }
+  .page-content { display: flex; flex-direction: column; flex: 1; }
+  .wrap { width: 100%; margin: 0 auto; padding: 1rem; max-width: 1200px; }
+  .card { background: var(--container-bg); border-radius: 8px; box-shadow: 0 1px 6px rgba(44,62,80,0.08); padding: 1.5rem; margin-bottom: 1rem; }
+  header h1 { margin: 0; font-size: 1.4rem; color: var(--primary-text); }
+
+  .execution-header {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+    gap: 1rem;
+    margin-bottom: 2rem;
+  }
+
+  .header-item {
+    background: var(--form-bg);
+    padding: 1rem;
+    border-radius: 6px;
+    border: 1px solid var(--input-border);
+  }
+
+  .header-label {
+    font-weight: 600;
+    color: var(--secondary-text);
+    font-size: 0.85rem;
+    margin-bottom: 0.5rem;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+  }
+
+  .header-value {
+    font-size: 1.1rem;
+    color: var(--primary-text);
+    font-weight: 500;
+  }
+
+  .status-badge {
+    display: inline-block;
+    padding: 4px 12px;
+    border-radius: 12px;
+    font-size: 0.8rem;
+    font-weight: 600;
+    text-transform: uppercase;
+  }
+
+  .status-finalised {
+    background: #d4edda;
+    color: #155724;
+  }
+
+  .status-draft {
+    background: #fff3cd;
+    color: #856404;
+  }
+
+  .section-title {
+    font-size: 1.2rem;
+    color: var(--primary-text);
+    margin-bottom: 1rem;
+    font-weight: 600;
+  }
+
+  /* Stock Movements Table */
+  .stock-movements-table {
+    width: 100%;
+    border-collapse: collapse;
+    background: var(--container-bg);
+    border-radius: 8px;
+    overflow: hidden;
+    margin-bottom: 2rem;
+  }
+
+  .stock-movements-table th,
+  .stock-movements-table td {
+    padding: 12px;
+    border-bottom: 1px solid var(--input-border);
+    text-align: left;
+    font-size: 0.9rem;
+  }
+
+  .stock-movements-table th {
+    background: var(--form-bg);
+    font-weight: 700;
+    color: var(--secondary-text);
+  }
+
+  .stock-movements-table tbody tr:hover {
+    background: var(--form-bg);
+  }
+
+  .movement-qty {
+    font-weight: 600;
+    text-align: center;
+  }
+
+  .qty-out { color: #dc3545; }
+  .qty-in { color: #28a745; }
+  .qty-used { color: #007bff; }
+
+  /* Spray Instructions */
+  .recommendations-grid {
+    display: grid;
+    gap: 1rem;
+  }
+
+  .rec-card {
+    background: var(--container-bg);
+    border: 1px solid var(--input-border);
+    border-radius: 8px;
+    padding: 1rem;
+    transition: box-shadow 0.2s;
+  }
+
+  .rec-card:hover {
+    box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+  }
+
+  .rec-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    margin-bottom: 0.75rem;
+  }
+
+  .rec-id {
+    font-weight: 700;
+    font-size: 1.1rem;
+    color: var(--primary-text);
+  }
+
+  .rec-status {
+    font-size: 0.8rem;
+    font-weight: 600;
+    padding: 4px 8px;
+    border-radius: 4px;
+  }
+
+  .rec-details {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 0.5rem;
+    font-size: 0.9rem;
+  }
+
+  .rec-detail {
+    display: flex;
+    flex-direction: column;
+  }
+
+  .rec-detail-label {
+    font-weight: 600;
+    color: var(--secondary-text);
+    font-size: 0.8rem;
+    margin-bottom: 2px;
+  }
+
+  .rec-detail-value {
+    color: var(--primary-text);
+  }
+
+  .stock-status.sufficient {
+    color: #28a745;
+    font-weight: 600;
+  }
+
+  .stock-status.insufficient {
+    color: #dc3545;
+    font-weight: 600;
+  }
+
+  .no-data {
+    text-align: center;
+    padding: 2rem;
+    color: var(--secondary-text);
+    font-style: italic;
+  }
+
+  /* Buttons */
+  .btn-primary {
+    background: var(--button-bg);
+    color: var(--button-text);
+    border: none;
+    padding: 8px 16px;
+    border-radius: 6px;
+    font-size: 0.9rem;
+    cursor: pointer;
+    text-decoration: none;
+    display: inline-block;
+    transition: background 0.2s;
+  }
+
+  .btn-primary:hover {
+    background: var(--button-hover);
+  }
+
+  .btn-success {
+    background: #28a745;
+    color: white;
+    text-decoration: none;
+    padding: 8px 16px;
+    border-radius: 6px;
+    font-size: 0.9rem;
+    cursor: pointer;
+    border: none;
+    transition: background 0.2s;
+  }
+
+  .btn-success:hover {
+    background: #218838;
+  }
+
+  .btn-secondary {
+    background: var(--secondary-bg, #6c757d);
+    color: white;
+    border: none;
+    padding: 8px 16px;
+    border-radius: 6px;
+    font-size: 0.9rem;
+    cursor: pointer;
+    text-decoration: none;
+    display: inline-block;
+    transition: background 0.2s;
+  }
+
+  .btn-secondary:hover {
+    background: #5a6268;
+  }
+
+  .finalised-pill {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.5rem;
+    padding: 0.55rem 0.85rem;
+    border-radius: 999px;
+    background: #eaf7ed;
+    color: #217a33;
+    font-weight: 700;
+    font-size: 0.9rem;
+    border: 1px solid #c3e6cb;
+  }
+
+  .modal-backdrop {
+    position: fixed;
+    inset: 0;
+    background: rgba(15, 23, 42, 0.55);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 1rem;
+    z-index: 1500;
+  }
+
+  .modal-backdrop[hidden] {
+    display: none !important;
+  }
+
+  .modal-window {
+    background: var(--container-bg);
+    border-radius: 16px;
+    width: min(560px, 100%);
+    box-shadow: 0 18px 40px rgba(15, 23, 42, 0.2);
+    overflow: hidden;
+    border: 1px solid rgba(0, 0, 0, 0.08);
+  }
+
+  .modal-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 1rem 1.25rem;
+    border-bottom: 1px solid var(--input-border);
+    background: var(--form-bg);
+  }
+
+  .modal-header h3 {
+    margin: 0;
+    font-size: 1.05rem;
+    color: var(--primary-text);
+  }
+
+  .modal-close {
+    background: transparent;
+    border: none;
+    font-size: 1.5rem;
+    color: var(--secondary-text);
+    cursor: pointer;
+  }
+
+  .modal-body {
+    padding: 1.25rem;
+    display: grid;
+    gap: 1rem;
+  }
+
+  .modal-field {
+    display: grid;
+    gap: 0.5rem;
+  }
+
+  .modal-field label {
+    font-size: 0.85rem;
+    color: var(--secondary-text);
+    font-weight: 600;
+  }
+
+  .modal-field input,
+  .modal-field select {
+    width: 100%;
+    padding: 0.8rem 0.85rem;
+    border-radius: 10px;
+    border: 1px solid var(--input-border);
+    background: var(--primary-bg);
+    color: var(--primary-text);
+  }
+
+  .modal-footer {
+    padding: 1rem 1.25rem 1.25rem;
+    display: flex;
+    justify-content: flex-end;
+    gap: 0.75rem;
+    border-top: 1px solid var(--input-border);
+  }
+
+  .modal-footer .btn-primary,
+  .modal-footer .btn-success {
+    min-width: 140px;
+  }
+
+  .action-buttons {
+    display: flex;
+    gap: 0.5rem;
+    margin-top: 1rem;
+  }
+
+  @media (max-width: 768px) {
+    .wrap { padding: 0.5rem; }
+    .card { padding: 1rem; }
+    .execution-header { grid-template-columns: 1fr; }
+    .rec-details { grid-template-columns: 1fr; }
+    .stock-movements-table { font-size: 0.8rem; }
+    .stock-movements-table th,
+    .stock-movements-table td { padding: 8px; }
+  }
+
+  /* Spray Details Styling */
+  .spray-details-content {
+    margin-top: 0.5rem;
+    padding: 1rem;
+    border: 1px solid var(--input-border);
+    border-radius: 8px;
+    background: var(--form-bg);
+  }
+
+  .detail-section {
+    margin-bottom: 1.5rem;
+  }
+
+  .detail-section:last-child {
+    margin-bottom: 0;
+  }
+
+  .detail-section-title {
+    font-weight: 700;
+    color: var(--primary-text);
+    font-size: 1rem;
+    margin-bottom: 0.75rem;
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+  }
+
+  .detail-section-title.description-title::before {
+    content: '📋';
+    font-size: 1.1rem;
+  }
+
+  .detail-section-title.projects-title::before {
+    content: '🌾';
+    font-size: 1.1rem;
+  }
+
+  .detail-section-title.products-title::before {
+    content: '🧪';
+    font-size: 1.1rem;
+  }
+
+  .description-text {
+    color: var(--primary-text);
+    line-height: 1.5;
+    margin: 0;
+  }
+
+  .projects-list,
+  .products-list {
+    list-style: none;
+    padding: 0;
+    margin: 0;
+  }
+
+  .project-item,
+  .product-item {
+    background: var(--container-bg);
+    border: 1px solid var(--input-border);
+    border-radius: 6px;
+    padding: 0.75rem;
+    margin-bottom: 0.5rem;
+    display: flex;
+    flex-direction: column;
+    gap: 0.25rem;
+  }
+
+  .project-item:last-child,
+  .product-item:last-child {
+    margin-bottom: 0;
+  }
+
+  .project-code {
+    font-weight: 700;
+    color: var(--primary-text);
+    font-size: 0.95rem;
+  }
+
+  .project-details {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 1rem;
+    font-size: 0.85rem;
+    color: var(--secondary-text);
+  }
+
+  .project-detail {
+    display: flex;
+    align-items: center;
+    gap: 0.25rem;
+  }
+
+  .project-detail::before {
+    content: '•';
+    color: var(--accent-color, #007bff);
+    font-weight: bold;
+  }
+
+  .product-description {
+    font-weight: 600;
+    color: var(--primary-text);
+    font-size: 0.95rem;
+  }
+
+  .product-quantities {
+    display: flex;
+    gap: 1rem;
+    font-size: 0.85rem;
+    color: var(--secondary-text);
+  }
+
+  .qty-total {
+    color: #28a745;
+    font-weight: 500;
+  }
+
+  .qty-available {
+    color: #dc3545;
+    font-weight: 500;
+  }
+
+  .no-data-message {
+    text-align: center;
+    padding: 1rem;
+    color: var(--secondary-text);
+    font-style: italic;
+    background: var(--container-bg);
+    border-radius: 6px;
+    border: 1px solid var(--input-border);
+  }
+
+  /* Stock Movements Collapsible */
+  .stock-movements-list {
+    display: flex;
+    flex-direction: column;
+    gap: 0.75rem;
+  }
+
+  .stock-movement-item {
+    background: var(--container-bg);
+    border: 1px solid var(--input-border);
+    border-radius: 8px;
+    overflow: hidden;
+  }
+
+  .stock-movement-summary {
+    padding: 1rem;
+    cursor: pointer;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    transition: background 0.2s;
+  }
+
+  .stock-movement-summary:hover {
+    background: var(--form-bg);
+  }
+
+  .stock-movement-summary.expanded {
+    background: var(--form-bg);
+  }
+
+  .stock-movement-header-left {
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+    flex: 1;
+  }
+
+  .stock-product-name {
+    font-weight: 700;
+    color: var(--primary-text);
+    font-size: 1rem;
+  }
+
+  .stock-summary-values {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+    gap: 1rem;
+    font-size: 0.85rem;
+  }
+
+  .summary-value-item {
+    display: flex;
+    flex-direction: column;
+    gap: 0.25rem;
+  }
+
+  .summary-label {
+    font-size: 0.75rem;
+    color: var(--secondary-text);
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+  }
+
+  .summary-value {
+    font-weight: 600;
+    color: var(--primary-text);
+    font-size: 0.95rem;
+  }
+
+  .recommended-qty { color: #007bff; }
+  .finalised-qty { color: #28a745; }
+  .unfinalised-qty { color: #dc3545; }
+
+  .expand-icon {
+    font-size: 1.5rem;
+    transition: transform 0.3s;
+    margin-left: 1rem;
+    flex-shrink: 0;
+  }
+
+  .expand-icon.expanded {
+    transform: rotate(90deg);
+  }
+
+  .stock-movement-details {
+    max-height: 0;
+    overflow: hidden;
+    transition: max-height 0.3s ease, padding 0.3s ease;
+    background: var(--form-bg);
+    border-top: 1px solid var(--input-border);
+  }
+
+  .stock-movement-details.expanded {
+    max-height: 500px;
+    padding: 1rem;
+  }
+
+  .movement-detail-table {
+    width: 100%;
+    border-collapse: collapse;
+    margin-top: 1rem;
+  }
+
+  .movement-detail-table th,
+  .movement-detail-table td {
+    padding: 0.75rem 0.85rem;
+    border-bottom: 1px solid var(--input-border);
+    font-size: 0.9rem;
+    text-align: left;
+  }
+
+  .movement-detail-table th {
+    background: var(--form-bg);
+    font-weight: 700;
+    color: var(--secondary-text);
+  }
+
+  .movement-detail-row:last-child td {
+    border-bottom: none;
+  }
+
+  .movement-detail-value {
+    color: var(--primary-text);
+    font-weight: 600;
+  }
+
+  .detail-item {
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+  }
+
+  .detail-item-label {
+    font-size: 0.8rem;
+    color: var(--secondary-text);
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+  }
+
+  .detail-item-value {
+    font-size: 1rem;
+    color: var(--primary-text);
+    font-weight: 600;
+  }
+
+  .timestamp-info {
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+    font-size: 0.85rem;
+  }
+
+  .timestamp-label {
+    font-weight: 600;
+    color: var(--secondary-text);
+  }
+
+  .timestamp-value {
+    color: var(--primary-text);
+    font-family: 'Courier New', monospace;
+    font-size: 0.8rem;
+  }
+</style>
+
+<div class="page-content">
+  <div class="wrap">
+    <!-- Execution Header -->
+    <div class="card">
+      <header style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1.5rem;">
+        <h1>Spray Execution #{{ execution.id }}</h1>
+        <div style="display: flex; gap: 0.5rem;">
+          <a href="/agri/execution/{{ execution.id }}/instruction_pdf" target="_blank" class="btn-success">Print Instructions</a>
+          {% if not execution.finalised %}
+          <button class="btn-primary" onclick="finalizeExecution({{ execution.id }})">Finalize Execution</button>
+          {% endif %}
+        </div>
+      </header>
+
+      <div class="execution-header">
+        <div class="header-item">
+          <div class="header-label">Execution Date</div>
+          <div class="header-value">{{ execution.date.strftime('%B %d, %Y') if execution.date else 'Not set' }}</div>
+        </div>
+        <div class="header-item">
+          <div class="header-label">Responsible Person</div>
+          <div class="header-value">{{ execution.responsible_person or 'Not assigned' }}</div>
+        </div>
+        <div class="header-item">
+          <div class="header-label">Warehouse</div>
+          <div class="header-value">{{ execution.warehouse or '-' }}</div>
+        </div>
+        <div class="header-item">
+          <div class="header-label">Total Spray Instructions</div>
+          <div class="header-value">{{ spray_instructions|length }}</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Stock Movements -->
+    <div class="card">
+      <h2 class="section-title">Stock Movements</h2>
+      {% if not execution.finalised %}
+      <div style="margin-bottom: 1rem;">
+        <a href="/inventory/SDK/stock_issue_wizard?execution_id={{ execution.id }}&step=2" class="btn-primary">Issue Stock</a>
+      </div>
+      {% endif %}
+      {% if stock_movements %}
+      <div class="stock-movements-list">
+        {% for movement in stock_movements %}
+        <div class="stock-movement-item">
+          <div class="stock-movement-summary" onclick="toggleStockDetail(this)">
+            <div class="stock-movement-header-left">
+              <div class="stock-product-name">{{ movement.stock_description or 'Unknown Product' }}</div>
+              <div class="stock-summary-values">
+                <div class="summary-value-item">
+                  <span class="summary-label">Recommended</span>
+                  <span class="summary-value recommended-qty">{{ movement.qty_recommended_display or (movement.qty_recommended or 0) }} {{ movement.unit_code or '-' }}</span>
+                </div>
+                <div class="summary-value-item">
+                  <span class="summary-label">Finalised</span>
+                  <span class="summary-value finalised-qty">{{ movement.qty_finalised_nett_display or (movement.qty_finalised_nett or 0) }} {{ movement.unit_code or '-' }}</span>
+                </div>
+                <div class="summary-value-item">
+                  <span class="summary-label">Unfinalised</span>
+                  <span class="summary-value unfinalised-qty">{{ movement.qty_unfinalised_display or (movement.qty_unfinalised or 0) }} {{ movement.unit_code or '-' }}</span>
+                </div>
+              </div>
+            </div>
+            <div class="expand-icon">▶</div>
+          </div>
+            <div class="stock-movement-details">
+              <table class="movement-detail-table">
+                <thead>
+                  <tr>
+                    <th>Issue ID</th>
+                    <th>Qty Out</th>
+                    <th>Qty In</th>
+                    <th>Nett</th>
+                    <th>Unfinalised</th>
+                    <th>Issued</th>
+                    <th>Finalised</th>
+                    <th>Action</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {% for detail in movement.details %}
+                  <tr class="movement-detail-row">
+                    <td>{{ detail.issue_id or '-' }}</td>
+                    <td class="movement-detail-value">{{ detail.qty_out_display }} {{ movement.unit_code }}</td>
+                    <td class="movement-detail-value">{{ detail.qty_in_display }} {{ movement.unit_code }}</td>
+                    <td class="movement-detail-value">{{ detail.qty_finalised_nett_display }} {{ movement.unit_code }}</td>
+                    <td class="movement-detail-value">{{ detail.qty_unfinalised_display }} {{ movement.unit_code }}</td>
+                    <td>{{ detail.time_issued_display }}</td>
+                    <td>{{ detail.time_finalised_display }}</td>
+                    <td>
+                      <button type="button" class="btn-secondary" onclick="openIssueDetails({{ detail.issue_id }})">View details</button>
+                    </td>
+                  </tr>
+                  {% endfor %}
+                </tbody>
+              </table>
+            </div>
+        </div>
+        {% endfor %}
+      </div>
+      {% else %}
+      <div class="no-data">No stock movements recorded for this execution</div>
+      {% endif %}
+    </div>
+
+    <!-- Spray Instructions -->
+    <div class="card">
+      <h2 class="section-title">Spray Instructions in this Execution</h2>
+      {% if spray_instructions %}
+      <div class="recommendations-grid">
+        {% for instruction in spray_instructions %}
+        <div class="rec-card">
+          <div class="rec-header">
+            <div class="rec-id">{{ instruction.description }}</div>
+            <div class="rec-status status-{{ instruction.status.lower() }}">{{ instruction.spray_no }}</div>
+          </div>
+          <div class="rec-details">
+            <div class="rec-detail">
+              <div class="rec-detail-value">Week {{ instruction.week_number }}</div>
+            </div>
+            <div class="rec-detail">
+              <div class="rec-detail-label">Stock Status</div>
+              <div class="rec-detail-value">
+                <span class="stock-status {{ 'sufficient' if instruction.sufficient_stock else 'insufficient' }}">
+                  {{ 'Sufficient' if instruction.sufficient_stock else 'Insufficient' }}
+                </span>
+              </div>
+            </div>
+          </div>
+          <div class="update-instruction-actions" style="margin-top: 0.75rem;">
+            {% if instruction.spray_date and instruction.start_date_time and instruction.end_date_time and instruction.weather %}
+            <span class="finalised-pill">Instruction finalised ✓</span>
+            {% else %}
+            <button type="button" class="btn-success" onclick="openInstructionModal({{ instruction.id }}, '{{ instruction.spray_date or '' }}', '{{ instruction.start_date_time or '' }}', '{{ instruction.end_date_time or '' }}', '{{ instruction.weather or '' }}')">Finalise instruction</button>
+            {% endif %}
+          </div>
+          {% if execution.finalised and instruction.spray_date and instruction.start_date_time and instruction.end_date_time and instruction.weather %}
+          <div style="margin-top: 0.75rem;">
+            <a href="/agri/instruction/{{ instruction.id }}/instruction_pdf" class="btn-secondary" style="font-size: 0.8rem; padding: 0.25rem 0.5rem;" target="_blank">Print Instruction</a>
+          </div>
+          {% endif %}
+          <details style="margin-top: 0.75rem;">
+            <summary style="cursor: pointer; font-weight: 600; color: var(--primary-text);">Spray Details</summary>
+            <div class="spray-details-content">
+              {% if instruction.description %}
+              <div class="detail-section">
+                <div class="detail-section-title description-title">Description</div>
+                <p class="description-text">{{ instruction.description }}</p>
+              </div>
+              {% endif %}
+              
+              {% if instruction.projects %}
+              <div class="detail-section">
+                <div class="detail-section-title projects-title">Projects</div>
+                <ul class="projects-list">
+                  {% for project in instruction.projects %}
+                  <li class="project-item">
+                    <div class="project-code">{{ project.project_code }}</div>
+                    <div class="project-details">
+                      <span class="project-detail">Block: {{ project.block_no or 'N/A' }}</span>
+                      <span class="project-detail">Ha: {{ project.ha or 'N/A' }}</span>
+                      <span class="project-detail">Water/Ha: {{ project.water_per_ha or 'N/A' }}</span>
+                    </div>
+                  </li>
+                  {% endfor %}
+                </ul>
+              </div>
+              {% endif %}
+              
+              {% if instruction.products %}
+              <div class="detail-section">
+                <div class="detail-section-title products-title">Products</div>
+                <ul class="products-list">
+                  {% for product in instruction.products %}
+                  <li class="product-item">
+                    <div class="product-description">{{ product.description or 'Unknown' }}</div>
+                    <div class="product-quantities">
+                      <span class="qty-total">Total Qty: {{ product.total_qty or 0 }}</span>
+                      <span class="qty-available">Available: {{ product.qty_available or 0 }}</span>
+                    </div>
+                  </li>
+                  {% endfor %}
+                </ul>
+              </div>
+              {% else %}
+              <div class="no-data-message">No product details available.</div>
+              {% endif %}
+            </div>
+          </details>
+          </div>
+        {% endfor %}
+      </div>
+      {% else %}
+      <div class="no-data">No spray instructions found in this execution</div>
+      {% endif %}
+    </div>
+
+  </div>
+</div>
+
+<div id="issue-detail-modal" class="modal-backdrop" hidden>
+  <div class="modal-window">
+    <div class="modal-header">
+      <h3>Issue Details</h3>
+      <button type="button" class="modal-close" onclick="closeIssueDetails()">×</button>
+    </div>
+    <div class="modal-body">
+      <div style="display: grid; gap: 0.75rem;">
+        <div style="display: flex; flex-wrap: wrap; gap: 1rem; font-size: 0.95rem;">
+          <div><strong>Issue #</strong> <span id="issue-detail-number">-</span></div>
+          <div><strong>Status</strong> <span id="issue-detail-status">-</span></div>
+          <div><strong>Warehouse</strong> <span id="issue-detail-warehouse">-</span></div>
+          <div><strong>Issued</strong> <span id="issue-detail-issued">-</span></div>
+          <div><strong>Finalised</strong> <span id="issue-detail-finalised">-</span></div>
+        </div>
+        <div>
+          <table class="movement-detail-table" style="width: 100%; margin-top: 0;">
+            <thead>
+              <tr>
+                <th>Product</th>
+                <th>Qty Issued</th>
+                <th>Qty Returned</th>
+                <th>Qty Finalised</th>
+                <th>Unit</th>
+              </tr>
+            </thead>
+            <tbody id="issue-detail-lines"></tbody>
+          </table>
+        </div>
+      </div>
+      <div id="issue-return-error" style="color: #dc3545; display: none; font-size: 0.9rem;"></div>
+      <div id="issue-return-success" style="color: #28a745; display: none; font-size: 0.9rem; margin-top: 0.75rem;"></div>
+      <div class="modal-footer" style="margin-top: 1rem;">
+        <button type="button" class="btn-secondary" onclick="closeIssueDetails()">Close</button>
+        <button type="button" id="issue-return-submit" class="btn-success" onclick="submitIssueReturn()">Save return</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div id="instruction-modal" class="modal-backdrop" hidden>
+  <div class="modal-window">
+    <div class="modal-header">
+      <h3>Finalise Spray Instruction</h3>
+      <button type="button" class="modal-close" onclick="closeInstructionModal()">×</button>
+    </div>
+    <div class="modal-body">
+      <form id="instruction-form" action="" method="post">
+        <input type="hidden" name="spray_date" id="modal-spray-date">
+        <div class="modal-field">
+          <label for="modal-start-time">Start Date & Time</label>
+          <input type="datetime-local" id="modal-start-time" name="start_date_time" required>
+        </div>
+        <div class="modal-field">
+          <label for="modal-end-time">End Date & Time</label>
+          <input type="datetime-local" id="modal-end-time" name="end_date_time" required>
+        </div>
+        <div class="modal-field">
+          <label for="modal-weather">Weather</label>
+          <select id="modal-weather" name="weather" required>
+            <option value="">Select Weather</option>
+            <option value="Sunny">Sunny</option>
+            <option value="Cloudy">Cloudy</option>
+            <option value="Windy">Windy</option>
+            <option value="Evening">Evening</option>
+          </select>
+        </div>
+        <div class="modal-footer">
+          <button type="button" class="btn-secondary" onclick="closeInstructionModal()">Cancel</button>
+          <button type="submit" class="btn-success">Save & Finalise</button>
+        </div>
+      </form>
+    </div>
+  </div>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/js/select2.min.js"></script>
+<script>
+const executionId = {{ execution.id }};
+
+function openInstructionModal(instructionId, sprayDate, startTime, endTime, weather) {
+    const modal = document.getElementById('instruction-modal');
+    const form = document.getElementById('instruction-form');
+    const startInput = document.getElementById('modal-start-time');
+    const endInput = document.getElementById('modal-end-time');
+    const weatherInput = document.getElementById('modal-weather');
+    const sprayDateInput = document.getElementById('modal-spray-date');
+
+    function normalizeDateTime(value) {
+      if (!value) return '';
+      const normalized = value.replace(' ', 'T');
+      return normalized.length > 16 ? normalized.substring(0, 16) : normalized;
+    }
+
+    form.action = `/agri/execution/${executionId}/update_instruction/${instructionId}`;
+    startInput.value = normalizeDateTime(startTime);
+    endInput.value = normalizeDateTime(endTime);
+    weatherInput.value = weather || '';
+    sprayDateInput.value = sprayDate || normalizeDateTime(startTime).split('T')[0] || '';
+    modal.hidden = false;
+}
+
+function closeInstructionModal() {
+    const modal = document.getElementById('instruction-modal');
+    modal.hidden = true;
+}
+
+async function openIssueDetails(issueId) {
+    const modal = document.getElementById('issue-detail-modal');
+    const status = document.getElementById('issue-detail-status');
+    const number = document.getElementById('issue-detail-number');
+    const warehouse = document.getElementById('issue-detail-warehouse');
+    const issued = document.getElementById('issue-detail-issued');
+    const finalised = document.getElementById('issue-detail-finalised');
+    const linesBody = document.getElementById('issue-detail-lines');
+    const errorBox = document.getElementById('issue-return-error');
+    const submitButton = document.getElementById('issue-return-submit');
+
+    modal.dataset.issueId = issueId;
+
+    errorBox.style.display = 'none';
+    errorBox.textContent = '';
+    linesBody.innerHTML = '';
+
+    const response = await fetch(`/agri/execution/issue/${issueId}`);
+    if (!response.ok) {
+        const error = await response.json().catch(() => null);
+        errorBox.style.display = 'block';
+        errorBox.textContent = error?.message || 'Unable to load issue details. Please refresh and try again.';
+        modal.hidden = false;
+        return;
+    }
+
+    const data = await response.json();
+    const issue = data.issue;
+
+    number.textContent = issue.issue_no || issue.issue_id;
+    status.textContent = issue.finalised ? 'Finalised' : 'Open';
+    warehouse.textContent = issue.whse_description || '-';
+    issued.textContent = issue.issued_timestamp || '-';
+    finalised.textContent = issue.finalised_timestamp || '-';
+
+    const issueFinalised = issue.finalised;
+    submitButton.style.display = issueFinalised ? 'none' : 'block';
+
+    data.lines.forEach((line) => {
+        const row = document.createElement('tr');
+        row.innerHTML = `
+          <td>${line.product_desc || 'Unknown'}</td>
+          <td>${line.qty_issued || 0}</td>
+          <td>
+            <input type="number" min="0" step="0.01" class="issue-return-input" data-product-link="${line.product_link}" value="${line.qty_received || 0}" ${issueFinalised ? 'disabled' : ''} style="width: 100%; padding: 0.4rem; border: 1px solid var(--input-border); border-radius: 6px;">
+          </td>
+          <td>${line.qty_finalised || 0}</td>
+          <td>${line.uom_code || '-'}</td>
+        `;
+        linesBody.appendChild(row);
+    });
+
+    modal.hidden = false;
+}
+
+function closeIssueDetails() {
+    const modal = document.getElementById('issue-detail-modal');
+    modal.hidden = true;
+}
+
+async function submitIssueReturn() {
+    const errorBox = document.getElementById('issue-return-error');
+    const successBox = document.getElementById('issue-return-success');
+    const submitButton = document.getElementById('issue-return-submit');
+
+    errorBox.style.display = 'none';
+    errorBox.textContent = '';
+    successBox.style.display = 'none';
+    successBox.textContent = '';
+
+    const issueId = document.getElementById('issue-detail-modal').dataset.issueId;
+    const lineInputs = document.querySelectorAll('.issue-return-input');
+
+    const returnLines = Array.from(lineInputs).map((input) => ({
+        product_link: input.dataset.productLink,
+        qty_returned: input.value
+    }));
+
+    const payload = {
+      issue_id: issueId,
+      created_at: new Date().toISOString(),
+      returns: returnLines
+    };
+
+    submitButton.disabled = true;
+    submitButton.textContent = 'Saving...';
+    console.log('Submitting return payload:', payload);
+
+    const response = await fetch(`/inventory/process_return`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(payload)
+    });
+
+    const responseBody = await response.json().catch(() => null);
+    submitButton.disabled = false;
+    submitButton.textContent = 'Save return';
+
+    if (!response.ok) {
+        const errorMessage = responseBody?.message || 'Could not save returned quantity. Please try again.';
+        errorBox.style.display = 'block';
+        errorBox.textContent = errorMessage;
+        return;
+    }
+
+    successBox.style.display = 'block';
+    successBox.textContent = 'Returned quantities have been updated successfully.';
+    submitButton.style.display = 'none';
+    await openIssueDetails(issueId);
+}
+
+function toggleStockDetail(element) {
+    const details = element.nextElementSibling;
+    const icon = element.querySelector('.expand-icon');
+    
+    element.classList.toggle('expanded');
+    details.classList.toggle('expanded');
+    icon.classList.toggle('expanded');
+}
+
+async function finalizeExecution(executionId) {
+    const confirmed = window.confirm('Finalize Execution?\nThis will mark the execution as finalized and cannot be undone.');
+    if (!confirmed) {
+        return;
+    }
+
+    try {
+        const response = await fetch(`/agri/execution/${executionId}/finalize`, {
+            method: 'POST'
+        });
+        const data = await response.json();
+        if (data.success) {
+            alert('Execution finalized successfully.');
+            location.reload();
+        } else {
+            alert('Failed to finalize execution: ' + (data.message || 'Unknown error.'));
+        }
+    } catch (err) {
+        console.error('Error finalizing execution:', err);
+        alert('Failed to finalize execution. Please try again.');
+    }
+}
+</script>
+
+{% endblock %}

@@ -162,14 +162,14 @@ def submit_invoice():
     print(DelNoteId)
 
     query = """
-    Select [DeliClientId] From [market].[ZZDeliveryNoteHeader]
+    Select [DeliClientId] From [mkt].[ZZDeliveryNoteHeader]
     Where [DelNoteNo] = ?
     """
     cursor.execute(query, (InvoiceDelNoteNo, )),
     clientId = cursor.fetchone()
 
     query = """
-    INSERT INTO [market].[ZZInvoiceHeader] (
+    INSERT INTO [mkt].[ZZInvoiceHeader] (
         [InvoiceDate], [InvoiceNo], [InvoiceDelNoteId], [InvoiceDelNoteNo],
         [InvoiceQty], [InvoiceGross], [InvoiceTotalDeducted],
         [InvoiceMarketCommIncl], [InvoiceAgentCommIncl], [InvoiceOtherCostsIncl], 
@@ -189,7 +189,7 @@ def submit_invoice():
         line = dict(line)
         print(headerId, type(headerId))
         query = """
-        INSERT INTO [market].[ZZInvoiceLines] (
+        INSERT INTO [mkt].[ZZInvoiceLines] (
             [InvoiceHeaderId], [InvoiceSaleLineIndex] 
         ) VALUES (?, ?)
         """
@@ -198,11 +198,11 @@ def submit_invoice():
         ))
     conn.commit()
     # create invoice
-    cursor.execute("EXEC [market].[SIGCreateSalesOrder]")
+    cursor.execute("EXEC [mkt].[SIGCreateSalesOrder]")
     cursor.execute("""
-        EXEC [market].[SIGUpdatePackagingCost]
-        EXEC [market].[SIGUpdateWeightTransport]
-        EXEC [market].[SIGUpdateDeliveryNoteLineTotals]
+        EXEC [mkt].[SIGUpdatePackagingCost]
+        EXEC [mkt].[SIGUpdateWeightTransport]
+        EXEC [mkt].[SIGUpdateDeliveryNoteLineTotals]
     """)
 
     conn.commit()
@@ -354,8 +354,8 @@ def refresh_invoices():
     try:
         conn = create_db_connection()
         cursor = conn.cursor()
-        cursor.execute("EXEC [market].[SIGUpdateMarketFromEvoInvoices]" \
-        "; EXEC [market].[SIGRemoveCreditNotedInvoice];")
+        cursor.execute("EXEC [mkt].[SIGUpdateMarketFromEvoInvoices]" \
+        "; EXEC [mkt].[SIGRemoveCreditNotedInvoice];")
         conn.commit()
         return jsonify({'success': True, 'message': 'Invoices refreshed successfully.'})
     except Exception as e:
@@ -545,7 +545,7 @@ def submit_produnit_change():
         # Update [mkt].lines for this delivery note that match the old production unit
         cursor.execute(
             """
-        EXEC [market].[SIGChangeProcessedProject]
+        EXEC [mkt].[SIGChangeProcessedProject]
             @DelNoteNo       = ?,
             @OldProjectId  = ?,
             @NewProjectId  = ?;

@@ -130,6 +130,39 @@
     cursor: pointer;
   }
 
+  #pendingExecutionsTableWrapper,
+  #completedExecutionsTableWrapper {
+    margin-top: 1rem;
+    overflow-x: auto;
+  }
+  #pendingExecutionsTable,
+  #completedExecutionsTable {
+    width: 100%;
+    border-collapse: collapse;
+    background: var(--container-bg);
+    border-radius: 8px;
+    overflow: hidden;
+    min-width: 500px;
+  }
+  #pendingExecutionsTable th, #pendingExecutionsTable td,
+  #completedExecutionsTable th, #completedExecutionsTable td {
+    padding: 12px;
+    border-bottom: 1px solid var(--input-border);
+    text-align: left;
+    font-size: 0.9rem;
+  }
+  #pendingExecutionsTable th,
+  #completedExecutionsTable th {
+    background: var(--form-bg);
+    font-weight: 700;
+    color: var(--secondary-text);
+    white-space: nowrap;
+  }
+  #pendingExecutionsTable tbody tr,
+  #completedExecutionsTable tbody tr {
+    transition: background 0.15s;
+  }
+
   .status-badge {
     display: inline-block;
     padding: 4px 10px;
@@ -161,8 +194,15 @@
     font-style: italic;
   }
 
-  input[type="date"] { font-size: 16px !important; }
-  select, .select2-container--default .select2-selection--single { font-size: 16px !important; }
+  .stock-status.sufficient {
+    color: #28a745;
+    font-weight: 600;
+  }
+
+  .stock-status.insufficient {
+    color: #dc3545;
+    font-weight: 600;
+  }
 
   /* Mobile Cards */
   .mobile-cards {
@@ -227,6 +267,56 @@
     color: var(--primary-text);
   }
 
+  .execution-card {
+    background: var(--container-bg);
+    border: 1px solid var(--input-border);
+    border-radius: 8px;
+    padding: 16px;
+    margin-bottom: 12px;
+    box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+    transition: box-shadow 0.2s;
+  }
+
+  .execution-card:hover {
+    box-shadow: 0 2px 8px rgba(0,0,0,0.15);
+  }
+
+  .execution-card-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    margin-bottom: 12px;
+  }
+
+  .execution-id {
+    font-weight: 700;
+    font-size: 1.1rem;
+    color: var(--primary-text);
+  }
+
+  .execution-details {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 8px 16px;
+    font-size: 0.9rem;
+  }
+
+  .execution-detail {
+    display: flex;
+    flex-direction: column;
+  }
+
+  .execution-detail-label {
+    font-weight: 600;
+    color: var(--secondary-text);
+    font-size: 0.8rem;
+    margin-bottom: 2px;
+  }
+
+  .execution-detail-value {
+    color: var(--primary-text);
+  }
+
   @media (max-width: 768px) {
     .wrap { padding: 0.5rem; }
     .card { padding: 1rem; margin-bottom: 0.5rem; }
@@ -241,6 +331,10 @@
     .rec-card-header { margin-bottom: 8px; }
     .rec-id { font-size: 1rem; }
     .rec-details { grid-template-columns: 1fr; gap: 6px; }
+    #pendingExecutionsTableWrapper { display: none; }
+    #pendingExecutionCards { display: block; }
+    .execution-card { padding: 12px; margin-bottom: 8px; }
+    .execution-details { grid-template-columns: 1fr; gap: 6px; }
   }
 
   @media (max-width: 480px) {
@@ -249,6 +343,261 @@
     .rec-card { padding: 10px; }
     .rec-details { font-size: 0.85rem; }
     header a.btn-primary { width: 100%; text-align: center; }
+  }
+
+  /* Tree Structure */
+  .tree-container {
+    border: 1px solid var(--input-border);
+    border-radius: 8px;
+    overflow: hidden;
+  }
+
+  .tree-node {
+    border-bottom: 1px solid var(--input-border);
+  }
+
+  .tree-node:last-child {
+    border-bottom: none;
+  }
+
+  .tree-row {
+    display: flex;
+    align-items: center;
+    padding: 12px 16px;
+    background: var(--container-bg);
+    cursor: pointer;
+    transition: background 0.2s;
+  }
+
+  .tree-row:hover {
+    background: var(--form-bg);
+  }
+
+  .tree-toggle {
+    width: 20px;
+    height: 20px;
+    margin-right: 8px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 12px;
+    color: var(--secondary-text);
+    transition: transform 0.2s;
+  }
+
+  .tree-toggle.expanded {
+    transform: rotate(90deg);
+  }
+
+  .tree-content {
+    flex: 1;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+  }
+
+  .tree-label {
+    font-weight: 600;
+    color: var(--primary-text);
+  }
+
+  .tree-meta {
+    font-size: 0.9rem;
+    color: var(--secondary-text);
+  }
+
+  .tree-children {
+    display: none;
+    background: var(--form-bg);
+  }
+
+  .tree-children.expanded {
+    display: block;
+  }
+
+  .tree-child {
+    border-bottom: 1px solid var(--input-border);
+  }
+
+  .tree-child:last-child {
+    border-bottom: none;
+  }
+
+  .week-row {
+    padding: 10px 16px 10px 44px;
+    background: var(--container-bg);
+    border-bottom: 1px solid var(--input-border);
+    cursor: pointer;
+    transition: background 0.2s;
+    display: flex;
+    align-items: center;
+  }
+
+  .week-row:hover {
+    background: var(--form-bg);
+  }
+
+  .week-toggle {
+    width: 16px;
+    height: 16px;
+    margin-right: 8px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 10px;
+    color: var(--secondary-text);
+    transition: transform 0.2s;
+  }
+
+  .week-toggle.expanded {
+    transform: rotate(90deg);
+  }
+
+  .week-label {
+    font-weight: 500;
+    color: var(--primary-text);
+  }
+
+  .week-meta {
+    font-size: 0.85rem;
+    color: var(--secondary-text);
+  }
+
+  .recommendations-list {
+    display: none;
+    background: white;
+  }
+
+  .recommendations-list.expanded {
+    display: block;
+  }
+
+  .rec-item {
+    padding: 12px 16px 12px 60px;
+    border-bottom: 1px solid var(--input-border);
+    display: flex;
+    align-items: center;
+  }
+
+  .rec-item:last-child {
+    border-bottom: none;
+  }
+
+  .rec-checkbox {
+    margin-right: 12px;
+  }
+
+  .rec-details {
+    flex: 1;
+  }
+
+  .rec-id {
+    font-weight: 600;
+    color: var(--primary-text);
+    margin-bottom: 2px;
+  }
+
+  .rec-meta {
+    font-size: 0.85rem;
+    color: var(--secondary-text);
+  }
+
+  .create-execution-btn {
+    background: var(--button-bg);
+    color: var(--button-text);
+    border: none;
+    padding: 8px 16px;
+    border-radius: 6px;
+    font-size: 0.9rem;
+    cursor: pointer;
+    transition: background 0.2s;
+    margin-left: 16px;
+  }
+
+  .execution-controls {
+    padding: 12px 16px;
+    background: var(--form-bg);
+    border-bottom: 1px solid var(--input-border);
+    display: flex;
+    gap: 8px;
+  }
+
+  .execution-mode .rec-item {
+    cursor: default !important;
+  }
+
+  .execution-mode .rec-item:hover {
+    background: transparent;
+  }
+
+  /* Modal */
+  .modal {
+    display: none;
+    position: fixed;
+    z-index: 1000;
+    left: 0;
+    top: 0;
+    width: 100%;
+    height: 100%;
+    background-color: rgba(0,0,0,0.5);
+  }
+
+  .modal-content {
+    background: var(--container-bg);
+    margin: 10% auto;
+    padding: 20px;
+    border-radius: 8px;
+    width: 90%;
+    max-width: 500px;
+    box-shadow: 0 4px 20px rgba(0,0,0,0.3);
+  }
+
+  .modal-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 20px;
+  }
+
+  .modal-title {
+    margin: 0;
+    font-size: 1.2rem;
+    color: var(--primary-text);
+  }
+
+  .modal-close {
+    background: none;
+    border: none;
+    font-size: 24px;
+    cursor: pointer;
+    color: var(--secondary-text);
+  }
+
+  .modal-body .form-group {
+    margin-bottom: 16px;
+  }
+
+  .modal-body label {
+    display: block;
+    margin-bottom: 6px;
+    font-weight: 600;
+    color: var(--secondary-text);
+  }
+
+  .modal-body input, .modal-body select {
+    width: 100%;
+    padding: 10px;
+    border: 1px solid var(--input-border);
+    border-radius: 6px;
+    background: var(--form-bg);
+    font-size: 1rem;
+  }
+
+  .modal-footer {
+    display: flex;
+    justify-content: flex-end;
+    gap: 10px;
+    margin-top: 20px;
   }
 </style>
 
@@ -259,32 +608,68 @@
         <h1>Spray Recommendations</h1>
         <a href="/agri/spray-recommendation/create" class="btn-primary" style="text-decoration:none; margin:0; white-space: nowrap;">+ New Recommendation</a>
       </header>
-      <!-- TABLE -->
-      <div id="recTableWrapper">
-        <table id="recTable">
-          <thead>
-            <tr>
-              <th>ID</th>
-              <th>Spray No</th>
-              <th>Date</th>
-              <th>Ha</th>
-              <th>Type</th>
-              <th>Method</th>
-              <th>Actions</th>
-              <th>Status</th>
-            </tr>
-          </thead>
-          <tbody id="recTableBody">
-            <tr>
-              <td class="no-data" colspan="7">Loading...</td>
-            </tr>
-          </tbody>
-        </table>
+      <!-- PENDING EXECUTIONS SECTION -->
+      <div class="card" style="margin-bottom: 2rem;">
+        <h2 style="margin: 0 0 1rem 0; font-size: 1.2rem; color: var(--primary-text);">Pending Executions</h2>
+        <div id="pendingExecutionsTableWrapper">
+          <table id="pendingExecutionsTable">
+            <thead>
+              <tr>
+                <th>ID</th>
+                <th>Date</th>
+                <th>Responsible Person</th>
+                <th>Recommendations</th>
+                <th>Actions</th>
+              </tr>
+            </thead>
+            <tbody id="pendingExecutionsTableBody">
+              <tr>
+                <td class="no-data" colspan="5">Loading...</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+        <!-- MOBILE EXECUTION CARDS -->
+        <div class="mobile-cards" id="pendingExecutionCards">
+          <div class="no-data">Loading...</div>
+        </div>
       </div>
 
-      <!-- MOBILE CARDS -->
-      <div class="mobile-cards" id="mobileCards">
-        <div class="no-data">Loading...</div>
+      <details class="card" id="completedExecutionsDetails" style="margin-bottom: 2rem;">
+        <summary style="display:flex; justify-content:space-between; align-items:center; padding:1rem; font-size:1.05rem; font-weight:600; color: var(--secondary-text); cursor:pointer; list-style:none;">
+          <span>Completed Executions</span>
+          <span id="completedExecutionsSummary" style="font-size:0.9rem; font-weight:400; color: var(--secondary-text);">Click to view completed executions</span>
+        </summary>
+        <div id="completedExecutionsPanel" style="padding: 0 1rem 1rem;">
+          <div id="completedExecutionsCount" class="no-data">Completed executions are hidden by default.</div>
+          <div id="completedExecutionsTableWrapper" style="display:none; margin-top: 1rem;">
+            <table id="completedExecutionsTable">
+              <thead>
+                <tr>
+                  <th>ID</th>
+                  <th>Date</th>
+                  <th>Responsible</th>
+                  <th>Recommendations</th>
+                  <th>Actions</th>
+                </tr>
+              </thead>
+              <tbody id="completedExecutionsTableBody">
+                <tr>
+                  <td class="no-data" colspan="5">Loading...</td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+          <div class="mobile-cards" id="completedExecutionCards" style="display:none; margin-top:1rem;"></div>
+        </div>
+      </details>
+
+      <!-- RECOMMENDATIONS TREE -->
+      <div class="card">
+        <h2 style="margin: 0 0 1rem 0; font-size: 1.2rem; color: var(--primary-text);">Spray Recommendations</h2>
+        <div id="recommendationsTree" class="tree-container">
+          <div class="no-data">Loading...</div>
+        </div>
       </div>
 
     </div>
@@ -296,82 +681,499 @@
 
 document.addEventListener("DOMContentLoaded", async () => {
     await loadRecommendations();
+    await loadPendingExecutions();
+
+    const completedDetails = document.getElementById('completedExecutionsDetails');
+    if (completedDetails) {
+        completedDetails.addEventListener('toggle', async (event) => {
+            if (event.target.open && !event.target.dataset.loaded) {
+                await loadCompletedExecutions();
+                event.target.dataset.loaded = '1';
+            }
+        });
+    }
 });
 
-async function loadRecommendations() {
+async function loadCompletedExecutions() {
+    const summary = document.getElementById('completedExecutionsSummary');
+    const countEl = document.getElementById('completedExecutionsCount');
+    const wrapper = document.getElementById('completedExecutionsTableWrapper');
+    const tableBody = document.getElementById('completedExecutionsTableBody');
+    const mobileCards = document.getElementById('completedExecutionCards');
+
+    summary.textContent = 'Loading completed executions...';
+    countEl.textContent = 'Loading completed executions...';
+    wrapper.style.display = 'none';
+    mobileCards.style.display = 'none';
+    mobileCards.innerHTML = '';
 
     try {
-        const response = await fetch(`/agri/spray-recommendations`);
-        const recommendations = await response.json();
+        const response = await fetch('/agri/executions/completed');
+        const executions = await response.json();
 
-        const tbody = document.getElementById('recTableBody');
-        const mobileCards = document.getElementById('mobileCards');
-
-        if (!recommendations || recommendations.length === 0) {
-            tbody.innerHTML = '<tr><td class="no-data" colspan="8">No recommendations found</td></tr>';
-            mobileCards.innerHTML = '<div class="no-data">No recommendations found</div>';
+        if (!executions || executions.length === 0) {
+            summary.textContent = 'No completed executions';
+            countEl.textContent = 'No completed executions to show.';
+            tableBody.innerHTML = '<tr><td class="no-data" colspan="5">No completed executions</td></tr>';
+            mobileCards.innerHTML = '<div class="no-data">No completed executions</div>';
+            mobileCards.style.display = 'block';
             return;
         }
 
-        // Populate table
-        tbody.innerHTML = recommendations.map(rec => `
+        summary.textContent = `${executions.length} completed execution${executions.length === 1 ? '' : 's'}`;
+        countEl.textContent = `${executions.length} completed execution${executions.length === 1 ? '' : 's'} found.`;
+        wrapper.style.display = 'block';
+        tableBody.innerHTML = executions.map(execution => `
             <tr>
-                <td><strong>${rec.id}</strong></td>
-                <td>${rec.spray_no}</td>
-                <td>${rec.spray_date}</td>
-                <td>${rec.ha}</td>
-                <td>${rec.application_type || 'spray'}</td>
-                <td>${rec.method_name || '-'}</td>
+                <td><strong>${execution.id}</strong></td>
+                <td>${new Date(execution.date).toLocaleDateString()}</td>
+                <td>${execution.responsible_person || '-'}</td>
+                <td>${execution.recommendation_count}</td>
                 <td>
                   <div class="action-cell">
-                    <button type="button" class="btn-action" onclick="issueStock(${rec.id})">Issue Stock</button>
-                    <button type="button" class="btn-action" onclick="goToSpray(${rec.id})">View Details</button>
+                    <button type="button" class="btn-action" onclick="viewExecution(${execution.id})">View</button>
                   </div>
                 </td>
-                <td><span class="status-badge status-${rec.status.toLowerCase()}">${rec.status}</span></td>
             </tr>
         `).join('');
 
-        // Populate mobile cards
-        mobileCards.innerHTML = recommendations.map(rec => `
-            <div class="rec-card">
-                <div class="rec-card-header">
-                    <div class="rec-id">#${rec.id}</div>
-                    <div class="rec-status status-${rec.status.toLowerCase()}">${rec.status}</div>
+        mobileCards.innerHTML = executions.map(execution => `
+            <div class="execution-card">
+                <div class="execution-card-header">
+                    <div class="execution-id">Execution ${execution.id}</div>
                 </div>
-                <div class="rec-details">
-                    <div class="rec-detail">
-                        <div class="rec-detail-label">Spray No</div>
-                        <div class="rec-detail-value">${rec.spray_no}</div>
+                <div class="execution-details">
+                    <div class="execution-detail">
+                        <div class="execution-detail-label">Date</div>
+                        <div class="execution-detail-value">${new Date(execution.date).toLocaleDateString()}</div>
                     </div>
-                    <div class="rec-detail">
-                        <div class="rec-detail-label">Spray Date</div>
-                        <div class="rec-detail-value">${rec.spray_date}</div>
+                    <div class="execution-detail">
+                        <div class="execution-detail-label">Responsible Person</div>
+                        <div class="execution-detail-value">${execution.responsible_person || '-'}</div>
                     </div>
-                    <div class="rec-detail">
-                        <div class="rec-detail-label">Area (Ha)</div>
-                        <div class="rec-detail-value">${rec.ha}</div>
-                    </div>
-                    <div class="rec-detail">
-                        <div class="rec-detail-label">Type</div>
-                        <div class="rec-detail-value">${rec.application_type || 'spray'}</div>
-                    </div>
-                    <div class="rec-detail">
-                        <div class="rec-detail-label">Method</div>
-                        <div class="rec-detail-value">${rec.method_name || '-'}</div>
+                    <div class="execution-detail">
+                        <div class="execution-detail-label">Recommendations</div>
+                        <div class="execution-detail-value">${execution.recommendation_count}</div>
                     </div>
                 </div>
                 <div class="action-cell" style="margin-top: 12px; padding-top: 12px; border-top: 1px solid var(--input-border);">
-                    <button type="button" class="btn-action" onclick="issueStock(${rec.id})">Issue Stock</button>
-                    <button type="button" class="btn-action" onclick="goToSpray(${rec.id})">View Details</button>
+                    <button type="button" class="btn-action" onclick="viewExecution(${execution.id})">View</button>
                 </div>
             </div>
         `).join('');
     } catch (err) {
+        console.error('Error loading completed executions:', err);
+        summary.textContent = 'Error loading completed executions';
+        countEl.textContent = 'Error loading completed executions';
+        tableBody.innerHTML = '<tr><td class="no-data" colspan="5">Error loading completed executions</td></tr>';
+        mobileCards.innerHTML = '<div class="no-data">Error loading completed executions</div>';
+        mobileCards.style.display = 'block';
+    }
+}
+
+async function loadPendingExecutions() {
+    try {
+        const response = await fetch('/agri/executions/pending');
+        const executions = await response.json();
+
+        const tbody = document.getElementById('pendingExecutionsTableBody');
+        const mobileCards = document.getElementById('pendingExecutionCards');
+
+        if (!executions || executions.length === 0) {
+            tbody.innerHTML = '<tr><td class="no-data" colspan="5">No pending executions</td></tr>';
+            mobileCards.innerHTML = '<div class="no-data">No pending executions</div>';
+            return;
+        }
+
+        // Populate table
+        tbody.innerHTML = executions.map(execution => `
+            <tr>
+                <td><strong>${execution.id}</strong></td>
+                <td>${new Date(execution.date).toLocaleDateString()}</td>
+                <td>${execution.responsible_person || '-'}</td>
+                <td>${execution.recommendation_count}</td>
+                <td>
+                  <div class="action-cell">
+                    <button type="button" class="btn-action" onclick="viewExecution(${execution.id})">View</button>
+                  </div>
+                </td>
+            </tr>
+        `).join('');
+
+        // Populate mobile cards
+        mobileCards.innerHTML = executions.map(execution => `
+            <div class="execution-card">
+                <div class="execution-card-header">
+                    <div class="execution-id">Execution ${execution.id}</div>
+                </div>
+                <div class="execution-details">
+                    <div class="execution-detail">
+                        <div class="execution-detail-label">Date</div>
+                        <div class="execution-detail-value">${new Date(execution.date).toLocaleDateString()}</div>
+                    </div>
+                    <div class="execution-detail">
+                        <div class="execution-detail-label">Responsible Person</div>
+                        <div class="execution-detail-value">${execution.responsible_person || '-'}</div>
+                    </div>
+                    <div class="execution-detail">
+                        <div class="execution-detail-label">Recommendations</div>
+                        <div class="execution-detail-value">${execution.recommendation_count}</div>
+                    </div>
+                </div>
+                <div class="action-cell" style="margin-top: 12px; padding-top: 12px; border-top: 1px solid var(--input-border);">
+                    <button type="button" class="btn-action" onclick="viewExecution(${execution.id})">View</button>
+                    <button type="button" class="btn-info" onclick="finalizeExecution(${execution.id})">Finalize</button>
+                    <a href="/agri/execution/${execution.id}/instruction_pdf" class="btn-success" style="text-decoration:none;">Print</a>
+                </div>
+            </div>
+        `).join('');
+    } catch (err) {
+        console.error('Error loading pending executions:', err);
+        document.getElementById('pendingExecutionsTableBody').innerHTML = 
+            '<tr><td class="no-data" colspan="5">Error loading executions</td></tr>';
+        document.getElementById('pendingExecutionCards').innerHTML = 
+            '<div class="no-data">Error loading executions</div>';
+    }
+}
+
+function viewExecution(executionId) {
+    window.location.href = `/agri/execution/${executionId}`;
+}
+
+async function finalizeExecution(executionId) {
+    const result = await Swal.fire({
+        title: 'Finalize Execution?',
+        text: 'This will mark the execution as finalized and remove it from pending list.',
+        icon: 'question',
+        showCancelButton: true,
+        confirmButtonText: 'Finalize',
+        cancelButtonText: 'Cancel'
+    });
+
+    if (result.isConfirmed) {
+        try {
+            const response = await fetch(`/agri/execution/${executionId}/finalize`, {
+                method: 'POST'
+            });
+            const data = await response.json();
+            if (data.success) {
+                Swal.fire('Success', 'Execution finalized!', 'success');
+                await loadPendingExecutions();
+            } else {
+                Swal.fire('Error', data.message || 'Failed to finalize execution', 'error');
+            }
+        } catch (err) {
+            console.error('Error finalizing execution:', err);
+            Swal.fire('Error', 'Failed to finalize execution', 'error');
+        }
+    }
+  }
+function toggleWarehouse(warehouseId) {
+    const children = document.getElementById(`warehouse-${warehouseId}`);
+    const toggle = children.previousElementSibling.querySelector('.tree-toggle');
+    
+    if (children.classList.contains('expanded')) {
+        children.classList.remove('expanded');
+        toggle.classList.remove('expanded');
+        // Hide execution creation controls
+        const executionControls = children.querySelector('.execution-controls');
+        if (executionControls) executionControls.remove();
+        // Exit execution creation mode
+        exitExecutionMode(warehouseId);
+    } else {
+        children.classList.add('expanded');
+        toggle.classList.add('expanded');
+        // Add execution creation controls
+        const firstChild = children.querySelector('.tree-child');
+        if (firstChild) {
+            const executionControls = document.createElement('div');
+            executionControls.className = 'execution-controls';
+            executionControls.innerHTML = `
+                <button class="create-execution-btn" onclick="enterExecutionMode('${warehouseId}')">Create Execution</button>
+            `;
+            firstChild.insertBefore(executionControls, firstChild.firstElementChild);
+        }
+    }
+}
+
+function toggleWeek(weekId) {
+    const list = document.getElementById(`week-${weekId}`);
+    const toggle = list.previousElementSibling.querySelector('.week-toggle');
+    
+    if (list.classList.contains('expanded')) {
+        list.classList.remove('expanded');
+        toggle.classList.remove('expanded');
+    } else {
+        list.classList.add('expanded');
+        toggle.classList.add('expanded');
+    }
+}
+
+function enterExecutionMode(warehouseId) {
+    const warehouseEl = document.getElementById(`warehouse-${warehouseId}`);
+    warehouseEl.classList.add('execution-mode');
+    
+    // Update button
+    const executionControls = warehouseEl.querySelector('.execution-controls');
+    executionControls.innerHTML = `
+        <button class="create-execution-btn" onclick="confirmExecution('${warehouseId}')">Save Execution</button>
+        <button class="btn-secondary" onclick="exitExecutionMode('${warehouseId}')">Cancel</button>
+    `;
+    
+    // Add checkboxes to weeks and recommendations
+    const weekRows = warehouseEl.querySelectorAll('.week-row');
+    weekRows.forEach(row => {
+        const toggle = row.querySelector('.week-toggle');
+        const checkbox = document.createElement('input');
+        checkbox.type = 'checkbox';
+        checkbox.className = 'week-checkbox';
+        checkbox.style.marginRight = '8px';
+        checkbox.onchange = () => toggleWeekSelections(row, checkbox.checked);
+        row.insertBefore(checkbox, toggle);
+    });
+    
+    // Add checkboxes to recommendations
+    const recItems = warehouseEl.querySelectorAll('.rec-item');
+    recItems.forEach(item => {
+        const checkbox = document.createElement('input');
+        checkbox.type = 'checkbox';
+        checkbox.className = 'rec-checkbox execution-checkbox';
+        checkbox.value = item.querySelector('.rec-checkbox').value;
+        checkbox.setAttribute('data-warehouse', warehouseId);
+        item.insertBefore(checkbox, item.firstElementChild);
+        // Remove click handler for viewing
+        item.style.cursor = 'default';
+        item.onclick = null;
+    });
+    
+    // Hide existing checkboxes
+    warehouseEl.querySelectorAll('.rec-checkbox:not(.execution-checkbox)').forEach(cb => cb.style.display = 'none');
+}
+
+function exitExecutionMode(warehouseId) {
+    const warehouseEl = document.getElementById(`warehouse-${warehouseId}`);
+    warehouseEl.classList.remove('execution-mode');
+    
+    // Update button
+    const executionControls = warehouseEl.querySelector('.execution-controls');
+    executionControls.innerHTML = `
+        <button class="create-execution-btn" onclick="enterExecutionMode('${warehouseId}')">Create Execution</button>
+    `;
+    
+    // Remove week checkboxes
+    warehouseEl.querySelectorAll('.week-checkbox').forEach(cb => cb.remove());
+    
+    // Remove execution checkboxes and restore view functionality
+    warehouseEl.querySelectorAll('.execution-checkbox').forEach(cb => cb.remove());
+    warehouseEl.querySelectorAll('.rec-item').forEach(item => {
+        item.style.cursor = 'pointer';
+        item.onclick = () => {
+            const recId = item.querySelector('.rec-checkbox').value;
+            goToSpray(recId);
+        };
+    });
+    
+    // Show original checkboxes
+    warehouseEl.querySelectorAll('.rec-checkbox').forEach(cb => cb.style.display = 'inline-block');
+}
+
+function toggleWeekSelections(weekRow, checked) {
+    const recommendationsList = weekRow.nextElementSibling;
+    const checkboxes = recommendationsList.querySelectorAll('.execution-checkbox');
+    checkboxes.forEach(cb => cb.checked = checked);
+}
+
+function confirmExecution(warehouseId) {
+    const selectedCheckboxes = document.querySelectorAll(`.execution-checkbox[data-warehouse="${warehouseId}"]:checked`);
+    console.log('Selected recommendation IDs:', Array.from(selectedCheckboxes).map(cb => cb.value));
+    if (selectedCheckboxes.length === 0) {
+        Swal.fire('Error', 'Please select at least one recommendation for the execution', 'error');
+        return;
+    }
+    
+    openExecutionModal(warehouseId);
+}
+
+function openExecutionModal(warehouseId) {
+    const selectedCheckboxes = document.querySelectorAll(`.execution-checkbox[data-warehouse="${warehouseId}"]:checked`);
+    if (selectedCheckboxes.length === 0) {
+        Swal.fire('Error', 'Please select at least one recommendation for the execution', 'error');
+        return;
+    }
+
+    // Create modal HTML
+    const modal = document.createElement('div');
+    modal.className = 'modal';
+    modal.innerHTML = `
+        <div class="modal-content">
+            <div class="modal-header">
+                <h3 class="modal-title">Create Execution</h3>
+                <button class="modal-close" onclick="closeModal()">&times;</button>
+            </div>
+            <div class="modal-body">
+                <div class="form-group">
+                    <label for="modalExecutionDate">Execution Date</label>
+                    <input type="date" id="modalExecutionDate" required>
+                </div>
+                <div class="form-group">
+                    <label for="modalResponsiblePerson">Responsible Person</label>
+                    <select id="modalResponsiblePerson" required>
+                        <option value="">Select Person...</option>
+                    </select>
+                </div>
+                <div style="margin-top: 16px;">
+                    <strong>Selected Recommendations: ${selectedCheckboxes.length}</strong>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button class="btn-secondary" onclick="closeModal()">Cancel</button>
+                <button class="btn-primary" onclick="createExecutionFromModal(${warehouseId})">Create Execution</button>
+            </div>
+        </div>
+    `;
+
+    document.body.appendChild(modal);
+    modal.style.display = 'block';
+
+    // Load responsible persons
+    loadResponsiblePersonsForModal();
+
+    // Close modal when clicking outside
+    modal.addEventListener('click', (e) => {
+        if (e.target === modal) {
+            closeModal();
+        }
+    });
+
+    // Close modal on escape key
+    document.addEventListener('keydown', function closeOnEscape(e) {
+        if (e.key === 'Escape') {
+            closeModal();
+            document.removeEventListener('keydown', closeOnEscape);
+        }
+    });
+}
+
+function closeModal() {
+    const modal = document.querySelector('.modal');
+    if (modal) {
+        modal.remove();
+    }
+}
+
+async function loadResponsiblePersonsForModal() {
+    try {
+        const response = await fetch('/agri/execution/responsible-persons');
+        const persons = await response.json();
+        const select = document.getElementById('modalResponsiblePerson');
+        select.innerHTML = '<option value="">Select Person...</option>';
+        persons.forEach(person => {
+            select.innerHTML += `<option value="${person.id}">${person.name}</option>`;
+        });
+    } catch (err) {
+        console.error('Error loading responsible persons:', err);
+    }
+}
+
+async function createExecutionFromModal(warehouseId) {
+    const executionDate = document.getElementById('modalExecutionDate').value;
+    const responsiblePerson = document.getElementById('modalResponsiblePerson').value;
+
+    if (!executionDate || !responsiblePerson) {
+        Swal.fire('Error', 'Please fill in all fields', 'error');
+        return;
+    }
+
+    const selectedCheckboxes = document.querySelectorAll(`.execution-checkbox[data-warehouse="${warehouseId}"]:checked`);
+    const recommendationIds = Array.from(selectedCheckboxes).map(cb => parseInt(cb.value));
+
+    try {
+        const response = await fetch('/agri/execution/create', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({
+                execution_date: executionDate,
+                responsible_person: parseInt(responsiblePerson),
+                recommendation_ids: recommendationIds
+            })
+        });
+
+        const result = await response.json();
+        if (result.success) {
+            Swal.fire('Success', 'Execution created successfully!', 'success');
+            closeModal();
+            exitExecutionMode(warehouseId); // Exit execution mode
+            await loadRecommendations(); // Refresh the tree
+            await loadPendingExecutions(); // Refresh pending executions
+        } else {
+            Swal.fire('Error', result.message || 'Failed to create execution', 'error');
+        }
+    } catch (err) {
+        console.error('Error creating execution:', err);
+        Swal.fire('Error', 'Failed to create execution', 'error');
+    }
+}
+
+async function loadRecommendations() {
+    try {
+        const response = await fetch(`/agri/spray-recommendations`);
+        const warehouses = await response.json();
+
+        const container = document.getElementById('recommendationsTree');
+
+        if (!warehouses || warehouses.length === 0) {
+            container.innerHTML = '<div class="no-data">No recommendations found</div>';
+            return;
+        }
+
+        container.innerHTML = warehouses.map(warehouse => `
+            <div class="tree-node">
+                <div class="tree-row" onclick="toggleWarehouse('${warehouse.id}')">
+                    <div class="tree-toggle">▶</div>
+                    <div class="tree-content">
+                        <div>
+                            <div class="tree-label">${warehouse.name}</div>
+                        </div>
+                    </div>
+                </div>
+                <div class="tree-children" id="warehouse-${warehouse.id}">
+                    ${warehouse.weeks.map(week => `
+                        <div class="tree-child">
+                            <div class="week-row" onclick="toggleWeek('${warehouse.id}-${week.week.replace(/[^a-zA-Z0-9]/g, '_')}')">
+                                <div class="week-toggle">▶</div>
+                                <div class="week-label">${week.week}</div>
+                                <div class="week-meta">${week.recommendations.length} recommendations</div>
+                            </div>
+                            <div class="recommendations-list" id="week-${warehouse.id}-${week.week.replace(/[^a-zA-Z0-9]/g, '_')}">
+                                ${week.recommendations.map(rec => `
+                                    <div class="rec-item" onclick="goToSpray(${rec.id})" style="cursor: pointer;">
+                                        <input type="checkbox" class="rec-checkbox" 
+                                               value="${rec.id}" 
+                                               data-warehouse="${warehouse.id}"
+                                               style="display: none;">
+                                        <div class="rec-details">
+                                            <div class="rec-id">${rec.spray_no}</div>
+                                            <div class="rec-meta">
+                                                ${rec.description || 'No description'} • 
+                                                <span class="stock-status ${rec.sufficient_stock ? 'sufficient' : 'insufficient'}">
+                                                    ${rec.sufficient_stock ? 'Sufficient' : 'Insufficient'} Stock
+                                                </span>
+                                            </div>
+                                        </div>
+                                    </div>
+                                `).join('')}
+                            </div>
+                        </div>
+                    `).join('')}
+                </div>
+            </div>
+        `).join('');
+
+    } catch (err) {
         console.error('Error loading recommendations:', err);
-        document.getElementById('recTableBody').innerHTML = 
-            '<tr><td class="no-data" colspan="7">Error loading recommendations</td></tr>';
-        document.getElementById('mobileCards').innerHTML = 
+        document.getElementById('recommendationsTree').innerHTML = 
             '<div class="no-data">Error loading recommendations</div>';
     }
 }

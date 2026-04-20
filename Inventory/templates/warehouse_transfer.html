@@ -444,6 +444,7 @@ function populateWarehouses(warehouses){
         let fromWarehouse = $('#fromWarehouse').val()
 
         if(!fromWarehouse) return
+        console.log("Loading products for warehouse", fromWarehouse)
 
         fetch(`/inventory/SDK/fetch_products_in_warehouse?warehouse_id=${fromWarehouse}`)
         .then(r=>r.json())

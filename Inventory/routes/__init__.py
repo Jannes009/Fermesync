@@ -28,6 +28,7 @@ from . import stock_adjustment
 from . import QtySummary
 from . import warehouse_transfer
 from . import qty
+from . import edit_product
 from flask_login import login_required
 
 @inventory_bp.route('/dashboard', methods=['GET'])

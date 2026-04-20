@@ -36,7 +36,7 @@ def dashboard_incomplete():
     cursor = conn.cursor()
     query = """
         SELECT TOP 5 DelNoteNo, AgentName, DelDate, QtyLoaded, QtySold, QtyInvoiced
-        FROM [market].[_uvViewEntriesPage]
+        FROM [mkt].[_uvViewEntriesPage]
         WHERE QtyInvoiced < QtyLoaded
         ORDER BY DelDate ASC
     """
@@ -65,7 +65,7 @@ def dashboard_invoices():
         SELECT TOP 5 InvoiceDate, InvoiceNo, DelNoteNo,
                       SUM(SalesQty) AS TotalQty,
                       SUM(SalesAmnt) AS TotalAmount
-        FROM [market].[_uvMarketInvoices]
+        FROM [mkt].[_uvMarketInvoices]
         GROUP BY InvoiceDate, InvoiceNo, DelNoteNo
         ORDER BY InvoiceDate DESC;
     """

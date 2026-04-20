@@ -391,18 +391,16 @@ function addCleanLine() {
     
     // Populate product dropdown
     const productDropdown = newRow.find("select.product-select");
-    productOptions.forEach(([value, text]) => {
-        productDropdown.append(new Option(text, value));
+    productOptions.forEach(p => {
+        productDropdown.append(new Option(p.display_name, p.StockLink));
     });
     
     // Populate production unit dropdown
     const selectedUnitCode = parseInt($('select[name="ZZProductionUnitCode"]').val());
-    console.log(selectedUnitCode)
     const unitDropdown = newRow.find("select.production-unit-select");
-    unitOptions.forEach(([value, text]) => {
-        const option = new Option(text, value);
-        console.log(value, selectedUnitCode)
-        if (value === selectedUnitCode) {
+    unitOptions.forEach(u => {
+        const option = new Option(u.display_name, u.ProjectLink);
+        if (u.ProjectLink === selectedUnitCode) {
             option.selected = true;
         }
         unitDropdown.append(option);

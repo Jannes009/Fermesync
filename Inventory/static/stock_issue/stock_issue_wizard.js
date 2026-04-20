@@ -1,5 +1,7 @@
 let selectedWarehouse = null;
+let selectedWarehouseName = null;
 let selectedProject = null;
+let selectedProjectNames = [];
 let selectedSpray = null;
 let issueMode = "project"; // "project" or "spray"
 let productsInWhse = [];
@@ -7,6 +9,7 @@ let projects = [];
 let sprays = [];
 let lines = [];
 let lineIndex = 0;
+let warehouses = [];
 
 function getUrlParams() {
   const params = {};
@@ -20,7 +23,7 @@ function getUrlParams() {
 
 async function initializeFromUrl() {
   const params = getUrlParams();
-  if (!params.spray_id) return;
+  if (!params.execution_id) return;
 
   // Set spray mode and reload spray list
   document.getElementById('mode-spray').checked = true;
@@ -28,10 +31,11 @@ async function initializeFromUrl() {
 
   // Set selected spray after load
   const spraySelect = document.getElementById('spray-select');
-  if (spraySelect.querySelector(`option[value="${params.spray_id}"]`)) {
-    $(spraySelect).val(params.spray_id).trigger('change');
-    selectedSpray = params.spray_id;
+  if (spraySelect.querySelector(`option[value="${params.execution_id}"]`)) {
+    $(spraySelect).val(params.execution_id).trigger('change');
+    selectedSpray = params.execution_id;
   }
+  console.log(params.step)
 
   if (params.step === '2' || params.step === '3') {
     await step1Next();
@@ -46,12 +50,12 @@ async function initializeFromUrl() {
 document.addEventListener("DOMContentLoaded", async () => {
   await loadWarehouses();
   await loadProjects();
-  await loadSprayInstructions();
+  await loadSprayExecutions();
   handleModeChange(); // Set initial visibility based on default mode
 
   $("#warehouse-select").select2({ placeholder: "Select warehouse", allowClear: true, width: '100%' });
-  $("#project-select").select2({ placeholder: "Select project", allowClear: true, width: '100%' });
-  $("#spray-select").select2({ placeholder: "Select spray instruction", allowClear: true, width: '100%' });
+  $("#project-select").select2({ placeholder: "Select projects", allowClear: true, width: '100%' });
+  $("#spray-select").select2({ placeholder: "Select spray execution", allowClear: true, width: '100%' });
 
   // Event listeners
   document.querySelectorAll('input[name="issue-mode"]').forEach(radio => {
@@ -94,7 +98,7 @@ function handleModeChange() {
 }
 
 async function loadWarehouses() {
-    const warehouses = await fetch(`/inventory/fetch_warehouses`)
+    warehouses = await fetch(`/inventory/fetch_warehouses`)
     .then(r => r.json())
     .then(d => d.warehouses);
     const select = document.getElementById('warehouse-select');
@@ -112,17 +116,17 @@ async function loadProjects() {
   projects.forEach(p => select.insertAdjacentHTML('beforeend', `<option value="${p.id}">${p.name}</option>`));
 }
 
-async function loadSprayInstructions() {
+async function loadSprayExecutions() {
   try {
     sprays = await fetch(`/agri/fetch_spray_for_issue`)
       .then(r => r.json())
-      .then(d => d.sprays || []);
+      .then(d => d.executions || []);
 
     const select = document.getElementById('spray-select');
     select.innerHTML = '<option></option>';
-    sprays.forEach(s => select.insertAdjacentHTML('beforeend', `<option value="${s.spray_id}" data-warehouse="${s.warehouse_id}">${s.spray_no} - ${s.description}</option>`));
+    sprays.forEach(s => select.insertAdjacentHTML('beforeend', `<option value="${s.execution_id}" data-warehouse="${s.warehouse_id}">${s.date} - ${s.responsible_person}</option>`));
   } catch (error) {
-    console.error("Error loading spray instructions:", error);
+    console.error("Error loading spray executions:", error);
     sprays = [];
   }
 }
@@ -136,11 +140,14 @@ async function step1Next() {
             return;
         }
 
+        selectedWarehouseName = warehouses.find(w => w.id == selectedWarehouse)?.name || `Warehouse ${selectedWarehouse}`;
+
         selectedProject = $("#project-select").val();
-        if (!selectedProject) {
-            Swal.fire("Missing Information", "Please select a project.", "warning");
+        if (!selectedProject || selectedProject.length === 0) {
+            Swal.fire("Missing Information", "Please select at least one project.", "warning");
             return;
         }
+        selectedProjectNames = $("#project-select").select2('data').map(d => d.text);
         productsInWhse = await fetch(`/inventory/SDK/fetch_products_in_warehouse?warehouse_id=${selectedWarehouse}`)
             .then(res => res.json())
             .then(d => d.products);
@@ -152,25 +159,27 @@ async function step1Next() {
     } else if (issueMode === "spray") {
         selectedSpray = $("#spray-select").val();
         if (!selectedSpray) {
-            Swal.fire("Missing Information", "Please select a spray instruction.", "warning");
+            Swal.fire("Missing Information", "Please select a spray execution.", "warning");
             return;
         }
         
-        // Get warehouse from spray instruction data attribute
+        // Get warehouse from spray execution data attribute
         const sprayOption = document.querySelector(`#spray-select option[value="${selectedSpray}"]`);
         console.log(sprayOption);
         selectedWarehouse = Number(sprayOption.getAttribute("data-warehouse"));
         
         if (selectedWarehouse === undefined || isNaN(selectedWarehouse)) {
-            Swal.fire("Error", "Could not retrieve warehouse from spray instruction.", "error");
+            Swal.fire("Error", "Could not retrieve warehouse from spray execution.", "error");
             return;
         }
+
+        selectedWarehouseName = warehouses.find(w => w.id == selectedWarehouse)?.name || `Warehouse ${selectedWarehouse}`;
         
-        productsInWhse = await fetch(`/agri/fetch_products_for_spray?spray_id=${selectedSpray}`)
+        productsInWhse = await fetch(`/agri/fetch_products_for_spray_execution?execution_id=${selectedSpray}`)
             .then(res => res.json())
             .then(d => d.products);
         if (!productsInWhse || !productsInWhse.length) {
-            Swal.fire("No Products", "No products available for this spray instruction.", "warning");
+            Swal.fire("No Products", "No products available for this spray execution.", "warning");
             return;
         }
     }
@@ -191,7 +200,7 @@ async function step1Next() {
 
 async function populateSprayLines() {
     try {
-        const response = await fetch(`/agri/fetch_spray_products?spray_id=${selectedSpray}`);
+        const response = await fetch(`/agri/fetch_spray_products?execution_id=${selectedSpray}`);
         const data = await response.json();
         const sprayLines = data.spray_products || [];
         
@@ -201,19 +210,22 @@ async function populateSprayLines() {
             const row = document.querySelector("#ibt-lines .issue-line:last-child");
             const select = row.querySelector(".product-select");
             const qty = row.querySelector(".qty-input");
+            const qtyNeededLabel = row.querySelector(".qty-needed-label");
             const uomLabel = row.querySelector(".stock-unit");
             
             // Find the product in warehouse by stock_id
             const product = productsInWhse.find(p => p.product_link === sprayLine.stock_id);
             if (product) {
                 $(select).val(sprayLine.stock_id).trigger("change");
-                qty.value = sprayLine.total_qty;
+                // qty.value = sprayLine.total_qty; // Remove prefill
+                qtyNeededLabel.textContent = `Qty Needed: ${parseFloat(sprayLine.total_qty).toFixed(2)}`;
+                qtyNeededLabel.style.display = "inline";
                 uomLabel.textContent = product.stocking_uom_code || "EA";
             }
         });
     } catch (error) {
         console.error("Error populating spray lines:", error);
-        Swal.fire("Error", "Failed to populate lines from spray instruction.", "error");
+        Swal.fire("Error", "Failed to populate lines from spray execution.", "error");
     }
 }
 
@@ -236,6 +248,8 @@ function addLine() {
         </div>
 
         <div class="product-row-bottom">
+
+            <span class="qty-needed-label" style="display: none; font-size: 0.8rem; color: var(--secondary-text); margin-right: 8px;">Qty Needed: 0</span>
 
             <input type="number" class="qty-input" min="0" step="1" placeholder="Qty"/>
 
@@ -267,7 +281,7 @@ function populateProductSelect(selectId, lineDiv) {
     const select = document.getElementById(selectId);
 
     productsInWhse.forEach(p => {
-        const opt = new Option(`${p.product_desc} (${p.qty_in_whse} ${p.stocking_uom_code} available)`, p.product_link, false, false);
+        const opt = new Option(`${p.product_desc} (${parseFloat(p.qty_in_whse).toFixed(2)} ${p.stocking_uom_code} available)`, p.product_link, false, false);
         const uom = p.stocking_uom_code || "EA";
         $(opt).data("unit", uom);
         $(opt).data("qty", p.qty_in_whse);
@@ -315,7 +329,7 @@ async function step2Next() {
     const qtyRequested = parseFloat(qtyInput.value);
 
     if (qtyRequested > product.qty_in_whse) {
-      Swal.fire("Insufficient Stock", `Requested quantity for ${product.product_desc} exceeds available stock (${product.qty_in_whse}).`, "error");
+      Swal.fire("Insufficient Stock", `Requested quantity for ${product.product_desc} exceeds available stock (${parseFloat(product.qty_in_whse).toFixed(2)} ${product.stocking_uom_code}).`, "error");
       return;
     }
 
@@ -332,13 +346,32 @@ async function step2Next() {
   }
 
   const box = document.getElementById("summary-box");
-  const sourceLabel = issueMode === "spray" ? "Spray Instruction" : "Project";
-  const sourceValue = issueMode === "spray" ? selectedSpray : selectedProject;
+  const sourceLabel = issueMode === "spray" ? "Spray Execution" : "Projects";
+  const sourceValue = issueMode === "spray" ? selectedSpray : selectedProjectNames.join(", ");
   
-  box.innerHTML = `<p><strong>Warehouse:</strong> ${selectedWarehouse}</p>
-                   <p><strong>${sourceLabel}:</strong> ${sourceValue}</p>
-                   <hr><h4>Products</h4>`;
-  lines.forEach(l => box.innerHTML += `<div class="line-row"><div>${l.product_desc}</div><div>Issue: ${l.qty_issued} ${l.uom_code}</div></div>`);
+  box.innerHTML = `
+    <div class="summary-header">
+      <div class="summary-item">
+        <span class="summary-label">Warehouse:</span>
+        <span class="summary-value">${selectedWarehouseName}</span>
+      </div>
+      <div class="summary-item">
+        <span class="summary-label">${sourceLabel}:</span>
+        <span class="summary-value">${sourceValue}</span>
+      </div>
+    </div>
+    <div class="summary-products">
+      <h4>Products to Issue</h4>
+      <div class="products-list">
+        ${lines.map(l => `
+          <div class="product-item">
+            <div class="product-name">${l.product_desc}</div>
+            <div class="product-qty">${parseFloat(l.qty_issued).toFixed(2)} ${l.uom_code}</div>
+          </div>
+        `).join('')}
+      </div>
+    </div>
+  `;
 
   document.getElementById("step-2").classList.add("hidden");
   document.getElementById("step-3").classList.remove("hidden");
@@ -365,7 +398,7 @@ async function submitIssue() {
   body: JSON.stringify({
       warehouse: selectedWarehouse,
       issue_mode: issueMode,
-      project: issueMode === "project" ? selectedProject : null,
+      projects: issueMode === "project" ? selectedProject : null,
       spray_id: issueMode === "spray" ? selectedSpray : null,
       order_final: orderFinal,
       created_at: new Date().toISOString(),

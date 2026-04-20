@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Spray Instruction - {{ spray.spray_no }}</title>
+    <title>Spray Record {{ instruction.instruction_id }}</title>
     <style>
 :root {
   --primary-bg: #f4f6f9;
@@ -35,49 +35,85 @@ body { font-family: Arial, sans-serif; color: var(--primary-text); background: v
 .info-label { font-size:8px; font-weight:700; color:var(--logo-color); text-transform:uppercase; margin-bottom:1px; }
 .info-value { font-size:10px; color:var(--primary-text); }
 .section-title { font-size:11px; font-weight:700; color:var(--logo-color); margin-top:5mm; margin-bottom:3mm; border-bottom:1px solid var(--logo-color); padding-bottom:1mm; }
-.projects-table, .products-table { width:100%; border-collapse:collapse; font-size:8px; margin-bottom:5mm; }
-.projects-table th, .products-table th { background:var(--logo-color); color:#fff; padding:2mm; text-align:left; }
-.projects-table td, .products-table td { border-bottom:1px solid var(--table-border); padding:2mm; }
-.projects-table tr:nth-child(even), .products-table tr:nth-child(even) { background:var(--table-row-even); }
+.projects-table, .products-table, .stock-table { width:100%; border-collapse:collapse; font-size:8px; margin-bottom:5mm; }
+.projects-table th, .products-table th, .stock-table th { background:var(--logo-color); color:#fff; padding:2mm; text-align:left; }
+.projects-table td, .products-table td, .stock-table td { border-bottom:1px solid var(--table-border); padding:2mm; }
+.projects-table tr:nth-child(even), .products-table tr:nth-child(even), .stock-table tr:nth-child(even) { background:var(--table-row-even); }
 .summary-bar { display:flex; justify-content:space-between; font-size:9px; margin-bottom:2mm; padding:2mm; background:#e9eff7; border:1px solid #e0eaf8; }
 .method-info { font-size:10px; margin-bottom:5mm; text-align:center; background:#f0f0f0; padding:3mm; border:1px solid var(--table-border); }
-.compact-signature { display:grid; gap:3mm; margin-top:8mm; border:1px solid var(--table-border); padding:4mm; background:#fafafa; }
-.compact-signature-item { display:grid; grid-template-columns:30mm auto; align-items:center; gap:5mm; font-size:9px; }
-.compact-signature-line { border-bottom:1px solid #333; height:1.2em; width:100%; }
-.compact-created { margin-top:4mm; font-size:9px; color:#333; }
+.compact-signature {
+  display:flex;
+  flex-wrap:wrap;
+  gap:6mm;
+  margin-top:8mm;
+  border:1px solid var(--table-border);
+  padding:5mm;
+  background:#fafafa;
+}
+.compact-signature-item {
+  display:flex;
+  align-items:center;
+  gap:4mm;
+  width:min(48%, 220px);
+  font-size:9px;
+}
+.compact-signature-item span:first-child {
+  min-width:60px;
+  font-weight:600;
+}
+.compact-signature-line {
+  border-bottom:1px solid var(--logo-color);
+  height:1.8em;
+  width:100%;
+}
+.compact-created {
+  flex:1 1 100%;
+  margin-top:4mm;
+  font-size:9px;
+  color:#333;
+}
+.mix-card { margin-bottom:5mm; border:1px solid var(--table-border); padding:3mm; }
+.mix-header { font-weight:700; margin-bottom:2mm; }
 @media print { body{margin:0; padding:0;} .container{page-break-after:always;} }
 </style>
 </head>
 <body>
 <div class="container">
   <div class="header">
-    <div class="title">SPRAY INSTRUCTION {{ spray.spray_no }}</div>
-    <div class="subtitle">Date: {{ spray.date }}</div>
-    {% if spray.logo_data %}
-      <img class="logo" src="{{ spray.logo_data }}" alt="Logo">
+    <div class="title">SPRAY RECORD</div>
+    {% if instruction.logo_data %}
+      <img class="logo" src="{{ instruction.logo_data }}" alt="Logo">
     {% endif %}
   </div>
 
   <div class="info-grid">
     <div class="info-box">
-      <div class="info-label">Farm</div>
-      <div class="info-value">{{ spray.farm_name }}</div>
+      <div class="info-label">Responsible Person</div>
+      <div class="info-value">{{ instruction.responsible_person or "N/A" }}</div>
     </div>
     <div class="info-box">
-      <div class="info-label">Water per Ha</div>
-      <div class="info-value">{{ spray.water_per_ha }} L/ha</div>
+      <div class="info-label">Date Scheduled</div>
+      <div class="info-value">{{ instruction.recommended_date or "N/A" }}</div>
     </div>
     <div class="info-box">
-      <div class="info-label">Description</div>
-      <div class="info-value">{{ spray.description or "N/A" }}</div>
+      <div class="info-label">Date Executed Start</div>
+      <div class="info-value">{{ instruction.start_datetime or "N/A" }}</div>
+    </div>
+    <div class="info-box">
+      <div class="info-label">Date Executed End</div>
+      <div class="info-value">{{ instruction.end_datetime or "N/A" }}</div>
+    </div>
+    <div class="info-box">
+      <div class="info-label">Grower Code</div>
+      <div class="info-value">{{ instruction.grower_code or "N/A" }}</div>
+    </div>
+    <div class="info-box">
+      <div class="info-label">Total Ha</div>
+      <div class="info-value">{{ instruction.total_ha }} ha</div>
     </div>
   </div>
 
   <div class="section-title">Project Details</div>
-  <div class="summary-bar">
-    <div><strong>Total Projects:</strong> {{ spray.projects | length }}</div>
-    <div><strong>Total Ha:</strong> {{ spray.total_ha }} ha</div>
-  </div>
   <table class="projects-table">
     <thead>
       <tr>
@@ -86,7 +122,7 @@ body { font-family: Arial, sans-serif; color: var(--primary-text); background: v
       </tr>
     </thead>
     <tbody>
-      {% for project in spray.projects %}
+      {% for project in instruction.projects %}
       <tr>
         <td>{{ project.code }}</td>
         <td>{{ project.block_no }}</td>
@@ -102,30 +138,34 @@ body { font-family: Arial, sans-serif; color: var(--primary-text); background: v
     </tbody>
   </table>
 
-  {% if spray.mixes %}
-  <div class="method-info"><strong>Method:</strong> {{ spray.method_name }} | <strong>Tank Size:</strong> {{ spray.tank_size }} L</div>
-  <div class="section-title">Spray Mixes</div>
-  {% for mix_no,mix in spray.mixes.items() %}
-  <div class="mix-card">
-    <div class="mix-header">Mix {{ mix_no }} - {{ mix.water }} L | {{ mix.ha }} ha</div>
-    <div class="mix-body">
-      <table class="products-table">
-        <thead>
-          <tr>
-            <th>Product Code</th><th>Active Ingredient</th><th>Quantity</th><th>Unit</th><th>Withholding</th>
-          </tr>
-        </thead>
-        <tbody>
-          {% for line in mix.lines %}
-          <tr>
-            <td>{{ line.code }}</td><td>{{ line.ingredient }}</td><td>{{ line.qty }}</td><td>{{ line.uom }}</td><td>{{ line.withholding_period }}</td>
-          </tr>
-          {% endfor %}
-        </tbody>
-      </table>
-    </div>
-  </div>
-  {% endfor %}
+  {% if instruction.stock_requirements %}
+  <div class="section-title">Stock Movement</div>
+  <table class="stock-table">
+    <thead>
+      <tr>
+        <th>Product Code</th>
+        <th>Active Ingredient</th>
+        <th>Reason</th>
+        <th>Withholding Period</th>
+        <th>Colour Code</th>
+        <th>Qty Recommended</th>
+        <th>Qty Sprayed</th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for req in instruction.stock_requirements %}
+      <tr>
+        <td>{{ req.description }}</td>
+        <td>{{ req.ingredient }}</td>
+        <td>{{ req.reason }}</td>
+        <td>{{ req.withholding_period }}</td>
+        <td>{{ req.colour_code }}</td>
+        <td>{{ "%.2f"|format(req.recommended_qty) }}{{ req.uom }}</td>
+        <td>{{ "%.2f"|format(req.finalised_qty) }}{{ req.uom }}</td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
   {% endif %}
 
   <div class="compact-signature">
@@ -135,7 +175,7 @@ body { font-family: Arial, sans-serif; color: var(--primary-text); background: v
     <div class="compact-signature-item">
       <span>Operator Signature:</span><span class="compact-signature-line">&nbsp;</span>
     </div>
-    <div class="compact-created">Created by: <strong>{{ spray.created_by }}</strong></div>
+    <div class="compact-created">Created by: <strong>{{ instruction.created_by }}</strong></div>
   </div>
 </div>
 </body>

@@ -1,0 +1,421 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=yes">
+    <title>Spray Execution Instruction - Professional PDF</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        /* GLOBAL STYLES — Professional, crisp, blue accents */
+        body {
+            background-color: #eef2f5;   /* soft cool grey for screen, but print will respect white */
+            font-family: 'Inter', 'Segoe UI', 'Roboto', system-ui, -apple-system, sans-serif;
+            line-height: 1.45;
+            color: #1a2c3e;
+            padding: 24px 16px;
+        }
+
+        /* MAIN CONTAINER — mostly white background, subtle shadow for screen */
+        .container {
+            max-width: 800px;
+            margin: 0 auto;
+            background: white;
+            border-radius: 8px;
+            box-shadow: 0 4px 10px rgba(0, 0, 0, 0.03), 0 1px 3px rgba(0, 0, 0, 0.05);
+            padding: 1rem 1.5rem 1rem 1.5rem;
+            transition: all 0.2s;
+        }
+
+        /* HEADER section: blue accent lines & logo alignment */
+        .header {
+            display: flex;
+            justify-content: space-between;
+            align-items: flex-start;
+            border-bottom: 3px solid #1e6f9f;
+            padding-bottom: 1.25rem;
+            margin-bottom: 2rem;
+            flex-wrap: wrap;
+            gap: 1rem;
+        }
+        .execution-title {
+            font-size: 1.2rem;
+            font-weight: 700;
+            letter-spacing: -0.3px;
+            color: #0a4b6e;
+            background: linear-gradient(135deg, #0a4b6e 0%, #1e6f9f 100%);
+            background-clip: text;
+            -webkit-background-clip: text;
+            color: transparent;
+            display: inline-block;
+        }
+        .execution-sub {
+            font-size: 0.7rem;
+            color: #4a627a;
+            margin-top: 4px;
+            font-weight: 500;
+            border-left: 2px solid #1e6f9f;
+            padding-left: 8px;
+        }
+        .logo {
+            max-height: 60px;
+            width: auto;
+            object-fit: contain;
+        }
+
+        /* spray block cards: clean white, subtle border & blue top accent */
+        .spray-block {
+            margin-bottom: 2.5rem;
+            background: #ffffff;
+            border: 1px solid #e2e8f0;
+            border-radius: 20px;
+            overflow: hidden;
+            transition: box-shadow 0.1s ease;
+            page-break-inside: avoid;
+            break-inside: avoid;
+        }
+        .spray-title {
+            background: #f8fafc;
+            padding: 0.8rem 1.2rem;
+            font-weight: 700;
+            font-size: 1rem;
+            border-left: 4px solid #1e6f9f;
+            border-bottom: 1px solid #e9edf2;
+            color: #0f3b5c;
+            letter-spacing: -0.2px;
+        }
+
+        /* mix table styling — clean borders, blue headers */
+        .mix-table {
+            width: 100%;
+            border-collapse: collapse;
+            font-size: 0.75rem;
+            margin: 0;
+            background: white;
+        }
+        .mix-header {
+            background-color: #f1f6f9;
+            font-weight: 600;
+            border-bottom: 1px solid #dce5ec;
+        }
+        .mix-header td {
+            padding: 8px 12px;
+            color: #1e4a76;
+            font-weight: 600;
+        }
+        .mix-name {
+            font-size: 0.8rem;
+            background: #eef3fc;
+            border-radius: 20px;
+            font-weight: 600;
+            color: #1e6f9f;
+        }
+        .product {
+            font-family: 'SF Mono', 'Courier New', monospace;
+            font-weight: 500;
+            background-color: #fefefe;
+        }
+        .qty {
+            text-align: right;
+            font-weight: 500;
+            padding-right: 0.8rem;
+        }
+        .mix-table tr td {
+            padding: 8px 12px;
+            border-bottom: 1px solid #eef2f6;
+            vertical-align: top;
+        }
+        .mix-table tr:last-child td {
+            border-bottom: none;
+        }
+
+        /* stock reconciliation header + table */
+        .stock-title {
+            font-size: 1.1rem;
+            font-weight: 700;
+            margin: 1.5rem 0 0.8rem 0;
+            padding-bottom: 0.3rem;
+            border-bottom: 2px solid #1e6f9f;
+            display: inline-block;
+            color: #0f3b5c;
+        }
+        .stock-table {
+            width: 100%;
+            border-collapse: collapse;
+            margin: 0.8rem 0 1rem;
+            background: white;
+            border-radius: 8px;
+            overflow: hidden;
+            box-shadow: 0 1px 2px rgba(0,0,0,0.03);
+        }
+        .stock-table th {
+            background-color: #eef3fc;
+            padding: 8px 8px;
+            font-weight: 600;
+            font-size: 0.7rem;
+            text-transform: uppercase;
+            letter-spacing: 0.3px;
+            color: #1a4972;
+            border-bottom: 1px solid #cddfe8;
+            text-align: left;
+        }
+        .stock-table td {
+            padding: 8px 8px;
+            border-bottom: 1px solid #ecf1f5;
+            font-size: 0.75rem;
+            vertical-align: middle;
+        }
+        .input-cell {
+            background-color: #fefef7;
+            border: none;
+            border-bottom: 1px solid #000;
+            border-radius: 0;
+            min-width: 60px;
+            text-align: center;
+        }
+        .formula {
+            text-align: center;
+            font-weight: 600;
+            color: #2c6e9e;
+            background: #f9fbfd;
+        }
+        .used {
+            background-color: #f0f6fa;
+            font-weight: 500;
+            border-bottom: 1px solid #000;
+        }
+
+        /* signature area with blue accents */
+        .signature-section {
+            margin-top: 2rem;
+            padding-top: 1rem;
+            border-top: 2px dashed #bdd4e2;
+        }
+        .signature-row {
+            display: flex;
+            align-items: center;
+            gap: 1rem;
+            margin-bottom: 1rem;
+            flex-wrap: wrap;
+        }
+        .signature-row > div:first-child {
+            font-weight: 600;
+            min-width: 120px;
+            color: #1f4662;
+        }
+        .responsible-badge {
+            background: #eef3fc;
+            padding: 4px 10px;
+            border-radius: 20px;
+            font-weight: 500;
+            font-size: 0.8rem;
+            color: #0e5a85;
+            border-left: 2px solid #1e6f9f;
+        }
+        .date-field {
+            border-bottom: 1px solid #000;
+            min-width: 100px;
+            text-align: center;
+            font-size: 0.8rem;
+            padding: 2px;
+        }
+        .signature-line {
+            flex: 1;
+            border-bottom: 1px solid #000;
+            min-width: 150px;
+            height: 20px;
+        }
+
+        /* extra blue details and micro interactions */
+        .stock-row:hover td {
+            background-color: #fafdff;
+        }
+        .mix-table .product {
+            color: #1e4663;
+        }
+        /* preserve spacing on print */
+        @media print {
+            body {
+                background: white;
+                padding: 0;
+                margin: 0;
+            }
+            .container {
+                max-width: 100%;
+                margin: 0;
+                padding: 0.3in 0.2in;
+                box-shadow: none;
+                border-radius: 0;
+                background: white;
+                page-break-inside: avoid;
+            }
+            .spray-block {
+                break-inside: avoid;
+                page-break-inside: avoid;
+                border: 1px solid #ccc;
+                margin-bottom: 1rem;
+            }
+            .stock-table th {
+                background-color: #f0f4f9 !important;
+                -webkit-print-color-adjust: exact;
+                print-color-adjust: exact;
+            }
+            .mix-header td, .responsible-badge {
+                -webkit-print-color-adjust: exact;
+                print-color-adjust: exact;
+            }
+            .header {
+                border-bottom: 1px solid #1e6f9f;
+                margin-bottom: 1rem;
+                padding-bottom: 0.5rem;
+            }
+            .signature-line, .input-cell, .used {
+                border-bottom: 1px solid #000 !important;
+            }
+            .date-field {
+                border-bottom: 1px solid #000;
+            }
+        }
+
+        /* responsive adjustments */
+        @media (max-width: 700px) {
+            .container {
+                padding: 0.8rem;
+            }
+            .execution-title {
+                font-size: 1rem;
+            }
+            .stock-table th, .stock-table td {
+                padding: 6px 4px;
+                font-size: 0.65rem;
+            }
+            .signature-row {
+                flex-direction: column;
+                align-items: flex-start;
+                gap: 0.5rem;
+            }
+        }
+
+        /* additional blue accents for buttons (though not needed in PDF, but inline friendly) */
+        .badge-blue {
+            background: #e8f0fe;
+            color: #1a6c9e;
+        }
+        footer {
+            text-align: center;
+            font-size: 0.7rem;
+            color: #6a7f9b;
+            margin-top: 2rem;
+            border-top: 1px solid #e2e8f0;
+            padding-top: 1rem;
+        }
+    </style>
+</head>
+<body>
+<div class="container">
+    <div class="header">
+        <div>
+            <div class="execution-title">EXECUTION-{{ execution.execution_id }}</div>
+            <div class="execution-sub">{{ execution.execution_date }}</div>
+        </div>
+        {% if execution.logo_data %}
+        <img class="logo" src="{{ execution.logo_data }}" alt="Company Logo">
+        {% endif %}
+    </div>
+
+    <!-- SPRAY BLOCKS: professional mix tables -->
+    {% for spray in execution.sprays %}
+    <div class="spray-block">
+        <div class="spray-title">
+            {{ spray.spray_no }} · {{ spray.description }} · {{ spray.method_name }}
+        </div>
+
+        {% for mix_key, mix in execution.mixes.items() if mix.spray_no == spray.spray_no %}
+        <table class="mix-table">
+            <tr class="mix-header">
+                <td colspan="2" class="mix-name">
+                    💧 {{ mix_key.split('-')[-1] if '-' in mix_key else mix_key }} · {{ mix.water }} L water · {{ mix.ha }} ha
+                </td>
+             </tr>
+            {% for line in mix.lines %}
+            <tr>
+                <td style="width: 70%;">{{ line.code }} 
+                    {% if line.ingredient %}
+                    <span style="font-size:0.7rem; color:#4f6f8f;">({{ line.ingredient }})</span>
+                    {% endif %}
+                    {% if line.withholding_period %}
+                    <span style="font-size:0.65rem; background:#f1f5f9; padding:2px 6px; border-radius:20px; margin-left:8px;">PHI: {{ line.withholding_period }}</span>
+                    {% endif %}
+                </td>
+                <td class="qty">{{ "%.1f"|format(line.qty) }} {{ line.uom }}</td>
+            </tr>
+            {% endfor %}
+        </table>
+        {% endfor %}
+
+        <!-- optional extra project metadata if needed (light & subtle) -->
+        {% if spray.projects and spray.projects|length > 0 %}
+        <div style="padding: 0.6rem 1.2rem 1rem 1.2rem; background:#fefefe; border-top:1px solid #eef2f8; font-size:0.7rem; color:#456e8c;">
+            <span style="font-weight:600;">📍 Projects:</span> 
+            {% for proj in spray.projects[:3] %}
+                {{ proj.code }} ({{ "%.1f"|format(proj.ha) }} ha) {% if not loop.last %}|{% endif %}
+            {% endfor %}
+            {% if spray.projects|length > 3 %} +{{ spray.projects|length - 3 }} more{% endif %}
+        </div>
+        {% endif %}
+    </div>
+    {% endfor %}
+
+    <!-- Stock Reconciliation table with blue accents -->
+    {% if execution.stock_requirements %}
+    <table class="stock-table">
+        <thead>
+            <tr>
+                <th>Product code</th>
+                <th>Qty Needed</th>
+                <th>Qty Out</th>
+                <th></th>
+                <th>Qty In</th>
+                <th></th>
+                <th>Qty Used</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for req in execution.stock_requirements %}
+            <tr class="stock-row">
+                <td><strong>{{ req.code }}</strong> 
+                    {% if req.ingredient %}<div style="font-size:0.6rem; color:#4e6f8c;">{{ req.ingredient }}</div>{% endif %}
+                </td>
+                <td>{{ "%.1f"|format(req.min_qty) }} {{ req.uom }}</td>
+                <td class="input-cell"></td>
+                <td class="formula">−</td>
+                <td class="input-cell"></td>
+                <td class="formula">=</td>
+                <td class="input-cell used"></td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+    {% endif %}
+
+    <!-- signature and responsible person -->
+    <div class="signature-section">
+        <div class="signature-row">
+            <div>Responsible Person:</div>
+            <div class="responsible-badge">{{ execution.responsible_person or '—' }}</div>
+            <div>Date:</div>
+            <div class="date-field"></div>
+            <div>Signature:</div>
+            <div class="signature-line"></div>
+        </div>
+        {% if execution.created_by %}
+        <div style="font-size:0.6rem; margin-top:0.6rem; color:#5e7e9c; text-align:right;">Generated by: {{ execution.created_by }}</div>
+        {% endif %}
+    </div>
+</div>
+</body>
+</html>

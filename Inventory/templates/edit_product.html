@@ -1,0 +1,229 @@
+{% extends "inventory_base.html" %}
+{% block content %}
+<!-- PRODUCT MODAL ROOT -->
+<div id="pm-modal" class="pm-overlay">
+  <div class="pm-modal">
+
+    <!-- HEADER -->
+    <div class="pm-header">
+      <h2><i class="fas fa-box"></i> Edit Product</h2>
+      <button class="pm-close" onclick="PM.close()">&times;</button>
+    </div>
+
+    <!-- BODY -->
+    <div class="pm-body">
+
+      <!-- BASIC -->
+      <div class="pm-section">
+        <h3>Basic</h3>
+        <div class="pm-grid-2">
+          <input id="pm-code" disabled>
+          <input id="pm-desc">
+        </div>
+      </div>
+
+      <!-- REORDER -->
+      <div class="pm-section">
+        <h3>Stock Control</h3>
+        <div class="pm-grid-3">
+          <input type="number" id="pm-reorder-level" placeholder="Reorder Level">
+          <input type="number" id="pm-reorder-qty" placeholder="Reorder Qty">
+          <input type="number" id="pm-lead-time" placeholder="Lead Time (days)">
+        </div>
+      </div>
+
+      <!-- WAREHOUSE CONFIG -->
+      <div class="pm-section">
+        <h3>Warehouses</h3>
+        <div id="pm-warehouses"></div>
+      </div>
+
+      <!-- AGRI EXTRA -->
+      <div class="pm-section">
+        <h3>Additional Info</h3>
+        <div class="pm-grid-2">
+          <input id="pm-active" placeholder="Active Ingredient">
+          <input id="pm-colour" placeholder="Colour Code">
+          <input id="pm-reg" placeholder="Registration No">
+          <input id="pm-type" placeholder="Type ID">
+          <input id="pm-withholding" placeholder="Withholding Period">
+        </div>
+      </div>
+
+    </div>
+
+    <!-- FOOTER -->
+    <div class="pm-footer">
+      <button class="pm-btn secondary" onclick="PM.close()">Cancel</button>
+      <button class="pm-btn primary" onclick="PM.save()">Save</button>
+    </div>
+
+  </div>
+</div>
+<script>
+const PM = {
+  currentId: null,
+
+  open(id) {
+    this.currentId = id;
+    document.getElementById("pm-modal").classList.remove("hidden");
+
+    fetch(`/inventory/product/${id}`)
+      .then(r => r.json())
+      .then(data => this.fill(data));
+  },
+
+  close() {
+    document.getElementById("pm-modal").classList.add("hidden");
+    setTimeout(() => window.history.back(), 300);
+  },
+
+  fill(data) {
+    document.getElementById("pm-code").value = data.code;
+    document.getElementById("pm-desc").value = data.desc;
+    document.getElementById("pm-reorder-level").value = data.reorder_level;
+    document.getElementById("pm-reorder-qty").value = data.reorder_qty;
+    document.getElementById("pm-lead-time").value = data.lead_time;
+
+    // warehouses
+    const whDiv = document.getElementById("pm-warehouses");
+    whDiv.innerHTML = data.warehouses.map(w => `
+      <div class="pm-wh-row">
+        <label>
+          <input type="checkbox" ${w.active ? "checked" : ""}>
+          ${w.name}
+        </label>
+
+        <select>
+          ${w.suppliers.map(s =>
+            `<option value="${s.id}" ${s.id == w.pref_supplier ? "selected" : ""}>
+              ${s.name}
+            </option>`
+          ).join("")}
+        </select>
+      </div>
+    `).join("");
+  },
+
+  save() {
+    fetch("/inventory/product/update", {
+      method: "POST",
+      headers: {"Content-Type":"application/json"},
+      body: JSON.stringify({
+        id: this.currentId,
+        reorder_level: document.getElementById("pm-reorder-level").value,
+        reorder_qty: document.getElementById("pm-reorder-qty").value
+      })
+    })
+    .then(r => r.json())
+    .then(data => {
+      if (data.success) {
+        alert('Product saved successfully!');
+        window.history.back();
+      } else {
+        alert('Error: ' + (data.error || data.message));
+      }
+    })
+    .catch(err => {
+      console.error('Error saving:', err);
+      alert('Failed to save product');
+    });
+  }
+};
+
+// Auto-load product from URL when page loads
+document.addEventListener('DOMContentLoaded', () => {
+  const match = window.location.pathname.match(/\/edit-product\/(\d+)/);
+  if (match) {
+    const productId = parseInt(match[1]);
+    PM.open(productId);
+  }
+});
+</script>
+<style>
+.pm-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(0,0,0,0.5);
+  z-index: 99999;
+  display:flex;
+  align-items:center;
+  justify-content:center;
+}
+
+.pm-modal {
+  width: 800px;
+  max-height: 90vh;
+  overflow-y: auto;
+  background: #fff;
+  border-radius: 12px;
+  padding: 0;
+  font-family: inherit;
+}
+
+.pm-header {
+  padding: 16px;
+  border-bottom: 1px solid #eee;
+  display:flex;
+  justify-content:space-between;
+}
+
+.pm-body {
+  padding: 16px;
+}
+
+.pm-section {
+  margin-bottom: 20px;
+}
+
+.pm-section h3 {
+  margin-bottom: 10px;
+  font-size: 0.95rem;
+  color: #555;
+}
+
+.pm-grid-2 {
+  display:grid;
+  grid-template-columns:1fr 1fr;
+  gap:10px;
+}
+
+.pm-grid-3 {
+  display:grid;
+  grid-template-columns:1fr 1fr 1fr;
+  gap:10px;
+}
+
+.pm-body input {
+  padding:8px;
+  border:1px solid #ccc;
+  border-radius:6px;
+}
+
+.pm-footer {
+  padding: 12px;
+  display:flex;
+  justify-content:flex-end;
+  gap:10px;
+  border-top:1px solid #eee;
+}
+
+.pm-btn {
+  padding:8px 14px;
+  border:none;
+  border-radius:6px;
+  cursor:pointer;
+}
+
+.pm-btn.primary {
+  background:#4c7cff;
+  color:white;
+}
+
+.pm-btn.secondary {
+  background:#ddd;
+}
+
+.hidden { display:none !important; }
+</style>
+{% endblock %}

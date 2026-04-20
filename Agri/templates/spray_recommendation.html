@@ -241,6 +241,7 @@ input,select{
 <div>
 <label>Date</label>
 <input type="date" id="spray_date" required>
+<div id="spray_week" style="margin-top:6px; color: var(--secondary-text); font-size:0.9rem;">Week: -</div>
 </div>
 
 <div>
@@ -644,6 +645,28 @@ document.getElementById('project-configs').addEventListener('input', function(e)
   if(e.target.matches('.project-water-input')) fetchPreview();
 });
 
+function getWeekOfYear(date) {
+  const d = new Date(Date.UTC(date.getFullYear(), date.getMonth(), date.getDate()));
+  const dayNum = d.getUTCDay() || 7;
+  d.setUTCDate(d.getUTCDate() + 4 - dayNum);
+  const yearStart = new Date(Date.UTC(d.getUTCFullYear(),0,1));
+  return Math.ceil((((d - yearStart) / 86400000) + 1) / 7);
+}
+
+function updateWeekLabel() {
+  const dateStr = document.getElementById('spray_date').value;
+  const label = document.getElementById('spray_week');
+  if (!dateStr) {
+    label.textContent = 'Week: -';
+    return;
+  }
+  const date = new Date(dateStr);
+  const week = getWeekOfYear(date);
+  label.textContent = `Week: ${week} (${date.getFullYear()})`;
+}
+
+document.getElementById('spray_date').addEventListener('change', updateWeekLabel);
+
 function fetchMethodWater(){
   const methodId = document.getElementById('method_id').value;
   const waterInputs = document.querySelectorAll('.project-water-input');
@@ -702,7 +725,7 @@ document.getElementById('spray-form').addEventListener('submit', function(event)
     if(result.success){
       Swal.fire('Success', result.message || 'Saved successfully.', 'success');
       // optionally reset form
-      // window.location.href = '/agri/spray-recommendations-summary';
+      window.location.href = '/agri/spray-recommendations-summary';
     } else {
       Swal.fire('Error', result.message || 'Save failed.', 'error');
     }

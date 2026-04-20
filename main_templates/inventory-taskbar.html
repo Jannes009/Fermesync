@@ -3,7 +3,7 @@
   <!-- Logo -->
   <div class="logo-container">
     <a href="/inventory/dashboard" class="logo-link">
-      <img src="{{ url_for('inventory.static', filename='Image/HorizontalLogoAndText.svg') }}" alt="Fermesync Logo" class="taskbar-logo">
+      <img src="{{ url_for('inventory.static', filename='Image/LogoAndText.svg') }}" alt="Fermesync Logo" class="taskbar-logo">
       <!-- Mobile-only status indicators -->
       <!-- <div class="mobile-status-indicators">
         <div class="connection-indicator mobile-only" id="connection-indicator-mobile">
@@ -283,7 +283,7 @@ body {
 }
 
 .taskbar-logo {
-  height: 40px;
+  height: 20px;
   width: auto;
 }
 
@@ -306,7 +306,7 @@ body {
   box-sizing: border-box;
 }
 
-/* Utility class for content that needs to be pushed below the fixed taskbar */
+/* Utility class for content that needs to be pushed below/aside the fixed taskbar */
 .with-fixed-taskbar {
   padding-top: 70px;
 }
@@ -930,6 +930,61 @@ main {
   
   .desktop-only {
     display: flex;
+  }
+
+  .taskbar {
+    width: 250px;
+    height: 100vh;
+    flex-direction: column;
+    justify-content: flex-start;
+    align-items: stretch;
+    padding: 20px 12px;
+    box-shadow: 2px 0 12px rgba(0, 0, 0, 0.12);
+  }
+
+  .logo-container {
+    padding-bottom: 16px;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+  }
+
+  .taskbar-logo {
+    max-width: 100%;
+    height: auto;
+  }
+
+  .taskbar .desktop-nav {
+    position: static;
+    transform: none;
+    margin-top: 24px;
+  }
+
+  .taskbar .desktop-nav ul {
+    flex-direction: column;
+    gap: 8px;
+  }
+
+  .taskbar-link {
+    padding: 10px 14px;
+    display: flex;
+    align-items: center;
+    width: 100%;
+  }
+
+  .desktop-actions {
+    margin-top: auto;
+    padding-top: 24px;
+    flex-direction: column;
+    align-items: stretch;
+    gap: 14px;
+  }
+
+  .user-section.desktop-user {
+    width: 100%;
+  }
+
+  .with-fixed-taskbar {
+    padding-top: 0;
+    padding-left: 270px;
   }
 }
 </style>

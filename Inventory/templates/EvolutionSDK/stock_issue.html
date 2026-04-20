@@ -140,7 +140,7 @@
         /* second row container */
         .product-row-bottom {
             display: grid;
-            grid-template-columns: 1fr auto 36px;
+            grid-template-columns: auto 1fr auto 36px;
             gap: 8px;
             align-items: center;
         }
@@ -473,6 +473,109 @@
                 min-width: unset;
             }
         }
+
+        /* Summary section styling */
+        .summary-box {
+            background: var(--container-bg);
+            border-radius: 8px;
+            padding: 1.5rem;
+            border: 1px solid var(--input-border);
+        }
+
+        .summary-header {
+            display: flex;
+            flex-direction: column;
+            gap: 0.75rem;
+            margin-bottom: 1.5rem;
+            padding-bottom: 1rem;
+            border-bottom: 1px solid var(--input-border);
+        }
+
+        .summary-item {
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+
+        .summary-label {
+            font-weight: 600;
+            color: var(--primary-text);
+            min-width: 120px;
+        }
+
+        .summary-value {
+            color: var(--muted-text, #7b8a99);
+            flex: 1;
+        }
+
+        .summary-products h4 {
+            margin: 0 0 1rem 0;
+            font-size: 1.1rem;
+            color: var(--primary-text);
+            font-weight: 600;
+        }
+
+        .products-list {
+            display: flex;
+            flex-direction: column;
+            gap: 0.5rem;
+        }
+
+        .product-item {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 0.75rem;
+            background: var(--form-bg);
+            border: 1px solid var(--input-border);
+            border-radius: 6px;
+            transition: border-color 0.2s;
+        }
+
+        .product-item:hover {
+            border-color: var(--button-bg);
+        }
+
+        .product-name {
+            font-weight: 500;
+            color: var(--primary-text);
+            flex: 1;
+        }
+
+        .product-qty {
+            font-weight: 600;
+            color: var(--button-bg);
+            background: rgba(0, 123, 255, 0.1);
+            padding: 0.25rem 0.5rem;
+            border-radius: 4px;
+            font-size: 0.9rem;
+        }
+
+        @media (max-width: 600px) {
+            .summary-header {
+                gap: 0.5rem;
+            }
+
+            .summary-item {
+                flex-direction: column;
+                align-items: flex-start;
+                gap: 0.25rem;
+            }
+
+            .summary-label {
+                min-width: unset;
+            }
+
+            .product-item {
+                flex-direction: column;
+                align-items: flex-start;
+                gap: 0.5rem;
+            }
+
+            .product-qty {
+                align-self: flex-end;
+            }
+        }
     </style>
 
 <barcode-scanner-overlay id="barcodeScanner"></barcode-scanner-overlay>
@@ -502,7 +605,7 @@
                     </label>
                     <label style="display: flex; align-items: center; gap: 8px; font-weight: normal; width: auto; cursor: pointer;">
                         <input type="radio" id="mode-spray" name="issue-mode" value="spray">
-                        <span>Spray Instruction</span>
+                        <span>Spray Execution</span>
                     </label>
                 </div>
             </div>
@@ -513,8 +616,8 @@
             </div>
 
             <div class="form-row" id="project-select-container">
-                <label>Project</label>
-                <select id="project-select"><option>Select…</option></select>
+                <label>Projects</label>
+                <select id="project-select" multiple><option>Select…</option></select>
             </div>
 
             <div class="form-row hidden" id="spray-select-container">
@@ -580,11 +683,6 @@
     userId: {{ current_user.id | tojson }},
     permissions: {{ current_user.permissions | tojson }}
   };
-</script>
-
-<script type="module"
-  src="{{ url_for('inventory.static',
-    filename='stock_issue/offline.js') }}?v={{ filemtime('inventory','stock_issue/offline.js') }}">
 </script>
 <script type="module"
   src="{{ url_for('inventory.static',

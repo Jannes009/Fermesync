@@ -10,8 +10,10 @@ agri_bp = Blueprint(
 )
 
 from . import spray_recommendation
+from . import spray_execution
 from . import setup
 from . import spray_instruction
 from . import spray_stock_issue
-from . import pdf_generator
+from .global_gap.uitdraai import spray_execution_instruction
+from .global_gap.uitdraai import spray_record
 from flask_login import login_required
