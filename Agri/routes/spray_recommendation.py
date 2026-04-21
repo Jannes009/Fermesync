@@ -2,6 +2,7 @@ from flask import render_template, request, redirect, url_for, jsonify
 from flask_login import login_required, current_user
 from Core.auth import create_db_connection
 from . import agri_bp
+from datetime import datetime
 
 import math
 
@@ -77,6 +78,27 @@ def create_spray_recommendation():
         warehouses=warehouses
     )
 
+@agri_bp.route("/spray-recommendation/default_qty_per_ha/<int:stock_id>", methods=["GET"])
+@login_required
+def get_default_qty_per_ha(stock_id):
+    conn = create_db_connection()
+    cur = conn.cursor()
+
+    cur.execute("""
+        SELECT [ChemStockDefaultQtyPer100L]
+        FROM agr.ChemStock
+        WHERE [ChemStockLink] = ?
+    """, (stock_id,))
+    result = cur.fetchone()
+
+    conn.close()
+
+    if result:
+        return jsonify({"default_qty_per_ha": result.ChemStockDefaultQtyPer100L})
+    else:
+        return jsonify({"default_qty_per_ha": 0})
+
+
 @agri_bp.route("/spray-recommendation/create", methods=["POST"])
 @login_required
 def save_spray_recommendation():
@@ -92,7 +114,6 @@ def save_spray_recommendation():
         warehouse_id = data.get("warehouse_id")
         projects = data.get("projects", []) or []
         lines = data.get("lines", []) or []
-        print(data)
     else:
         data = request.form
         spray_date = data.get("spray_date")
@@ -102,7 +123,6 @@ def save_spray_recommendation():
         project_ids = data.getlist("project_ids")
         project_has = data.getlist("project_ha[]")
         project_water = data.getlist("project_water_per_ha[]")
-        print(data)
         projects = []
         for pi, ha, w in zip(project_ids, project_has, project_water):
             projects.append({"project_id": pi, "ha": float(ha or 0), "water_per_ha": float(w or 0)})
@@ -151,21 +171,26 @@ def save_spray_recommendation():
         spray_description = data.get("spray_description", "")
         scouting_note = data.get("scouting_note", "")
 
+        # Calculate ISO week in format yyyy-ww
+        spray_date_obj = datetime.strptime(spray_date, '%Y-%m-%d').date()
+        iso_year, iso_week, _ = spray_date_obj.isocalendar()
+        spray_week = f"{iso_year}-{iso_week:02d}"
+
         try:
             cur.execute("""
                 INSERT INTO agr.SprayHeader
-                (SprayHNo, SprayHDescription, SprayHScouting, SprayHDate, SprayHRecUserId, SprayHApplicationType, SprayHMethodId, SprayHWhseId, SprayHStatus)
+                (SprayHNo, SprayHDescription, SprayHScouting, SprayHDate, SprayHRecUserId, SprayHApplicationType, SprayHMethodId, SprayHWhseId, SprayHStatus, SprayHWeek)
                 OUTPUT INSERTED.IdSprayH
-                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
-            """, spray_no, spray_description, scouting_note, spray_date, current_user.id, application_type, method_id, warehouse_id, "RECOMMENDED")
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+            """, spray_no, spray_description, scouting_note, spray_date, current_user.id, application_type, method_id, warehouse_id, "RECOMMENDED", spray_week)
         except Exception:
             # fallback if SprayHScouting column does not exist
             cur.execute("""
                 INSERT INTO agr.SprayHeader
-                (SprayHNo, SprayHDescription, SprayHDate, SprayHRecUserId, SprayHApplicationType, SprayHMethodId, SprayHWhseId, SprayHStatus)
+                (SprayHNo, SprayHDescription, SprayHDate, SprayHRecUserId, SprayHApplicationType, SprayHMethodId, SprayHWhseId, SprayHStatus, SprayHWeek)
                 OUTPUT INSERTED.IdSprayH
-                VALUES (?, ?, ?, ?, ?, ?, ?, ?)
-            """, spray_no, spray_description, spray_date, current_user.id, application_type, method_id, warehouse_id, "RECOMMENDED")
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+            """, spray_no, spray_description, spray_date, current_user.id, application_type, method_id, warehouse_id, "RECOMMENDED", spray_week)
         spray_header_id = cur.fetchone()[0]
 
         total_ha = sum(float(proj.get("ha") or 0) for proj in projects)

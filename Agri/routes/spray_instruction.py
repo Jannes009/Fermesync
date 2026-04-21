@@ -51,6 +51,7 @@ def get_spray_header(spray_id):
             HEA.SprayHNo,
             HEA.SprayHDescription,
             HEA.SprayHDate,
+            HEA.SprayHWeek,
             HEA.SprayHWhseId,
             HEA.SprayHOperator,
             HEA.SprayHWeather,
@@ -88,6 +89,7 @@ def get_spray_header(spray_id):
 
     return jsonify({
             "spray_date": str(header.SprayHDate),
+            "spray_week": header.SprayHWeek,
             "projects": project_list,
             "total_ha": total_ha,
             "project_ids": project_ids,
@@ -102,6 +104,56 @@ def get_spray_header(spray_id):
 @agri_bp.route("/spray/<int:spray_id>/spray_lines", methods=["GET"])
 @login_required
 def get_spray_lines(spray_id):
+    conn = create_db_connection()
+    cur = conn.cursor()
+    cur.execute("""
+        SELECT SprayHApplicationType FROM agr.SprayHeader WHERE IdSprayH = ?
+    """, spray_id)
+    row = cur.fetchone()
+    application_type = row.SprayHApplicationType
+    lines = []
+    if application_type == 'spray':
+        cur.execute("""
+            SELECT LIN.SprayLineStkId, EVOSTK.StockCode, LIN.SprayLineQtyPerHa, LIN.SprayLineQtyPer100L, UOM.cUnitCode
+            FROM [agr].SprayLines LIN
+            JOIN [agr].SprayHeader HEA ON HEA.IdSprayH = LIN.SprayLineHeaderId
+            JOIN [cmn].[_uvStockItems] EVOSTK ON EVOSTK.StockLink = LIN.SprayLineStkId
+            LEFT JOIN [cmn]._uvUOM UOM ON UOM.idUnits = LIN.SprayLineUoMId
+            WHERE LIN.SprayLineHeaderId = ?
+        """, spray_id)
+        lines = [
+            {"stock_id": row.SprayLineStkId,
+             "stock_code": row.StockCode,
+             "qty_per_ha": float(row.SprayLineQtyPerHa) if row.SprayLineQtyPerHa is not None else None,
+             "qty_per_100l": float(row.SprayLineQtyPer100L) if row.SprayLineQtyPer100L is not None else None,
+             "uom": row.cUnitCode
+            }
+            for row in cur.fetchall()
+        ]
+    elif application_type == 'direct':
+        cur.execute("""
+            SELECT LIN.SprayLineStkId, EVOSTK.StockCode, LIN.SprayLineQtyPerHa, UOM.cUnitCode
+            FROM [agr].SprayLines LIN
+            JOIN [agr].SprayHeader HEA ON HEA.IdSprayH = LIN.SprayLineHeaderId
+            JOIN [cmn].[_uvStockItems] EVOSTK ON EVOSTK.StockLink = LIN.SprayLineStkId
+            LEFT JOIN [cmn]._uvUOM UOM ON UOM.idUnits = LIN.SprayLineUoMId
+            WHERE LIN.SprayLineHeaderId = ?
+        """, spray_id)
+        lines = [
+            {"stock_id": row.SprayLineStkId,
+             "stock_code": row.StockCode,
+             "qty_per_ha": float(row.SprayLineQtyPerHa) if row.SprayLineQtyPerHa is not None else None,
+             "uom": row.cUnitCode
+            }
+            for row in cur.fetchall()
+        ]
+    return jsonify(lines)
+
+
+
+@agri_bp.route("/spray/<int:spray_id>/spray_mix_lines", methods=["GET"])
+@login_required
+def get_spray_mix_lines(spray_id):
     conn = create_db_connection()
     cur = conn.cursor()
 
@@ -175,89 +227,6 @@ def get_spray_lines(spray_id):
 
     conn.close()
     return lines
-
-
-@agri_bp.route("/spray/<int:spray_id>/issued_stock", methods=["GET"])
-@login_required
-def get_spray_issued_stock(spray_id):
-    conn = create_db_connection()
-    cur = conn.cursor()
-
-    # Get application type
-    cur.execute("SELECT SprayHApplicationType, SprayHWhseId FROM agr.SprayHeader WHERE IdSprayH = ?", spray_id)
-    spray_row = cur.fetchone()
-    if spray_row is None:
-        conn.close()
-        return jsonify({"stock_movement": []})
-
-    app_type = spray_row.SprayHApplicationType
-    whse_id = spray_row.SprayHWhseId
-
-    instruction_totals = {}
-    if app_type == 'spray':
-        cur.execute("""
-        SELECT LIN.SprayMixLineStockId AS StockLink,
-               SUM(LIN.SprayMixLineQty) AS TotalQty
-        FROM agr.SprayMixLines LIN
-        JOIN agr.SprayMix HEA on HEA.IdSprayMix = LIN.SprayMixLineMixId
-        WHERE HEA.SprayMixHeaderId = ?
-        GROUP BY LIN.SprayMixLineStockId
-        """, spray_id)
-    else:
-        cur.execute("""
-        SELECT LIN.SprayLineStkId AS StockLink,
-               ISNULL(SUM(LIN.SprayLineQtyPerHa * PA.ProjAttrHa), 0) AS TotalQty
-        FROM agr.SprayLines LIN
-        JOIN agr.SprayProjects SP ON SP.SprayPSprayId = LIN.SprayLineHeaderId
-        JOIN agr.ProjectAttributes PA ON PA.ProjAttrProjectId = SP.SprayPProjectId
-        WHERE LIN.SprayLineHeaderId = ?
-        GROUP BY LIN.SprayLineStkId
-        """, spray_id)
-
-    for row in cur.fetchall():
-        instruction_totals[row.StockLink] = float(row.TotalQty or 0)
-
-    # Fetch issued/received/finalised totals by stock link
-    cur.execute("""
-        SELECT ISSLIN.IssLineStockLink AS StockLink,
-               SUM(ISSLIN.IssLineQtyIssued) AS TotalQtyIssued,
-               SUM(ISSLIN.IssLineQtyReceived) AS TotalQtyReceived,
-               SUM(ISSLIN.IssLineQtyFinalised) AS TotalQtyFinalised
-        FROM stk.IssueHeader ISSHEA
-        JOIN stk.IssueLines ISSLIN ON ISSLIN.IssLineIssueId = ISSHEA.IdIssue
-        WHERE ISSHEA.IssSprayId = ?
-        GROUP BY ISSLIN.IssLineStockLink
-    """, spray_id)
-
-    issue_totals = {
-        row.StockLink: {
-            "issued": float(row.TotalQtyIssued or 0),
-            "received": float(row.TotalQtyReceived or 0),
-            "finalised": float(row.TotalQtyFinalised or 0)
-        }
-        for row in cur.fetchall()
-    }
-
-    # Build combined movement list
-    stock_links = set(list(instruction_totals.keys()) + list(issue_totals.keys()))
-    movement_rows = []
-    for stock_link in sorted(stock_links):
-        cur.execute("SELECT StockCode, StockDescription FROM cmn._uvStockItems WHERE StockLink = ?", stock_link)
-        stock_row = cur.fetchone()
-        stock_desc = stock_row.StockDescription if stock_row and stock_row.StockDescription else (stock_row.StockCode if stock_row else "Unknown")
-
-        totals = issue_totals.get(stock_link, {"issued": 0.0, "received": 0.0, "finalised": 0.0})
-        movement_rows.append({
-            "stock_link": stock_link,
-            "stock_desc": stock_desc,
-            "total_qty_on_instruction": float(instruction_totals.get(stock_link, 0)),
-            "qty_issued": totals["issued"],
-            "qty_received": totals["received"],
-            "qty_finalised": totals["finalised"]
-        })
-
-    conn.close()
-    return jsonify({"stock_movement": movement_rows})
 
 
 @agri_bp.route("/spray/recalculate", methods=["POST"])

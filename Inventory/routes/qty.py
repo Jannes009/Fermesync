@@ -30,6 +30,266 @@ def inventory_qty():
                          warehouses=warehouses,
                          selected_warehouse=warehouse_id)
 
+def get_warehouse_list():
+    """Get list of warehouses the user has access to"""
+    conn = create_db_connection()
+    if not conn:
+        return []
+
+    try:
+        warehouses = current_user.warehouses
+        if len(warehouses) == 0:
+            return []
+        placeholders = ",".join(["?"] * len(warehouses))
+        cursor = conn.cursor()
+        cursor.execute(f"""
+            SELECT WhseLink, WhseCode, WhseDescription
+            FROM cmn._uvWarehouses
+            WHERE WhseLink IN ({placeholders})
+            ORDER BY WhseCode
+        """, warehouses)
+        rows = cursor.fetchall()
+        warehouses = [
+            {"WhseLink": r.WhseLink, "WhseCode": r.WhseCode, "WhseDescription": r.WhseDescription}
+            for r in rows
+        ]
+        return warehouses
+
+    except Exception as e:
+        print(f"Error fetching warehouses: {e}")
+        return []
+    finally:
+        close_db_connection(conn)
+
+def get_warehouse_stock(warehouse_id):
+    """Get stock levels for all products in the selected warehouse"""
+    conn = create_db_connection()
+    if not conn:
+        return []
+
+    try:
+        cursor = conn.cursor()
+        query = """
+        WITH FirstNegative AS (
+            SELECT 
+                SprayLineStkId,
+                SprayHWhseId,
+                SprayHWeek,
+                ProjectedBalance,
+                ROW_NUMBER() OVER (
+                    PARTITION BY SprayLineStkId, SprayHWhseId 
+                    ORDER BY SprayHWeek
+                ) AS rn
+            FROM [agr].[_uvStockProjection]
+            WHERE ProjectedBalance < 0
+        )
+
+        SELECT 
+            QTY.StockLink, 
+            QTY.StockCode, 
+            QTY.StockDescription, 
+            QTY.cCategoryName,
+            COALESCE(QTY.QtyOnHand, 0) AS QtyOnHand,
+            COALESCE(QTY.QtyOnPo, 0) AS QtyOnPo, 
+            COALESCE(QTY.IncompleteIssuesQty, 0) AS QtyOnIssues, 
+            FN.SprayHWeek
+        FROM stk._uvInventoryQty QTY
+        LEFT JOIN FirstNegative FN 
+            ON FN.SprayHWhseId = QTY.WhseLink 
+            AND FN.SprayLineStkId = QTY.StockLink
+            AND FN.rn = 1
+        WHERE QTY.WhseLink = ?
+        ORDER BY QTY.StockCode;
+        """
+        cursor.execute(query, (warehouse_id,))
+        rows = cursor.fetchall()
+        stock = [
+            {
+                "StockLink": r.StockLink,
+                "StockCode": r.StockCode,
+                "StockDescription": r.StockDescription,
+                "Category": r.cCategoryName,
+                "QtyOnHand": format_qty(r.QtyOnHand),
+                "QtyOnPo": format_qty(r.QtyOnPo),
+                "QtyOnIssues": format_qty(r.QtyOnIssues),
+                "SprayHWeek": r.SprayHWeek
+            }
+            for r in rows
+        ]
+        return stock
+
+    except Exception as e:
+        print(f"Error fetching warehouse stock: {e}")
+        return []
+    finally:
+        close_db_connection(conn)
+
+@inventory_bp.route("/get-chemstock/<int:stock_link>")
+@login_required
+def get_chemstock(stock_link):
+    """Get ChemStock data for a product"""
+    conn = create_db_connection()
+    if not conn:
+        return jsonify({"error": "Database connection failed"}), 500
+
+    try:
+        cursor = conn.cursor()
+        cursor.execute("""
+            SELECT IdChemStock, ChemStockLink, ChemStockActiveIngr, ChemStockRegNumber,
+                   ChemStockColourCodeId, ChemStockTypeId, ChemStockReason,
+                   ChemStockWitholdingPeriod, ChemStockDefaultQtyPer100L
+            FROM agr.ChemStock
+            WHERE ChemStockLink = ?
+        """, (stock_link,))
+        
+        row = cursor.fetchone()
+        if row:
+            chemstock = {
+                "IdChemStock": row.IdChemStock,
+                "ChemStockLink": row.ChemStockLink,
+                "ChemStockActiveIngr": row.ChemStockActiveIngr,
+                "ChemStockRegNumber": row.ChemStockRegNumber,
+                "ChemStockColourCodeId": row.ChemStockColourCodeId,
+                "ChemStockTypeId": row.ChemStockTypeId,
+                "ChemStockReason": row.ChemStockReason,
+                "ChemStockWitholdingPeriod": row.ChemStockWitholdingPeriod,
+                "ChemStockDefaultQtyPer100L": row.ChemStockDefaultQtyPer100L
+            }
+            return jsonify(chemstock)
+        else:
+            return jsonify({"error": "ChemStock not found"}), 404
+
+    except Exception as e:
+        print(f"Error fetching ChemStock: {e}")
+        return jsonify({"error": "Failed to fetch ChemStock"}), 500
+    finally:
+        close_db_connection(conn)
+
+@inventory_bp.route("/update-chemstock/<int:stock_link>", methods=["POST"])
+@login_required
+def update_chemstock(stock_link):
+    """Update ChemStock data"""
+    conn = create_db_connection()
+    if not conn:
+        return jsonify({"error": "Database connection failed"}), 500
+
+    try:
+        data = request.get_json()
+        cursor = conn.cursor()
+        
+        cursor.execute("""
+            UPDATE agr.ChemStock
+            SET ChemStockActiveIngr = ?,
+                ChemStockRegNumber = ?,
+                ChemStockColourCodeId = ?,
+                ChemStockTypeId = ?,
+                ChemStockReason = ?,
+                ChemStockWitholdingPeriod = ?,
+                ChemStockDefaultQtyPer100L = ?
+            WHERE ChemStockLink = ?
+        """, (
+            data.get("activeIngr"),
+            data.get("regNumber"),
+            data.get("colourCodeId"),
+            data.get("typeId"),
+            data.get("reason"),
+            data.get("witholdingPeriod"),
+            data.get("defaultQtyPer100L"),
+            stock_link
+        ))
+        
+        conn.commit()
+        return jsonify({"success": True, "message": "ChemStock updated successfully"})
+
+    except Exception as e:
+        conn.rollback()
+        print(f"Error updating ChemStock: {e}")
+        return jsonify({"error": "Failed to update ChemStock"}), 500
+    finally:
+        close_db_connection(conn)
+
+@inventory_bp.route("/get-reordering/<int:stock_link>")
+@login_required
+def get_reordering(stock_link):
+    """Get reordering data (ReorderLevel, ReorderQty, Category)"""
+    conn = create_db_connection()
+    if not conn:
+        return jsonify({"error": "Database connection failed"}), 500
+
+    try:
+        warehouse_id = request.args.get('whse', type=int)
+        cursor = conn.cursor()
+        
+        if warehouse_id:
+            cursor.execute("""
+                SELECT StockLink, ReorderLevel, ReorderQty, cCategoryName
+                FROM stk._uvInventoryQty
+                WHERE StockLink = ? AND WhseLink = ?
+            """, (stock_link, warehouse_id))
+        else:
+            cursor.execute("""
+                SELECT StockLink, ReorderLevel, ReorderQty, cCategoryName
+                FROM stk._uvInventoryQty
+                WHERE StockLink = ?
+            """, (stock_link,))
+        
+        row = cursor.fetchone()
+        if row:
+            print(row)
+            return jsonify({
+                "ReorderLevel": row.ReorderLevel,
+                "ReorderQty": row.ReorderQty,
+                "Category": row.cCategoryName
+            })
+        else:
+            return jsonify({"error": "Reordering data not found"}), 404
+
+    except Exception as e:
+        print(f"Error fetching reordering data: {e}")
+        return jsonify({"error": "Failed to fetch reordering data"}), 500
+    finally:
+        close_db_connection(conn)
+
+@inventory_bp.route("/update-reordering/<int:stock_link>", methods=["POST"])
+@login_required
+def update_reordering(stock_link):
+    """Update reordering data via stored procedure"""
+    conn = create_db_connection()
+    if not conn:
+        return jsonify({"error": "Database connection failed"}), 500
+
+    try:
+        data = request.get_json()
+        warehouse_id = data.get("warehouseId")
+        cursor = conn.cursor()
+        
+        cursor.execute("""
+            INSERT INTO #StockIds (StockId)
+            VALUES (?);  
+
+            EXEC stk.sp_BulkUpdateStock
+                @Category = ?,
+                @ReorderLevel = ?,
+                @ReorderQty = ?,
+                @WarehouseId = ?
+        """, (
+            stock_link,
+            data.get("category"),
+            data.get("reorderLevel"),
+            data.get("reorderQty"),
+            warehouse_id
+        ))
+        
+        conn.commit()
+        return jsonify({"success": True, "message": "Reordering data updated successfully"})
+
+    except Exception as e:
+        conn.rollback()
+        print(f"Error updating reordering data: {e}")
+        return jsonify({"error": "Failed to update reordering data"}), 500
+    finally:
+        close_db_connection(conn)
+
 @inventory_bp.route("/get-product/<int:stock_link>")
 @login_required
 def get_product(stock_link):
@@ -204,7 +464,7 @@ def get_low_stock_items(warehouse_id=None):
         close_db_connection(conn)
 
 def get_upcoming_demand(warehouse_id=None):
-    """Get upcoming demand grouped by time periods"""
+    """Get upcoming demand grouped by week with running balances"""
     conn = create_db_connection()
     if not conn:
         return []
@@ -212,236 +472,73 @@ def get_upcoming_demand(warehouse_id=None):
     try:
         cursor = conn.cursor()
 
-        # Get spray stock requirements with product details
+        # Get stock projections with product details
         base_sql = """
         SELECT 
-            StockId,
+            PJN.SprayLineStkId as StockId,
             STK.StockCode, STK.StockDescription,
-            WhseId, STK.QtyOnPO,
-
-            -- Qty needed THIS WEEK
-            SUM(CASE 
-                WHEN SprayHDate >= CAST(GETDATE() AS DATE)
-                AND SprayHDate < DATEADD(WEEK, 1, CAST(GETDATE() AS DATE))
-                THEN TotalQty 
-                ELSE 0 
-            END) AS QtyThisWeek,
-
-            -- Qty needed NEXT WEEK
-            SUM(CASE 
-                WHEN SprayHDate >= DATEADD(WEEK, 1, CAST(GETDATE() AS DATE))
-                AND SprayHDate < DATEADD(WEEK, 2, CAST(GETDATE() AS DATE))
-                THEN TotalQty 
-                ELSE 0 
-            END) AS QtyNextWeek,
-
-            -- Qty needed THIS MONTH
-            SUM(CASE 
-                WHEN MONTH(SprayHDate) = MONTH(GETDATE())
-                AND YEAR(SprayHDate) = YEAR(GETDATE())
-                THEN TotalQty 
-                ELSE 0 
-            END) AS QtyThisMonth,
-
-            -- Qty on hand (same per product/warehouse)
-            MAX(QtyAvailable) AS QtyAvailable
-
-        FROM agr._uvSprayStockRequirements QTY
-        JOIN stk._uvInventoryQty STK on STK.StockLink = QTY.StockId AND QTY.WhseId = STK.WhseLink
+            PJN.SprayHWhseId as WhseId,
+            PJN.QtyOnPO,
+            PJN.SprayHWeek,
+            PJN.OpeningBalance,
+            PJN.QtyNeeded,
+            PJN.ProjectedBalance
+        FROM agr._uvStockProjection PJN
+        JOIN cmn._uvStockItems STK on STK.StockLink = PJN.SprayLineStkId
         """
 
         params = []
         if warehouse_id is not None:
-            base_sql += "\n WHERE WhseId = ?"
+            base_sql += "\n WHERE PJN.SprayHWhseId = ?"
             params.append(warehouse_id)
 
-        base_sql += "\n GROUP BY StockId, WhseId, STK.StockCode, STK.StockDescription, STK.QtyOnPO\n ORDER BY StockId;"
+        base_sql += "\n ORDER BY PJN.SprayHWeek, PJN.SprayLineStkId"
 
         cursor.execute(base_sql, tuple(params))
 
         results = cursor.fetchall()
 
-        # Group by time periods
-        this_week_items = []
-        next_week_items = []
-        this_month_items = []
-
+        # Group by week
+        weeks = {}
         for row in results:
-            stock_link = row.StockId
-            stock_code = row.StockCode
-            description = row.StockDescription
-            qty_this_week = format_qty(row.QtyThisWeek)
-            qty_next_week = format_qty(row.QtyNextWeek)
-            qty_this_month = format_qty(row.QtyThisMonth)
-            qty_available = format_qty(row.QtyAvailable)
-            qty_on_po = format_qty(row.QtyOnPO)
+            week = row.SprayHWeek
+            if week not in weeks:
+                weeks[week] = []
+            
+            status = 'shortage' if row.ProjectedBalance < 0 else 'sufficient'
+            
+            weeks[week].append({
+                "StockLink": row.StockId,
+                "StockCode": row.StockCode,
+                "StockDescription": row.StockDescription,
+                "OpeningBalance": format_qty(row.OpeningBalance),
+                "QtyNeeded": format_qty(row.QtyNeeded),
+                "ProjectedBalance": format_qty(row.ProjectedBalance),
+                "QtyOnPO": format_qty(row.QtyOnPO),
+                "Status": status
+            })
+        
 
-            # Determine status for each period
-            def get_status(required, available, on_po):
-                if required <= available:
-                    return 'sufficient'
-                elif on_po >= (required - available):
-                    return 'short_on_order'
-                else:
-                    return 'short_need_order'
-
-            # This week demand
-            if qty_this_week > 0:
-                status = get_status(qty_this_week, qty_available, qty_on_po)
-                this_week_items.append({
-                    "StockLink": stock_link,
-                    "StockCode": stock_code,
-                    "StockDescription": description,
-                    "Required": qty_this_week,
-                    "Available": qty_available,
-                    "OnPO": qty_on_po,
-                    "Status": status
+        # Convert to list format with attention/sufficient separation
+        demand_groups = []
+        for week_key in sorted(weeks.keys()):
+            items = weeks[week_key]
+            items_needing_attention = [item for item in items if item["Status"] == "shortage"]
+            sufficient_items = [item for item in items if item["Status"] == "sufficient"]
+            
+            if items_needing_attention or sufficient_items:
+                demand_groups.append({
+                    "label": f"Week {week_key}",
+                    "items_needing_attention": items_needing_attention,
+                    "sufficient_items": sufficient_items,
+                    "attention_count": len(items_needing_attention),
+                    "total_count": len(items)
                 })
-
-            # Next week demand
-            if qty_next_week > 0:
-                status = get_status(qty_next_week, qty_available, qty_on_po)
-                next_week_items.append({
-                    "StockLink": stock_link,
-                    "StockCode": stock_code,
-                    "StockDescription": description,
-                    "Required": qty_next_week,
-                    "Available": qty_available,
-                    "OnPO": qty_on_po,
-                    "Status": status
-                })
-
-            # This month demand (excluding already counted weeks)
-            remaining_monthly = format_qty(qty_this_month - qty_this_week - qty_next_week)
-            if remaining_monthly > 0:
-                status = get_status(remaining_monthly, qty_available, qty_on_po)
-                this_month_items.append({
-                    "StockLink": stock_link,
-                    "StockCode": stock_code,
-                    "StockDescription": description,
-                    "Required": remaining_monthly,
-                    "Available": qty_available,
-                    "OnPO": qty_on_po,
-                    "Status": status
-                })
-
-        demand_groups = [
-            {
-                "label": "This Week",
-                "items": this_week_items[:10]  # Limit to top 10
-            },
-            {
-                "label": "Next Week",
-                "items": next_week_items[:10]
-            },
-            {
-                "label": "This Month",
-                "items": this_month_items[:10]
-            }
-        ]
-
-        # Remove empty groups
-        demand_groups = [group for group in demand_groups if group["items"]]
-
         return demand_groups
-
     except Exception as e:
         print(f"Error fetching upcoming demand: {e}")
         return []
     finally:
         close_db_connection(conn)
 
-def get_warehouse_stock(warehouse_id=None):
-    """Get warehouse stock levels for all items"""
-    conn = create_db_connection()
-    if not conn:
-        return []
-
-    try:
-        cursor = conn.cursor()
-
-        # Query warehouse stock levels using the inventory view
-        base_sql = """
-            SELECT
-                StockLink,
-                StockCode,
-                StockDescription,
-                COALESCE(QtyOnHand, 0) as Available,
-                cCategoryName as Category,
-                COALESCE(IncompleteIssuesQty, 0) as TempIssues,
-                COALESCE(QtyOnPo, 0) as OnPO,
-                0 as OtherWH,
-                CASE
-                    WHEN COALESCE(QtyOnHand, 0) < ReorderLevel THEN ReorderQty
-                    ELSE 0
-                END as ToOrder,
-                WhseLink,
-                WhseCode,
-                WhseName
-            FROM stk._uvInventoryQty
-        """
-
-        params = []
-        if warehouse_id is not None:
-            base_sql += "\n            WHERE WhseLink = ?"
-            params.append(warehouse_id)
-
-        base_sql += "\n            ORDER BY StockCode"
-
-        cursor.execute(base_sql, tuple(params))
-
-        columns = [column[0] for column in cursor.description]
-        results = []
-        for row in cursor.fetchall():
-            row_dict = dict(zip(columns, row))
-            # Normalize numeric fields to avoid infinite decimal noise
-            for k in ("Available", "TempIssues", "OnPO", "ToOrder"):
-                if k in row_dict:
-                    row_dict[k] = format_qty(row_dict[k])
-            results.append(row_dict)
-
-        return results
-
-    except Exception as e:
-        print(f"Error fetching warehouse stock: {e}")
-        return []
-    finally:
-        close_db_connection(conn)
-
-
-def get_warehouse_list():
-    """Get warehouses available for the current user"""
-    conn = create_db_connection()
-    if not conn:
-        return []
-
-    try:
-        cursor = conn.cursor()
-        wh_list = current_user.warehouses if hasattr(current_user, 'warehouses') and current_user.warehouses else []
-        if not wh_list:
-            return []
-
-        # Use parameterized IN list
-        params = ','.join(['?'] * len(wh_list))
-        cursor.execute(f"""
-            SELECT DISTINCT WhseLink, WhseCode, WhseName
-            FROM stk._uvInventoryQty
-            WHERE WhseLink IN ({params})
-            ORDER BY WhseName, WhseCode
-        """, tuple(wh_list))
-
-        rows = cursor.fetchall()
-        return [
-            {
-                'WhseLink': row.WhseLink,
-                'WhseCode': row.WhseCode,
-                'WhseName': row.WhseName,
-            }
-            for row in rows
-        ]
-
-    except Exception as e:
-        print(f"Error fetching warehouse list: {e}")
-        return []
-    finally:
-        close_db_connection(conn)
+ 

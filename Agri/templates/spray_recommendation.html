@@ -385,7 +385,7 @@ async function loadProductsForWarehouse(warehouseId) {
     const products = data.products || [];
     PRODUCT_OPTIONS = products.map(p => `
       <option value="${p.product_link}" data-uom-id="${p.stocking_uom_id || ''}" data-uom="${p.stocking_uom_code || ''}">
-        ${p.product_code} - ${p.product_desc}(${p.qty_in_whse} ${p.stocking_uom_code || ''} available)
+        ${p.product_code} - ${p.product_desc}(${(p.qty_in_whse).toFixed(2)} ${p.stocking_uom_code || ''} available)
       </option>
     `).join('');
   } catch (error) {
@@ -497,7 +497,21 @@ function addLine(){
     const sel = this.selectedOptions?.[0];
     row.querySelector('.uom-label').textContent = sel?.dataset.uom || '';
     row.querySelector('.uom-id').value = sel?.dataset.uomId || '';
-    fetchPreview();
+    
+    // Fetch and populate default qty
+    const stockId = sel?.value;
+    if(stockId) {
+      fetch(`/agri/spray-recommendation/default_qty_per_ha/${stockId}`)
+        .then(r => r.json())
+        .then(data => {
+          const qtyInput = row.querySelector('.qty-input');
+          if(data.default_qty_per_ha && data.default_qty_per_ha > 0) {
+            qtyInput.value = parseFloat(data.default_qty_per_ha).toFixed(2);
+            fetchPreview();
+          }
+        })
+        .catch(err => console.error('Failed to fetch default qty', err));
+    }
   });
   if (!PRODUCT_OPTIONS) {
     row.querySelector('.product-select').innerHTML = '<option value="">Select warehouse first</option>';
@@ -638,6 +652,20 @@ $('#lines').on('change', '.product-select', function(){
   const selected = this.selectedOptions?.[0];
   if(row && selected){
     row.querySelector('.uom-label').textContent = selected.dataset.uom || '';
+    
+    // Fetch and populate default qty
+    const stockId = selected.value;
+    if(stockId) {
+      fetch(`/agri/spray-recommendation/default_qty_per_ha/${stockId}`)
+        .then(r => r.json())
+        .then(data => {
+          const qtyInput = row.querySelector('.qty-input');
+          if(data.default_qty_per_ha && data.default_qty_per_ha > 0) {
+            qtyInput.value = parseFloat(data.default_qty_per_ha).toFixed(2);
+          }
+        })
+        .catch(err => console.error('Failed to fetch default qty', err));
+    }
   }
   fetchPreview();
 });
