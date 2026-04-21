@@ -24,7 +24,7 @@
           <select id="warehouseSelect" onchange="onWarehouseChange()">
             {% for wh in warehouses %}
             <option value="{{ wh.WhseLink }}" {% if wh.WhseLink == selected_warehouse %}selected{% endif %}>
-              {{ wh.WhseCode }} - {{ wh.WhseName }}
+              {{ wh.WhseCode }} - {{ wh.WhseDescription }}
             </option>
             {% endfor %}
           </select>
@@ -96,7 +96,7 @@
       <div class="card-content">
         <div class="demand-container">
           {% for group in demand_groups %}
-          <div class="demand-group">
+          <div class="demand-group collapsed">
             <div class="demand-group-header" onclick="toggleDemandGroup(this)">
               <div class="header-content">
                 <h3>{{ group.label }}</h3>
@@ -138,7 +138,7 @@
 
               <!-- Sufficient items (collapsible) -->
               {% if group.sufficient_items %}
-              <div class="sufficient-items">
+              <div class="sufficient-items hidden">
                 {% for item in group.sufficient_items %}
                 <div class="demand-item sufficient" onclick="openProductModal({{ item.StockLink }})">
                   <div class="demand-item-header">
@@ -203,12 +203,12 @@
           <table class="stock-table">
             <thead>
               <tr>
-                <th>Code</th>
-                <th>Description</th>
-                <th>Category</th>
-                <th>Available</th>
-                <th>On PO</th>
-                <th>Week Negative</th>
+                <th onclick="sortTable(0, this)">Code <span class="sort-indicator"></span></th>
+                <th onclick="sortTable(1, this)">Description <span class="sort-indicator"></span></th>
+                <th onclick="sortTable(2, this)">Category <span class="sort-indicator"></span></th>
+                <th onclick="sortTable(3, this)">Available <span class="sort-indicator"></span></th>
+                <th onclick="sortTable(4, this)">On PO <span class="sort-indicator"></span></th>
+                <th onclick="sortTable(5, this)">Week Negative <span class="sort-indicator"></span></th>
               </tr>
             </thead>
             <tbody>
@@ -407,6 +407,83 @@ function onWarehouseChange() {
   url.searchParams.set('whse', wh);
   window.location.href = url.toString();
 }
+
+let sortDirection = {};
+let activeHeader = null;
+
+function sortTable(columnIndex, headerEl) {
+  const table = document.querySelector(".stock-table");
+  const tbody = table.querySelector("tbody");
+  const rows = Array.from(tbody.querySelectorAll("tr"));
+
+  // reset previous header arrow
+  if (activeHeader && activeHeader !== headerEl) {
+    activeHeader.querySelector(".sort-indicator").textContent = "";
+  }
+
+  activeHeader = headerEl;
+
+  // toggle direction
+  sortDirection[columnIndex] = !sortDirection[columnIndex];
+  const asc = sortDirection[columnIndex];
+
+  // set arrow
+  const indicator = headerEl.querySelector(".sort-indicator");
+  indicator.textContent = asc ? " ▲" : " ▼";
+
+  rows.sort((a, b) => {
+    let A = a.cells[columnIndex].textContent.trim();
+    let B = b.cells[columnIndex].textContent.trim();
+
+    // remove commas or spaces in numbers
+    A = A.replace(/,/g, '');
+    B = B.replace(/,/g, '');
+
+    // Special handling for Week Negative column (index 5)
+    if (columnIndex === 5) {
+      // Convert week to a sortable number: year * 100 + week
+      const getWeekNumber = (weekStr) => {
+        if (!weekStr || weekStr === '' || weekStr === '-' || weekStr.toLowerCase() === 'null') {
+          return asc ? Number.MAX_SAFE_INTEGER : -Number.MAX_SAFE_INTEGER;
+        }
+        const parts = weekStr.split('-');
+        if (parts.length === 2) {
+          const year = parseInt(parts[0]);
+          const week = parseInt(parts[1]);
+          if (!isNaN(year) && !isNaN(week)) {
+            // Convert to a single number: year * 100 + week
+            // This assumes weeks are 1-53, which works for sorting
+            return (year * 100) + week;
+          }
+        }
+        return asc ? Number.MAX_SAFE_INTEGER : -Number.MAX_SAFE_INTEGER;
+      };
+      
+      const numA = getWeekNumber(A);
+      const numB = getWeekNumber(B);
+      
+      return asc ? numA - numB : numB - numA;
+    }
+    
+    // Check if numeric for other columns
+    const numA = parseFloat(A);
+    const numB = parseFloat(B);
+    const isNumeric = !isNaN(numA) && !isNaN(numB) && A !== '' && B !== '';
+
+    let result;
+
+    if (isNumeric) {
+      result = numA - numB;
+    } else {
+      result = A.localeCompare(B);
+    }
+
+    return asc ? result : -result;
+  });
+
+  rows.forEach(row => tbody.appendChild(row));
+}
+
 
 function openProductModal(id) {
   const whse = getSelectedWarehouseId();
@@ -672,6 +749,20 @@ function submitReorderingForm(event) {
   box-sizing: border-box;
 }
 
+.stock-table th {
+  cursor: pointer;
+  user-select: none;
+}
+
+.stock-table th:hover {
+  background: #eef2ff;
+}
+
+.sort-indicator {
+  font-size: 0.75rem;
+  margin-left: 4px;
+  color: #2563eb;
+}
 .inventory-dashboard {
   max-width: 1400px;
   margin: 0 auto;

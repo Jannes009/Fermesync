@@ -57,17 +57,24 @@ def setup():
 
     # Spray Projects
     cur.execute("""
-        SELECT
-            pa.IdProjAttr,
-            pa.ProjAttrProjectId,
-            pa.ProjAttrCropId,
-            pa.ProjAttrVarietyId,
-            pa.ProjAttrHa,
-            pa.ProjAttrPlantDate,
-            pa.ProjAttrProjectManager,
-            pa.ProjAttrAgriculturist,
-            pa.ProjAttrBlockNo
-        FROM agr.ProjectAttributes pa
+    SELECT
+        pa.IdProjAttr,
+        pa.ProjAttrProjectId,
+        PRJ.ProjectName,
+        pa.ProjAttrCropId,
+        CRP.CropCode,
+        pa.ProjAttrVarietyId,
+        VA.VarietyCode,
+        pa.ProjAttrHa,
+        pa.ProjAttrPlantDate,
+        pa.ProjAttrProjectManager,
+        pa.ProjAttrAgriculturist,
+        pa.ProjAttrBlockNo
+    FROM agr.ProjectAttributes PA
+    JOIN cmn._uvProject PRJ on PRJ.ProjectLink = PA.ProjAttrProjectId
+    JOIN agr.Crop CRP on CRP.IdCrop = PA.ProjAttrCropId
+    JOIN agr.Variety VA on VA.IdVariety = PA.ProjAttrVarietyId
+    Order BY PRJ.ProjectName
     """)
     spray_projects = cur.fetchall()
 

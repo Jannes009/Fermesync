@@ -160,9 +160,9 @@
             <table class="summary-table">
               <thead>
                 <tr>
-                  <th>Project ID</th>
-                  <th>Crop ID</th>
-                  <th>Variety ID</th>
+                  <th>Project</th>
+                  <th>Crop</th>
+                  <th>Variety</th>
                   <th>Hectares</th>
                   <th>Plant Date</th>
                   <th>Project Manager</th>
@@ -173,11 +173,11 @@
               <tbody>
                 {% for pa in spray_projects %}
                 <tr>
-                  <td>{{ pa.ProjAttrProjectId }}</td>
-                  <td>{{ pa.ProjAttrCropId }}</td>
-                  <td>{{ pa.ProjAttrVarietyId }}</td>
+                  <td>{{ pa.ProjectName }}</td>
+                  <td>{{ pa.CropCode }}</td>
+                  <td>{{ pa.VarietyCode }}</td>
                   <td>{{ pa.ProjAttrHa }}</td>
-                  <td>{{ pa.ProjAttrPlantDate }}</td>
+                  <td>{{ pa.ProjAttrPlantDate.strftime('%Y-%m-%d') if pa.ProjAttrPlantDate else '' }}</td>
                   <td>{{ pa.ProjAttrProjectManager }}</td>
                   <td>{{ pa.ProjAttrAgriculturist }}</td>
                   <td>{{ pa.ProjAttrBlockNo }}</td>
