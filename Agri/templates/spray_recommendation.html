@@ -6,765 +6,1161 @@
 <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/sweetalert2@11/dist/sweetalert2.min.css"/>
 
 <style>
+    :root {
+        --accent: #2563eb;
+        --accent-soft: #dbeafe;
+        --muted: #64748b;
+        --line: #e5e7eb;
+        --danger: #dc2626;
+    }
 
-:root{
-  --accent:#2563eb;
-  --danger:#dc2626;
-}
+    .page-wrap {
+        max-width: 1200px;
+        margin: auto;
+        padding: 1.5rem;
+    }
 
-.page-wrap{
-  max-width:1100px;
-  margin:auto;
-  padding:1.5rem;
-}
+    .card {
+        background: var(--container-bg, #fff);
+        border-radius: 16px;
+        padding: 1.3rem;
+        box-shadow: 0 8px 24px rgba(0, 0, 0, .06);
+    }
 
-.po-card{
-  background:var(--container-bg);
-  border-radius:12px;
-  padding:1.3rem;
-  box-shadow:0 6px 20px rgba(0,0,0,0.06);
-}
+    .section-title {
+        font-weight: 700;
+        margin: .8rem 0 .5rem;
+    }
 
-.header{
-  margin-bottom:1rem;
-}
+    .grid-2 {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 14px;
+    }
 
-.title{
-  font-size:1.2rem;
-  font-weight:700;
-}
+    @media (max-width: 800px) {
+        .grid-2 {
+            grid-template-columns: 1fr;
+        }
+    }
 
-.muted{
-  font-size:.9rem;
-  color:var(--secondary-text);
-}
+    input,
+    select {
+        width: 100%;
+        padding: 8px;
+        border: 1px solid var(--line);
+        border-radius: 8px;
+    }
 
-.section-title{
-  font-weight:700;
-  font-size:.95rem;
-  margin:.8rem 0 .4rem;
-}
+    .select2-container {
+        width: 100% !important;
+    }
 
-/* Application Type */
+    .mode-grid {
+        display: grid;
+        grid-template-columns: repeat(3, 1fr);
+        gap: 14px;
+    }
 
-.app-type-group{
-  display:flex;
-  gap:12px;
-}
+    @media (max-width: 900px) {
+        .mode-grid {
+            grid-template-columns: 1fr;
+        }
+    }
 
-.app-type-card{
-  display:flex;
-  align-items:center;
-  gap:10px;
-  padding:10px 14px;
-  border-radius:8px;
-  border:1px solid #e2e8f0;
-  cursor:pointer;
-}
+    .mode-card {
+        border: 2px solid var(--line);
+        border-radius: 14px;
+        padding: 16px;
+        cursor: pointer;
+        transition: .2s;
+    }
 
-.app-type-card input{
-  accent-color:var(--accent);
-}
+    .mode-card.active {
+        border-color: var(--accent);
+        background: var(--accent-soft);
+    }
 
-/* Inputs */
+    .mode-card input {
+        display: none;
+    }
 
-input,select{
-  width:100%;
-  padding:6px;
-  border-radius:6px;
-  border:1px solid #e2e8f0;
-}
-.select2-container{
-  width:100% !important;
-  max-width:100% !important;
-}
-.select2-container--default .select2-selection--multiple{
-  min-height:38px;
-  overflow:auto;
-  white-space:normal;
-}
-.select2-container--default .select2-selection__choice{
-  white-space:nowrap;
-}
-.select2-container .select2-dropdown {
-  max-width:calc(100vw - 32px) !important;
-  word-wrap: break-word;
-}
-.page-wrap, .po-card {
-  overflow-x:hidden;
-}
+    .mode-title {
+        font-weight: 700;
+    }
 
-/* Project table */
+    .mode-help {
+        font-size: .9rem;
+        color: var(--muted);
+    }
 
-.project-table{
-  border:1px solid #e5e7eb;
-  border-radius:8px;
-  overflow:hidden;
-}
+    .project-table {
+        border: 1px solid var(--line);
+        border-radius: 10px;
+        overflow: hidden;
+    }
 
-.project-row{
-  display:grid;
-  grid-template-columns:1fr 80px 120px;
-  gap:10px;
-  padding:8px 10px;
-  align-items:center;
-  border-bottom:1px solid #f1f5f9;
-}
+    .project-row {
+        display: grid;
+        grid-template-columns: 2fr 90px 130px 130px 120px;
+        gap: 10px;
+        padding: 10px;
+        border-bottom: 1px solid #f1f5f9;
+        align-items: center;
+    }
 
-.project-header{
-  background:#f8fafc;
-  font-weight:700;
-}
+    .project-head {
+        background: #f8fafc;
+        font-weight: 700;
+    }
 
-.project-water-input{
-  text-align:center;
-  height:34px;
-}
+    .product-card {
+        border: 1px solid var(--line);
+        border-radius: 12px;
+        padding: 14px;
+        margin-bottom: 10px;
+    }
 
-/* product lines */
+    .product-grid {
+        display: grid;
+        grid-template-columns: 2fr 120px 120px 120px 40px;
+        gap: 10px;
+        align-items: center;
+    }
 
-.product-row{
-  display:grid;
-  grid-template-columns:1fr;
-  gap:6px;
-  padding:10px;
-  border:1px solid #e5e7eb;
-  border-radius:8px;
-  background:#fff;
-}
-.product-row-top{ display:grid; grid-template-columns:1fr; }
-.product-row-bottom{ display:grid; grid-template-columns: 1fr 90px 36px; gap:8px; align-items:center; }
+    @media (max-width: 950px) {
+        .product-grid {
+            grid-template-columns: 1fr;
+        }
+    }
 
-.product-row-bottom .uom-label{ display:flex; align-items:center; justify-content:center; background:#f0f2f5; border-radius:6px; padding:0 8px; min-height:38px; }
-.product-row-bottom .ibt-remove-btn{ width:36px; height:36px; border-radius:6px; }
+    .readonly-box {
+        background: #f8fafc;
+        border-radius: 8px;
+        padding: 9px;
+        text-align: center;
+    }
 
-@media (max-width: 760px) {
-  .product-row-bottom{ grid-template-columns: 1fr 90px 36px; }
-}
+    .btn {
+        background: var(--accent);
+        color: white;
+        border: none;
+        padding: .6rem .9rem;
+        border-radius: 8px;
+        cursor: pointer;
+    }
 
-.qty-input{
-  text-align:center;
-}
+    .btn.ghost {
+        background: white;
+        color: var(--accent);
+        border: 1px solid var(--accent-soft);
+    }
 
-.uom-label{
-  background:#f0f2f5;
-  border-radius:6px;
-  display:flex;
-  align-items:center;
-  justify-content:center;
-}
+    .tank-summary {
+        display: grid;
+        grid-template-columns: repeat(4, 1fr);
+        gap: 10px;
+        margin-bottom: 14px;
+    }
 
-.ibt-remove-btn{
-  background:#dc3545;
-  border:none;
-  color:white;
-  border-radius:6px;
-  cursor:pointer;
-}
+    @media (max-width: 900px) {
+        .tank-summary {
+            grid-template-columns: 1fr 1fr;
+        }
+    }
 
-/* buttons */
+    .metric {
+        border: 1px solid var(--line);
+        border-radius: 10px;
+        padding: 12px;
+        background: #fafafa;
+    }
 
-.btn{
-  background:var(--accent);
-  color:white;
-  border:none;
-  padding:.5rem .7rem;
-  border-radius:7px;
-  cursor:pointer;
-}
+    .tank-breakdown {
+        border: 1px solid var(--line);
+        border-radius: 12px;
+        padding: 12px;
+    }
 
-.btn.ghost{
-  background:transparent;
-  border:1px solid #dbeafe;
-  color:var(--accent);
-}
+    .tank-block {
+        border-bottom: 1px solid #eee;
+        padding: 10px 0;
+    }
 
-.lines{
-  display:flex;
-  flex-direction:column;
-  gap:8px;
-}
+    .sticky-bar {
+        position: sticky;
+        bottom: 0;
+        margin-top: 16px;
+        background: white;
+        border: 1px solid var(--line);
+        border-radius: 14px;
+        padding: 12px;
+        display: flex;
+        gap: 20px;
+        flex-wrap: wrap;
+        box-shadow: 0 -4px 12px rgba(0, 0, 0, .05);
+    }
 
-.controls{
-  margin-top:.6rem;
-}
-
+    .hidden {
+        display: none !important;
+    }
 </style>
-
 
 <div class="page-wrap">
 
-<div class="po-card">
+    <div class="card">
 
-<div class="header" style="display:flex;justify-content:space-between;align-items:flex-start;gap:12px;">
-<div>
-<div class="title">Create Spray Recommendation</div>
-<div class="muted">Define projects and products to generate spray mixes</div>
+        <div style="display:flex; justify-content:space-between; gap:12px; align-items:start;">
+            <div>
+                <h2 style="margin:0;">Create Spray Recommendation</h2>
+                <div style="color:var(--muted)">Configure dose method, projects and products</div>
+            </div>
+            <div style="font-weight:700; font-size:1.1rem;">
+                {{ spray_no }}
+            </div>
+        </div>
+
+        <form id="spray-form" novalidate>
+            <!-- HEADER -->
+            <div class="grid-2" style="margin-top:14px;">
+                <div>
+                    <label>Date</label>
+                    <input type="date" id="spray_date">
+                    <div id="spray_week" style="margin-top:6px; color:var(--muted)">
+                        Week: -
+                    </div>
+                </div>
+
+                <div>
+                    <label>Description</label>
+                    <input type="text" id="spray_description">
+                </div>
+            </div>
+
+            <div class="grid-2" style="margin-top:14px;">
+                <div>
+                    <label>Warehouse</label>
+                    <select id="warehouse_id" class="select2">
+                        <option value="">Select warehouse</option>
+                        {% for w in warehouses %}
+                        <option value="{{w.WhseLink}}">
+                            {{w.WhseDescription}}
+                        </option>
+                        {% endfor %}
+                    </select>
+                </div>
+
+                <div>
+                    <label>Scouting Note</label>
+                    <input type="text" id="scouting_note">
+                </div>
+            </div>
+
+            <!-- DOSE MODE -->
+            <div class="section-title">Dose Method</div>
+
+            <div class="mode-grid">
+                <label class="mode-card active" data-mode="per_100l">
+                    <input type="radio" name="dose_mode" value="per_100l" checked>
+                    <div class="mode-title">Concentration Dose</div>
+                    <div class="mode-help">Dose per 100L water</div>
+                </label>
+
+                <label class="mode-card" data-mode="per_ha_tank">
+                    <input type="radio" name="dose_mode" value="per_ha_tank">
+                    <div class="mode-title">Area Dose (Tank Mix)</div>
+                    <div class="mode-help">Dose per hectare with tank mixes</div>
+                </label>
+
+                <label class="mode-card" data-mode="per_ha_direct">
+                    <input type="radio" name="dose_mode" value="per_ha_direct">
+                    <div class="mode-title">Direct Area Dose</div>
+                    <div class="mode-help">Dose per hectare without mixing</div>
+                </label>
+            </div>
+
+            <!-- PROJECTS -->
+            <div class="section-title">Projects</div>
+
+            <select id="project_ids" multiple class="select2">
+                {% for p in projects %}
+                <option value="{{p.ProjectLink}}" data-ha="{{p.ProjAttrHa}}">
+                    {{p.ProjectCode}} ({{p.ProjAttrHa}} ha)
+                </option>
+                {% endfor %}
+            </select>
+
+            <div id="project-configs" style="margin-top:12px"></div>
+
+            <div style="margin-top:10px; font-weight:700;">
+                Total Area: <span id="total-ha">0.00</span> ha
+            </div>
+
+            <!-- PER HA TANK FIELDS -->
+            <div id="tank-fields" class="hidden">
+
+                <div class="section-title">Mixing Setup</div>
+
+                <div class="grid-2">
+                    <div>
+                        <label>Application Method</label>
+                        <select id="method_id" class="select2">
+                            <option value="">Select method</option>
+                            {% for m in methods %}
+                            <option value="{{m.IdSprayMethod}}">
+                                {{m.SprayMethodName}}
+                            </option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                    <div>
+                      <label>Water Per Tank</label>
+                      <input id="global_water_per_tank" type="number" step="0.1">
+                    </div>
+
+                    <div class="per-ha-tank-field">
+                        <label>Water Per Ha</label>
+                        <input  id="global_water_per_ha" type="number" step="0.1">
+                    </div>
+
+                    <div class="per-ha-tank-field">
+                        <label>Total Water (All Ha)</label>
+                        <input id="global_total_water" type="number" step="0.1">
+                    </div>
+                </div>
+            </div>
+
+            <!-- DIRECT FIELDS -->
+            <div id="direct-fields" class="hidden">
+                <div class="section-title">Direct Area Application</div>
+                <div class="metric">
+                    No mixing required. Rates entered directly per hectare.
+                </div>
+            </div>
+
+            <hr style="margin:18px 0">
+
+            <!-- PRODUCTS -->
+            <div class="section-title">Products</div>
+
+            <div id="lines"></div>
+
+            <div style="display:flex; gap:10px;">
+                <button type="button" class="btn" onclick="addLine()">Add Product</button>
+                <button type="button" class="btn ghost" onclick="clearLines()">Clear</button>
+            </div>
+
+            <!-- TANK PLAN -->
+            <div id="tank-plan">
+
+                <div class="section-title">Tank Mix Plan</div>
+
+                <div class="tank-summary">
+                    <div class="metric">
+                        <div>Total Water</div>
+                        <div id="sum-water">0 L</div>
+                    </div>
+                    <div class="metric">
+                        <div>Tank Plan</div>
+                        <div id="sum-tanks">-</div>
+                    </div>
+                    <div class="metric">
+                        <div>Partial Tank</div>
+                        <div id="sum-partial">-</div>
+                    </div>
+                    <div class="metric">
+                        <div>Products</div>
+                        <div id="sum-products">0</div>
+                    </div>
+                </div>
+
+                <div id="tank-breakdown" class="tank-breakdown">
+                    No tank plan yet.
+                </div>
+            </div>
+
+            <div style="margin-top:18px; text-align:right">
+                <button class="btn" type="submit">Save Recommendation</button>
+            </div>
+
+        </form>
+
+        <!-- STICKY BAR -->
+        <div class="sticky-bar">
+            <div>Total Ha: <strong id="sticky-ha">0</strong></div>
+            <div>Total Water: <strong id="sticky-water">0</strong></div>
+            <div>Tanks: <strong id="sticky-tanks">-</strong></div>
+            <div>Products: <strong id="sticky-products">0</strong></div>
+        </div>
+
+    </div>
 </div>
-<div style="text-align:right;">
-  <div style="font-size:1.1rem;font-weight:700;">{{ spray_no }}</div>
-</div>
-</div>
-
-
-<form id="spray-form">
-
-<!-- APPLICATION TYPE -->
-
-<label class="section-title">Application Type</label>
-
-<div class="app-type-group">
-
-<label class="app-type-card">
-<input type="radio" name="application_type" value="spray" checked>
-<div>
-<strong>Spray</strong><br>
-<small>Water based spraying</small>
-</div>
-</label>
-
-<label class="app-type-card">
-<input type="radio" name="application_type" value="direct">
-<div>
-<strong>Direct</strong><br>
-<small>Granular / direct application</small>
-</div>
-</label>
-
-</div>
-
-
-<!-- DATE + DESCRIPTION + PROJECT -->
-
-<section style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-top:12px">
-
-<div>
-<label>Date</label>
-<input type="date" id="spray_date" required>
-<div id="spray_week" style="margin-top:6px; color: var(--secondary-text); font-size:0.9rem;">Week: -</div>
-</div>
-
-<div>
-<label>Spray Description</label>
-<input type="text" id="spray_description" placeholder="Enter spray description">
-</div>
-
-</section>
-
-<section style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-top:12px">
-<div>
-<label>Projects</label>
-<select id="project_ids" multiple class="select2">
-
-{% for p in projects %}
-<option value="{{p.ProjectLink}}" data-ha="{{p.ProjAttrHa}}">
-{{p.ProjectCode}}
-{% if p.CropCode %}- {{p.CropCode}}{% endif %}
-{% if p.VarietyCode %}/{{p.VarietyCode}}{% endif %}
-({{p.ProjAttrHa}} ha)
-</option>
-{% endfor %}
-
-</select>
-</div>
-<div id="method-wrapper">
-
-<label>Spray Method</label>
-<select id="method_id" class="select2">
-<option value="">Select method</option>
-{% for m in methods %}
-<option value="{{m.IdSprayMethod}}">{{m.SprayMethodName}}</option>
-{% endfor %}
-</select>
-</div>
-</section>
-
-<!-- PROJECT CONFIG TABLE -->
-
-<div id="project-configs" style="margin-top:10px"></div>
-
-
-<!-- METHOD + WAREHOUSE -->
-
-<section style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-top:10px">
-
-
-
-
-<div>
-
-<label>Warehouse</label>
-
-<select id="warehouse_id" class="select2">
-<option value="" selected disabled>Please select warehouse</option>
-{% for w in warehouses %}
-<option value="{{w.WhseLink}}">{{w.WhseDescription}}</option>
-{% endfor %}
-
-</select>
-
-</div>
-
-<div>
-<label>Scouting Note</label>
-<input id="scouting_note" type="text" maxlength="100" placeholder="Optional scouting note (max 100 chars)">
-</div>
-
-</section>
-
-
-<hr style="margin:12px 0">
-
-
-<!-- PRODUCT LINES -->
-
-<h3>Products</h3>
-
-<div id="lines" class="lines"></div>
-
-<div class="controls">
-<button type="button" class="btn" onclick="addLine()">Add Product</button>
-<button type="button" class="btn ghost" onclick="clearLines()">Clear</button>
-</div>
-
-
-<hr style="margin:12px 0">
-
-<div style="display:flex;justify-content:flex-end">
-<button type="submit" class="btn">Save Recommendation</button>
-</div>
-
-</form>
-
-</div>
-
-
-<!-- MIX PREVIEW -->
-
-<div id="mix-preview-wrapper" style="margin-top:16px">
-
-<h3>Mix Preview</h3>
-
-<div id="mix-preview"></div>
-
-</div>
-
-</div>
-
 
 <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/js/select2.min.js"></script>
-<script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
-
+<script src="https://cdn.jsdelivr.net/npm/sweetalert2@11/dist/sweetalert2.all.min.js"></script>
 
 <script>
 
-/* SELECT2 */
-
-$('.select2').select2({width:'100%'}).on('select2:open', function(){
-  setTimeout(()=>{
-    const search = document.querySelector('.select2-container--open .select2-search__field');
-    if(search) search.focus();
-  }, 0);
+$('.select2').select2({ width: '100%' }).on('select2:open', function () {
+    setTimeout(() => {
+        const search = document.querySelector('.select2-container--open .select2-search__field');
+        if (search) search.focus();
+    }, 0);
 });
-
-/* PRODUCT OPTIONS */
 
 let PRODUCT_OPTIONS = "";
-let waterPerHaDefault = null;
 
-async function loadProductsForWarehouse(warehouseId) {
-  if (!warehouseId) {
-    PRODUCT_OPTIONS = "";
-    document.getElementById('lines').innerHTML = '';
-    return;
-  }
-  try {
-    const res = await fetch(`/inventory/fetch_products_linked_with_warehouse?warehouse_id=${warehouseId}`);
-    const data = await res.json();
-    const products = data.products || [];
-    PRODUCT_OPTIONS = products.map(p => `
-      <option value="${p.product_link}" data-uom-id="${p.stocking_uom_id || ''}" data-uom="${p.stocking_uom_code || ''}">
-        ${p.product_code} - ${p.product_desc}(${(p.qty_in_whse).toFixed(2)} ${p.stocking_uom_code || ''} available)
-      </option>
-    `).join('');
-  } catch (error) {
-    console.error('Failed to load products for warehouse', error);
-    PRODUCT_OPTIONS = "";
-  }
+// Function to fetch products when warehouse changes
+async function updateProductsByWarehouse(warehouseId) {
+    if (!warehouseId) {
+        PRODUCT_OPTIONS = '<option value="">Select product</option>';
+        // Update all existing product selects
+        $('.product-select').each(function() {
+            $(this).html(PRODUCT_OPTIONS).trigger('change');
+        });
+        return;
+    }
+
+    try {
+        const response = await fetch(`/agri/fetch_products_linked_with_warehouse?warehouse_id=${warehouseId}`);
+        const data = await response.json();
+        
+        if (data.products && data.products.length > 0) {
+            // Build options HTML
+            let options = '<option value="">Select product</option>';
+            data.products.forEach(product => {
+                options += `<option value="${product.product_link}" 
+                    data-code="${product.product_desc}"
+                    data-uom="${product.stocking_uom_code}"
+                    data-uom-id="${product.stocking_uom_id}">
+                    ${product.active_ingredient} - ${product.product_desc} (${product.qty_in_whse} ${product.stocking_uom_code})
+                </option>`;
+            });
+            PRODUCT_OPTIONS = options;
+            
+            // Update all existing product dropdowns
+            $('.product-select').each(function() {
+                const currentVal = $(this).val();
+                $(this).html(PRODUCT_OPTIONS);
+                if (currentVal) $(this).val(currentVal);
+                $(this).trigger('change');
+            });
+        } else {
+            PRODUCT_OPTIONS = '<option value="">No products available in this warehouse</option>';
+            $('.product-select').each(function() {
+                $(this).html(PRODUCT_OPTIONS).trigger('change');
+            });
+        }
+    } catch (error) {
+        console.error('Error fetching products:', error);
+        PRODUCT_OPTIONS = '<option value="">Error loading products</option>';
+        $('.product-select').each(function() {
+            $(this).html(PRODUCT_OPTIONS).trigger('change');
+        });
+    }
 }
 
+// Function to get week number and year from a date
+function getWeekNumber(date) {
+    const d = new Date(Date.UTC(date.getFullYear(), date.getMonth(), date.getDate()));
+    const dayNum = d.getUTCDay() || 7;
+    d.setUTCDate(d.getUTCDate() + 4 - dayNum);
+    const yearStart = new Date(Date.UTC(d.getUTCFullYear(), 0, 1));
+    const weekNo = Math.ceil((((d - yearStart) / 86400000) + 1) / 7);
+    return {
+        week: weekNo,
+        year: d.getUTCFullYear()
+    };
+}
 
-/* PROJECT CONFIG TABLE */
+// Function to update the spray week display when date is selected
+function updateSprayWeek() {
+    const dateInput = document.getElementById('spray_date');
+    const weekDisplay = document.getElementById('spray_week');
+    
+    if (!dateInput.value) {
+        weekDisplay.textContent = 'Week: -';
+        return;
+    }
+    
+    const selectedDate = new Date(dateInput.value);
+    const { week, year } = getWeekNumber(selectedDate);
+    
+    weekDisplay.textContent = `Week: ${week} (${year})`;
+}
 
-function updateProjectConfigs(){
-  const ids = $('#project_ids').val() || []
-  const container = document.getElementById('project-configs')
-  container.innerHTML = ''
+// Alternative: If you want to display as "Week 42 (2024)"
+function updateSprayWeekFormatted() {
+    const dateInput = document.getElementById('spray_date');
+    const weekDisplay = document.getElementById('spray_week');
+    
+    if (!dateInput.value) {
+        weekDisplay.textContent = 'Week: -';
+        return;
+    }
+    
+    const selectedDate = new Date(dateInput.value);
+    const { week, year } = getWeekNumber(selectedDate);
+    
+    weekDisplay.textContent = `Week ${week} (${year})`;
+}
 
-  if(ids.length === 0) return
+// Alternative: Using ISO week date format (more standard)
+function getISOWeekNumber(date) {
+    const tempDate = new Date(date.getTime());
+    tempDate.setHours(0, 0, 0, 0);
+    tempDate.setDate(tempDate.getDate() + 3 - (tempDate.getDay() + 6) % 7);
+    const week1 = new Date(tempDate.getFullYear(), 0, 4);
+    return {
+        week: 1 + Math.round(((tempDate - week1) / 86400000 - 3 + (week1.getDay() + 6) % 7) / 7),
+        year: tempDate.getFullYear()
+    };
+}
 
-  const header = document.createElement('div')
-  header.className = 'project-row project-header'
-  header.innerHTML = `
-  <div>Project</div>
-  <div>Ha</div>
-  <div class="water-col">Water/Ha</div>
-  `
-  container.appendChild(header)
+function updateSprayWeekISO() {
+    const dateInput = document.getElementById('spray_date');
+    const weekDisplay = document.getElementById('spray_week');
+    
+    if (!dateInput.value) {
+        weekDisplay.textContent = 'Week: -';
+        return;
+    }
+    
+    const selectedDate = new Date(dateInput.value);
+    const { week, year } = getISOWeekNumber(selectedDate);
+    
+    weekDisplay.textContent = `Week: ${week} (${year})`;
+}
 
-  ids.forEach(id=>{
-    const option = document.querySelector(`#project_ids option[value="${id}"]`)
-    const ha = option.dataset.ha
-    const name = option.textContent
+function getMode() {
+    return document.querySelector('input[name="dose_mode"]:checked').value;
+}
 
-    const row = document.createElement('div')
-    row.className = 'project-row'
+function renderModeUI() {
+    const mode = getMode();
+
+    document.getElementById('tank-fields').classList.add('hidden');
+    document.getElementById('direct-fields').classList.add('hidden');
+    document.getElementById('tank-plan').classList.remove('hidden');
+
+    document.querySelectorAll('.per-100l-field').forEach(i => i.classList.add('hidden'));
+    document.querySelectorAll('.per-ha-tank-field').forEach(i => i.classList.add('hidden'));
+
+    // Disable all inputs in hidden sections first
+    document.querySelectorAll('#tank-fields input, #tank-fields select, .per-100l-field input, .per-ha-tank-field input').forEach(el => {
+        el.disabled = true;
+    });
+
+    if (mode === "per_100l") {
+        document.getElementById('tank-fields').classList.remove('hidden');
+        document.querySelectorAll('.per-100l-field').forEach(i => i.classList.remove('hidden'));
+        // Enable visible inputs
+        document.querySelectorAll('.per-100l-field input').forEach(i => i.disabled = false);
+        document.querySelectorAll('#tank-fields select, #tank-fields input:not(.per-ha-tank-field input)').forEach(el => el.disabled = false);
+    }
+
+    if (mode === "per_ha_tank") {
+        document.getElementById('tank-fields').classList.remove('hidden');
+        document.querySelectorAll('.per-ha-tank-field').forEach(i => i.classList.remove('hidden'));
+        // Enable visible inputs
+        document.querySelectorAll('.per-ha-tank-field input').forEach(i => i.disabled = false);
+        document.querySelectorAll('#tank-fields select, #tank-fields input:not(.per-100l-field input)').forEach(el => el.disabled = false);
+    }
+
+    if (mode === "per_ha_direct") {
+        document.getElementById('direct-fields').classList.remove('hidden');
+        document.getElementById('tank-plan').classList.add('hidden');
+        // All tank fields remain disabled
+    }
+
+    document.querySelectorAll('.mode-card').forEach(c => {
+        c.classList.remove('active');
+        if (c.dataset.mode === mode) {
+            c.classList.add('active');
+        }
+    });
+
+    updateLineLabels();
+    recalcEverything();
+}
+
+function updateProjectConfigs() {
+    const ids = $('#project_ids').val() || [];
+    const container = document.getElementById('project-configs');
+
+    container.innerHTML = '';
+
+    if (!ids.length) {
+        recalcEverything();
+        return;
+    }
+
+    let head = document.createElement('div');
+    head.className = 'project-row project-head';
+    head.innerHTML = `
+        <div>Project</div>
+        <div>Ha</div>
+        <div class="per-100l-field">Water/Ha</div>
+        <div class="per-100l-field">Total Water</div>
+    `;
+    container.appendChild(head);
+
+    ids.forEach(id => {
+        const o = document.querySelector(`#project_ids option[value="${id}"]`);
+        const ha = parseFloat(o.dataset.ha || 0);
+
+        let row = document.createElement('div');
+        row.className = 'project-row';
+
+        row.innerHTML = `
+            <div>${o.textContent}</div>
+            <div>${ha}</div>
+            <div>
+                <input class="project-water-input per-100l-field" type="number" step="0.1">
+            </div>
+            <div class="per-100l-field">
+                <input class="project-water-total per-100l-field" type="number" step="0.1">
+            </div>
+        `;
+
+        container.appendChild(row);
+    });
+
+    renderModeUI();
+    recalcEverything();
+}
+
+function updateLineLabels() {
+    const mode = getMode();
+
+    document.querySelectorAll('.rate-label').forEach(el => {
+        el.textContent = (mode === 'per_100l') ? 'Rate /100L' : 'Rate /Ha';
+    });
+}
+
+function addLine() {
+    let row = document.createElement('div');
+    row.className = 'product-card';
 
     row.innerHTML = `
-    <input type="hidden" name="project_id[]" value="${id}">
-    <input type="hidden" name="project_ha[]" value="${ha}">
-    <div>${name}</div>
-    <div>${ha}</div>
-    <div class="water-col">
-      <input type="number" step="0.01" name="project_water_per_ha[]" class="project-water-input">
-    </div>
-    `
-    row.querySelector('.project-water-input').value = waterPerHaDefault !== null ? waterPerHaDefault : ''
-    container.appendChild(row)
-  })
-  
-  toggleWaterColumn()
-}
+        <div class="product-grid">
+            <div>
+                <select class="product-select">
+                    ${PRODUCT_OPTIONS || '<option value="">Select product</option>'}
+                </select>
+            </div>
 
+            <div>
+                <label class="rate-label">Rate /100L</label>
+                <input class="qty-input" type="number" step="0.01">
+            </div>
 
-/* APPLICATION TYPE */
-function getApplicationType(){
-  return document.querySelector('input[name="application_type"]:checked').value
-}
+            <div>
+                <label>Total Qty</label>
+                <div class="readonly-box total-qty">-</div>
+            </div>
 
-function toggleWaterColumn(){
-  const spray=getApplicationType()==='spray'
-  document.querySelectorAll('.water-col').forEach( el => {
-    el.style.display = spray ? '' : 'none'
-  })
-}
+            <div>
+                <label>Per Tank</label>
+                <div class="readonly-box per-tank">-</div>
+            </div>
 
-function setQtyPlaceholders(){
-  const spray = getApplicationType() === 'spray';
-  document.querySelectorAll('.qty-input').forEach(input => {
-    input.placeholder = spray ? 'Qty per 100L' : 'Qty per Ha';
-  });
-}
+            <div>
+                <button type="button"
+                    onclick="this.closest('.product-card').remove(); recalcEverything()">
+                    ✕
+                </button>
+            </div>
+        </div>
+    `;
 
-function toggleMethodAndPreview(){
-  const spray=getApplicationType()==='spray'
-  document.getElementById('method-wrapper').style.display = spray ? '' : 'none'
-  document.getElementById('mix-preview-wrapper').style.display = spray ? '' : 'none'
-  setQtyPlaceholders();
-}
-
-
-/* PRODUCT LINES */
-
-let lineIndex=0
-
-function addLine(){
-  if (!document.getElementById('warehouse_id').value) {
-    Swal.fire('Select Warehouse', 'Please select a warehouse before adding product lines.', 'warning');
-    return;
-  }
-  const row=document.createElement('div')
-  row.className='product-row'
-
-  row.innerHTML=`
-  <input type="hidden" name="line_uom_id[]" class="uom-id" value="">
-  <div class="product-row-top">
-    <div class="product-select-wrapper"><select class="product-select">${PRODUCT_OPTIONS}</select></div>
-  </div>
-  <div class="product-row-bottom">
-    <input type="number" step="0.01" class="qty-input" placeholder="Qty per 100L">
-    <div class="uom-label"></div>
-    <button type="button" class="ibt-remove-btn" onclick="this.parentElement.parentElement.remove(); fetchPreview();">✕</button>
-  </div>
-  `
-  document.getElementById('lines').appendChild(row)
-  setQtyPlaceholders();
-  const select2el = $(row).find('.product-select').select2({width:'100%'});
-  const selected = row.querySelector('.product-select').selectedOptions?.[0];
-  row.querySelector('.uom-label').textContent = selected?.dataset.uom || '';
-  select2el.on('change', function(){
-    const sel = this.selectedOptions?.[0];
-    row.querySelector('.uom-label').textContent = sel?.dataset.uom || '';
-    row.querySelector('.uom-id').value = sel?.dataset.uomId || '';
+    document.getElementById('lines').appendChild(row);
+    $(row).find('.product-select').select2({ width: '100%' });
     
-    // Fetch and populate default qty
-    const stockId = sel?.value;
-    if(stockId) {
-      fetch(`/agri/spray-recommendation/default_qty_per_ha/${stockId}`)
-        .then(r => r.json())
-        .then(data => {
-          const qtyInput = row.querySelector('.qty-input');
-          if(data.default_qty_per_ha && data.default_qty_per_ha > 0) {
-            qtyInput.value = parseFloat(data.default_qty_per_ha).toFixed(2);
-            fetchPreview();
-          }
-        })
-        .catch(err => console.error('Failed to fetch default qty', err));
+    updateLineLabels();
+    recalcEverything();
+}
+
+function clearLines() {
+    document.getElementById('lines').innerHTML = '';
+    recalcEverything();
+}
+
+/* ====================== FRONTEND CALCULATION ENGINE ====================== */
+function recalcEverything() {
+    const mode = getMode();
+
+    let totalHa = 0;
+    let totalWater = 0;
+
+    // PROJECT TOTALS
+    const rows = document.querySelectorAll('.project-row:not(.project-head)');
+    let rowIndex = 0;
+
+    document.querySelectorAll('#project_ids option:checked').forEach((o, idx) => {
+        const ha = parseFloat(o.dataset.ha || 0);
+        totalHa += ha;
+        rowIndex = idx;
+
+        if (mode === "per_100l") {
+            if (rows[rowIndex]) {
+                // Use total water input if available, otherwise calculate from water per ha
+                const totalWaterInput = rows[rowIndex].querySelector('.project-water-total');
+                const waterPerHaInput = rows[rowIndex].querySelector('.project-water-input');
+                
+                let projWater = parseFloat(totalWaterInput?.value || 0);
+                if (!projWater && waterPerHaInput) {
+                    const waterPerHa = parseFloat(waterPerHaInput.value || 0);
+                    projWater = ha * waterPerHa;
+                }
+                
+                totalWater += projWater;
+            }
+        }
+    });
+
+    // Update total area
+    document.getElementById('total-ha').textContent = totalHa.toFixed(2);
+    document.getElementById('sticky-ha').textContent = totalHa.toFixed(2);
+
+    if (mode === "per_ha_direct") {
+        // Direct mode: no water/tanks
+        document.getElementById('sticky-water').textContent = '-';
+        document.getElementById('sticky-tanks').textContent = '-';
+        document.getElementById('sum-water').textContent = '-';
+        document.getElementById('sum-tanks').textContent = '-';
+        document.getElementById('sum-partial').textContent = '-';
+        updateProductTotals(totalHa, null, null);
+        return;
     }
-  });
-  if (!PRODUCT_OPTIONS) {
-    row.querySelector('.product-select').innerHTML = '<option value="">Select warehouse first</option>';
-    row.querySelector('.qty-input').disabled = true;
-  }
 
-  select2el.on('select2:open', function(){
-    setTimeout(()=>{
-      const search = document.querySelector('.select2-container--open .select2-search__field');
-      if(search) search.focus();
-    }, 0);
-  });
-}
+    // WATER & TANK CALCULATION
+    const methodInput = document.getElementById('method_id');
+    const methodId = methodInput?.value || '';
+    let waterPerTank = parseFloat(document.getElementById('global_water_per_tank').value) || 0;
 
-function clearLines(){
-  document.getElementById('lines').innerHTML=''
-  fetchPreview();
-}
-
-function collectFormData(){
-  const appType = getApplicationType();
-  const methodId = document.getElementById('method_id').value;
-  const methodName = document.getElementById('method_id').selectedOptions?.[0]?.text || '';
-  const warehouseId = document.getElementById('warehouse_id').value;
-
-  const projects=[];
-  const projectIds = document.querySelectorAll('input[name="project_id[]"]');
-  const projectHas = document.querySelectorAll('input[name="project_ha[]"]');
-  const projectWaters = document.querySelectorAll('input[name="project_water_per_ha[]"]');
-
-  for(let i = 0; i < projectIds.length; i++){
-    projects.push({
-      project_id: projectIds[i].value,
-      ha: parseFloat(projectHas[i]?.value||0)||0,
-      water_per_ha: appType==='spray' ? parseFloat(projectWaters[i]?.value||0)||0 : null
-    });
-  }
-
-  const lines = [];
-  document.querySelectorAll('.product-row').forEach(row=>{
-    const select = row.querySelector('.product-select');
-    const product = select?.value;
-    const option = select?.selectedOptions?.[0];
-    const qty = parseFloat(row.querySelector('.qty-input')?.value || 0);
-    if(!product || !qty) return;
-    const productText = option?.text || '';
-    const [product_code, ...descParts] = productText.split(' - ');
-    lines.push({
-      stock_id: product,
-      product_code: product_code ? product_code.trim() : '',
-      stock_description: descParts.join(' - ').trim() || productText,
-      uom_id: option?.dataset.uomId || '',
-      uom: option?.dataset.uom || '',
-      qty: qty,
-      qty_type: appType === 'spray' ? 'per100l' : 'perha'
-    });
-  });
-
-  return {
-    application_type: appType,
-    method_id: methodId,
-    method_name: methodName,
-    warehouse_id: warehouseId,
-    spray_description: document.getElementById('spray_description').value || '',
-    projects: projects,
-    lines: lines
-  };
-}
-
-function renderPreview(data, appType){
-  const wrapper = document.getElementById('mix-preview-wrapper');
-  if(appType!=='spray'){
-    wrapper.style.display = 'none';
-    return;
-  }
-  wrapper.style.display = 'block';
-
-  if(!data.mixes || data.mixes.length===0){
-    document.getElementById('mix-preview').innerHTML = '<div style="font-size:.9rem;color:#6b7280;">No mix preview yet.</div>';
-    return;
-  }
-
-  let html = `<div style="margin-bottom:8px;font-size:.95rem;">Method: <strong>${data.method_name || 'N/A'}</strong> | Total Ha: <strong>${data.total_ha}</strong> | Total Water: <strong>${data.total_water} L</strong> | Mixes: <strong>${data.number_of_mixes}</strong></div>`;
-  data.mixes.forEach(mix=>{
-    html += `<div style="border:1px solid #e5e7eb;border-radius:8px;padding:8px;margin-bottom:8px;"><strong>Mix ${mix.mix_no}</strong><div>${mix.ha} Ha | ${mix.water} L</div><table style="width:100%;border-collapse:collapse;margin-top:6px;"><thead><tr><th align="left">Product</th><th align="right">Qty</th></tr></thead><tbody>`;
-    mix.products.forEach(p=>{
-      const productLabel = p.product_code ? `${p.product_code} - ${p.stock_description || ''}` : `${p.stock_description || p.stock_id}`;
-      html += `<tr><td>${productLabel}</td><td align="right">${p.qty} ${p.uom||''}</td></tr>`;
-    });
-    html += '</tbody></table></div>';
-  });
-  document.getElementById('mix-preview').innerHTML=html;
-}
-
-function fetchPreview(){
-  const data = collectFormData();
-  const appType = data.application_type;
-
-  if(appType !== 'spray'){
-    document.getElementById('mix-preview-wrapper').style.display = 'none';
-    return;
-  }
-
-  if(!data.projects.length || !data.lines.length || !data.method_id){
-    document.getElementById('mix-preview').innerHTML = '<div style="font-size:.9rem;color:#6b7280;">Complete spray details to view mix preview.</div>';
-    document.getElementById('mix-preview-wrapper').style.display = 'block';
-    return;
-  }
-
-  fetch('/agri/spray-recommendation/preview',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(data)})
-    .then(r=>r.json()).then(result=>renderPreview(result,appType)).catch(()=>{
-      document.getElementById('mix-preview').innerHTML='<div style="color:#b91c1c;">Preview error.</div>';
-    });
-}
-
-/* EVENTS */
-$('#project_ids').on('change', () => { updateProjectConfigs(); fetchPreview();});
-$('input[name="application_type"]').on('change', () => { updateProjectConfigs(); toggleMethodAndPreview(); fetchPreview();});
-$('#warehouse_id').on('change', async function(){
-  const wid = this.value;
-  await loadProductsForWarehouse(wid);
-  document.getElementById('lines').innerHTML = '';
-  addLine();
-  fetchPreview();
-});
-$('#toggle-scouting').on('click', () => {
-  const ta = document.getElementById('scouting_note');
-  ta.style.display = ta.style.display === 'none' ? 'block' : 'none';
-  if (ta.style.display !== 'none') ta.focus();
-});
-$('#method_id').on('change', function(){
-  fetchMethodWater();
-  fetchPreview();
-});
-$('#lines').on('input', '.qty-input', fetchPreview);
-$('#lines').on('change', '.product-select', function(){
-  const row = this.closest('.product-row');
-  const selected = this.selectedOptions?.[0];
-  if(row && selected){
-    row.querySelector('.uom-label').textContent = selected.dataset.uom || '';
-    
-    // Fetch and populate default qty
-    const stockId = selected.value;
-    if(stockId) {
-      fetch(`/agri/spray-recommendation/default_qty_per_ha/${stockId}`)
-        .then(r => r.json())
-        .then(data => {
-          const qtyInput = row.querySelector('.qty-input');
-          if(data.default_qty_per_ha && data.default_qty_per_ha > 0) {
-            qtyInput.value = parseFloat(data.default_qty_per_ha).toFixed(2);
-          }
-        })
-        .catch(err => console.error('Failed to fetch default qty', err));
+    if (mode === "per_ha_tank") {
+        // Use total_water field if available, otherwise calculate from water_per_ha
+        const totalWaterInput = parseFloat(document.getElementById('global_total_water').value) || 0;
+        if (totalWaterInput > 0) {
+            totalWater = totalWaterInput;
+        } else {
+            const waterPerHa = parseFloat(document.getElementById('global_water_per_ha').value) || 0;
+            totalWater = totalHa * waterPerHa;
+        }
     }
-  }
-  fetchPreview();
-});
-document.getElementById('project-configs').addEventListener('input', function(e){
-  if(e.target.matches('.project-water-input')) fetchPreview();
-});
 
-function getWeekOfYear(date) {
-  const d = new Date(Date.UTC(date.getFullYear(), date.getMonth(), date.getDate()));
-  const dayNum = d.getUTCDay() || 7;
-  d.setUTCDate(d.getUTCDate() + 4 - dayNum);
-  const yearStart = new Date(Date.UTC(d.getUTCFullYear(),0,1));
-  return Math.ceil((((d - yearStart) / 86400000) + 1) / 7);
+    // Update water display
+    document.getElementById('sum-water').textContent = totalWater.toFixed(1) + ' L';
+    document.getElementById('sticky-water').textContent = totalWater.toFixed(1);
+
+    if (!waterPerTank || totalWater <= 0) {
+        document.getElementById('sum-tanks').textContent = '-';
+        document.getElementById('sticky-tanks').textContent = '-';
+        document.getElementById('sum-partial').textContent = '-';
+        updateProductTotals(totalHa, totalWater, null);
+        renderTankBreakdown(totalWater, waterPerTank);
+        return;
+    }
+
+    let totalTanks = Math.ceil(totalWater / waterPerTank);
+    let partial = totalWater - (Math.floor(totalWater / waterPerTank) * waterPerTank);
+
+    document.getElementById('sum-tanks').textContent = totalTanks;
+    document.getElementById('sticky-tanks').textContent = totalTanks;
+    document.getElementById('sum-partial').textContent =
+        partial > 0 ? partial.toFixed(1) + ' L' : '0 L';
+
+    updateProductTotals(totalHa, totalWater, waterPerTank);
+    renderTankBreakdown(totalWater, waterPerTank);
 }
 
-function updateWeekLabel() {
-  const dateStr = document.getElementById('spray_date').value;
-  const label = document.getElementById('spray_week');
-  if (!dateStr) {
-    label.textContent = 'Week: -';
-    return;
-  }
-  const date = new Date(dateStr);
-  const week = getWeekOfYear(date);
-  label.textContent = `Week: ${week} (${date.getFullYear()})`;
+function updateProductTotals(totalHa, totalWater, waterPerTank) {
+    const mode = getMode();
+    let productCount = 0;
+
+    document.querySelectorAll('.product-card').forEach(card => {
+        const rate = parseFloat(card.querySelector('.qty-input').value || 0);
+        if (!rate) {
+            card.querySelector('.total-qty').textContent = '-';
+            card.querySelector('.per-tank').textContent = '-';
+            return;
+        }
+
+        productCount++;
+
+        let totalQty = 0;
+        let perTank = '-';
+
+        if (mode === "per_100l") {
+            totalQty = (totalWater / 100) * rate;
+            if (waterPerTank) {
+                perTank = ((waterPerTank / 100) * rate).toFixed(1);
+            }
+        }
+        else if (mode === "per_ha_tank") {
+            totalQty = totalHa * rate;
+            if (waterPerTank && totalWater > 0) {
+                perTank = ((waterPerTank / (totalWater / totalHa)) * rate).toFixed(1);
+            }
+        }
+        else if (mode === "per_ha_direct") {
+            totalQty = totalHa * rate;
+            perTank = '-';
+        }
+
+        card.querySelector('.total-qty').textContent = totalQty > 0 ? totalQty.toFixed(1) : '-';
+        card.querySelector('.per-tank').textContent = perTank;
+    });
+
+    document.getElementById('sum-products').textContent = productCount;
+    document.getElementById('sticky-products').textContent = productCount;
 }
 
-document.getElementById('spray_date').addEventListener('change', updateWeekLabel);
+function renderTankBreakdown(totalWater, waterPerTank) {
+    if (!waterPerTank || totalWater <= 0) {
+        document.getElementById('tank-breakdown').innerHTML =
+            '<div style="padding:12px;color:#999;">No tank plan yet.</div>';
+        return;
+    }
 
-function fetchMethodWater(){
-  const methodId = document.getElementById('method_id').value;
-  const waterInputs = document.querySelectorAll('.project-water-input');
+    let tanks = Math.ceil(totalWater / waterPerTank);
+    let html = '';
 
-  fetch(`/agri/spray-recommendation/method-water/${methodId}`)
-    .then(r => r.json())
-    .then(result => {
-      if(result.water_per_ha !== null){
-        waterPerHaDefault = result.water_per_ha;
-        waterInputs.forEach(input => {
-          input.value = result.water_per_ha;
+    for (let i = 1; i <= tanks; i++) {
+        let water = (i < tanks)
+            ? waterPerTank
+            : totalWater - ((tanks - 1) * waterPerTank);
+
+        html += `
+            <div class="tank-block">
+                <strong>Tank ${i}</strong><br>
+                Water: ${water.toFixed(1)} L
+            </div>
+        `;
+    }
+
+    document.getElementById('tank-breakdown').innerHTML = html;
+}
+
+function validateSprayForm(mode, projects, lines) {
+    const errors = [];
+    const sprayDate = document.getElementById('spray_date').value;
+    const warehouseId = document.getElementById('warehouse_id').value;
+    const methodId = document.getElementById('method_id')?.value;
+    const waterPerTank = parseFloat(document.getElementById('global_water_per_tank').value) || 0;
+    const waterPerHa = parseFloat(document.getElementById('global_water_per_ha').value) || 0;
+
+    if (!sprayDate) {
+        errors.push('Please select a spray date.');
+    }
+    if (new Date(sprayDate) < new Date().setHours(0, 0, 0, 0)) {
+        errors.push('Spray date cannot be in the past.');
+    }
+    if (!warehouseId) {
+        errors.push('Please select a warehouse.');
+    }
+    if (!projects.length) {
+        errors.push('Please select at least one project.');
+    }
+    if (!lines.length) {
+        errors.push('Please add at least one product line.');
+    }
+    if (mode !== 'per_ha_direct' && !methodId) {
+        errors.push('Please select an application method.');
+    }
+    if (mode === 'per_100l') {
+        if (!waterPerTank || waterPerTank <= 0) {
+            errors.push('Please enter the water per tank.');
+        }
+        document.querySelectorAll('#project_ids option:checked').forEach((o, idx) => {
+            const rows = document.querySelectorAll('.project-row:not(.project-head)');
+            const row = rows[idx];
+            const totalWaterInput = row?.querySelector('.project-water-total');
+            const waterPerHaInput = row?.querySelector('.project-water-input');
+            
+            const totalWater = parseFloat(totalWaterInput?.value || 0);
+            const waterPerHa = parseFloat(waterPerHaInput?.value || 0);
+            
+            if (!totalWater && !waterPerHa) {
+                errors.push(`Enter water per hectare or total water for project ${o.textContent}.`);
+            }
         });
-      } 
-    })
-    .catch((e) => {
-      console.error('Failed to fetch method water per ha', e);
+    }
+    if (mode === 'per_ha_tank') {
+        const totalWaterInput = parseFloat(document.getElementById('global_total_water').value) || 0;
+        const waterPerHaInput = parseFloat(document.getElementById('global_water_per_ha').value) || 0;
+        if (!totalWaterInput && !waterPerHaInput) {
+            errors.push('Please enter spray volume per hectare or total water.');
+        }
+        if (!waterPerTank || waterPerTank <= 0) {
+            errors.push('Please enter the water per tank.');
+        }
+    }
+
+    document.querySelectorAll('.product-card').forEach((card, idx) => {
+        const select = card.querySelector('.product-select');
+        const rate = parseFloat(card.querySelector('.qty-input').value || 0);
+        if (!select.value) {
+            errors.push(`Select a product for line ${idx + 1}.`);
+        }
+        if (!rate || rate <= 0) {
+            errors.push(`Enter a valid rate for product line ${idx + 1}.`);
+        }
     });
+
+    return errors;
 }
 
+// Bidirectional water calculation for per_ha_tank mode (global fields)
+function syncWaterFields() {
+    const totalHa = parseFloat(document.getElementById('total-ha').textContent) || 0;
+    const waterPerHa = parseFloat(document.getElementById('global_water_per_ha').value) || 0;
+    const totalWater = parseFloat(document.getElementById('global_total_water').value) || 0;
 
-/* INIT */
-// Start with no product line until warehouse is selected
-updateProjectConfigs();
-toggleMethodAndPreview();
-fetchPreview();
+    if (totalHa <= 0) return;
 
-document.getElementById('spray-form').addEventListener('submit', function(event){
-  event.preventDefault();
-  const data = collectFormData();
-  console.log(data)
-  data.spray_date = document.getElementById('spray_date').value;
-  data.scouting_note = document.getElementById('scouting_note').value || '';
-
-  if(!data.spray_date){
-    Swal.fire('Error', 'Please select a spray date.', 'error');
-    return;
-  }
-
-  if(!data.projects.length){
-    Swal.fire('Error', 'Please select at least one project.', 'error');
-    return;
-  }
-
-  if(data.application_type === 'spray' && !data.method_id){
-    Swal.fire('Error', 'Please select spray method for spray application.', 'error');
-    return;
-  }
-
-  fetch('/agri/spray-recommendation/create', {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify(data)
-  })
-  .then(r => r.json())
-  .then(result => {
-    if(result.success){
-      Swal.fire('Success', result.message || 'Saved successfully.', 'success');
-      // optionally reset form
-      window.location.href = '/agri/spray-recommendations-summary';
-    } else {
-      Swal.fire('Error', result.message || 'Save failed.', 'error');
+    // If user just edited water_per_ha, update total_water
+    if (event && event.target.id === 'global_water_per_ha' && waterPerHa > 0) {
+        const calculated = totalHa * waterPerHa;
+        document.getElementById('global_total_water').value = calculated.toFixed(1);
     }
-  })
-  .catch(err => {
-    console.error(err);
-    Swal.fire('Error', 'Unexpected error saving recommendation.', 'error');
-  });
+    // If user just edited total_water, update water_per_ha
+    else if (event && event.target.id === 'global_total_water' && totalWater > 0) {
+        const calculated = totalWater / totalHa;
+        document.getElementById('global_water_per_ha').value = calculated.toFixed(1);
+    }
+}
+
+// Bidirectional water calculation for per_100l mode (per-project fields)
+function syncProjectWaterFields(row) {
+    if (!row || !event) return;
+
+    const ha = parseFloat(row.querySelector('div:nth-child(2)').textContent) || 0;
+    const waterPerHaInput = row.querySelector('.project-water-input');
+    const totalWaterInput = row.querySelector('.project-water-total');
+
+    if (ha <= 0) return;
+
+    const waterPerHa = parseFloat(waterPerHaInput.value) || 0;
+    const totalWater = parseFloat(totalWaterInput.value) || 0;
+
+    // If user just edited water_per_ha, update total_water
+    if (event.target === waterPerHaInput && waterPerHa > 0) {
+        const calculated = ha * waterPerHa;
+        totalWaterInput.value = calculated.toFixed(1);
+    }
+    // If user just edited total_water, update water_per_ha
+    else if (event.target === totalWaterInput && totalWater > 0) {
+        const calculated = totalWater / ha;
+        waterPerHaInput.value = calculated.toFixed(1);
+    }
+}
+
+// Event Listeners
+document.querySelectorAll('input[name="dose_mode"]').forEach(r => {
+    r.addEventListener('change', renderModeUI);
 });
+
+$('#project_ids').on('change', updateProjectConfigs);
+
+// Live recalculation
+document.addEventListener('input', function (e) {
+    if (e.target.matches('.project-water-input')) {
+        const row = e.target.closest('.project-row');
+        syncProjectWaterFields(row);
+        recalcEverything();
+    }
+    if (e.target.matches('.project-water-total')) {
+        const row = e.target.closest('.project-row');
+        syncProjectWaterFields(row);
+        recalcEverything();
+    }
+    if (e.target.matches('.qty-input')) {
+        recalcEverything();
+    }
+    if (e.target.matches('#global_water_per_ha')) {
+        syncWaterFields();
+        recalcEverything();
+    }
+    if (e.target.matches('#global_total_water')) {
+        syncWaterFields();
+        recalcEverything();
+    }
+    if (e.target.matches('#global_water_per_tank')) {
+        recalcEverything();
+    }
+});
+
+
+
+document.addEventListener('change', function (e) {
+    if (e.target.matches('#method_id')) {
+        recalcEverything();
+    }
+});
+
+// Event listener for warehouse change
+$('#warehouse_id').on('change', function() {
+    const warehouseId = $(this).val();
+    updateProductsByWarehouse(warehouseId);
+    recalcEverything(); // Recalculate if needed
+});
+
+// Event listener for date change
+document.getElementById('spray_date').addEventListener('change', updateSprayWeek);
+
+// Form Submit
+document.getElementById('spray-form').addEventListener('submit', function (e) {
+    e.preventDefault();
+
+    const mode = getMode();
+    const totalHa = parseFloat(document.getElementById('total-ha').textContent) || 0;
+    const totalWater = parseFloat(document.getElementById('sum-water').textContent.replace(' L', '')) || 0;
+    const waterPerTank = parseFloat(document.getElementById('global_water_per_tank').value) || 0;
+
+
+    // Build projects
+    const projects = [];
+    document.querySelectorAll('#project_ids option:checked').forEach((o, i) => {
+        const ha = parseFloat(o.dataset.ha || 0);
+        const rows = document.querySelectorAll('.project-row:not(.project-head)');
+        let waterPerHa = null;
+        let totalProjectWater = null;
+
+        if (mode !== "per_ha_direct" && rows[i]) {
+            const totalWaterInput = rows[i].querySelector('.project-water-total');
+            const waterPerHaInput = rows[i].querySelector('.project-water-input');
+            
+            const inputProjectTotalWater = parseFloat(totalWaterInput?.value || 0);
+            const inputWaterPerHa = parseFloat(waterPerHaInput?.value || 0);
+            
+            if (inputProjectTotalWater > 0) {
+                totalProjectWater = inputProjectTotalWater;
+                waterPerHa = inputProjectTotalWater / ha;
+            } else if (inputWaterPerHa > 0) {
+                waterPerHa = inputWaterPerHa;
+                totalProjectWater = inputWaterPerHa * ha;
+            } else {
+                totalProjectWater = totalWater * (ha / totalHa);
+                waterPerHa = totalProjectWater / ha;
+            }
+        }
+
+        projects.push({
+            project_id: parseInt(o.value),
+            ha: ha,
+            water_per_ha: waterPerHa,
+            total_water: totalProjectWater
+        });
+    });
+
+    // Build lines
+    const lines = [];
+    document.querySelectorAll('.product-card').forEach(card => {
+        const select = card.querySelector('.product-select');
+        const rate = parseFloat(card.querySelector('.qty-input').value || 0);
+        const totalQty = parseFloat(card.querySelector('.total-qty').textContent) || 0;
+        const uomId = select.selectedOptions[0]?.dataset.uomId || select.selectedOptions[0]?.dataset.uom;
+
+        lines.push({
+            stock_id: parseInt(select.value),
+            qty_per_100l: mode === "per_100l" ? rate : null,
+            qty_per_ha: mode !== "per_100l" ? rate : null,
+            total_qty: totalQty,
+            uom_id: parseInt(uomId) || uomId
+        });
+    });
+
+    // Build mixes
+    const mixes = [];
+    if (mode !== 'per_ha_direct' && waterPerTank > 0 && totalWater > 0) {
+        const totalTanks = Math.ceil(totalWater / waterPerTank);
+        let remainingWater = totalWater;
+        let remainingHa = totalHa;
+
+        for (let i = 1; i <= totalTanks; i++) {
+            const tankWater = (i < totalTanks) ? waterPerTank : remainingWater;
+            const tankHa = (tankWater / totalWater) * totalHa;
+
+            const mixLines = [];
+            document.querySelectorAll('.product-card').forEach(card => {
+                const perTank = card.querySelector('.per-tank').textContent;
+                if (perTank !== '-') {
+                    const qty = parseFloat(perTank);
+                    const select = card.querySelector('.product-select');
+                    const uomId = select.selectedOptions[0]?.dataset.uomId || select.selectedOptions[0]?.dataset.uom;
+                    mixLines.push({
+                        stock_id: parseInt(select.value),
+                        qty: qty,
+                        uom_id: parseInt(uomId) || uomId
+                    });
+                }
+            });
+
+            mixes.push({
+                mix_number: i,
+                mix_ha: parseFloat(tankHa.toFixed(2)),
+                mix_water: tankWater,
+                lines: mixLines
+            });
+
+            remainingWater -= tankWater;
+            remainingHa -= tankHa;
+        }
+    }
+
+    const validationErrors = validateSprayForm(mode, projects, lines);
+    if (validationErrors.length) {
+        Swal.fire({
+            icon: 'error',
+            title: 'Please fix the form',
+            html: `<ul style="text-align:left; margin:0; padding-left:18px;">${validationErrors.map(msg => `<li>${msg}</li>`).join('')}</ul>`,
+            confirmButtonText: 'OK'
+        });
+        return;
+    }
+
+    const payload = {
+        spray_date: document.getElementById('spray_date').value,
+        spray_description: document.getElementById('spray_description').value,
+        warehouse_id: document.getElementById('warehouse_id').value,
+        method_id: document.getElementById('method_id').value,
+        scouting_note: document.getElementById('scouting_note').value,
+        application_type: mode,
+        water_per_tank: waterPerTank || null,
+        water_per_ha: mode === 'per_ha_tank' ? parseFloat(document.getElementById('global_water_per_ha').value) || null : null,
+        total_water: mode === 'per_ha_tank' ? parseFloat(document.getElementById('global_total_water').value) || null : null,
+        total_ha: totalHa,
+
+        projects: projects,
+        lines: lines,
+        mixes: mixes
+    };
+
+    console.log('Submitting:', payload);
+
+    fetch('/agri/spray-recommendation/submit', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload)
+    })
+    .then(r => r.json())
+    .then(data => {
+        if (data.success) {
+            alert('Spray recommendation saved: ' + data.id);
+            window.location.href = '/agri/spray-recommendations-summary';
+        } else {
+            alert('Error: ' + data.message);
+        }
+    })
+    .catch(err => alert('Error: ' + err));
+});
+
+// Initial render
+renderModeUI();
 
 </script>
-
 
 {% endblock %}

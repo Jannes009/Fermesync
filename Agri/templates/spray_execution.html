@@ -656,7 +656,12 @@
         <div style="display: flex; gap: 0.5rem;">
           <a href="/agri/execution/{{ execution.id }}/instruction_pdf" target="_blank" class="btn-success">Print Instructions</a>
           {% if not execution.finalised %}
-          <button class="btn-primary" onclick="finalizeExecution({{ execution.id }})">Finalize Execution</button>
+            {% if execution.can_finalize %}
+            <button class="btn-primary" onclick="finalizeExecution({{ execution.id }})">Finalize Execution</button>
+            {% endif %}
+            {% if execution.can_delete %}
+            <button class="btn-secondary" style="background: #dc3545;" onclick="deleteExecution({{ execution.id }})">Delete Execution</button>
+            {% endif %}
           {% endif %}
         </div>
       </header>
@@ -686,7 +691,7 @@
       <h2 class="section-title">Stock Movements</h2>
       {% if not execution.finalised %}
       <div style="margin-bottom: 1rem;">
-        <a href="/inventory/SDK/stock_issue_wizard?execution_id={{ execution.id }}&step=2" class="btn-primary">Issue Stock</a>
+        <a href="/inventory/SDK/stock_issue_wizard?execution_id={{ execution.id }}&step=2&next_url={{ request.path|urlencode }}" class="btn-primary">Issue Stock</a>
       </div>
       {% endif %}
       {% if stock_movements %}
@@ -738,7 +743,11 @@
                     <td>{{ detail.time_issued_display }}</td>
                     <td>{{ detail.time_finalised_display }}</td>
                     <td>
-                      <button type="button" class="btn-secondary" onclick="openIssueDetails({{ detail.issue_id }})">View details</button>
+                      {% if detail.qty_unfinalised %}
+                        <button type="button" class="btn-success" onclick="startReturnWizard({{ detail.issue_id }})">Return</button>
+                      {% else %}
+                        —
+                      {% endif %}
                     </td>
                   </tr>
                   {% endfor %}
@@ -768,75 +777,18 @@
             <div class="rec-detail">
               <div class="rec-detail-value">Week {{ instruction.week_number }}</div>
             </div>
-            <div class="rec-detail">
-              <div class="rec-detail-label">Stock Status</div>
-              <div class="rec-detail-value">
-                <span class="stock-status {{ 'sufficient' if instruction.sufficient_stock else 'insufficient' }}">
-                  {{ 'Sufficient' if instruction.sufficient_stock else 'Insufficient' }}
-                </span>
-              </div>
-            </div>
           </div>
           <div class="update-instruction-actions" style="margin-top: 0.75rem;">
-            {% if instruction.spray_date and instruction.start_date_time and instruction.end_date_time and instruction.weather %}
-            <span class="finalised-pill">Instruction finalised ✓</span>
-            {% else %}
-            <button type="button" class="btn-success" onclick="openInstructionModal({{ instruction.id }}, '{{ instruction.spray_date or '' }}', '{{ instruction.start_date_time or '' }}', '{{ instruction.end_date_time or '' }}', '{{ instruction.weather or '' }}')">Finalise instruction</button>
+            {% if not instruction.finalised %}
+              <button type="button" class="btn-success" onclick="openInstructionModal({{ instruction.id }}, '{{ instruction.spray_date or '' }}', '{{ instruction.start_date_time or '' }}', '{{ instruction.end_date_time or '' }}', '{{ instruction.weather or '' }}')">Finalise instruction</button>
             {% endif %}
+            <button type="button" class="btn-secondary" onclick="window.location.href='/agri/spray/{{ instruction.id }}'">View details</button>
           </div>
-          {% if execution.finalised and instruction.spray_date and instruction.start_date_time and instruction.end_date_time and instruction.weather %}
+          {% if instruction.finalised and execution.finalised %}
           <div style="margin-top: 0.75rem;">
             <a href="/agri/instruction/{{ instruction.id }}/instruction_pdf" class="btn-secondary" style="font-size: 0.8rem; padding: 0.25rem 0.5rem;" target="_blank">Print Instruction</a>
           </div>
           {% endif %}
-          <details style="margin-top: 0.75rem;">
-            <summary style="cursor: pointer; font-weight: 600; color: var(--primary-text);">Spray Details</summary>
-            <div class="spray-details-content">
-              {% if instruction.description %}
-              <div class="detail-section">
-                <div class="detail-section-title description-title">Description</div>
-                <p class="description-text">{{ instruction.description }}</p>
-              </div>
-              {% endif %}
-              
-              {% if instruction.projects %}
-              <div class="detail-section">
-                <div class="detail-section-title projects-title">Projects</div>
-                <ul class="projects-list">
-                  {% for project in instruction.projects %}
-                  <li class="project-item">
-                    <div class="project-code">{{ project.project_code }}</div>
-                    <div class="project-details">
-                      <span class="project-detail">Block: {{ project.block_no or 'N/A' }}</span>
-                      <span class="project-detail">Ha: {{ project.ha or 'N/A' }}</span>
-                      <span class="project-detail">Water/Ha: {{ project.water_per_ha or 'N/A' }}</span>
-                    </div>
-                  </li>
-                  {% endfor %}
-                </ul>
-              </div>
-              {% endif %}
-              
-              {% if instruction.products %}
-              <div class="detail-section">
-                <div class="detail-section-title products-title">Products</div>
-                <ul class="products-list">
-                  {% for product in instruction.products %}
-                  <li class="product-item">
-                    <div class="product-description">{{ product.description or 'Unknown' }}</div>
-                    <div class="product-quantities">
-                      <span class="qty-total">Total Qty: {{ product.total_qty or 0 }}</span>
-                      <span class="qty-available">Available: {{ product.qty_available or 0 }}</span>
-                    </div>
-                  </li>
-                  {% endfor %}
-                </ul>
-              </div>
-              {% else %}
-              <div class="no-data-message">No product details available.</div>
-              {% endif %}
-            </div>
-          </details>
           </div>
         {% endfor %}
       </div>
@@ -845,46 +797,6 @@
       {% endif %}
     </div>
 
-  </div>
-</div>
-
-<div id="issue-detail-modal" class="modal-backdrop" hidden>
-  <div class="modal-window">
-    <div class="modal-header">
-      <h3>Issue Details</h3>
-      <button type="button" class="modal-close" onclick="closeIssueDetails()">×</button>
-    </div>
-    <div class="modal-body">
-      <div style="display: grid; gap: 0.75rem;">
-        <div style="display: flex; flex-wrap: wrap; gap: 1rem; font-size: 0.95rem;">
-          <div><strong>Issue #</strong> <span id="issue-detail-number">-</span></div>
-          <div><strong>Status</strong> <span id="issue-detail-status">-</span></div>
-          <div><strong>Warehouse</strong> <span id="issue-detail-warehouse">-</span></div>
-          <div><strong>Issued</strong> <span id="issue-detail-issued">-</span></div>
-          <div><strong>Finalised</strong> <span id="issue-detail-finalised">-</span></div>
-        </div>
-        <div>
-          <table class="movement-detail-table" style="width: 100%; margin-top: 0;">
-            <thead>
-              <tr>
-                <th>Product</th>
-                <th>Qty Issued</th>
-                <th>Qty Returned</th>
-                <th>Qty Finalised</th>
-                <th>Unit</th>
-              </tr>
-            </thead>
-            <tbody id="issue-detail-lines"></tbody>
-          </table>
-        </div>
-      </div>
-      <div id="issue-return-error" style="color: #dc3545; display: none; font-size: 0.9rem;"></div>
-      <div id="issue-return-success" style="color: #28a745; display: none; font-size: 0.9rem; margin-top: 0.75rem;"></div>
-      <div class="modal-footer" style="margin-top: 1rem;">
-        <button type="button" class="btn-secondary" onclick="closeIssueDetails()">Close</button>
-        <button type="button" id="issue-return-submit" class="btn-success" onclick="submitIssueReturn()">Save return</button>
-      </div>
-    </div>
   </div>
 </div>
 
@@ -915,6 +827,7 @@
             <option value="Evening">Evening</option>
           </select>
         </div>
+        <div id="instruction-status" style="display: none; margin-top: 0.75rem; font-size: 0.95rem; min-height: 1.25rem;"></div>
         <div class="modal-footer">
           <button type="button" class="btn-secondary" onclick="closeInstructionModal()">Cancel</button>
           <button type="submit" class="btn-success">Save & Finalise</button>
@@ -925,8 +838,68 @@
 </div>
 
 <script src="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/js/select2.min.js"></script>
+<script src="{{ url_for('inventory.static', filename='stock_issue/stock_issue_list.js') }}?v={{ filemtime('inventory','stock_issue/stock_issue_list.js') }}"></script>
 <script>
+window.onStockIssueReturnSuccess = () => window.location.reload();
 const executionId = {{ execution.id }};
+
+function setInstructionStatus(message = '', type = 'info') {
+    const statusEl = document.getElementById('instruction-status');
+    if (!statusEl) return;
+    if (!message) {
+        statusEl.style.display = 'none';
+        statusEl.textContent = '';
+        return;
+    }
+    statusEl.style.display = 'block';
+    statusEl.style.color = type === 'error' ? '#dc3545' : type === 'success' ? '#1f7d2f' : '#1d4ed8';
+    statusEl.textContent = message;
+}
+
+function setInstructionFormSaving(isSaving) {
+    const submitButton = document.querySelector('#instruction-form button[type="submit"]');
+    if (!submitButton) return;
+    submitButton.disabled = isSaving;
+    submitButton.textContent = isSaving ? 'Saving...' : 'Save & Finalise';
+}
+
+async function handleInstructionSubmit(event) {
+    event.preventDefault();
+    const form = event.target;
+    const action = form.action;
+    const start_date_time = document.getElementById('modal-start-time').value;
+    const end_date_time = document.getElementById('modal-end-time').value;
+    const weather = document.getElementById('modal-weather').value;
+    const spray_date = document.getElementById('modal-spray-date').value;
+
+    setInstructionStatus('Saving instruction...', 'info');
+    setInstructionFormSaving(true);
+
+    try {
+        const response = await fetch(action, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'Accept': 'application/json'
+            },
+            body: JSON.stringify({ start_date_time, end_date_time, weather, spray_date })
+        });
+
+        const result = await response.json().catch(() => null);
+        if (!response.ok || !result?.success) {
+            const message = result?.message || `Save failed${response.status ? ` (${response.status})` : ''}`;
+            setInstructionStatus(message, 'error');
+            setInstructionFormSaving(false);
+            return;
+        }
+
+        setInstructionStatus('Instruction finalised successfully.', 'success');
+        setTimeout(() => { window.location.reload(); }, 800);
+    } catch (error) {
+        setInstructionStatus(`Network error: ${error.message || 'Unable to save.'}`, 'error');
+        setInstructionFormSaving(false);
+    }
+}
 
 function openInstructionModal(instructionId, sprayDate, startTime, endTime, weather) {
     const modal = document.getElementById('instruction-modal');
@@ -943,127 +916,19 @@ function openInstructionModal(instructionId, sprayDate, startTime, endTime, weat
     }
 
     form.action = `/agri/execution/${executionId}/update_instruction/${instructionId}`;
+    modal.dataset.instructionId = instructionId;
     startInput.value = normalizeDateTime(startTime);
     endInput.value = normalizeDateTime(endTime);
     weatherInput.value = weather || '';
     sprayDateInput.value = sprayDate || normalizeDateTime(startTime).split('T')[0] || '';
+    setInstructionStatus('');
+    setInstructionFormSaving(false);
     modal.hidden = false;
 }
 
 function closeInstructionModal() {
     const modal = document.getElementById('instruction-modal');
     modal.hidden = true;
-}
-
-async function openIssueDetails(issueId) {
-    const modal = document.getElementById('issue-detail-modal');
-    const status = document.getElementById('issue-detail-status');
-    const number = document.getElementById('issue-detail-number');
-    const warehouse = document.getElementById('issue-detail-warehouse');
-    const issued = document.getElementById('issue-detail-issued');
-    const finalised = document.getElementById('issue-detail-finalised');
-    const linesBody = document.getElementById('issue-detail-lines');
-    const errorBox = document.getElementById('issue-return-error');
-    const submitButton = document.getElementById('issue-return-submit');
-
-    modal.dataset.issueId = issueId;
-
-    errorBox.style.display = 'none';
-    errorBox.textContent = '';
-    linesBody.innerHTML = '';
-
-    const response = await fetch(`/agri/execution/issue/${issueId}`);
-    if (!response.ok) {
-        const error = await response.json().catch(() => null);
-        errorBox.style.display = 'block';
-        errorBox.textContent = error?.message || 'Unable to load issue details. Please refresh and try again.';
-        modal.hidden = false;
-        return;
-    }
-
-    const data = await response.json();
-    const issue = data.issue;
-
-    number.textContent = issue.issue_no || issue.issue_id;
-    status.textContent = issue.finalised ? 'Finalised' : 'Open';
-    warehouse.textContent = issue.whse_description || '-';
-    issued.textContent = issue.issued_timestamp || '-';
-    finalised.textContent = issue.finalised_timestamp || '-';
-
-    const issueFinalised = issue.finalised;
-    submitButton.style.display = issueFinalised ? 'none' : 'block';
-
-    data.lines.forEach((line) => {
-        const row = document.createElement('tr');
-        row.innerHTML = `
-          <td>${line.product_desc || 'Unknown'}</td>
-          <td>${line.qty_issued || 0}</td>
-          <td>
-            <input type="number" min="0" step="0.01" class="issue-return-input" data-product-link="${line.product_link}" value="${line.qty_received || 0}" ${issueFinalised ? 'disabled' : ''} style="width: 100%; padding: 0.4rem; border: 1px solid var(--input-border); border-radius: 6px;">
-          </td>
-          <td>${line.qty_finalised || 0}</td>
-          <td>${line.uom_code || '-'}</td>
-        `;
-        linesBody.appendChild(row);
-    });
-
-    modal.hidden = false;
-}
-
-function closeIssueDetails() {
-    const modal = document.getElementById('issue-detail-modal');
-    modal.hidden = true;
-}
-
-async function submitIssueReturn() {
-    const errorBox = document.getElementById('issue-return-error');
-    const successBox = document.getElementById('issue-return-success');
-    const submitButton = document.getElementById('issue-return-submit');
-
-    errorBox.style.display = 'none';
-    errorBox.textContent = '';
-    successBox.style.display = 'none';
-    successBox.textContent = '';
-
-    const issueId = document.getElementById('issue-detail-modal').dataset.issueId;
-    const lineInputs = document.querySelectorAll('.issue-return-input');
-
-    const returnLines = Array.from(lineInputs).map((input) => ({
-        product_link: input.dataset.productLink,
-        qty_returned: input.value
-    }));
-
-    const payload = {
-      issue_id: issueId,
-      created_at: new Date().toISOString(),
-      returns: returnLines
-    };
-
-    submitButton.disabled = true;
-    submitButton.textContent = 'Saving...';
-    console.log('Submitting return payload:', payload);
-
-    const response = await fetch(`/inventory/process_return`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(payload)
-    });
-
-    const responseBody = await response.json().catch(() => null);
-    submitButton.disabled = false;
-    submitButton.textContent = 'Save return';
-
-    if (!response.ok) {
-        const errorMessage = responseBody?.message || 'Could not save returned quantity. Please try again.';
-        errorBox.style.display = 'block';
-        errorBox.textContent = errorMessage;
-        return;
-    }
-
-    successBox.style.display = 'block';
-    successBox.textContent = 'Returned quantities have been updated successfully.';
-    submitButton.style.display = 'none';
-    await openIssueDetails(issueId);
 }
 
 function toggleStockDetail(element) {
@@ -1097,6 +962,31 @@ async function finalizeExecution(executionId) {
         alert('Failed to finalize execution. Please try again.');
     }
 }
+
+async function deleteExecution(executionId) {
+    const confirmed = window.confirm('Delete Execution?\nThis will delete the execution and remove it from all associated spray instructions. This action cannot be undone.');
+    if (!confirmed) {
+        return;
+    }
+
+    try {
+        const response = await fetch(`/agri/execution/${executionId}/delete`, {
+            method: 'POST'
+        });
+        const data = await response.json();
+        if (data.success) {
+            alert('Execution deleted successfully.');
+            window.location.href = '/agri/spray-recommendations-summary';
+        } else {
+            alert('Failed to delete execution: ' + (data.message || 'Unknown error.'));
+        }
+    } catch (err) {
+        console.error('Error deleting execution:', err);
+        alert('Failed to delete execution. Please try again.');
+    }
+}
+
+document.getElementById('instruction-form').addEventListener('submit', handleInstructionSubmit);
 </script>
 
 {% endblock %}

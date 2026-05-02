@@ -25,6 +25,10 @@ async function initializeFromUrl() {
   const params = getUrlParams();
   if (!params.execution_id) return;
 
+  if (params.next_url) {
+    window.nextUrl = params.next_url;
+  }
+
   // Set spray mode and reload spray list
   document.getElementById('mode-spray').checked = true;
   handleModeChange();
@@ -218,7 +222,7 @@ async function populateSprayLines() {
             if (product) {
                 $(select).val(sprayLine.stock_id).trigger("change");
                 // qty.value = sprayLine.total_qty; // Remove prefill
-                qtyNeededLabel.textContent = `Qty Needed: ${parseFloat(sprayLine.total_qty).toFixed(2)}`;
+                qtyNeededLabel.textContent = `Qty Needed: ${parseFloat(sprayLine.total_qty - sprayLine.execution_nett_issued || 0).toFixed(2)}`;
                 qtyNeededLabel.style.display = "inline";
                 uomLabel.textContent = product.stocking_uom_code || "EA";
             }
@@ -313,6 +317,22 @@ async function step2Next() {
   const allLines = document.querySelectorAll("#ibt-lines .product-row");
   if (!allLines.length) { Swal.fire("No Lines", "Add at least one product line.", "warning"); return; }
 
+  // Fetch recommended quantities if in spray mode
+  let recommendedByProductId = {};
+  let nettIssuedByProductId = {};
+  if (issueMode === "spray") {
+    try {
+      const sprayRecommendedResponse = await fetch(`/agri/fetch_spray_products?execution_id=${selectedSpray}`);
+      const sprayRecommendedData = await sprayRecommendedResponse.json();
+      (sprayRecommendedData.spray_products || []).forEach(rec => {
+        recommendedByProductId[rec.stock_id] = rec.total_qty;
+        nettIssuedByProductId[rec.stock_id] = rec.execution_nett_issued;
+      });
+    } catch (err) {
+      console.error("Error fetching recommended quantities:", err);
+    }
+  }
+
   for (let row of allLines) {
     const selectEl = row.querySelector(".product-select");
     const selectedValue = $(selectEl).val();
@@ -332,7 +352,7 @@ async function step2Next() {
       Swal.fire("Insufficient Stock", `Requested quantity for ${product.product_desc} exceeds available stock (${parseFloat(product.qty_in_whse).toFixed(2)} ${product.stocking_uom_code}).`, "error");
       return;
     }
-
+    console.log(recommendedByProductId, product.product_link, recommendedByProductId[product.product_link], qtyRequested)
     lines.push({
       product_link: product.product_link,
       product_code: product.product_code,
@@ -341,6 +361,8 @@ async function step2Next() {
       uom_id: product.stocking_uom_id,
       uom_code: product.stocking_uom_code,
       qty_issued: qtyRequested,
+      qty_recommended: recommendedByProductId[product.product_link] || null,
+      nett_issued: nettIssuedByProductId[product.product_link] || 0,
       project: issueMode === "project" ? selectedProject : null
     });
   }
@@ -348,6 +370,28 @@ async function step2Next() {
   const box = document.getElementById("summary-box");
   const sourceLabel = issueMode === "spray" ? "Spray Execution" : "Projects";
   const sourceValue = issueMode === "spray" ? selectedSpray : selectedProjectNames.join(", ");
+  
+  const productItemsHtml = lines.map(l => {
+    console.log(l)
+    const isUnderIssued = l.qty_recommended && l.nett_issued < l.qty_recommended;
+    const flagStyle = isUnderIssued ? 'background-color: #fff3cd; border-left: 4px solid #ff9800;' : '';
+    const recommendedHtml = l.qty_recommended 
+      ? `<span style="font-size: 0.85rem; color: var(--secondary-text); margin-left: 2rem;">Recommended: ${parseFloat(l.qty_recommended).toFixed(2)} ${l.uom_code}${isUnderIssued ? ' ⚠️ Partial' : ''}</span>`
+      : '';
+    const nettIssuedHtml = l.nett_issued > 0 
+      ? `<span style="font-size: 0.85rem; color: var(--secondary-text); margin-left: 2rem;">Previously Issued: ${parseFloat(l.nett_issued).toFixed(2)} ${l.uom_code}</span>`
+      : '';
+    return `
+      <div class="product-item" style="${flagStyle}">
+        <div class="product-name">${l.product_desc}</div>
+        <div style="display: flex; align-items: center; margin-top: 0.25rem;">
+          <div class="product-qty">${parseFloat(l.qty_issued).toFixed(2)} ${l.uom_code}</div>
+          ${recommendedHtml}
+          ${nettIssuedHtml}
+        </div>
+      </div>
+    `;
+  }).join('');
   
   box.innerHTML = `
     <div class="summary-header">
@@ -363,12 +407,7 @@ async function step2Next() {
     <div class="summary-products">
       <h4>Products to Issue</h4>
       <div class="products-list">
-        ${lines.map(l => `
-          <div class="product-item">
-            <div class="product-name">${l.product_desc}</div>
-            <div class="product-qty">${parseFloat(l.qty_issued).toFixed(2)} ${l.uom_code}</div>
-          </div>
-        `).join('')}
+        ${productItemsHtml}
       </div>
     </div>
   `;

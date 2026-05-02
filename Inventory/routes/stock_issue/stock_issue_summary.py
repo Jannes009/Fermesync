@@ -66,12 +66,37 @@ def incomplete_issue_lines(header_id):
         print(f"Fetching issue lines for header_id: {header_id}")
         cursor = conn.cursor()
         cursor.execute("""  
-        Select IdIssue, IssLineStockLink, STK.StockDescription, LIN.IssLineQtyIssued
-        ,LIN.IssLineUoMId, UOM.cUnitCode
+        Select 
+            IdIssue
+            ,HEA.IssSprayExecutionId
+            ,IssLineStockLink
+            , STK.StockDescription
+            ,REC.RecQty
+            , LIN.IssLineQtyIssued
+            ,ISNULL(LIN.IssLineQtyReceived,0) IssLineQtyReceived
+            ,ExecutionNettIssued
+            ,LIN.IssLineUoMId, UOM.cUnitCode
         from stk.IssueHeader HEA
         JOIN stk.IssueLines LIN on LIN.IssLineIssueId = HEA.IdIssue
         JOIN cmn._uvStockItems STK on STK.StockLink = LIN.IssLineStockLink
         JOIN cmn._uvUOM UOM on UOM.idUnits = LIN.IssLineUoMId
+        LEFT JOIN (
+            Select StockId,SprayHExecutionId,SUM(TotalQty) RecQty 
+            from [agr].[_uvSprayStockRequirements]
+            GROUP BY StockId,SprayHExecutionId
+            )REC on REC.StockId = LIN.IssLineStockLink and HEA.IssSprayExecutionId = REC.SprayHExecutionId
+
+        LEFT JOIN(
+                Select 
+                    HEA.IssSprayExecutionId QTYIssSprayExecutionId
+                    ,IssLineStockLink QTYIssLineStockLink
+                    ,SUM( LIN.IssLineQtyIssued-ISNULL(LIN.IssLineQtyReceived,0)) ExecutionNettIssued
+                from stk.IssueHeader HEA
+                JOIN stk.IssueLines LIN on LIN.IssLineIssueId = HEA.IdIssue
+                GROUP BY 
+                    HEA.IssSprayExecutionId
+                    ,IssLineStockLink
+                )QTY on QTY.QTYIssSprayExecutionId = HEA.IssSprayExecutionId and QTY.QTYIssLineStockLink = LIN.IssLineStockLink
         Where HEA.IdIssue = ?
         """, (header_id,))
 
@@ -82,7 +107,9 @@ def incomplete_issue_lines(header_id):
             "product_desc": r.StockDescription,
             "uom_id": r.IssLineUoMId,
             "uom_code": r.cUnitCode,
-            "qty_issued": r.IssLineQtyIssued
+            "qty_issued": r.IssLineQtyIssued,
+            "qty_recommended": float(r.RecQty) if r.RecQty is not None else None,
+            "nett_issued": float(r.ExecutionNettIssued) if r.ExecutionNettIssued is not None else None,
         } for r in rows]
     except Exception as e:
         print("fetch_products_for_return error:", e)
@@ -127,6 +154,10 @@ def submit_stock_issue(issue_id, cursor):
             Group by IssLineStockLink, IssLinProjProjectId, IssLineQtyFinalised
             """, (issue_id,))
             lines = cursor.fetchall()
+
+            total_finalised_qty = sum(float(line.IssLineQtyFinalised or 0) for line in lines)
+            if total_finalised_qty <= 0:
+                return None
 
             for line in lines:
                 total_qty = float(line.IssLineQtyFinalised or 0)
@@ -257,18 +288,19 @@ def process_return():
         # =====================================
         order_number = submit_stock_issue(issue_id, cursor)
 
-        cursor.execute("""
-            UPDATE stk.IssueHeader
-            SET IssInvoiceNo = ?
-            WHERE IdIssue = ?
-        """, (order_number, issue_id))
+        if order_number:
+            cursor.execute("""
+                UPDATE stk.IssueHeader
+                SET IssInvoiceNo = ?
+                WHERE IdIssue = ?
+            """, (order_number, issue_id))
 
         conn.commit()
 
         emit_event(
             event_code="STOCK_ISSUE",
             entity_id=issue_id,
-            entity_desc=order_number,
+            entity_desc=order_number or 'NOT SENT TO EVO',
         )
 
         return jsonify({

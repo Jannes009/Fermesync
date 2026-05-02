@@ -33,10 +33,21 @@ def fetch_spray_products():
         conn = create_db_connection()
         cursor = conn.cursor()
         cursor.execute("""
-        Select WhseId, StockId, SUM(TotalQty) as TotalQty, QtyAvailable, UoMId
-        from [agr].[_uvSprayStockRequirements]
-        Where SprayHExecutionId = ?
-        Group by WhseId, StockId, QtyAvailable, UoMId
+            Select WhseId, StockId, SUM(TotalQty) as TotalQty, QtyAvailable, UoMId, ISNULL(ExecutionNettIssued, 0) ExecutionNettIssued
+            from [agr].[_uvSprayStockRequirements] REQ
+            LEFT JOIN(
+                    Select 
+                        HEA.IssSprayExecutionId QTYIssSprayExecutionId
+                        ,IssLineStockLink QTYIssLineStockLink
+                        ,SUM( LIN.IssLineQtyIssued-ISNULL(LIN.IssLineQtyReceived,0)) ExecutionNettIssued
+                    from stk.IssueHeader HEA
+                    JOIN stk.IssueLines LIN on LIN.IssLineIssueId = HEA.IdIssue
+                    GROUP BY 
+                        HEA.IssSprayExecutionId
+                        ,IssLineStockLink
+                    )QTY on QTY.QTYIssSprayExecutionId = REQ.SprayHExecutionId and QTY.QTYIssLineStockLink = REQ.StockId
+            Where SprayHExecutionId = ?
+            Group by WhseId, StockId, QtyAvailable, UoMId, ExecutionNettIssued
         """, (execution_id,))
         rows = cursor.fetchall()
 
@@ -49,7 +60,8 @@ def fetch_spray_products():
                 "total_qty": row.TotalQty,
                 "qty_available": row.QtyAvailable,
                 "warehouse_id": row.WhseId,
-                "uom_id": row.UoMId
+                "uom_id": row.UoMId,
+                "execution_nett_issued": row.ExecutionNettIssued
             })
         return jsonify({"spray_products": products_list})
     except Exception as e:
