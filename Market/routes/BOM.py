@@ -54,7 +54,7 @@ def create_bom():
     try:
         conn = create_db_connection()
         cursor = conn.cursor()
-        cursor.execute("EXEC SIGCreateBOM")
+        cursor.execute("EXEC mkt.SIGCreateBOM")
         drain_resultsets(cursor)  # drain all result sets
         conn.commit()
         return jsonify({'success': True, 'message': 'BOM created successfully.'})

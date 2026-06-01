@@ -107,7 +107,7 @@ def get_connected_services(user_id):
     try:
         cursor.execute("""
             SELECT ServiceType
-            FROM users.ConnectedService
+            FROM mkt.ConnectedService
             WHERE UserId = ?
         """, (user_id,))
         rows = cursor.fetchall()

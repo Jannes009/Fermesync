@@ -1,7 +1,8 @@
 from flask import render_template, request, jsonify, Blueprint
 from flask_login import login_required, current_user
 from werkzeug.security import check_password_hash
-from Core.db_manager import ( get_user_by_id, get_services_for_user,)
+from Core.db_manager import get_user_by_id
+from Market.routes.Import.user_services import get_services_for_user
 from Core.auth import create_db_connection, close_db_connection
 from Core.key_manager import encrypt_password, decrypt_password
 
@@ -50,7 +51,7 @@ def add_service():
         conn = create_db_connection()
         cursor = conn.cursor()
         cursor.execute("""
-            INSERT INTO users.connectedServices (UserId, ServiceType, Username, EncryptedPassword)
+            INSERT INTO mkt.connectedServices (UserId, ServiceType, Username, EncryptedPassword)
             VALUES (?, ?, ?, ?)
         """, (current_user.id, service_type, username, encrypted))
         conn.commit()
@@ -72,7 +73,7 @@ def remove_service():
     cursor = conn.cursor()
     try:
         cursor.execute("""
-            DELETE FROM users.connectedServices
+            DELETE FROM mkt.connectedServices
             WHERE Id = ? AND UserId = ?
         """, (service_id, current_user.id))
         deleted = cursor.rowcount

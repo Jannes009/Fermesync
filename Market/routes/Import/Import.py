@@ -5,7 +5,7 @@ from Market.routes.Import.freshlinq import Freshlinq
 from Market.routes.Import.technofresh import Technofresh
 from flask_login import current_user
 from Market.routes import market_bp
-from Core.db_manager import get_services_for_user
+from Market.routes.Import.user_services import get_services_for_user
 from Core.auth import create_db_connection, close_db_connection
 
 @market_bp.route('/import/main', methods=['GET'])
@@ -32,7 +32,14 @@ def get_import_results():
     cursor = conn.cursor()
 
     # Fetch data from _uvMarketTrnConsignments
-    cursor.execute("SELECT * FROM [mkt]._uvMarketTrnConsignments")
+    cursor.execute("""
+    SELECT LINConsignmentIDExist, HEADelNoteNoExist, DelNoteNo, 
+    ConsignmentID, Agent, Product, 
+    Variety, Size, Class, Mass_kg,
+    Brand, QtySent, TotalSalesValue,
+    TotalQtySold,
+    AveragePrice FROM [mkt]._uvMarketTrnConsignments
+    """)
     rows = cursor.fetchall()
 
     # Get column names
@@ -40,7 +47,7 @@ def get_import_results():
 
     # Process data into [mkt].list of dictionaries
     results = [dict(zip(column_names, row)) for row in rows]
-
+    print(results)
     # Close connections
     cursor.close()
     conn.close()

@@ -60,7 +60,6 @@ def delivery_note(del_note_no):
 
 @market_bp.route('/api/fetch_delivery_note_lines/<del_note_no>')
 def fetch_delivery_note_lines(del_note_no):
-    print("DelNoteNo", del_note_no)
     conn = create_db_connection()
     cursor = conn.cursor()
     cursor.execute("""
@@ -199,8 +198,7 @@ def submit_sales_entry():
                         price, stockId, 0, discount, 
                         discountAmnt, gross_amount,
                         market_commission, agent_commission, net_sales, destroyed,))
-            cursor.execute("SELECT DB_NAME()")
-            print(cursor.fetchone())
+
             cursor.execute("EXEC [mkt].[SIGUpdatePackagingCost]")
             cursor.execute("EXEC [mkt].[SIGUpdateWeightTransport]")
             cursor.execute("EXEC [mkt].[SIGUpdateDeliveryNoteLineTotals]")
@@ -384,25 +382,25 @@ def save_productuction_unit():
 
 @market_bp.route('/api/products')
 def get_products_api():
-    try:
-        conn = create_db_connection()
-        cursor = conn.cursor()
-        
-        # Get products using the existing function
-        products = get_products(cursor)
-        
-        # Convert to list of dictionaries
-        product_list = [{
-            'StockLink': p[0],
-            'display_name': p[1]
-        } for p in products]
-        
-        return jsonify(product_list)
-    except Exception as e:
-        return jsonify({'error': str(e)}), 500
-    finally:
-        cursor.close()
-        conn.close()
+
+    conn = create_db_connection()
+    cursor = conn.cursor()
+    
+    cursor.execute("""
+    SELECT StockLink, [ProductCode] + '-' + [ProductDescription] AS display_name 
+    FROM [mkt].[_uvMarketProduct]
+    ORDER BY display_name
+    """)
+    products = cursor.fetchall()
+    
+    # Convert to list of dictionaries
+    product_list = [{
+        'StockLink': p.StockLink,
+        'display_name': p.display_name
+    } for p in products]
+    
+    return jsonify(product_list)
+
 
 @market_bp.route('/api/production_units')
 def get_producttion_units_api():
@@ -469,67 +467,57 @@ def save_delivery_header(delnote_no):
     conn = create_db_connection()
     cursor = conn.cursor()
 
-    try:
-        # If the delivery note number is being changed, update [mkt].it everywhere
-        if new_delnoteno != delnote_no:
-            # Check if the new DelNoteNo already exists (prevent duplicates)
-            cursor.execute("SELECT COUNT(*) FROM [mkt].ZZDeliveryNoteHeader WHERE DelNoteNo = ?", (new_delnoteno,))
-            if cursor.fetchone()[0] > 0:
-                return jsonify({'success': False, 'message': 'A delivery note with this number already exists.'}), 400
+    # If the delivery note number is being changed, update [mkt].it everywhere
+    if new_delnoteno != delnote_no:
+        # Check if the new DelNoteNo already exists (prevent duplicates)
+        cursor.execute("SELECT COUNT(*) FROM [mkt].ZZDeliveryNoteHeader WHERE DelNoteNo = ?", (new_delnoteno,))
+        if cursor.fetchone()[0] > 0:
+            return jsonify({'success': False, 'message': 'A delivery note with this number already exists.'}), 400
 
-            # Update [mkt].the header
-            cursor.execute("""
-                UPDATE [mkt].ZZDeliveryNoteHeader
-                SET DelNoteNo = ?
-                WHERE DelNoteNo = ?
-            """, (new_delnoteno, delnote_no))
-
-        delnote_no = new_delnoteno  # For the next update
-        # Update [mkt].the rest of the fields
+        # Update [mkt].the header
         cursor.execute("""
             UPDATE [mkt].ZZDeliveryNoteHeader
-            SET DelDate = ?,
-                DeliClientId = ?,
-                DelMarketId = ?,
-                DelTransporter = ?,
-                DelQuantityBags = ?,
-                DelTransportCostExcl = ?,
-                DelDestinationId = ?
-            WHERE DelNoteNo = ? 
-        """, (
-            data['deldate'],
-            data['deliclientid'],
-            data['delmarketid'],
-            data['deltransporter'],
-            data['delquantitybags'],
-            data['deltransportcostexcl'],
-            data['destinationid'],
-            delnote_no
-        ))
-        cursor.execute("""
-        EXEC [mkt].[SIGUpdateProcessedAgentAccount]
-            @DelNoteNumber = ?,
-            @NewAgentId = ?;
-                """,(delnote_no, data['deliclientid']))
-        conn.commit()
+            SET DelNoteNo = ?
+            WHERE DelNoteNo = ?
+        """, (new_delnoteno, delnote_no))
 
-        # Edit Transport PO
-        cursor.execute("EXEC [mkt].[SIGCreateTransportPO]")
-        cursor.execute("""
-        EXEC [mkt].[SIGUpdateWeightTransport]
-        EXEC [mkt].[SIGUpdateDeliveryNoteLineTotals]
-        """)
+    delnote_no = new_delnoteno  # For the next update
+    # Update [mkt].the rest of the fields
+    cursor.execute("""
+        UPDATE [mkt].ZZDeliveryNoteHeader
+        SET DelDate = ?,
+            DeliClientId = ?,
+            DelMarketId = ?,
+            DelTransporter = ?,
+            DelQuantityBags = ?,
+            DelTransportCostExcl = ?,
+            DelDestinationId = ?
+        WHERE DelNoteNo = ? 
+    """, (
+        data['deldate'],
+        data['deliclientid'],
+        data['delmarketid'],
+        data['deltransporter'],
+        data['delquantitybags'],
+        data['deltransportcostexcl'],
+        data['destinationid'],
+        delnote_no
+    ))
+    cursor.execute("""
+    EXEC [mkt].[SIGUpdateProcessedAgentAccount]
+        @DelNoteNumber = ?,
+        @NewAgentId = ?;
+            """,(delnote_no, data['deliclientid']))
+    conn.commit()
 
-        conn.commit()
-        return jsonify({'success': True})
-    except Exception as e:
-        if 'conn' in locals():
-            conn.rollback()
-        return jsonify({'success': False, 'message': str(e)}), 500
-    finally:
-        if 'conn' in locals():
-            cursor.close()
-            conn.close()
+    # Edit Transport PO
+    cursor.execute("EXEC [mkt].[SIGCreateTransportPO]")
+    cursor.execute("EXEC [mkt].[SIGUpdateWeightTransport]")
+    cursor.execute("EXEC [mkt].[SIGUpdateDeliveryNoteLineTotals]")
+
+    conn.commit()
+    conn.close()
+    return jsonify({'success': True})
 
 @market_bp.route('/api/agents')
 def get_agents():

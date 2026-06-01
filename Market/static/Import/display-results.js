@@ -32,7 +32,6 @@ function fetchImportedData() {
         .then(response => response.json())
         .then(data => {
             importedData = data; // Store the data for filtering
-            console.log(importedData)
             displayTable(data);  // Show all data initially
             updateFilterButtonCounts()
             filterTable("matched");
@@ -42,7 +41,6 @@ function fetchImportedData() {
             console.error("Error fetching imported data:", error);
             tbody.innerHTML = `<tr><td colspan="10">Error loading data. Please try again.</td></tr>`;
         });
-    console.log(importedData)
 }
 
 function displayTable(data) {
@@ -58,47 +56,47 @@ function displayTable(data) {
         let tr = document.createElement("tr");
 
         // Make Delivery Note No clickable for matched and linked rows
-        let isMatched = row.linconsignmentidexist === 0 && row.headelnotenoexist === 1;
-        let isLinked = row.linconsignmentidexist === 1;
+        let isMatched = row.LINConsignmentIDExist === 0 && row.HEADelNoteNoExist === 1;
+        let isLinked = row.LINConsignmentIDExist === 1;
         let delNoteNoCell = '-';
-        if (row.delnoteno) {
+        if (row.DelNoteNo) {
             if (isMatched || isLinked) {
-                delNoteNoCell = `<a href="/market/delivery-note/${row.delnoteno}" target="_blank" style="color:#2563eb;text-decoration:underline;">${row.delnoteno}</a>`;
+                delNoteNoCell = `<a href="/market/delivery-note/${row.DelNoteNo}" target="_blank" style="color:#2563eb;text-decoration:underline;">${row.DelNoteNo}</a>`;
             } else {
-                delNoteNoCell = `<span class="supplier-ref-text">${row.delnoteno}</span>`;
+                delNoteNoCell = `<span class="supplier-ref-text">${row.DelNoteNo}</span>`;
             }
         }
 ;
         let detailsButton = ``
         let deleteButton = ``
         // Only show the edit button in No Match mode, show delete button in no match mode
-        if (row.linconsignmentidexist !== 1 && row.headelnotenoexist === 0) {
+        if (row.LINConsignmentIDExist !== 1 && row.HEADelNoteNoExist === 0) {
             delNoteNoCell += `
                 <button class="btn btn-sm btn-warning edit-supplier-ref" 
-                    data-consignment="${row.consignmentid}" 
-                    data-supplier-ref="${row.delnoteno || ""}">
+                    data-consignment="${row.ConsignmentID}" 
+                    data-supplier-ref="${row.DelNoteNo || ""}">
                     Edit
                 </button>
             `;
             deleteButton += `
             <td>
-                <button class="btn btn-sm discard-consignment-btn" data-consignment="${row.consignmentid}" title="Discard">
+                <button class="btn btn-sm discard-consignment-btn" data-consignment="${row.ConsignmentID}" title="Discard">
                     <img src="/market/static/Image/recycle-bin.png" alt="Discard" style="width:18px;height:18px;vertical-align:middle;" />
                 </button>
-            <td>
+            </td>
             `;
         }
 
         // Only show the confirm button in Matched mode, show delete button in matched mode
-        if (row.linconsignmentidexist !== 1 && row.headelnotenoexist === 1) {
+        if (row.LINConsignmentIDExist !== 1 && row.HEADelNoteNoExist === 1) {
             detailsButton += `
             <td>
-                <button class="btn btn-sm btn-primary view-details-btn" data-consignment="${row.consignmentid}">Confirm</button>
-            <td>
+                <button class="btn btn-sm btn-primary view-details-btn" data-consignment="${row.ConsignmentID}">Confirm</button>
+            </td>
             `;
             deleteButton += `
             <td>
-                <button class="btn btn-sm discard-consignment-btn" data-consignment="${row.consignmentid}" title="Discard">
+                <button class="btn btn-sm discard-consignment-btn" data-consignment="${row.ConsignmentID}" title="Discard">
                     <img src="/market/static/Image/recycle-bin.png" alt="Discard" style="width:18px;height:18px;vertical-align:middle;" />
                 </button>
             </td>
@@ -106,20 +104,19 @@ function displayTable(data) {
         }
 
         tr.innerHTML = `
-            <td><button class="btn expand-btn" data-consignment="${row.consignmentid}">▶</button></td>
-            <td>${row.agent || '-'}</td>
+            <td><button class="btn expand-btn" data-consignment="${row.ConsignmentID}">▶</button></td>
+            <td>${row.Agent || '-'}</td>
             <td>${delNoteNoCell}</td>
-            <td>${row.product || '-'}</td>
-            <td>${row.class || '-'}</td>
-            <td>${row.size || '-'}</td>
-            <td>${row.variety || '-'}</td>
-            <td>${row.brand || '-'}</td>
-            <td>${row.qtysent || '-'}</td>
-            <td>${formatCurrency(row.averageprice)}</td>
+            <td>${row.Product || '-'}</td>
+            <td>${row.Class || '-'}</td>
+            <td>${row.Size || '-'}</td>
+            <td>${row.Variety || '-'}</td>
+            <td>${row.Brand || '-'}</td>
+            <td>${row.QtySent || '-'}</td>
+            <td>${formatCurrency(row.AveragePrice || 0)}</td>
             ${detailsButton}
             ${deleteButton}
         `;
-        console.log(tr.innerHTML)
         tbody.appendChild(tr);
 
         // Add event listeners for buttons within this row
@@ -507,11 +504,11 @@ function filterTable(type) {
     let filteredData = [];
 
     if (type === "linked") {
-        filteredData = importedData.filter(row => row.linconsignmentidexist === 1);
+        filteredData = importedData.filter(row => row.LINConsignmentIDExist === 1);
     } else if (type === "matched") {
-        filteredData = importedData.filter(row => row.linconsignmentidexist === 0 && row.headelnotenoexist === 1);
+        filteredData = importedData.filter(row => row.LINConsignmentIDExist === 0 && row.HEADelNoteNoExist === 1);
     } else if (type === "nomatch") {
-        filteredData = importedData.filter(row => row.linconsignmentidexist === 0 && row.headelnotenoexist === 0);
+        filteredData = importedData.filter(row => row.LINConsignmentIDExist === 0 && row.HEADelNoteNoExist === 0);
     }
 
     // Apply search filtering if needed
@@ -534,14 +531,14 @@ function updateFilterButtonCounts() {
     if (currentSearchValue) {
         const search = currentSearchValue.toLowerCase();
         filtered = importedData.filter(row => {
-            const ref = (row.delnoteno || "").toString().toLowerCase();
+            const ref = (row.DelNoteNo || "").toString().toLowerCase();
             return ref.includes(search);
         });
     }
 
-    const matchedCount = filtered.filter(row => row.linconsignmentidexist === 0 && row.headelnotenoexist === 1).length;
-    const linkedCount = filtered.filter(row => row.linconsignmentidexist === 1).length;
-    const noMatchCount = filtered.filter(row => row.linconsignmentidexist === 0 && row.headelnotenoexist === 0).length;
+    const matchedCount = filtered.filter(row => row.LINConsignmentIDExist === 0 && row.HEADelNoteNoExist === 1).length;
+    const linkedCount = filtered.filter(row => row.LINConsignmentIDExist === 1).length;
+    const noMatchCount = filtered.filter(row => row.LINConsignmentIDExist === 0 && row.HEADelNoteNoExist === 0).length;
 
     document.getElementById("matchedBtn").textContent = `Matched (${matchedCount})`;
     document.getElementById("linkedBtn").textContent = `Linked (${linkedCount})`;

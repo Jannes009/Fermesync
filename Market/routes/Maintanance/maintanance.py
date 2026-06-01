@@ -247,10 +247,15 @@ def get_agents_full():
 def get_production_units():
     conn = create_db_connection()
     cursor = conn.cursor()
-    units = get_production_unit_codes(cursor)
+    cursor.execute("""
+    SELECT ProjectLink, [ProdUnitCode] + '-' + [ProdUnitName] AS display_name
+    FROM [mkt].[_uvMarketProdUnit]
+    ORDER BY display_name
+    """)
+    units = cursor.fetchall()
     close_db_connection(cursor, conn)
     result = [
-        {"Code": row[0], "Name": row[1]} for row in units
+        {"Code": row.ProjectLink, "Name": row.display_name} for row in units
     ]
     return jsonify(result)
 
@@ -259,10 +264,14 @@ def get_production_units():
 def get_packhouses():
     conn = create_db_connection()
     cursor = conn.cursor()
-    packhouses = get_market_codes(cursor)
+    cursor.execute("""
+    SELECT WhseLink, [MarketCode] + '-' + [MarketName] AS display_name FROM [mkt].[_uvMarkets]
+    ORDER BY display_name
+    """)
+    packhouses = cursor.fetchall()
     close_db_connection(cursor, conn)
     result = [
-        {"Code": row[0], "Name": row[1]} for row in packhouses
+        {"Code": row.WhseLink, "Name": row.display_name} for row in packhouses
     ]
     return jsonify(result)
 
@@ -294,7 +303,7 @@ def update_agent_maintenance():
     try:
         conn = create_db_connection()
         cursor = conn.cursor()
-        cursor.execute("EXEC SIGUpdateClient @DCLink = ?, @AgentComm = ?, @MarketComm = ?, @DiscountPercent = ?", (dclink, agent_comm, market_comm, discount))
+        cursor.execute("EXEC mkt.SIGUpdateClient @DCLink = ?, @AgentComm = ?, @MarketComm = ?, @DiscountPercent = ?", (dclink, agent_comm, market_comm, discount))
         conn.commit()
         close_db_connection(cursor, conn)
         return jsonify(success=True, message="Agent updated successfully")

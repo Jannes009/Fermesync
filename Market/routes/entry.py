@@ -123,6 +123,7 @@ def create_entry():
             connection.commit()
 
             del_note_no = form_data['ZZDelNoteNo']
+            print(del_note_no)
 
             # --------------------------
             # Close main connection
@@ -134,11 +135,11 @@ def create_entry():
             # --------------------------
             threading.Thread(
                 target=run_background_procedures, 
-                args=(del_note_no)
+                args=(del_note_no,)
             ).start()
 
             session['del_note_no'] = del_note_no
-            return redirect(url_for('submission_success'))
+            return redirect(url_for('market.submission_success'))
 
         except odbc.IntegrityError as e:
             error_data = integrity_error(e, request.form)
@@ -167,7 +168,6 @@ def create_entry():
 
     # Close connection after dropdowns are fetched
     close_db_connection(cursor, connection)
-    print(dropdown_options)
     return render_template(
         'Bill Of Lading page/create_entry.html',
         error_message=error_message,
@@ -186,7 +186,7 @@ def run_background_procedures(del_note_no):
         cursor = conn.cursor()
         print(f"Running stored procedures for DelNoteNo {del_note_no}...")
 
-        cursor.execute("EXEC [mkt].IGCreateTransportPO")
+        cursor.execute("EXEC [mkt].SIGCreateTransportPO")
         cursor.execute("EXEC [mkt].SIGUpdateDelQuantities")
         cursor.execute("EXEC [mkt].SIGUpdateWeightTransport")
         cursor.execute("EXEC [mkt].[SIGUpdatePackagingCost]")

@@ -677,7 +677,7 @@ window.editDeliveryHeader = function(delnoteNo) {
                             .then(data => {
                                 if (data.success) {
                                     const newNo = values.delnoteno;
-                                    if (newNo && newNo !== dn) window.location.href = `/delivery-note/${encodeURIComponent(newNo)}`;
+                                    if (newNo && newNo !== dn) window.location.href = `/market/delivery-note/${encodeURIComponent(newNo)}`;
                                     else window.location.reload();
                                 } else throw new Error(data.message || 'Failed to update delivery note header');
                             })
@@ -830,8 +830,16 @@ window.addDeliveryLine = function() {
 
     // Fetch products for dropdown
     fetch('/market/api/products')
-        .then(response => response.json())
+        .then(response => {
+            if (!response.ok) {
+                throw new Error('Server error: ' + response.status);
+            }
+            return response.json();
+        })
         .then(products => {
+            if (products.error) {
+                throw new Error(products.error);
+            }
             // Find the delivery lines table body
             const table = document.querySelector('.delivery-table table');
             if (!table) return;
@@ -878,6 +886,9 @@ window.addDeliveryLine = function() {
                 dropdownParent: $(newRow),
                 matcher: productMatcher
             });
+        })
+        .catch(error => {
+            Swal.fire('Error', 'Failed to load products: ' + error.message, 'error');
         });
 };
 

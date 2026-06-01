@@ -357,9 +357,9 @@ window.editRow = function(delnoteNo, idx, btn) {
   row.dataset.originalDiscountHtml = discountCell.innerHTML;
   row.dataset.originalSalesAmountHtml = salesAmountCell.innerHTML;
 
-  const price = parseFloat(priceCell.innerText.replace('R', '').replace(/,/g, ''));
-  const qty = parseFloat(qtyCell.innerText.replace(/,/g, ''));
-  const discountPercent = parseFloat(discountCell.innerText.replace('%', '').replace(/,/g, '')) || 0;
+  const price = parseFloat(priceCell.innerText.replace('R', '').replace(/\s/g, '').replace(',', '.'));
+  const qty = parseFloat(qtyCell.innerText.replace(/\s/g, '').replace(',', '.'));
+  const discountPercent = parseFloat(discountCell.innerText.replace('%', '').replace(/\s/g, '').replace(',', '.')) || 0;
   
   priceCell.innerHTML = `<input type="number" step="0.01" value="${price}" class="form-control">`;
   qtyCell.innerHTML = `<input type="number" step="1" value="${qty}" class="form-control">`;

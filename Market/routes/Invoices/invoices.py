@@ -231,7 +231,7 @@ def get_tax_rate():
         cursor = conn.cursor()
 
         print(date_str)
-        cursor.execute("EXEC SIGGetTaxRateByDate @InputDate = ?", [date_str])
+        cursor.execute("EXEC mtk.SIGGetTaxRateByDate @InputDate = ?", [date_str])
         result = cursor.fetchone()
 
         if result:

@@ -1,4 +1,4 @@
-﻿
+
 import datetime
 import tempfile
 import pandas as pd
@@ -96,7 +96,7 @@ def download_freshlinq_report(username, password, report_date, status):
             page.fill("#Input_Password", password)
             page.click("button[name='selectedAction'][value='login']")
 
-            page.wait_for_load_state("domcontentloaded")
+            page.wait_for_load_state("networkidle")
 
             if "login" in page.url.lower():
                 yield from status("ERROR: Login failed.")
@@ -107,7 +107,7 @@ def download_freshlinq_report(username, password, report_date, status):
             # LOAD REPORT
             yield from status("Navigating to report...")
             page.goto(report_url)
-            page.wait_for_load_state("domcontentloaded")
+            page.wait_for_load_state("networkidle")
             yield from status("Report page loaded.")
 
             # WAIT FOR REPORT TO FINISH
@@ -320,11 +320,11 @@ def insert_into_database(data, current_user):
     cursor = conn.cursor()
 
     try:
-        cursor.execute("TRUNCATE TABLE mkt.ZZFreshLinqImport")
+        cursor.execute("TRUNCATE TABLE ZZFreshLinqImport")
         yield "data:  ↳ Table ZZFreshLinqImport truncated.\n\n"
 
         sql = """ 
-        INSERT INTO mkt.ZZFreshLinqImport ( 
+        INSERT INTO ZZFreshLinqImport ( 
         lot_no, brand, 
         commodity, 
         delivery_note_no, 
@@ -413,7 +413,7 @@ def insert_into_database(data, current_user):
                 value ))
 
         conn.commit()
-        cursor.execute("EXEC mkt.SIGCopyImprtFreshlinqTrn")
+        cursor.execute("EXEC SIGCopyImprtFreshlinqTrn")
         conn.commit()
 
     finally:

@@ -4,7 +4,7 @@ import pandas as pd
 import os
 from playwright.sync_api import sync_playwright
 import tempfile
-from Core.db_manager import get_service_details
+from Market.routes.Import.user_services import get_service_details
 
 def Technofresh(current_user, start_date, end_date):
     def status(message):
@@ -115,7 +115,7 @@ def insert_data(file, current_user):
             """, tuple(row_data.values()))
 
         cursor.execute("Exec [mkt].[SIGCopyImprtTrn]")
-        cursor.execute("EXEC SIGCreateSalesFromTrn")
+        cursor.execute("EXEC mkt.SIGCreateSalesFromTrn")
 
         conn.commit()
         return count

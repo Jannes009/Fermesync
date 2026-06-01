@@ -71,13 +71,14 @@
                 <input type="text" id="searchInput" placeholder="Search Delivery Note No..." />
             </div>
             
+            <div class="filter-buttons">
+                <button id="matchedBtn">Matched</button>
+                <button id="linkedBtn">Linked</button>
+                <button id="noMatchBtn">No Match</button>
+            </div>
+            
             <table id="resultsTable">
                 <thead>
-                    <div class="filter-buttons">
-                        <button id="matchedBtn">Matched</button>
-                        <button id="linkedBtn">Linked</button>
-                        <button id="noMatchBtn">No Match</button>
-                    </div>                               
                     <tr>
                         <th></th>
                         <th>Agent</th>
@@ -97,6 +98,38 @@
                 </tbody>
             </table>
         </div>
+        
+        <script>
+            // Initialize on page load
+            document.addEventListener('DOMContentLoaded', function() {
+                fetchImportedData();
+                
+                // Set up filter button listeners
+                document.getElementById('matchedBtn').addEventListener('click', function() {
+                    currentFilterType = 'matched';
+                    this.classList.add('active');
+                    document.getElementById('linkedBtn').classList.remove('active');
+                    document.getElementById('noMatchBtn').classList.remove('active');
+                    filterTable('matched');
+                });
+                
+                document.getElementById('linkedBtn').addEventListener('click', function() {
+                    currentFilterType = 'linked';
+                    this.classList.add('active');
+                    document.getElementById('matchedBtn').classList.remove('active');
+                    document.getElementById('noMatchBtn').classList.remove('active');
+                    filterTable('linked');
+                });
+                
+                document.getElementById('noMatchBtn').addEventListener('click', function() {
+                    currentFilterType = 'nomatch';
+                    this.classList.add('active');
+                    document.getElementById('matchedBtn').classList.remove('active');
+                    document.getElementById('linkedBtn').classList.remove('active');
+                    filterTable('nomatch');
+                });
+            });
+        </script>
     </div>
 
     <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
