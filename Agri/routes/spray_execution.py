@@ -22,6 +22,60 @@ def format_datetime(value):
     return str(value)
 
 
+@agri_bp.route("/spray-executions-summary", methods=["GET"])
+@login_required
+def spray_executions_summary():
+    conn = create_db_connection()
+    cur = conn.cursor()
+
+    cur.execute("""
+    SELECT
+        EXE.IdSprExec,
+        EXE.SprExecDate,
+        EXE.SprExecFinalised,
+        EXE.SprExecFinalisedTimeStamp,
+        PPL.PersonName,
+        HEA.IdSprayH,
+        HEA.SprayHNo,
+        HEA.SprayHDescription,
+        HEA.SprayHWeek,
+        HEA.SprayHStatus,
+        HEA.SprayHStartDateTime,
+        HEA.SprayHEndDateTime
+    FROM agr.SprayExecution EXE
+    LEFT JOIN agr.People PPL ON PPL.IdPerson = EXE.SprExecResponsiblePerson
+    LEFT JOIN agr.SprayHeader HEA ON HEA.SprayHExecutionId = EXE.IdSprExec
+    ORDER BY EXE.SprExecDate DESC, EXE.IdSprExec DESC
+    """)
+
+    executions = {}
+    for row in cur.fetchall():
+        exec_id = row.IdSprExec
+        if exec_id not in executions:
+            executions[exec_id] = {
+                "id": exec_id,
+                "date": format_datetime(row.SprExecDate),
+                "responsible_person": row.PersonName,
+                "finalised": bool(row.SprExecFinalised),
+                "finalised_timestamp": format_datetime(row.SprExecFinalisedTimeStamp),
+                "recommendations": []
+            }
+        if row.IdSprayH:
+            executions[exec_id]["recommendations"].append({
+                "id": row.IdSprayH,
+                "spray_no": row.SprayHNo,
+                "description": row.SprayHDescription,
+                "week_number": row.SprayHWeek,
+                "status": row.SprayHStatus,
+                "start_date_time": format_datetime(row.SprayHStartDateTime),
+                "end_date_time": format_datetime(row.SprayHEndDateTime)
+            })
+
+    conn.close()
+    return render_template("spray_execution_summary.html",
+                           executions=list(executions.values()))
+
+
 @agri_bp.route("/execution/<int:execution_id>", methods=["GET"])
 @login_required
 def view_execution(execution_id):
@@ -103,7 +157,7 @@ def view_execution(execution_id):
     cur.execute("""
     SELECT 
         QTY.IdIssue,
-        QTY.IssLineStockLink,
+        REC.SprayLineStkId,
         QTY.IssTimeStamp,
         QTY.IssFinalisedTimeStamp,
         QTY.QtyOut,
@@ -111,7 +165,8 @@ def view_execution(execution_id):
         QTY.FinalisedNett,
         QTY.UnFinalisedOut,
         UOM.cUnitCode,
-        STK.StockDescription,
+        EVOSTK.StockDescription,
+		ACT.ChemActIngredient,
         REC.RecommendedQty
     --Select *
     FROM 
@@ -121,6 +176,7 @@ def view_execution(execution_id):
             LIN.SprayLineStkId,
             LIN.SprayLineUoMId,
             SUM(LIN.SprayLineTotalQty) AS RecommendedQty
+
         FROM agr.SprayExecution EXE
         JOIN agr.SprayHeader HEA 
             ON HEA.SprayHExecutionId = EXE.IdSprExec
@@ -128,11 +184,10 @@ def view_execution(execution_id):
             ON LIN.SprayLineHeaderId = HEA.IdSprayH
         GROUP BY EXE.IdSprExec, LIN.SprayLineStkId, LIN.SprayLineUoMId
     ) REC
-    LEFT JOIN stk._uvIssueQuantities QTY
-        ON REC.IdSprExec = QTY.IssSprayExecutionId
-    AND REC.SprayLineStkId = QTY.IssLineStockLink
-    JOIN cmn._uvStockItems STK 
-        ON STK.StockLink = REC.SprayLineStkId
+    LEFT JOIN stk._uvIssueQuantities QTY  ON REC.IdSprExec = QTY.IssSprayExecutionId AND REC.SprayLineStkId = QTY.IssLineStockLink
+	JOIN cmn._uvStockItems EVOSTK on EVOSTK.StockLink = REC.SprayLineStkId
+    JOIN agr.ChemStock STK ON STK.ChemStockLink = REC.SprayLineStkId
+	JOIN agr.ChemActiveIngredient ACT on ACT.IdChemAct = STK.ChemStockActiveIngrId
     JOIN cmn._uvUOM UOM 
         ON UOM.idUnits = REC.SprayLineUoMId
     WHERE REC.IdSprExec = ?
@@ -141,12 +196,13 @@ def view_execution(execution_id):
     stock_dict = {}
 
     for row in cur.fetchall():
-        stock_key = row.IssLineStockLink   # safer than description
+        stock_key = row.SprayLineStkId   # safer than description
 
         if stock_key not in stock_dict:
             stock_dict[stock_key] = {
                 "stock_link": stock_key,
                 "stock_description": row.StockDescription,
+                "active_ingredient": row.ChemActIngredient,
                 "unit_code": row.cUnitCode,
                 "qty_recommended": row.RecommendedQty or 0,
                 "qty_recommended_display": format_decimal(row.RecommendedQty),
@@ -316,7 +372,7 @@ def finalize_execution(execution_id):
         
         cur.execute("""
             UPDATE agr.SprayExecution 
-            SET SprExecFinalised = 1 
+            SET SprExecFinalised = 1, SprExecFinalisedTimeStamp = GETDATE()
             WHERE IdSprExec = ?
         """, execution_id)
         

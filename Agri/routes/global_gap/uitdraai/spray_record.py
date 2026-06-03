@@ -50,10 +50,13 @@ def fetch_spray_record_data(instruction_id):
             HEA.SprayHMethodId,
             SM.SprayMethodName,
             SM.SprayMethodTankSize
+            , HEA.SprayHCropId, HC.CropCode AS SprayHCropCode, HC.CropGrowerCode AS SprayHCropGrowerCode
         FROM agr.SprayHeader HEA
         LEFT JOIN agr.SprayMethod SM ON SM.IdSprayMethod = HEA.SprayHMethodId
-		JOIN agr.SprayExecution EXE on EXE.IdSprExec = Hea.SprayHExecutionId
-		JOIN agr.People PEA on PEA.IdPerson = SprExecResponsiblePerson
+        JOIN agr.SprayExecution EXE on EXE.IdSprExec = HEA.SprayHExecutionId
+        JOIN agr.People PEA on PEA.IdPerson = EXE.SprExecResponsiblePerson
+
+        LEFT JOIN agr.Crop HC on HC.IdCrop = HEA.SprayHCropId
         WHERE HEA.IdSprayH = ?
     """, instruction_id)
 
@@ -70,13 +73,10 @@ def fetch_spray_record_data(instruction_id):
             sp.SprayPPlantDate,
             sp.SprayPAgriculturist,
             sp.SprayPProjectManager,
-            c.CropCode,
-            c.CropGrowerCode,
             v.VarietyCode,
             sp.SprayPBlockNo
         FROM agr.SprayProjects sp
         JOIN cmn._uvProject p ON p.ProjectLink = sp.SprayPProjectId
-        LEFT JOIN agr.Crop c ON c.IdCrop = sp.SprayPCropId
         LEFT JOIN agr.Variety v ON v.IdVariety = sp.SprayPVarietyId
         WHERE sp.SprayPSprayId = ?
     """, instruction_id)
@@ -89,8 +89,6 @@ def fetch_spray_record_data(instruction_id):
             "plant_date": row.SprayPPlantDate.date().isoformat() if isinstance(row.SprayPPlantDate, datetime) else str(row.SprayPPlantDate) if row.SprayPPlantDate else None,
             "agriculturist": row.SprayPAgriculturist,
             "project_manager": row.SprayPProjectManager,
-            "crop": row.CropCode,
-            "grower_code": row.CropGrowerCode,
             "variety": row.VarietyCode,
             "block_no": row.SprayPBlockNo
         }
@@ -99,38 +97,44 @@ def fetch_spray_record_data(instruction_id):
 
     cur.execute("""
     Select 
-        IssLinProjSprayId
-        ,StockDescription
-        
-        ,ChemStockActiveIngr
-		,ChemStockReason
-		,ChemStockWitholdingPeriod
-		,CLr.ChemColCode
-        ,IssLineStockLink
-        ,Sum(LIN.SprayLineTotalQty) QtyRecommended
-        ,SUM(IssLinProjWeight*IssLineQtyFinalised) Finalised,
-        cUnitCode
-        --Select *
+    IssLinProjSprayId
+    ,StockDescription      
+    ,ACT.ChemActIngredient
+    ,LIN.SprayLineFunction
+    ,Lin.SprayLineWitholdingPeriod
+    ,CLr.ChemColCode
+    ,IssLineStockLink
+    ,Sum(LIN.SprayLineTotalQty) QtyRecommended
+    ,ProjectQty Finalised,
+    cUnitCode
+    --Select *
     from [agr].[SprayHeader] HEA
-	JOIN [agr].[SprayLines] LIN on LIN.SprayLineHeaderId = HEA.IdSprayH
-	LEFT JOIN stk.IssueLineProjects WT on Wt.IssLinProjSprayId = HEA.IdSprayH
-    LEFT JOIN  stk.IssueLines ISSLIN on ISSLIN.IdIssLine = WT.IssLinProjLineId
+    JOIN [agr].[SprayLines] LIN on LIN.SprayLineHeaderId = HEA.IdSprayH
+    LEFT JOIN (
+        Select 
+        IssLinProjSprayId, IssLineStockLink--, IssLineQtyFinalised,IssLinProjWeight
+        ,SUM(IssLineQtyFinalised*IssLinProjWeight) ProjectQty
+        from  stk.IssueLineProjects WT 
+        JOIN stk.IssueLines ISSLIN on ISSLIN.IdIssLine = WT.IssLinProjLineId
+        GROUP BY IssLinProjSprayId, IssLineStockLink
+	)ISSQTY on ISSQTY.IssLinProjSprayId = HEA.IdSprayH and ISSQTY.IssLineStockLink = LIN.SprayLineStkId
     JOIN cmn._uvStockItems EVOSTK ON EVOSTK.StockLink = LIN.SprayLineStkId
-    LEFT JOIN agr.ChemStock STK ON STK.IdChemStock = LIN.SprayLineStkId
-	LEFT JOIN [agr].[ChemColour] CLR on CLR.IdChemCol = STK.ChemStockColourCodeId
-    LEFT JOIN cmn._uvUOM UOM ON UOM.idUnits = ISSLIN.IssLineUoMId
-    WHERE WT.IssLinProjSprayId = ?
-    GROUP BY IssLinProjSprayId	,IssLineStockLink ,StockDescription,
-    ChemStockActiveIngr, cUnitCode ,ChemStockReason
-	,ChemStockWitholdingPeriod ,CLr.ChemColCode
+    LEFT JOIN agr.ChemStock STK ON STK.ChemStockLink = LIN.SprayLineStkId
+    LEFT JOIN agr.ChemActiveIngredient ACT on ACT.IdChemAct = stk.ChemStockActiveIngrId
+    LEFT JOIN [agr].[ChemColour] CLR on CLR.IdChemCol = STK.ChemStockColourCodeId
+    LEFT JOIN cmn._uvUOM UOM ON UOM.idUnits = LIN.SprayLineUoMId
+    WHERE HEA.IdSprayH = ?
+    GROUP BY IssLinProjSprayId ,StockDescription ,ACT.ChemActIngredient
+    ,LIN.SprayLineFunction ,Lin.SprayLineWitholdingPeriod ,CLr.ChemColCode
+    ,IssLineStockLink ,cUnitCode, ProjectQty
     """, instruction_id)
 
     stock_requirements = [
         {
             "description": row.StockDescription,
-            "ingredient": row.ChemStockActiveIngr,
-            "reason": row.ChemStockReason,
-            "withholding_period": row.ChemStockWitholdingPeriod,
+            "ingredient": row.ChemActIngredient,
+            "reason": row.SprayLineFunction,
+            "withholding_period": row.SprayLineWitholdingPeriod,
             "colour_code": row.ChemColCode,
             "recommended_qty": float(row.QtyRecommended or 0),
             "finalised_qty": float(row.Finalised or 0),
@@ -156,6 +160,7 @@ def fetch_spray_record_data(instruction_id):
         "start_datetime": str(header.SprayHStartDateTime) if header.SprayHStartDateTime else None,
         "end_datetime": str(header.SprayHEndDateTime) if header.SprayHEndDateTime else None,
         "responsible_person": header.PersonName or "",
+        "crop": header.SprayHCropCode if hasattr(header, 'SprayHCropCode') else None,
         "instruction_description": header.SprayHDescription,
         "dose_basis": header.SprayLineDoseBasis,
         "method_name": header.SprayMethodName,

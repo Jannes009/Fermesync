@@ -203,7 +203,7 @@
           <table class="stock-table">
             <thead>
               <tr>
-                <th onclick="sortTable(0, this)">Code <span class="sort-indicator"></span></th>
+                <th onclick="sortTable(0, this)">Active Ingredient <span class="sort-indicator"></span></th>
                 <th onclick="sortTable(1, this)">Description <span class="sort-indicator"></span></th>
                 <th onclick="sortTable(2, this)">Category <span class="sort-indicator"></span></th>
                 <th onclick="sortTable(3, this)">Available <span class="sort-indicator"></span></th>
@@ -214,7 +214,7 @@
             <tbody>
               {% for row in warehouse_stock %}
               <tr onclick="openProductModal({{ row.StockLink }})">
-                <td><strong>{{ row.StockCode }}</strong></td>
+                <td><strong>{{ row.ActiveIngredient }}</strong></td>
                 <td>{{ row.StockDescription }}</td>
                 <td>{{ row.Category }}</td>
                 <td>{{ row.QtyOnHand }}</td>
@@ -334,37 +334,39 @@
 
         <!-- TAB: CHEMSTOCK -->
         <div id="tab-chemstock" class="modal-tab">
-          <form id="chemstockForm" onsubmit="submitChemstockForm(event)">
-            <div class="form-group">
-              <label for="activeIngr">Active Ingredient</label>
-              <input type="text" id="activeIngr" name="activeIngr" placeholder="e.g., Sulfur">
+          <!-- CHEMSTOCK HEADER -->
+          <div class="modal-section">
+            <div class="section-header">
+              <i class="fas fa-flask"></i>
+              <h3>Active Ingredient</h3>
             </div>
-            <div class="form-group">
-              <label for="regNumber">Registration Number</label>
-              <input type="text" id="regNumber" name="regNumber" placeholder="Reg #">
+            <div class="section-content">
+              <p id="chemstockActiveIngr" style="font-size: 1.1rem; font-weight: 600; color: var(--primary-text, #1f2937);"></p>
+              <p id="chemstockColourCode" style="font-size: 0.9rem; color: var(--secondary-text, #6b7280);"></p>
             </div>
-            <div class="form-group">
-              <label for="colourCodeId">Colour Code ID</label>
-              <input type="number" id="colourCodeId" name="colourCodeId">
+          </div>
+
+          <!-- CROPS TABLE -->
+          <div class="modal-section">
+            <div class="section-header">
+              <i class="fas fa-leaf"></i>
+              <h3>Linked Crops</h3>
             </div>
-            <div class="form-group">
-              <label for="typeId">Type ID</label>
-              <input type="number" id="typeId" name="typeId">
+            <div class="table-container compact">
+              <table class="modal-table">
+                <thead>
+                  <tr>
+                    <th>Crop</th>
+                    <th>Registration</th>
+                    <th>Type</th>
+                    <th>Function</th>
+                    <th>Withholding Period</th>
+                  </tr>
+                </thead>
+                <tbody id="chemstockCropsBody"></tbody>
+              </table>
             </div>
-            <div class="form-group">
-              <label for="reason">Reason</label>
-              <input type="text" id="reason" name="reason" placeholder="Reason for use">
-            </div>
-            <div class="form-group">
-              <label for="witholdingPeriod">Witholding Period (days)</label>
-              <input type="number" id="witholdingPeriod" name="witholdingPeriod" step="0.1">
-            </div>
-            <div class="form-group">
-              <label for="defaultQtyPer100L">Default Qty per 100L</label>
-              <input type="number" id="defaultQtyPer100L" name="defaultQtyPer100L" step="0.01">
-            </div>
-            <button type="submit" class="btn-primary">Save ChemStock</button>
-          </form>
+          </div>
         </div>
 
         <!-- TAB: REORDERING -->
@@ -652,15 +654,36 @@ function loadChemstockData() {
     .then(data => {
       if (data.error) {
         console.log('ChemStock not found for this product');
+        document.getElementById('chemstockActiveIngr').textContent = 'No ChemStock data available';
+        document.getElementById('chemstockCropsBody').innerHTML = '<tr><td colspan="5" style="text-align:center; color:#6b7280;">No crop data found</td></tr>';
         return;
       }
-      document.getElementById('activeIngr').value = data.ChemStockActiveIngr || '';
-      document.getElementById('regNumber').value = data.ChemStockRegNumber || '';
-      document.getElementById('colourCodeId').value = data.ChemStockColourCodeId || '';
-      document.getElementById('typeId').value = data.ChemStockTypeId || '';
-      document.getElementById('reason').value = data.ChemStockReason || '';
-      document.getElementById('witholdingPeriod').value = data.ChemStockWitholdingPeriod || '';
-      document.getElementById('defaultQtyPer100L').value = data.ChemStockDefaultQtyPer100L || '';
+      
+      // Display active ingredient and colour code
+      document.getElementById('chemstockActiveIngr').textContent = data.ChemStockActiveIngr || 'N/A';
+      document.getElementById('chemstockColourCode').textContent = `Colour Code: ${data.ChemStockColourCode || 'N/A'}`;
+      
+      // Populate crops table
+      const cropsBody = document.getElementById('chemstockCropsBody');
+      cropsBody.innerHTML = '';
+      
+      if (data.Crops && data.Crops.length > 0) {
+        data.Crops.forEach(crop => {
+          const row = document.createElement('tr');
+          row.innerHTML = `
+            <td>${crop.CropDescription || 'N/A'}</td>
+            <td>${crop.RegNumber || 'N/A'}</td>
+            <td>${crop.Type || 'N/A'}</td>
+            <td>${crop.Function || 'N/A'}</td>
+            <td>${crop.WitholdingPeriod ? crop.WitholdingPeriod + ' days' : 'N/A'}</td>
+          `;
+          cropsBody.appendChild(row);
+        });
+      } else {
+        const row = document.createElement('tr');
+        row.innerHTML = '<td colspan="5" style="text-align:center; color:#6b7280;">No approved crops found</td>';
+        cropsBody.appendChild(row);
+      }
     })
     .catch(err => console.error('Error loading ChemStock:', err));
 }

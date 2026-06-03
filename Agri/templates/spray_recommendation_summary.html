@@ -39,6 +39,21 @@
   }
   .btn-primary:hover { background: var(--button-hover); }
 
+  /* Disabled primary button styling to make it clearly inactive */
+  button.btn-primary:disabled,
+  button.btn-primary[disabled] {
+    opacity: 0.6;
+    cursor: not-allowed;
+    box-shadow: none;
+    transform: none;
+    filter: grayscale(0.05);
+  }
+  /* Prevent hover visual change when disabled */
+  button.btn-primary:disabled:hover,
+  button.btn-primary[disabled]:hover {
+    background: var(--button-bg);
+  }
+
   .btn-secondary {
     background: #6c757d;
     color: white;
@@ -124,10 +139,68 @@
     font-weight: 700;
     color: var(--secondary-text);
     white-space: nowrap;
+    cursor: pointer;
+    position: relative;
+  }
+  #recTable th.sorted-asc::after,
+  #recTable th.sorted-desc::after,
+  #recTable th[data-sort]::after {
+    content: '\2195';
+    position: absolute;
+    right: 12px;
+    font-size: 0.85rem;
+    color: var(--secondary-text);
+  }
+  #recTable th.sorted-asc::after {
+    content: '\25B2';
+  }
+  #recTable th.sorted-desc::after {
+    content: '\25BC';
   }
   #recTable tbody tr {
     transition: background 0.15s;
     cursor: pointer;
+  }
+  .selected-row {
+    background: rgba(0, 123, 255, 0.08);
+  }
+  .disabled-row {
+    opacity: 0.6;
+  }
+  .filter-panel {
+    position: fixed;
+    width: 340px;
+    max-width: calc(100% - 20px);
+    background: var(--container-bg);
+    border: 1px solid var(--input-border);
+    border-radius: 10px;
+    box-shadow: 0 16px 32px rgba(0,0,0,0.12);
+    padding: 16px;
+    z-index: 1100;
+    display: none;
+    opacity: 0;
+    transform: translateY(-6px);
+    transition: opacity 0.14s ease, transform 0.14s ease;
+  }
+  .filter-panel.show {
+    display: block;
+    opacity: 1;
+    transform: translateY(0);
+  }
+  .filter-row {
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 0.75rem;
+  }
+  .filter-panel label {
+    font-size: 0.8rem;
+    color: var(--secondary-text);
+    margin-bottom: 6px;
+    display: block;
+  }
+  .filter-panel input,
+  .filter-panel select {
+    width: 100%;
   }
 
   #pendingExecutionsTableWrapper,
@@ -608,67 +681,65 @@
         <h1>Spray Recommendations</h1>
         <a href="/agri/spray-recommendation/create" class="btn-primary" style="text-decoration:none; margin:0; white-space: nowrap;">+ New Recommendation</a>
       </header>
-      <!-- PENDING EXECUTIONS SECTION -->
-      <div class="card" style="margin-bottom: 2rem;">
-        <h2 style="margin: 0 0 1rem 0; font-size: 1.2rem; color: var(--primary-text);">Pending Executions</h2>
-        <div id="pendingExecutionsTableWrapper">
-          <table id="pendingExecutionsTable">
+      <div class="card" style="margin-bottom: 2rem; position: relative;">
+        <div style="display:flex; justify-content:space-between; align-items:flex-start; gap:1rem; flex-wrap:wrap;">
+          <div style="display:flex; gap:0.75rem; align-items:center; flex-wrap:wrap;">
+            <button id="filterToggle" type="button" class="btn-secondary">Filters</button>
+            <button id="createExecutionButton" type="button" class="btn-primary" disabled>Create Execution</button>
+            <button id="cancelSelectionButton" type="button" class="btn-secondary" style="display:none;">Cancel</button>
+            <span id="selectionSummary" style="color: var(--secondary-text); font-size:0.95rem;"></span>
+          </div>
+        </div>
+
+        <div id="filterPanel" class="filter-panel" style="display:none;">
+          <div class="filter-row">
+            <div class="form-group">
+              <label for="filterSearch">Search</label>
+              <input type="text" id="filterSearch" placeholder="Search spray number, description, block, farm, warehouse">
+            </div>
+            <div class="form-group">
+              <label for="filterStatus">Status</label>
+              <select id="filterStatus">
+                <option value="">All</option>
+              </select>
+            </div>
+            <div class="form-group">
+              <label for="filterFarm">Farm</label>
+              <select id="filterFarm">
+                <option value="">All</option>
+              </select>
+            </div>
+            <div class="form-group">
+              <label for="filterWarehouse">Warehouse</label>
+              <select id="filterWarehouse">
+                <option value="">All</option>
+              </select>
+            </div>
+          </div>
+        </div>
+
+        <div id="recTableWrapper">
+          <table id="recTable">
             <thead>
               <tr>
-                <th>ID</th>
-                <th>Date</th>
-                <th>Responsible Person</th>
-                <th>Recommendations</th>
-                <th>Actions</th>
+                <th></th>
+                <th data-sort="spray_no">Spray No</th>
+                <th data-sort="description">Description</th>
+                <th data-sort="week">Week</th>
+                <th data-sort="status">Status</th>
+                <th data-sort="start_date">Start</th>
+                <th data-sort="end_date">End</th>
+                <th data-sort="block_no">Block</th>
+                <th data-sort="farm_name">Farm</th>
+                <th data-sort="warehouse_name">Warehouse</th>
               </tr>
             </thead>
-            <tbody id="pendingExecutionsTableBody">
+            <tbody id="recTableBody">
               <tr>
-                <td class="no-data" colspan="5">Loading...</td>
+                <td class="no-data" colspan="10">Loading spray recommendations...</td>
               </tr>
             </tbody>
           </table>
-        </div>
-        <!-- MOBILE EXECUTION CARDS -->
-        <div class="mobile-cards" id="pendingExecutionCards">
-          <div class="no-data">Loading...</div>
-        </div>
-      </div>
-
-      <details class="card" id="completedExecutionsDetails" style="margin-bottom: 2rem;">
-        <summary style="display:flex; justify-content:space-between; align-items:center; padding:1rem; font-size:1.05rem; font-weight:600; color: var(--secondary-text); cursor:pointer; list-style:none;">
-          <span>Completed Executions</span>
-          <span id="completedExecutionsSummary" style="font-size:0.9rem; font-weight:400; color: var(--secondary-text);">Click to view completed executions</span>
-        </summary>
-        <div id="completedExecutionsPanel" style="padding: 0 1rem 1rem;">
-          <div id="completedExecutionsCount" class="no-data">Completed executions are hidden by default.</div>
-          <div id="completedExecutionsTableWrapper" style="display:none; margin-top: 1rem;">
-            <table id="completedExecutionsTable">
-              <thead>
-                <tr>
-                  <th>ID</th>
-                  <th>Date</th>
-                  <th>Responsible</th>
-                  <th>Recommendations</th>
-                  <th>Actions</th>
-                </tr>
-              </thead>
-              <tbody id="completedExecutionsTableBody">
-                <tr>
-                  <td class="no-data" colspan="5">Loading...</td>
-                </tr>
-              </tbody>
-            </table>
-          </div>
-          <div class="mobile-cards" id="completedExecutionCards" style="display:none; margin-top:1rem;"></div>
-        </div>
-      </details>
-
-      <!-- RECOMMENDATIONS TREE -->
-      <div class="card">
-        <h2 style="margin: 0 0 1rem 0; font-size: 1.2rem; color: var(--primary-text);">Spray Recommendations</h2>
-        <div id="recommendationsTree" class="tree-container">
-          <div class="no-data">Loading...</div>
         </div>
       </div>
 
@@ -679,533 +750,519 @@
 <script src="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/js/select2.min.js"></script>
 <script>
 
-document.addEventListener("DOMContentLoaded", async () => {
-    await loadRecommendations();
-    await loadPendingExecutions();
+const recommendations = [];
+let sortField = 'id';
+let sortDirection = 'asc';
+let selectedRecommendationIds = [];
+let selectedWarehouseId = null;
+let selectedWarehouseName = '';
+let selectionMode = false;
 
-    const completedDetails = document.getElementById('completedExecutionsDetails');
-    if (completedDetails) {
-        completedDetails.addEventListener('toggle', async (event) => {
-            if (event.target.open && !event.target.dataset.loaded) {
-                await loadCompletedExecutions();
-                event.target.dataset.loaded = '1';
-            }
-        });
+function getCreateButton() {
+    return document.getElementById('createExecutionButton');
+}
+
+function getSelectionSummary() {
+    return document.getElementById('selectionSummary');
+}
+
+document.addEventListener('DOMContentLoaded', () => {
+    const filterToggle = document.getElementById('filterToggle');
+    const searchInput = document.getElementById('filterSearch');
+    const statusSelect = document.getElementById('filterStatus');
+    const farmSelect = document.getElementById('filterFarm');
+    const warehouseSelect = document.getElementById('filterWarehouse');
+    const createButton = getCreateButton();
+
+    if (filterToggle) {
+        filterToggle.addEventListener('click', toggleFilterPanel);
     }
+    if (searchInput) {
+        searchInput.addEventListener('input', renderRecommendationsTable);
+    }
+    if (statusSelect) {
+        statusSelect.addEventListener('change', renderRecommendationsTable);
+    }
+    if (farmSelect) {
+        farmSelect.addEventListener('change', renderRecommendationsTable);
+    }
+    if (warehouseSelect) {
+        warehouseSelect.addEventListener('change', renderRecommendationsTable);
+    }
+    if (createButton) {
+        createButton.addEventListener('click', handleCreateExecutionButtonClick);
+    }
+    const cancelButton = document.getElementById('cancelSelectionButton');
+    if (cancelButton) {
+        cancelButton.addEventListener('click', exitSelectionMode);
+    }
+
+    document.querySelectorAll('#recTable th[data-sort]').forEach(th => {
+        th.addEventListener('click', () => setSort(th.dataset.sort));
+    });
+
+    loadRecommendations();
 });
 
-async function loadCompletedExecutions() {
-    const summary = document.getElementById('completedExecutionsSummary');
-    const countEl = document.getElementById('completedExecutionsCount');
-    const wrapper = document.getElementById('completedExecutionsTableWrapper');
-    const tableBody = document.getElementById('completedExecutionsTableBody');
-    const mobileCards = document.getElementById('completedExecutionCards');
-
-    summary.textContent = 'Loading completed executions...';
-    countEl.textContent = 'Loading completed executions...';
-    wrapper.style.display = 'none';
-    mobileCards.style.display = 'none';
-    mobileCards.innerHTML = '';
-
+async function loadRecommendations() {
+    const body = document.getElementById('recTableBody');
     try {
-        const response = await fetch('/agri/executions/completed');
-        const executions = await response.json();
-
-        if (!executions || executions.length === 0) {
-            summary.textContent = 'No completed executions';
-            countEl.textContent = 'No completed executions to show.';
-            tableBody.innerHTML = '<tr><td class="no-data" colspan="5">No completed executions</td></tr>';
-            mobileCards.innerHTML = '<div class="no-data">No completed executions</div>';
-            mobileCards.style.display = 'block';
-            return;
+        const response = await fetch('/agri/spray-recommendations');
+        if (!response.ok) {
+            throw new Error(`Server returned ${response.status}`);
         }
+        const data = await response.json();
 
-        summary.textContent = `${executions.length} completed execution${executions.length === 1 ? '' : 's'}`;
-        countEl.textContent = `${executions.length} completed execution${executions.length === 1 ? '' : 's'} found.`;
-        wrapper.style.display = 'block';
-        tableBody.innerHTML = executions.map(execution => `
-            <tr>
-                <td><strong>${execution.id}</strong></td>
-                <td>${new Date(execution.date).toLocaleDateString()}</td>
-                <td>${execution.responsible_person || '-'}</td>
-                <td>${execution.recommendation_count}</td>
-                <td>
-                  <div class="action-cell">
-                    <button type="button" class="btn-action" onclick="viewExecution(${execution.id})">View</button>
-                  </div>
-                </td>
-            </tr>
-        `).join('');
-
-        mobileCards.innerHTML = executions.map(execution => `
-            <div class="execution-card">
-                <div class="execution-card-header">
-                    <div class="execution-id">Execution ${execution.id}</div>
-                </div>
-                <div class="execution-details">
-                    <div class="execution-detail">
-                        <div class="execution-detail-label">Date</div>
-                        <div class="execution-detail-value">${new Date(execution.date).toLocaleDateString()}</div>
-                    </div>
-                    <div class="execution-detail">
-                        <div class="execution-detail-label">Responsible Person</div>
-                        <div class="execution-detail-value">${execution.responsible_person || '-'}</div>
-                    </div>
-                    <div class="execution-detail">
-                        <div class="execution-detail-label">Recommendations</div>
-                        <div class="execution-detail-value">${execution.recommendation_count}</div>
-                    </div>
-                </div>
-                <div class="action-cell" style="margin-top: 12px; padding-top: 12px; border-top: 1px solid var(--input-border);">
-                    <button type="button" class="btn-action" onclick="viewExecution(${execution.id})">View</button>
-                </div>
-            </div>
-        `).join('');
+        recommendations.splice(0, recommendations.length, ...data);
+        populateFilters(data);
+        renderRecommendationsTable();
+        updateSelectionModeUI();
     } catch (err) {
-        console.error('Error loading completed executions:', err);
-        summary.textContent = 'Error loading completed executions';
-        countEl.textContent = 'Error loading completed executions';
-        tableBody.innerHTML = '<tr><td class="no-data" colspan="5">Error loading completed executions</td></tr>';
-        mobileCards.innerHTML = '<div class="no-data">Error loading completed executions</div>';
-        mobileCards.style.display = 'block';
-    }
-}
-
-async function loadPendingExecutions() {
-    try {
-        const response = await fetch('/agri/executions/pending');
-        const executions = await response.json();
-
-        const tbody = document.getElementById('pendingExecutionsTableBody');
-        const mobileCards = document.getElementById('pendingExecutionCards');
-
-        if (!executions || executions.length === 0) {
-            tbody.innerHTML = '<tr><td class="no-data" colspan="5">No pending executions</td></tr>';
-            mobileCards.innerHTML = '<div class="no-data">No pending executions</div>';
-            return;
-        }
-
-        // Populate table
-        tbody.innerHTML = executions.map(execution => `
-            <tr>
-                <td><strong>${execution.id}</strong></td>
-                <td>${new Date(execution.date).toLocaleDateString()}</td>
-                <td>${execution.responsible_person || '-'}</td>
-                <td>${execution.recommendation_count}</td>
-                <td>
-                  <div class="action-cell">
-                    <button type="button" class="btn-action" onclick="viewExecution(${execution.id})">View</button>
-                  </div>
-                </td>
-            </tr>
-        `).join('');
-
-        // Populate mobile cards
-        mobileCards.innerHTML = executions.map(execution => `
-            <div class="execution-card">
-                <div class="execution-card-header">
-                    <div class="execution-id">Execution ${execution.id}</div>
-                </div>
-                <div class="execution-details">
-                    <div class="execution-detail">
-                        <div class="execution-detail-label">Date</div>
-                        <div class="execution-detail-value">${new Date(execution.date).toLocaleDateString()}</div>
-                    </div>
-                    <div class="execution-detail">
-                        <div class="execution-detail-label">Responsible Person</div>
-                        <div class="execution-detail-value">${execution.responsible_person || '-'}</div>
-                    </div>
-                    <div class="execution-detail">
-                        <div class="execution-detail-label">Recommendations</div>
-                        <div class="execution-detail-value">${execution.recommendation_count}</div>
-                    </div>
-                </div>
-                <div class="action-cell" style="margin-top: 12px; padding-top: 12px; border-top: 1px solid var(--input-border);">
-                    <button type="button" class="btn-action" onclick="viewExecution(${execution.id})">View</button>
-                    <button type="button" class="btn-info" onclick="finalizeExecution(${execution.id})">Finalize</button>
-                    <a href="/agri/execution/${execution.id}/instruction_pdf" class="btn-success" style="text-decoration:none;">Print</a>
-                </div>
-            </div>
-        `).join('');
-    } catch (err) {
-        console.error('Error loading pending executions:', err);
-        document.getElementById('pendingExecutionsTableBody').innerHTML = 
-            '<tr><td class="no-data" colspan="5">Error loading executions</td></tr>';
-        document.getElementById('pendingExecutionCards').innerHTML = 
-            '<div class="no-data">Error loading executions</div>';
-    }
-}
-
-function viewExecution(executionId) {
-    window.location.href = `/agri/execution/${executionId}`;
-}
-
-async function finalizeExecution(executionId) {
-    const result = await Swal.fire({
-        title: 'Finalize Execution?',
-        text: 'This will mark the execution as finalized and remove it from pending list.',
-        icon: 'question',
-        showCancelButton: true,
-        confirmButtonText: 'Finalize',
-        cancelButtonText: 'Cancel'
-    });
-
-    if (result.isConfirmed) {
-        try {
-            const response = await fetch(`/agri/execution/${executionId}/finalize`, {
-                method: 'POST'
-            });
-            const data = await response.json();
-            if (data.success) {
-                Swal.fire('Success', 'Execution finalized!', 'success');
-                await loadPendingExecutions();
-            } else {
-                Swal.fire('Error', data.message || 'Failed to finalize execution', 'error');
-            }
-        } catch (err) {
-            console.error('Error finalizing execution:', err);
-            Swal.fire('Error', 'Failed to finalize execution', 'error');
+        console.error('Error loading recommendations:', err);
+        if (body) {
+            body.innerHTML = '<tr><td class="no-data" colspan="10">Error loading recommendations</td></tr>';
         }
     }
+}
+
+function populateFilters(data) {
+    const statusSelect = document.getElementById('filterStatus');
+    const farmSelect = document.getElementById('filterFarm');
+
+    if (!statusSelect || !farmSelect) {
+        return;
+    }
+
+    const statuses = Array.from(new Set(data.map(item => item.status || '').filter(Boolean))).sort();
+    const farms = Array.from(new Set(data.map(item => item.farm_name || '').filter(Boolean))).sort();
+    const warehouses = Array.from(new Set(data.map(item => item.warehouse_name || '').filter(Boolean))).sort();
+
+    statusSelect.innerHTML = '<option value="">All</option>' + statuses.map(status => `
+        <option value="${status}">${status}</option>`).join('');
+
+    farmSelect.innerHTML = '<option value="">All</option>' + farms.map(farm => `
+        <option value="${farm}">${farm}</option>`).join('');
+
+    const warehouseSelect = document.getElementById('filterWarehouse');
+    if (warehouseSelect) {
+        warehouseSelect.innerHTML = '<option value="">All</option>' + warehouses.map(warehouse => `
+            <option value="${warehouse}">${warehouse}</option>`).join('');
+    }
+}
+
+let _filterOutsideHandler = null;
+function toggleFilterPanel() {
+  const panel = document.getElementById('filterPanel');
+  const btn = document.getElementById('filterToggle');
+  if (!panel || !btn) return;
+
+  const isOpen = panel.classList.contains('show');
+  if (isOpen) {
+    panel.classList.remove('show');
+    panel.style.display = 'none';
+    if (_filterOutsideHandler) {
+      document.removeEventListener('click', _filterOutsideHandler);
+      _filterOutsideHandler = null;
+    }
+    return;
   }
-function toggleWarehouse(warehouseId) {
-    const children = document.getElementById(`warehouse-${warehouseId}`);
-    const toggle = children.previousElementSibling.querySelector('.tree-toggle');
-    
-    if (children.classList.contains('expanded')) {
-        children.classList.remove('expanded');
-        toggle.classList.remove('expanded');
-        // Hide execution creation controls
-        const executionControls = children.querySelector('.execution-controls');
-        if (executionControls) executionControls.remove();
-        // Exit execution creation mode
-        exitExecutionMode(warehouseId);
+
+  // Position under the button
+  const rect = btn.getBoundingClientRect();
+  panel.style.position = 'fixed';
+  panel.style.left = `${Math.max(8, rect.left)}px`;
+  panel.style.top = `${rect.bottom + 8}px`;
+  panel.style.minWidth = `${Math.max(200, rect.width)}px`;
+  panel.style.display = 'block';
+  panel.classList.add('show');
+
+  // Close when clicking outside (attach after opening to avoid immediate close)
+  _filterOutsideHandler = function(ev) {
+    if (!panel.contains(ev.target) && !btn.contains(ev.target)) {
+      panel.classList.remove('show');
+      panel.style.display = 'none';
+      document.removeEventListener('click', _filterOutsideHandler);
+      _filterOutsideHandler = null;
+    }
+  };
+  setTimeout(() => document.addEventListener('click', _filterOutsideHandler), 0);
+}
+
+function applyFilters() {
+    const searchText = document.getElementById('filterSearch')?.value.trim().toLowerCase() || '';
+    const selectedStatus = document.getElementById('filterStatus')?.value || '';
+    const selectedFarm = document.getElementById('filterFarm')?.value || '';
+    const selectedWarehouse = document.getElementById('filterWarehouse')?.value || '';
+
+    return recommendations.filter(item => {
+        if (selectedStatus && item.status !== selectedStatus) {
+            return false;
+        }
+        if (selectedFarm && item.farm_name !== selectedFarm) {
+            return false;
+        }
+        if (selectedWarehouse && item.warehouse_name !== selectedWarehouse) {
+            return false;
+        }
+
+        if (!searchText) {
+            return true;
+        }
+
+        const searchable = [
+            String(item.id || ''),
+            item.spray_no || '',
+            item.description || '',
+            item.week || '',
+            item.status || '',
+            item.block_no || '',
+            item.farm_name || '',
+            item.warehouse_name || ''
+        ].join(' ').toLowerCase();
+
+        return searchable.includes(searchText);
+    });
+}
+
+function renderRecommendationsTable() {
+    const body = document.getElementById('recTableBody');
+    if (!body) {
+        return;
+    }
+
+    const filtered = applyFilters();
+    if (filtered.length === 0) {
+        body.innerHTML = '<tr><td class="no-data" colspan="10">No spray recommendations found.</td></tr>';
+        return;
+    }
+
+    const sorted = filtered.slice().sort(compareRecommendations);
+    body.innerHTML = sorted.map(rec => {
+        const selectable = !rec.execution_id;
+        const isSelected = selectedRecommendationIds.includes(rec.id);
+        const rowClass = selectionMode && !selectable ? 'disabled-row' : isSelected ? 'selected-row' : '';
+        const rowOnclick = selectionMode ? '' : `onclick="goToSpray(${rec.id})"`;
+        const checkboxHtml = selectionMode ? `
+                    <input type="checkbox"
+                        data-rec-id="${rec.id}"
+                        data-whse-id="${rec.warehouse_id}"
+                        data-whse-name="${escapeHtml(rec.warehouse_name)}"
+                        ${selectable ? '' : 'disabled'}
+                        ${isSelected ? 'checked' : ''}
+                        onclick="event.stopPropagation(); toggleRecommendationSelection(this);"
+                    />
+                ` : '';
+        return `
+            <tr class="${rowClass}" ${rowOnclick}>
+                <td>${checkboxHtml}</td>
+                <td>${escapeHtml(rec.spray_no)}</td>
+                <td>${escapeHtml(rec.description)}</td>
+                <td>${escapeHtml(rec.week)}</td>
+                <td>${escapeHtml(rec.status)}</td>
+                <td>${formatDateTime(rec.start_date)}</td>
+                <td>${formatDateTime(rec.end_date)}</td>
+                <td>${escapeHtml(rec.block_no)}</td>
+                <td>${escapeHtml(rec.farm_name)}</td>
+                <td>${escapeHtml(rec.warehouse_name)}</td>
+            </tr>
+        `;
+    }).join('');
+
+    updateSortHeaders();
+}
+
+function toggleRecommendationSelection(checkbox) {
+    const recId = Number(checkbox.dataset.recId);
+    const warehouseId = checkbox.dataset.whseId;
+    const warehouseName = checkbox.dataset.whseName;
+
+    if (checkbox.checked) {
+        if (selectedWarehouseId && selectedWarehouseId !== warehouseId) {
+            alert('All selected recommendations must be from the same warehouse.');
+            checkbox.checked = false;
+            return;
+        }
+        selectedWarehouseId = warehouseId;
+        selectedWarehouseName = warehouseName;
+        if (!selectedRecommendationIds.includes(recId)) {
+            selectedRecommendationIds.push(recId);
+        }
     } else {
-        children.classList.add('expanded');
-        toggle.classList.add('expanded');
-        // Add execution creation controls
-        const firstChild = children.querySelector('.tree-child');
-        if (firstChild) {
-            const executionControls = document.createElement('div');
-            executionControls.className = 'execution-controls';
-            executionControls.innerHTML = `
-                <button class="create-execution-btn" onclick="enterExecutionMode('${warehouseId}')">Create Execution</button>
-            `;
-            firstChild.insertBefore(executionControls, firstChild.firstElementChild);
+        selectedRecommendationIds = selectedRecommendationIds.filter(id => id !== recId);
+        if (selectedRecommendationIds.length === 0) {
+            selectedWarehouseId = null;
+            selectedWarehouseName = '';
+        }
+    }
+
+    updateSelectionState();
+}
+
+function updateSelectionState() {
+    const createButton = getCreateButton();
+    const summary = getSelectionSummary();
+    if (createButton) {
+      console.log('Updating Create Execution button. Selection mode:', selectionMode, 'Selected IDs:', selectedRecommendationIds);
+        if (selectionMode) {
+            createButton.disabled = selectedRecommendationIds.length === 0;
+            createButton.textContent = 'Next';
+        } else {
+            createButton.disabled = !hasEligibleRecommendations();
+            createButton.textContent = 'Create Execution';
+        }
+    }
+    if (summary) {
+        if (selectedRecommendationIds.length === 0) {
+            summary.textContent = selectionMode ? 'Select recommendations to execute.' : '';
+        } else {
+            summary.textContent = `${selectedRecommendationIds.length} recommendation${selectedRecommendationIds.length === 1 ? '' : 's'} selected${selectedWarehouseName ? ` from ${selectedWarehouseName}` : ''}`;
         }
     }
 }
 
-function toggleWeek(weekId) {
-    const list = document.getElementById(`week-${weekId}`);
-    const toggle = list.previousElementSibling.querySelector('.week-toggle');
-    
-    if (list.classList.contains('expanded')) {
-        list.classList.remove('expanded');
-        toggle.classList.remove('expanded');
-    } else {
-        list.classList.add('expanded');
-        toggle.classList.add('expanded');
-    }
-}
-
-function enterExecutionMode(warehouseId) {
-    const warehouseEl = document.getElementById(`warehouse-${warehouseId}`);
-    warehouseEl.classList.add('execution-mode');
-    
-    // Update button
-    const executionControls = warehouseEl.querySelector('.execution-controls');
-    executionControls.innerHTML = `
-        <button class="create-execution-btn" onclick="confirmExecution('${warehouseId}')">Save Execution</button>
-        <button class="btn-secondary" onclick="exitExecutionMode('${warehouseId}')">Cancel</button>
-    `;
-    
-    // Add checkboxes to weeks and recommendations
-    const weekRows = warehouseEl.querySelectorAll('.week-row');
-    weekRows.forEach(row => {
-        const toggle = row.querySelector('.week-toggle');
-        const checkbox = document.createElement('input');
-        checkbox.type = 'checkbox';
-        checkbox.className = 'week-checkbox';
-        checkbox.style.marginRight = '8px';
-        checkbox.onchange = () => toggleWeekSelections(row, checkbox.checked);
-        row.insertBefore(checkbox, toggle);
-    });
-    
-    // Add checkboxes to recommendations
-    const recItems = warehouseEl.querySelectorAll('.rec-item');
-    recItems.forEach(item => {
-        const checkbox = document.createElement('input');
-        checkbox.type = 'checkbox';
-        checkbox.className = 'rec-checkbox execution-checkbox';
-        checkbox.value = item.querySelector('.rec-checkbox').value;
-        checkbox.setAttribute('data-warehouse', warehouseId);
-        item.insertBefore(checkbox, item.firstElementChild);
-        // Remove click handler for viewing
-        item.style.cursor = 'default';
-        item.onclick = null;
-    });
-    
-    // Hide existing checkboxes
-    warehouseEl.querySelectorAll('.rec-checkbox:not(.execution-checkbox)').forEach(cb => cb.style.display = 'none');
-}
-
-function exitExecutionMode(warehouseId) {
-    const warehouseEl = document.getElementById(`warehouse-${warehouseId}`);
-    warehouseEl.classList.remove('execution-mode');
-    
-    // Update button
-    const executionControls = warehouseEl.querySelector('.execution-controls');
-    executionControls.innerHTML = `
-        <button class="create-execution-btn" onclick="enterExecutionMode('${warehouseId}')">Create Execution</button>
-    `;
-    
-    // Remove week checkboxes
-    warehouseEl.querySelectorAll('.week-checkbox').forEach(cb => cb.remove());
-    
-    // Remove execution checkboxes and restore view functionality
-    warehouseEl.querySelectorAll('.execution-checkbox').forEach(cb => cb.remove());
-    warehouseEl.querySelectorAll('.rec-item').forEach(item => {
-        item.style.cursor = 'pointer';
-        item.onclick = () => {
-            const recId = item.querySelector('.rec-checkbox').value;
-            goToSpray(recId);
-        };
-    });
-    
-    // Show original checkboxes
-    warehouseEl.querySelectorAll('.rec-checkbox').forEach(cb => cb.style.display = 'inline-block');
-}
-
-function toggleWeekSelections(weekRow, checked) {
-    const recommendationsList = weekRow.nextElementSibling;
-    const checkboxes = recommendationsList.querySelectorAll('.execution-checkbox');
-    checkboxes.forEach(cb => cb.checked = checked);
-}
-
-function confirmExecution(warehouseId) {
-    const selectedCheckboxes = document.querySelectorAll(`.execution-checkbox[data-warehouse="${warehouseId}"]:checked`);
-    console.log('Selected recommendation IDs:', Array.from(selectedCheckboxes).map(cb => cb.value));
-    if (selectedCheckboxes.length === 0) {
-        Swal.fire('Error', 'Please select at least one recommendation for the execution', 'error');
-        return;
-    }
-    
-    openExecutionModal(warehouseId);
-}
-
-function openExecutionModal(warehouseId) {
-    const selectedCheckboxes = document.querySelectorAll(`.execution-checkbox[data-warehouse="${warehouseId}"]:checked`);
-    if (selectedCheckboxes.length === 0) {
-        Swal.fire('Error', 'Please select at least one recommendation for the execution', 'error');
+function handleCreateExecutionButtonClick() {
+    if (!selectionMode) {
+        enterSelectionMode();
         return;
     }
 
-    // Create modal HTML
+    if (selectedRecommendationIds.length === 0) {
+        alert('Please select at least one recommendation before continuing.');
+        return;
+    }
+
+    openCreateExecutionModal();
+}
+
+function hasEligibleRecommendations() {
+    return recommendations.some(rec => !rec.execution_id);
+}
+
+function enterSelectionMode() {
+    selectionMode = true;
+    selectedRecommendationIds = [];
+    selectedWarehouseId = null;
+    selectedWarehouseName = '';
+    updateSelectionModeUI();
+    renderRecommendationsTable();
+}
+
+function exitSelectionMode() {
+    selectionMode = false;
+    selectedRecommendationIds = [];
+    selectedWarehouseId = null;
+    selectedWarehouseName = '';
+    updateSelectionModeUI();
+    renderRecommendationsTable();
+}
+
+function updateSelectionModeUI() {
+    const cancelButton = document.getElementById('cancelSelectionButton');
+    if (cancelButton) {
+        cancelButton.style.display = selectionMode ? 'inline-flex' : 'none';
+    }
+    updateSelectionState();
+}
+
+function openCreateExecutionModal() {
+    if (selectedRecommendationIds.length === 0) {
+        return;
+    }
+
+    const existingModal = document.getElementById('executionModal');
+    if (existingModal) {
+        existingModal.remove();
+    }
+
     const modal = document.createElement('div');
     modal.className = 'modal';
+    modal.id = 'executionModal';
     modal.innerHTML = `
         <div class="modal-content">
             <div class="modal-header">
                 <h3 class="modal-title">Create Execution</h3>
-                <button class="modal-close" onclick="closeModal()">&times;</button>
+                <button class="modal-close" onclick="closeExecutionModal()">&times;</button>
             </div>
             <div class="modal-body">
                 <div class="form-group">
-                    <label for="modalExecutionDate">Execution Date</label>
-                    <input type="date" id="modalExecutionDate" required>
+                    <label for="execDate">Execution Date</label>
+                    <input type="date" id="execDate" required value="${new Date().toISOString().slice(0, 10)}">
                 </div>
                 <div class="form-group">
-                    <label for="modalResponsiblePerson">Responsible Person</label>
-                    <select id="modalResponsiblePerson" required>
-                        <option value="">Select Person...</option>
+                    <label for="execResponsible">Responsible Person</label>
+                    <select id="execResponsible" required>
+                        <option value="">Select person...</option>
                     </select>
                 </div>
                 <div style="margin-top: 16px;">
-                    <strong>Selected Recommendations: ${selectedCheckboxes.length}</strong>
+                    <strong>${selectedRecommendationIds.length} recommendation${selectedRecommendationIds.length === 1 ? '' : 's'} selected</strong>
+                    ${selectedWarehouseName ? `<div style="margin-top:8px;color: var(--secondary-text);">Warehouse: ${escapeHtml(selectedWarehouseName)}</div>` : ''}
                 </div>
             </div>
             <div class="modal-footer">
-                <button class="btn-secondary" onclick="closeModal()">Cancel</button>
-                <button class="btn-primary" onclick="createExecutionFromModal(${warehouseId})">Create Execution</button>
+                <button class="btn-secondary" onclick="closeExecutionModal()">Cancel</button>
+                <button class="btn-primary" onclick="submitExecutionCreation()">Create Execution</button>
             </div>
         </div>
     `;
-
     document.body.appendChild(modal);
     modal.style.display = 'block';
 
-    // Load responsible persons
-    loadResponsiblePersonsForModal();
+    loadResponsiblePersonsForExecutionModal();
 
-    // Close modal when clicking outside
-    modal.addEventListener('click', (e) => {
-        if (e.target === modal) {
-            closeModal();
+    modal.addEventListener('click', (event) => {
+        if (event.target === modal) {
+            closeExecutionModal();
         }
     });
 
-    // Close modal on escape key
-    document.addEventListener('keydown', function closeOnEscape(e) {
-        if (e.key === 'Escape') {
-            closeModal();
-            document.removeEventListener('keydown', closeOnEscape);
+    document.addEventListener('keydown', function onEscape(event) {
+        if (event.key === 'Escape') {
+            closeExecutionModal();
+            document.removeEventListener('keydown', onEscape);
         }
     });
 }
 
-function closeModal() {
-    const modal = document.querySelector('.modal');
+function closeExecutionModal() {
+    const modal = document.getElementById('executionModal');
     if (modal) {
         modal.remove();
     }
 }
 
-async function loadResponsiblePersonsForModal() {
+async function loadResponsiblePersonsForExecutionModal() {
     try {
         const response = await fetch('/agri/execution/responsible-persons');
+        if (!response.ok) {
+            throw new Error(`Server returned ${response.status}`);
+        }
         const persons = await response.json();
-        const select = document.getElementById('modalResponsiblePerson');
-        select.innerHTML = '<option value="">Select Person...</option>';
-        persons.forEach(person => {
-            select.innerHTML += `<option value="${person.id}">${person.name}</option>`;
-        });
-    } catch (err) {
-        console.error('Error loading responsible persons:', err);
+        const select = document.getElementById('execResponsible');
+        if (!select) {
+            return;
+        }
+        select.innerHTML = '<option value="">Select person...</option>' + persons.map(person => `
+            <option value="${person.id}">${escapeHtml(person.name)}</option>`).join('');
+    } catch (error) {
+        console.error('Error loading responsible persons:', error);
+        alert('Unable to load responsible persons.');
     }
 }
 
-async function createExecutionFromModal(warehouseId) {
-    const executionDate = document.getElementById('modalExecutionDate').value;
-    const responsiblePerson = document.getElementById('modalResponsiblePerson').value;
+async function submitExecutionCreation() {
+    const dateInput = document.getElementById('execDate');
+    const responsibleSelect = document.getElementById('execResponsible');
 
-    if (!executionDate || !responsiblePerson) {
-        Swal.fire('Error', 'Please fill in all fields', 'error');
+    if (!dateInput || !responsibleSelect) {
         return;
     }
 
-    const selectedCheckboxes = document.querySelectorAll(`.execution-checkbox[data-warehouse="${warehouseId}"]:checked`);
-    const recommendationIds = Array.from(selectedCheckboxes).map(cb => parseInt(cb.value));
+    const executionDate = dateInput.value;
+    const responsiblePerson = responsibleSelect.value;
+
+    if (!executionDate || !responsiblePerson) {
+        alert('Please choose a date and a responsible person.');
+        return;
+    }
 
     try {
         const response = await fetch('/agri/execution/create', {
             method: 'POST',
             headers: {
-                'Content-Type': 'application/json',
+                'Content-Type': 'application/json'
             },
             body: JSON.stringify({
                 execution_date: executionDate,
-                responsible_person: parseInt(responsiblePerson),
-                recommendation_ids: recommendationIds
+                responsible_person: Number(responsiblePerson),
+                recommendation_ids: selectedRecommendationIds
             })
         });
 
         const result = await response.json();
-        if (result.success) {
-            Swal.fire('Success', 'Execution created successfully!', 'success');
-            closeModal();
-            exitExecutionMode(warehouseId); // Exit execution mode
-            await loadRecommendations(); // Refresh the tree
-            await loadPendingExecutions(); // Refresh pending executions
-        } else {
-            Swal.fire('Error', result.message || 'Failed to create execution', 'error');
+        if (!response.ok || !result.success) {
+            throw new Error(result.message || 'Failed to create execution');
         }
-    } catch (err) {
-        console.error('Error creating execution:', err);
-        Swal.fire('Error', 'Failed to create execution', 'error');
+
+        alert('Execution created successfully.');
+        closeExecutionModal();
+        exitSelectionMode();
+        loadRecommendations();
+    } catch (error) {
+        console.error('Error creating execution:', error);
+        alert(error.message || 'Unable to create execution.');
     }
 }
 
-async function loadRecommendations() {
-    try {
-        const response = await fetch(`/agri/spray-recommendations`);
-        const warehouses = await response.json();
-
-        const container = document.getElementById('recommendationsTree');
-
-        if (!warehouses || warehouses.length === 0) {
-            container.innerHTML = '<div class="no-data">No recommendations found</div>';
-            return;
-        }
-
-        container.innerHTML = warehouses.map(warehouse => `
-            <div class="tree-node">
-                <div class="tree-row" onclick="toggleWarehouse('${warehouse.id}')">
-                    <div class="tree-toggle">▶</div>
-                    <div class="tree-content">
-                        <div>
-                            <div class="tree-label">${warehouse.name}</div>
-                        </div>
-                    </div>
-                </div>
-                <div class="tree-children" id="warehouse-${warehouse.id}">
-                    ${warehouse.weeks.map(week => `
-                        <div class="tree-child">
-                            <div class="week-row" onclick="toggleWeek('${warehouse.id}-${week.week.replace(/[^a-zA-Z0-9]/g, '_')}')">
-                                <div class="week-toggle">▶</div>
-                                <div class="week-label">${week.week}</div>
-                                <div class="week-meta">${week.recommendations.length} recommendations</div>
-                            </div>
-                            <div class="recommendations-list" id="week-${warehouse.id}-${week.week.replace(/[^a-zA-Z0-9]/g, '_')}">
-                                ${week.recommendations.map(rec => `
-                                    <div class="rec-item" onclick="goToSpray(${rec.id})" style="cursor: pointer;">
-                                        <input type="checkbox" class="rec-checkbox" 
-                                               value="${rec.id}" 
-                                               data-warehouse="${warehouse.id}"
-                                               style="display: none;">
-                                        <div class="rec-details">
-                                            <div class="rec-id">${rec.spray_no}</div>
-                                            <div class="rec-meta">
-                                                ${rec.description || 'No description'} • 
-                                                <span class="stock-status ${rec.sufficient_stock ? 'sufficient' : 'insufficient'}">
-                                                    ${rec.sufficient_stock ? 'Sufficient' : 'Insufficient'} Stock
-                                                </span>
-                                            </div>
-                                        </div>
-                                    </div>
-                                `).join('')}
-                            </div>
-                        </div>
-                    `).join('')}
-                </div>
-            </div>
-        `).join('');
-
-    } catch (err) {
-        console.error('Error loading recommendations:', err);
-        document.getElementById('recommendationsTree').innerHTML = 
-            '<div class="no-data">Error loading recommendations</div>';
+function setSort(field) {
+    if (sortField === field) {
+        sortDirection = sortDirection === 'asc' ? 'desc' : 'asc';
+    } else {
+        sortField = field;
+        sortDirection = 'asc';
     }
+    renderRecommendationsTable();
+}
+
+function compareRecommendations(a, b) {
+    const aValue = normalizeSortValue(a[sortField]);
+    const bValue = normalizeSortValue(b[sortField]);
+
+    if (aValue < bValue) {
+        return sortDirection === 'asc' ? -1 : 1;
+    }
+    if (aValue > bValue) {
+        return sortDirection === 'asc' ? 1 : -1;
+    }
+    return 0;
+}
+
+function normalizeSortValue(value) {
+    if (value === null || value === undefined) {
+        return '';
+    }
+    if (sortField === 'id') {
+        return Number(value) || 0;
+    }
+    if (sortField === 'start_date' || sortField === 'end_date') {
+        const date = new Date(value);
+        return isNaN(date.getTime()) ? String(value).toLowerCase() : date.getTime();
+    }
+    return String(value).toLowerCase();
+}
+
+function formatDateTime(value) {
+    if (!value) {
+        return '-';
+    }
+    const date = new Date(value);
+    if (isNaN(date.getTime())) {
+        return escapeHtml(value);
+    }
+    return date.toLocaleString();
+}
+
+function escapeHtml(value) {
+    if (value === null || value === undefined) {
+        return '';
+    }
+    return String(value)
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;')
+        .replace(/'/g, '&#39;');
+}
+
+function updateSortHeaders() {
+    document.querySelectorAll('#recTable th[data-sort]').forEach(th => {
+        th.classList.toggle('sorted-asc', th.dataset.sort === sortField && sortDirection === 'asc');
+        th.classList.toggle('sorted-desc', th.dataset.sort === sortField && sortDirection === 'desc');
+    });
 }
 
 function goToSpray(recId) {
     window.location.href = `/agri/spray/${recId}`;
-}
-
-function issueStock(recId) {
-    fetch(`/agri/spray/${recId}/issue_stock`)
-        .then(r => r.json())
-        .then(data => {
-            if (!data.success) {
-                if (data.shortages) {
-                    let msg = "Insufficient stock:<br><br>";
-                    data.shortages.forEach(s => {
-                        msg += `Product ${s.product_link}: Required ${s.required}, Available ${s.available}<br>`;
-                    });
-                    Swal.fire({ title: "Stock Shortage", html: msg, icon: "warning" });
-                } else {
-                    Swal.fire("Error", data.message || "Error fetching stock data", "error");
-                }
-                return;
-            }
-
-            const url = `/inventory/SDK/stock_issue_wizard?spray_id=${recId}&step=2`;
-            window.location.href = url;
-        })
-        .catch(err => {
-            console.error(err);
-            Swal.fire("Error", "Error creating stock issue", "error");
-        });
 }
 
 </script>

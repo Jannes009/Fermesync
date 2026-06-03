@@ -1,4 +1,4 @@
-from flask import  render_template, request, redirect, url_for
+from flask import render_template, request, redirect, url_for, jsonify
 from flask_login import login_required, current_user
 from Core.auth import create_db_connection
 from . import agri_bp
@@ -46,6 +46,7 @@ def setup():
     cur.execute("""
         SELECT
             sm.IdSprayMethod,
+            sm.SprayMethodFarmId,
             f.FarmName,
             sm.SprayMethodName,
             sm.SprayMethodWaterPerHa,
@@ -61,6 +62,8 @@ def setup():
         pa.IdProjAttr,
         pa.ProjAttrProjectId,
         PRJ.ProjectName,
+        pa.ProjAttrFarmId,
+        F.FarmName AS ProjAttrFarmName,
         pa.ProjAttrCropId,
         CRP.CropCode,
         pa.ProjAttrVarietyId,
@@ -72,6 +75,7 @@ def setup():
         pa.ProjAttrBlockNo
     FROM agr.ProjectAttributes PA
     JOIN cmn._uvProject PRJ on PRJ.ProjectLink = PA.ProjAttrProjectId
+    LEFT JOIN agr.Farm F on F.IdFarm = PA.ProjAttrFarmId
     JOIN agr.Crop CRP on CRP.IdCrop = PA.ProjAttrCropId
     JOIN agr.Variety VA on VA.IdVariety = PA.ProjAttrVarietyId
     Order BY PRJ.ProjectName
@@ -135,6 +139,7 @@ def add_spray_method():
 @login_required
 def add_project_attr():
     project_id = request.form["project_id"]
+    farm_id = request.form["farm_id"]
     crop_id = request.form["crop_id"]
     variety_id = request.form["variety_id"]
     ha = request.form["ha"]
@@ -147,10 +152,98 @@ def add_project_attr():
     cur = conn.cursor()
     cur.execute("""
         INSERT INTO agr.ProjectAttributes
-        (ProjAttrProjectId, ProjAttrCropId, ProjAttrVarietyId, ProjAttrHa, ProjAttrPlantDate, ProjAttrProjectManager, ProjAttrAgriculturist, ProjAttrBlockNo)
-        VALUES (?, ?, ?, ?, ?, ?, ?, ?)
-    """, project_id, crop_id, variety_id, ha, plant_date, project_manager, agriculturist, block_no)
+        (ProjAttrProjectId, ProjAttrFarmId, ProjAttrCropId, ProjAttrVarietyId, ProjAttrHa, ProjAttrPlantDate, ProjAttrProjectManager, ProjAttrAgriculturist, ProjAttrBlockNo)
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+    """, project_id, farm_id, crop_id, variety_id, ha, plant_date, project_manager, agriculturist, block_no)
     conn.commit()
     conn.close()
 
     return redirect(url_for("agri.setup"))
+
+
+@agri_bp.route('/setup/farm/update', methods=['POST'])
+@login_required
+def update_farm():
+    data = request.get_json()
+    if not data:
+        return jsonify({"success": False, "message": "Missing payload"}), 400
+
+    farm_id = data.get('id')
+    name = (data.get('name') or '').strip()
+    if not farm_id or not name:
+        return jsonify({"success": False, "message": "Farm ID and name are required"}), 400
+
+    conn = create_db_connection()
+    cur = conn.cursor()
+    cur.execute("""
+        UPDATE agr.Farm
+        SET FarmName = ?
+        WHERE IdFarm = ?
+    """, name, farm_id)
+    conn.commit()
+    conn.close()
+
+    return jsonify({"success": True})
+
+
+@agri_bp.route('/setup/spraymethod/update', methods=['POST'])
+@login_required
+def update_spray_method():
+    data = request.get_json()
+    if not data:
+        return jsonify({"success": False, "message": "Missing payload"}), 400
+
+    method_id = data.get('id')
+    farm_id = data.get('farm_id')
+    name = (data.get('name') or '').strip()
+    water_per_ha = data.get('water_per_ha')
+    tank_size = data.get('tank_size')
+
+    if not method_id or not farm_id or not name:
+        return jsonify({"success": False, "message": "Spray method ID, farm, and name are required"}), 400
+
+    conn = create_db_connection()
+    cur = conn.cursor()
+    cur.execute("""
+        UPDATE agr.SprayMethod
+        SET SprayMethodFarmId = ?, SprayMethodName = ?, SprayMethodWaterPerHa = ?, SprayMethodTankSize = ?
+        WHERE IdSprayMethod = ?
+    """, farm_id, name, water_per_ha, tank_size, method_id)
+    conn.commit()
+    conn.close()
+
+    return jsonify({"success": True})
+
+
+@agri_bp.route('/setup/projectattr/update', methods=['POST'])
+@login_required
+def update_project_attr():
+    data = request.get_json()
+    if not data:
+        return jsonify({"success": False, "message": "Missing payload"}), 400
+
+    attr_id = data.get('id')
+    project_id = data.get('project_id')
+    farm_id = data.get('farm_id')
+    crop_id = data.get('crop_id')
+    variety_id = data.get('variety_id')
+    ha = data.get('ha')
+    plant_date = data.get('plant_date')
+    project_manager = (data.get('project_manager') or '').strip()
+    agriculturist = (data.get('agriculturist') or '').strip()
+    block_no = (data.get('block_no') or '').strip()
+
+    if not attr_id or not project_id or not farm_id or not crop_id or not variety_id:
+        return jsonify({"success": False, "message": "Project, farm, crop and variety are required"}), 400
+
+    conn = create_db_connection()
+    cur = conn.cursor()
+    cur.execute("""
+        UPDATE agr.ProjectAttributes
+        SET ProjAttrProjectId = ?, ProjAttrFarmId = ?, ProjAttrCropId = ?, ProjAttrVarietyId = ?, ProjAttrHa = ?, ProjAttrPlantDate = ?, ProjAttrProjectManager = ?, ProjAttrAgriculturist = ?, ProjAttrBlockNo = ?
+        WHERE IdProjAttr = ?
+    """, project_id, farm_id, crop_id, variety_id, ha, plant_date, project_manager, agriculturist, block_no, attr_id)
+    conn.commit()
+    conn.close()
+
+    return jsonify({"success": True})

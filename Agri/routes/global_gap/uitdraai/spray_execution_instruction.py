@@ -65,10 +65,13 @@ def execution_instruction_pdf(execution_id):
             SM.SprayMethodName,
             SM.SprayMethodTankSize,
             SM.SprayMethodWaterPerHa,
-            F.FarmName
+            F.FarmName,
+            SH.SprayHCropId,
+            HC.CropCode AS SprayHCropCode
         FROM agr.SprayHeader SH
         LEFT JOIN agr.SprayMethod SM ON SM.IdSprayMethod = SH.SprayHMethodId
         LEFT JOIN agr.Farm F ON F.IdFarm = SM.SprayMethodFarmId
+        LEFT JOIN agr.Crop HC ON HC.IdCrop = SH.SprayHCropId
         WHERE SH.SprayHExecutionId = ?
         ORDER BY SH.SprayHDate
     """, execution_id)      
@@ -91,17 +94,18 @@ def execution_instruction_pdf(execution_id):
         
         # Fetch projects for this spray
         cur.execute("""
-            SELECT p.ProjectCode, sp.SprayPHa, sp.SprayPWaterPerHa, sp.SprayPPlantDate, sp.SprayPAgriculturist, sp.SprayPProjectManager, c.CropCode, v.VarietyCode, sp.SprayPBlockNo
+            SELECT p.ProjectCode, sp.SprayPHa, sp.SprayPWaterPerHa, sp.SprayPPlantDate, sp.SprayPAgriculturist, sp.SprayPProjectManager, v.VarietyCode, sp.SprayPBlockNo
             FROM agr.SprayProjects sp
             JOIN cmn._uvProject p ON p.ProjectLink = sp.SprayPProjectId
-            LEFT JOIN agr.Crop c ON c.IdCrop = sp.SprayPCropId
             LEFT JOIN agr.Variety v ON v.IdVariety = sp.SprayPVarietyId
             WHERE sp.SprayPSprayId = ?
         """, spray_id)
-        
+
         projects = cur.fetchall()
+        # Use crop from SprayHeader (SprayHCropCode) instead of project-level crop
+        header_crop_code = spray.SprayHCropCode if hasattr(spray, 'SprayHCropCode') else None
         project_list = [
-            {"code": r.ProjectCode, "ha": float(r.SprayPHa or 0), "water_per_ha": float(r.SprayPWaterPerHa or 0), "plant_date": str(r.SprayPPlantDate) if r.SprayPPlantDate else None, "agriculturist": r.SprayPAgriculturist, "project_manager": r.SprayPProjectManager, "crop": r.CropCode, "variety": r.VarietyCode, "block_no": r.SprayPBlockNo}
+            {"code": r.ProjectCode, "ha": float(r.SprayPHa or 0), "water_per_ha": float(r.SprayPWaterPerHa or 0), "plant_date": str(r.SprayPPlantDate) if r.SprayPPlantDate else None, "agriculturist": r.SprayPAgriculturist, "project_manager": r.SprayPProjectManager, "crop": header_crop_code, "variety": r.VarietyCode, "block_no": r.SprayPBlockNo}
             for r in projects
         ]
         all_projects.extend(project_list)
@@ -111,8 +115,6 @@ def execution_instruction_pdf(execution_id):
             SELECT 
                 LIN.SprayMixLineStockId,
                 EVOSTK.StockCode,
-                STK.ChemStockActiveIngr,
-                STK.ChemStockWitholdingPeriod,
                 LIN.SprayMixLineQty,
                 UOM.cUnitCode,
                 SME.SprayMixNumber,
@@ -130,10 +132,8 @@ def execution_instruction_pdf(execution_id):
         lines_list = [
             {
                 "code": r.StockCode,
-                "ingredient": r.ChemStockActiveIngr,
                 "qty": float(r.SprayMixLineQty or 0),
                 "uom": r.cUnitCode,
-                "withholding_period": r.ChemStockWitholdingPeriod,
                 "mix_number": r.SprayMixNumber,
                 "water": float(r.SprayMixWater or 0),
                 "mix_ha": float(r.SprayMixHa or 0),
@@ -168,7 +168,6 @@ def execution_instruction_pdf(execution_id):
     cur.execute("""
         SELECT 
             EVOSTK.StockCode,
-            STK.ChemStockActiveIngr,
             SUM(REQ.TotalQty) as total_qty,
             UOM.cUnitCode
 			--Select *
@@ -177,14 +176,13 @@ def execution_instruction_pdf(execution_id):
         LEFT JOIN agr.ChemStock STK ON STK.IdChemStock = REQ.StockId
         LEFT JOIN cmn._uvUOM UOM ON UOM.idUnits = REQ.UoMId
         WHERE REQ.SprayId IN (SELECT IdSprayH FROM agr.SprayHeader WHERE SprayHExecutionId = ?)
-        GROUP BY EVOSTK.StockCode, STK.ChemStockActiveIngr, UOM.cUnitCode
+        GROUP BY EVOSTK.StockCode, UOM.cUnitCode
     """, execution_id)
 
     stock_reqs = cur.fetchall()
     stock_requirements = [
         {
             "code": r.StockCode,
-            "ingredient": r.ChemStockActiveIngr,
             "min_qty": float(r.total_qty or 0),
             "uom": r.cUnitCode
         }

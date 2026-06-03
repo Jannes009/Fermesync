@@ -137,17 +137,20 @@ def get_spray_lines(spray_id):
     dose_basis = row.SprayLineDoseBasis
     lines = []
     cur.execute("""
-        SELECT LIN.IdSprayLine, LIN.SprayLineStkId, EVOSTK.StockCode, LIN.SprayLineQtyPerHa, LIN.SprayLineQtyPer100L, SprayLineTotalQty, LIN.SprayLineUoMId, UOM.cUnitCode
+        SELECT LIN.IdSprayLine, LIN.SprayLineStkId, EVOSTK.StockDescription, ACT.ChemActIngredient, LIN.SprayLineQtyPerHa, LIN.SprayLineQtyPer100L, SprayLineTotalQty, LIN.SprayLineUoMId, UOM.cUnitCode
         FROM [agr].SprayLines LIN
         JOIN [agr].SprayHeader HEA ON HEA.IdSprayH = LIN.SprayLineHeaderId
         JOIN [cmn].[_uvStockItems] EVOSTK ON EVOSTK.StockLink = LIN.SprayLineStkId
         LEFT JOIN [cmn]._uvUOM UOM ON UOM.idUnits = LIN.SprayLineUoMId
+		JOIN agr.ChemStock STK on STK.ChemStockLink = LIN.SprayLineStkId
+		LEFT JOIN agr.ChemActiveIngredient ACT on ACT.IdChemAct = STK.ChemStockActiveIngrId
         WHERE LIN.SprayLineHeaderId = ?
     """, spray_id)
     lines = [
         {"line_id": row.IdSprayLine,
             "stock_id": row.SprayLineStkId,
-            "stock_code": row.StockCode,
+            "stock_description": row.StockDescription,
+            "active_ingredient": row.ChemActIngredient,
             "dose_basis": dose_basis,
             "qty_per_100l": float(row.SprayLineQtyPer100L) if row.SprayLineQtyPer100L is not None else None,
             "qty_per_ha": float(row.SprayLineQtyPerHa) if row.SprayLineQtyPerHa is not None else None,
@@ -397,7 +400,7 @@ def get_spray_mix_lines(spray_id):
     lines = []
 
     cur.execute("""
-        SELECT LIN.IdSprayMixLine, LIN.SprayMixLineStockId, EVOSTK.StockCode, STK.ChemStockActiveIngr, STK.ChemStockReason, STK.ChemStockWitholdingPeriod,
+        SELECT LIN.IdSprayMixLine, LIN.SprayMixLineStockId, EVOSTK.StockDescription,
                 LIN.SprayMixLineQty, UOM.cUnitCode, SME.SprayMixNumber, SME.SprayMixWater, SME.SprayMixHa,
                 SM.SprayMethodName
         FROM [agr].SprayMixLines LIN
@@ -405,7 +408,6 @@ def get_spray_mix_lines(spray_id):
         JOIN agr.SprayHeader SH ON SH.IdSprayH = SME.SprayMixHeaderId
         LEFT JOIN agr.SprayMethod SM ON SM.IdSprayMethod = SH.SprayHMethodId
         JOIN [cmn].[_uvStockItems] EVOSTK ON EVOSTK.StockLink = LIN.SprayMixLineStockId
-        LEFT JOIN [agr].[ChemStock] STK ON STK.IdChemStock = LIN.SprayMixLineStockId
         LEFT JOIN [cmn]._uvUOM UOM ON UOM.idUnits = LIN.SprayMixLineUoMId
         WHERE SME.SprayMixHeaderId = ?
     """, spray_id)
@@ -413,12 +415,9 @@ def get_spray_mix_lines(spray_id):
         {
             "line_id": row.IdSprayMixLine,
             "stock_id": row.SprayMixLineStockId,
-            "stock_code": row.StockCode,
-            "active_ingr": row.ChemStockActiveIngr,
-            "reason": row.ChemStockReason,
+            "stock_description": row.StockDescription,
             "qty": float(row.SprayMixLineQty),
             "uom": row.cUnitCode,
-            "withholding_period": row.ChemStockWitholdingPeriod,
             "mix_number": row.SprayMixNumber,
             "water": float(row.SprayMixWater),
             "mix_ha": float(row.SprayMixHa),

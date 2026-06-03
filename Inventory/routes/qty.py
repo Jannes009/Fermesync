@@ -88,18 +88,21 @@ def get_warehouse_stock(warehouse_id):
             QTY.StockLink, 
             QTY.StockCode, 
             QTY.StockDescription, 
+			ACT.ChemActIngredient,
             QTY.cCategoryName,
             COALESCE(QTY.QtyOnHand, 0) AS QtyOnHand,
             COALESCE(QTY.QtyOnPo, 0) AS QtyOnPo, 
             COALESCE(QTY.IncompleteIssuesQty, 0) AS QtyOnIssues, 
             FN.SprayHWeek
         FROM stk._uvInventoryQty QTY
+		LEFT JOIN agr.ChemStock STK on STK.ChemStockLink = QTY.StockLink
+		LEFT JOIN agr.ChemActiveIngredient ACT on ACT.IdChemAct = STK.ChemStockActiveIngrId
         LEFT JOIN FirstNegative FN 
             ON FN.SprayHWhseId = QTY.WhseLink 
             AND FN.SprayLineStkId = QTY.StockLink
             AND FN.rn = 1
         WHERE QTY.WhseLink = ?
-        ORDER BY QTY.StockCode;
+        ORDER BY ACT.ChemActIngredient, QTY.StockCode;
         """
         cursor.execute(query, (warehouse_id,))
         rows = cursor.fetchall()
@@ -108,6 +111,7 @@ def get_warehouse_stock(warehouse_id):
                 "StockLink": r.StockLink,
                 "StockCode": r.StockCode,
                 "StockDescription": r.StockDescription,
+                "ActiveIngredient": r.ChemActIngredient,
                 "Category": r.cCategoryName,
                 "QtyOnHand": format_qty(r.QtyOnHand),
                 "QtyOnPo": format_qty(r.QtyOnPo),
@@ -127,7 +131,7 @@ def get_warehouse_stock(warehouse_id):
 @inventory_bp.route("/get-chemstock/<int:stock_link>")
 @login_required
 def get_chemstock(stock_link):
-    """Get ChemStock data for a product"""
+    """Get ChemStock data for a product with all associated crops"""
     conn = create_db_connection()
     if not conn:
         return jsonify({"error": "Database connection failed"}), 500
@@ -135,26 +139,40 @@ def get_chemstock(stock_link):
     try:
         cursor = conn.cursor()
         cursor.execute("""
-            SELECT IdChemStock, ChemStockLink, ChemStockActiveIngr, ChemStockRegNumber,
-                   ChemStockColourCodeId, ChemStockTypeId, ChemStockReason,
-                   ChemStockWitholdingPeriod, ChemStockDefaultQtyPer100L
-            FROM agr.ChemStock
-            WHERE ChemStockLink = ?
+    SELECT  STK.ChemStockLink, ACT.ChemActIngredient, CRP.CropDescription, STKCRP.StkCrpRegNumber,
+            CLR.ChemColCode, STKCRP.StkCrpType, STKCRP.StkCrpFunctionDef,
+            STKCRP.StkCrpWitholdingPeriodDef
+    FROM agr.ChemStock STK
+    LEFT JOIN agr.ChemActiveIngredient ACT on ACT.IdChemAct = STK.ChemStockActiveIngrId
+    LEFT JOIN agr.ChemStockCrop STKCRP on STKCRP.StkCrpChemStockId = STK.IdChemStock
+    LEFT JOIN agr.ChemColour CLR on CLR.IdChemCol = StK.ChemStockColourCodeId
+    LEFT JOIN agr.Crop CRP on CRP.IdCrop = STKCRP.StkCrpCropId
+    WHERE STK.ChemStockLink = ?
+    ORDER BY CRP.CropDescription
         """, (stock_link,))
         
-        row = cursor.fetchone()
-        if row:
+        rows = cursor.fetchall()
+        if rows:
+            # Get the base ChemStock info from first row
+            first_row = rows[0]
             chemstock = {
-                "IdChemStock": row.IdChemStock,
-                "ChemStockLink": row.ChemStockLink,
-                "ChemStockActiveIngr": row.ChemStockActiveIngr,
-                "ChemStockRegNumber": row.ChemStockRegNumber,
-                "ChemStockColourCodeId": row.ChemStockColourCodeId,
-                "ChemStockTypeId": row.ChemStockTypeId,
-                "ChemStockReason": row.ChemStockReason,
-                "ChemStockWitholdingPeriod": row.ChemStockWitholdingPeriod,
-                "ChemStockDefaultQtyPer100L": row.ChemStockDefaultQtyPer100L
+                "ChemStockLink": first_row.ChemStockLink,
+                "ChemStockActiveIngr": first_row.ChemActIngredient,
+                "ChemStockColourCode": first_row.ChemColCode,
+                "Crops": []
             }
+            
+            # Collect all crop entries
+            for row in rows:
+                crop_entry = {
+                    "CropDescription": row.CropDescription,
+                    "RegNumber": row.StkCrpRegNumber,
+                    "Type": row.StkCrpType,
+                    "Function": row.StkCrpFunctionDef,
+                    "WitholdingPeriod": row.StkCrpWitholdingPeriodDef
+                }
+                chemstock["Crops"].append(crop_entry)
+            
             return jsonify(chemstock)
         else:
             return jsonify({"error": "ChemStock not found"}), 404

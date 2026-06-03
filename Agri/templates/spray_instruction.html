@@ -379,7 +379,8 @@ async function renderLines() {
                 <table>
                     <thead>
                         <tr>
-                            <th>Stock Code</th>
+                            <th>Stock Description</th>
+                            <th>Active Ingredient</th>
                             <th>${qtyColumnText}</th>
                             <th>Total Qty</th>
                             ${editModes.lines ? '<th></th>' : ''}
@@ -392,10 +393,10 @@ async function renderLines() {
         const qty = doseBasis === 'PER_100L' ? line.qty_per_100l : line.qty_per_ha;
         const qtyDisplay = qty !== null ? qty : 0;
         const totalQtyDisplay = line.total_qty !== null ? `<b>${line.total_qty.toFixed(2)} ${line.uom || ''}</b>` : '-';
-        console.log(line.stock_code, typeof line.stock_id);
+        console.log(line.stock_description, typeof line.stock_id);
 
         if (editModes.lines) {
-            const options = productOptions.map(product => `<option value="${product.stock_link}" ${product.stock_link === parseInt(line.stock_id) ? 'selected' : ''}>${product.stock_code}</option>`).join('');
+            const options = productOptions.map(product => `<option value="${product.stock_link}" ${product.stock_link === parseInt(line.stock_id) ? 'selected' : ''}>${product.stock_description}</option>`).join('');
             html += `
                 <tr data-line-idx="${idx}">
                     <td>
@@ -412,7 +413,8 @@ async function renderLines() {
         } else {
             html += `
                 <tr>
-                    <td>${line.stock_code || '-'}</td>
+                    <td>${line.stock_description || '-'}</td>
+                    <td>${line.active_ingredient || '-'}</td>
                     <td>${qty !== null ? `${qty.toFixed(2)} ${line.uom || ''}` : '-'}</td>
                     <td>${totalQtyDisplay}</td>
                 </tr>
@@ -437,7 +439,8 @@ function handleLineProductChange(idx) {
 
     const selected = select.options[select.selectedIndex];
     line.stock_id = select.value || null;
-    line.stock_code = selected ? selected.textContent : '';
+    line.stock_description = selected ? selected.textContent : '';
+    line.active_ingredient = selected ? selected.dataset.activeIngredient : '';
     recalculateMixes();
 }
 
@@ -452,9 +455,10 @@ function syncLineInputs() {
         if (select) {
             line.stock_id = select.value || null;
             const selected = select.options[select.selectedIndex];
-            line.stock_code = selected ? selected.textContent : line.stock_code;
+            line.stock_description = selected ? selected.textContent : line.stock_description;
+            line.active_ingredient = selected ? selected.dataset.activeIngredient : line.active_ingredient;
         }
-        console.log(select ? select.value : null, line.stock_code, line.stock_id);
+        console.log(select ? select.value : null, line.stock_description, line.stock_id);
         const input = row.querySelector('input.line-qty-input');
         if (input) {
             const value = parseFloat(input.value);
@@ -479,7 +483,8 @@ function addLine() {
     const newLine = {
         line_id: null,
         stock_id: null,
-        stock_code: '',
+        stock_description: '',
+        active_ingredient: '',
         dose_basis: doseBasis,
         qty_per_100l: doseBasis === 'PER_100L' ? 0 : null,
         qty_per_ha: doseBasis === 'PER_HA' ? 0 : null,
@@ -497,7 +502,8 @@ function addLine() {
     sprayData.mixLines.push({
         line_id: null,
         stock_id: newLine.stock_id,
-        stock_code: newLine.stock_code,
+        stock_description: newLine.stock_description,
+        active_ingredient: newLine.active_ingredient,
         qty: newLine.total_qty,
         uom: newLine.uom,
         mix_number: targetMixNumber,
@@ -597,7 +603,7 @@ async function renderMix(forceFetch = false) {
                     <table>
                         <thead>
                             <tr>
-                                <th>Stock Code</th>
+                                <th>Stock Description</th>
                                 <th>Qty</th>
                             </tr>
                         </thead>
@@ -608,7 +614,7 @@ async function renderMix(forceFetch = false) {
             const qtyDisplay = typeof line.qty === 'number' && !isNaN(line.qty) ? line.qty.toFixed(2) : '-';
             html += `
                 <tr>
-                    <td>${line.stock_code || '-'}</td>
+                    <td>${line.stock_description || '-'}</td>
                     <td><b>${qtyDisplay} ${line.uom || ''}</b></td>
                 </tr>
             `;
@@ -827,8 +833,8 @@ function recalculateMixes() {
             if (line.stock_id != null) {
                 idMap.set(`id:${line.stock_id}`, line);
             }
-            if (line.stock_code) {
-                codeMap.set(`code:${line.stock_code}`, line);
+            if (line.stock_description) {
+                codeMap.set(`code:${line.stock_description}`, line);
             }
         });
 
@@ -848,11 +854,12 @@ function recalculateMixes() {
 
             const existing = placeholderIndexMap.get(idx)
                 || (line.stock_id ? idMap.get(`id:${line.stock_id}`) : null)
-                || (line.stock_code ? codeMap.get(`code:${line.stock_code}`) : null);
+                || (line.stock_description ? codeMap.get(`code:${line.stock_description}`) : null);
             const mixLine = existing ? {
                 ...existing,
                 stock_id: line.stock_id,
-                stock_code: line.stock_code,
+                stock_description: line.stock_description,
+                active_ingredient: line.active_ingredient,
                 qty,
                 uom: line.uom || existing.uom || '',
                 placeholder_for_line_idx: idx,
@@ -861,7 +868,8 @@ function recalculateMixes() {
                 mix_ha: mixHa
             } : {
                 stock_id: line.stock_id,
-                stock_code: line.stock_code,
+                stock_description: line.stock_description,
+                active_ingredient: line.active_ingredient,
                 qty,
                 uom: line.uom || '',
                 mix_number: mixNumber,
@@ -873,8 +881,8 @@ function recalculateMixes() {
             if (mixLine.stock_id != null) {
                 usedKeys.add(`id:${mixLine.stock_id}`);
             }
-            if (mixLine.stock_code) {
-                usedKeys.add(`code:${mixLine.stock_code}`);
+            if (mixLine.stock_description) {
+                usedKeys.add(`code:${mixLine.stock_description}`);
             }
             updatedMixLines.push(mixLine);
         });
@@ -882,7 +890,7 @@ function recalculateMixes() {
         // Preserve any unmapped legacy mix lines that don't correspond to current spray lines.
         groupLines.forEach(line => {
             const keyId = line.stock_id != null ? `id:${line.stock_id}` : null;
-            const keyCode = line.stock_code ? `code:${line.stock_code}` : null;
+            const keyCode = line.stock_description ? `code:${line.stock_description}` : null;
             const isPlaceholder = typeof line.placeholder_for_line_idx === 'number';
             if (isPlaceholder) return;
             if ((keyId && usedKeys.has(keyId)) || (keyCode && usedKeys.has(keyCode))) return;

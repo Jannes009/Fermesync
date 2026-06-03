@@ -1,0 +1,158 @@
+﻿{% extends 'inventory_base.html' %}
+{% block content %}
+
+<link rel="stylesheet" href="{{ url_for('market.static', filename='color-template.css') }}">
+<style>
+  .wrap { max-width: 1140px; margin: 1.2rem auto; padding: 0 1rem; }
+  .card { padding: 1.5rem; border-radius: 12px; background: var(--container-bg); box-shadow: 0 1px 10px rgba(0,0,0,0.06); }
+  .summary-header { display: flex; flex-wrap: wrap; justify-content: space-between; align-items: flex-start; gap: 1rem; }
+  .summary-header h1 { margin: 0; font-size: 1.6rem; color: var(--primary-text); }
+  .summary-copy { margin: 0.5rem 0 0; color: var(--secondary-text); }
+  .actions { display: flex; flex-wrap: wrap; gap: 0.75rem; align-items: center; margin-top: 0.5rem; }
+  .actions a { display: inline-flex; align-items: center; justify-content: center; padding: 10px 16px; border-radius: 8px; background: #6c757d; color: white; text-decoration: none; font-size: 0.95rem; }
+  .actions a:hover { background: #5a6268; }
+  .table-wrapper { margin-top: 1.5rem; overflow-x: auto; }
+  table { width: 100%; border-collapse: collapse; min-width: 760px; }
+  th, td { padding: 12px 14px; border-bottom: 1px solid var(--input-border); text-align: left; font-size: 0.95rem; }
+  th { background: var(--form-bg); color: var(--secondary-text); font-weight: 700; }
+  tbody tr.execution-row { transition: background 0.15s ease; }
+  tbody tr.execution-row:hover { background: var(--form-bg); }
+  tbody tr.execution-detail { background: rgba(248,248,248,0.9); }
+  .muted { color: var(--secondary-text); }
+  .status-pill { display: inline-flex; align-items: center; gap: 0.35rem; padding: 4px 10px; border-radius: 999px; font-size: 0.82rem; font-weight: 700; }
+  .status-finalised { background: #d4edda; color: #155724; }
+  .status-draft { background: #e2e3e5; color: #383d41; }
+  .toggle-expand { border: 1px solid var(--input-border); background: transparent; color: var(--primary-text); width: 30px; height: 30px; border-radius: 6px; cursor: pointer; }
+  .toggle-expand.open { transform: rotate(45deg); }
+  .detail-panel { padding: 0.75rem 0; }
+  .detail-table { width: 100%; border-collapse: collapse; margin-top: 0.75rem; }
+  .detail-table th, .detail-table td { padding: 10px 12px; border-bottom: 1px solid var(--input-border); font-size: 0.92rem; }
+  .detail-table th { background: var(--container-bg); }
+  .no-data { padding: 18px 14px; font-style: italic; color: var(--secondary-text); }
+  @media (max-width: 900px) {
+    table { min-width: 100%; }
+    .summary-header { flex-direction: column; }
+    .actions { width: 100%; }
+  }
+</style>
+
+<div class="wrap">
+  <div class="card">
+    <div class="summary-header">
+      <div>
+        <h1>Spray Executions</h1>
+       </div>
+      <div class="actions">
+        <a href="/agri/spray-recommendations-summary">Back to recommendations</a>
+      </div>
+    </div>
+
+    <div class="table-wrapper">
+      <table>
+        <thead>
+          <tr>
+            <th></th>
+            <th>Execution</th>
+            <th>Date</th>
+            <th>Responsible</th>
+            <th>Finalised</th>
+            <th>Finalised At</th>
+            <th>Recommendations</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for exe in executions %}
+            <tr class="execution-row" data-href="/agri/execution/{{ exe.id }}" data-execution-id="{{ exe.id }}">
+              <td><button type="button" class="toggle-expand" aria-expanded="false">+</button></td>
+              <td>#{{ exe.id }}</td>
+              <td>{{ exe.date or '-' }}</td>
+              <td>{{ exe.responsible_person or '-' }}</td>
+              <td><span class="status-pill {% if exe.finalised %}status-finalised{% else %}status-draft{% endif %}">{% if exe.finalised %}Yes{% else %}No{% endif %}</span></td>
+              <td class="muted">{{ exe.finalised_timestamp or '-' }}</td>
+              <td>{{ exe.recommendations|length }}</td>
+            </tr>
+            <tr class="execution-detail" data-parent="{{ exe.id }}" hidden>
+              <td colspan="7">
+                {% if exe.recommendations %}
+                <div class="detail-panel">
+                  <strong>Recommendations ({{ exe.recommendations|length }})</strong>
+                  <table class="detail-table">
+                    <thead>
+                      <tr>
+                        <th>Spray No</th>
+                        <th>Description</th>
+                        <th>Week</th>
+                        <th>Status</th>
+                        <th>Start</th>
+                        <th>End</th>
+                        <th>Block</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {% for rec in exe.recommendations %}
+                      <tr data-href="/agri/spray/{{ rec.id }}">
+                        <td>{{ rec.spray_no or '-' }}</td>
+                        <td>{{ rec.description or '-' }}</td>
+                        <td class="muted">{{ rec.week_number or '-' }}</td>
+                        <td class="muted">{{ rec.status or '-' }}</td>
+                        <td class="muted">{{ rec.start_date_time or '-' }}</td>
+                        <td class="muted">{{ rec.end_date_time or '-' }}</td>
+                        <td class="muted">{{ rec.block_no or '-' }}</td>
+                      </tr>
+                      {% endfor %}
+                    </tbody>
+                  </table>
+                </div>
+                {% else %}
+                <div class="no-data">No recommendations linked to this execution.</div>
+                {% endif %}
+              </td>
+            </tr>
+          {% else %}
+          <tr><td colspan="7" class="no-data">No spray executions found.</td></tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  </div>
+</div>
+
+<script>
+document.addEventListener('DOMContentLoaded', () => {
+  document.querySelectorAll('.execution-row').forEach(row => {
+    const executionId = row.dataset.executionId;
+    const toggle = row.querySelector('.toggle-expand');
+    const detailRow = document.querySelector(`tr.execution-detail[data-parent="${executionId}"]`);
+
+    if (toggle && detailRow) {
+      toggle.addEventListener('click', event => {
+        event.stopPropagation();
+        const open = !detailRow.hidden;
+        detailRow.hidden = open;
+        toggle.classList.toggle('open', !open);
+        toggle.textContent = open ? '+' : '×';
+        toggle.setAttribute('aria-expanded', String(!open));
+      });
+    }
+
+    row.addEventListener('click', event => {
+      if (event.target.closest('.toggle-expand')) {
+        return;
+      }
+      if (row.dataset.href) {
+        window.location.href = row.dataset.href;
+      }
+    });
+  });
+
+  document.querySelectorAll('.detail-table tr[data-href]').forEach(recRow => {
+    recRow.addEventListener('click', () => {
+      if (recRow.dataset.href) {
+        window.location.href = recRow.dataset.href;
+      }
+    });
+  });
+});
+</script>
+
+{% endblock %}

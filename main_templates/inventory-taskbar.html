@@ -45,9 +45,13 @@
       {% if "STOCK_ISSUE" in current_user.permissions %}
       <li><a href="/inventory/SDK/stock_issue_summary" class="taskbar-link">Stock Issue</a></li>
       {% endif %}
-      {% if "SPRAY_REC" in current_user.permissions %}
-      <li><a href="/agri/spray-recommendations-summary" class="taskbar-link">Spray</a></li>
-        {% endif %}
+      <li class="dropdown-parent">
+        <a href="#" class="taskbar-link">Spray <span>▼</span></a>
+        <ul class="dropdown-menu">
+          <li><a href="/agri/spray-executions-summary" class="dropdown-item">Executions</a></li>
+          <li><a href="/agri/spray-recommendations-summary" class="dropdown-item">Recommendations</a></li>
+        </ul>
+      </li>
       {% if "AGR_MAIN" in current_user.permissions %}
       <li><a href="/agri/setup" class="taskbar-link">Agri Maintanance</a></li>
       {% endif %}
@@ -273,6 +277,7 @@ body {
   align-items: center;
   height: 100%;
   position: relative;
+  flex-shrink: 0;
 }
 
 .logo-link {
@@ -322,6 +327,7 @@ main {
   display: flex;
   align-items: center;
   gap: 20px;
+  flex-shrink: 0;
 }
 
 /* Status Indicators Container */
@@ -334,16 +340,32 @@ main {
 
 /* Navigation - Desktop Only */
 .taskbar .desktop-nav {
-  position: absolute;
-  left: 50%;
-  transform: translateX(-50%);
+  position: relative;
+  flex: 1;
+  display: flex;
+  justify-content: center;
+  margin: 0 20px;
+  min-width: 0;
+  max-width: calc(100% - 320px);
 }
 
 .taskbar .desktop-nav ul {
   display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
   list-style: none;
   padding: 0;
   margin: 0;
+  justify-content: center;
+  min-width: 0;
+}
+
+.taskbar .desktop-nav ul li {
+  white-space: nowrap;
+}
+
+.dropdown-parent {
+  position: relative;
 }
 
 .taskbar-link {
@@ -441,9 +463,10 @@ main {
   top: 100%;
   background: var(--container-bg);
   min-width: 180px;
+  width: max-content;
   box-shadow: 0 4px 12px rgba(0,0,0,0.12);
   border-radius: 0 0 8px 8px;
-  z-index: 1001;
+  z-index: 1002;
   padding: 0.5em 0;
   margin: 0;
   list-style: none;

@@ -700,7 +700,7 @@
         <div class="stock-movement-item">
           <div class="stock-movement-summary" onclick="toggleStockDetail(this)">
             <div class="stock-movement-header-left">
-              <div class="stock-product-name">{{ movement.stock_description or 'Unknown Product' }}</div>
+              <div class="stock-product-name">{{ movement.stock_description or 'Unknown Product' }} - {{ movement.active_ingredient or 'Unknown Ingredient' }}</div>
               <div class="stock-summary-values">
                 <div class="summary-value-item">
                   <span class="summary-label">Recommended</span>

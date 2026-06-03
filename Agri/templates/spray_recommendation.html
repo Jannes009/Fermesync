@@ -215,9 +215,6 @@
                 <h2 style="margin:0;">Create Spray Recommendation</h2>
                 <div style="color:var(--muted)">Configure dose method, projects and products</div>
             </div>
-            <div style="font-weight:700; font-size:1.1rem;">
-                {{ spray_no }}
-            </div>
         </div>
 
         <form id="spray-form" novalidate>
@@ -233,7 +230,7 @@
 
                 <div>
                     <label>Description</label>
-                    <input type="text" id="spray_description">
+                        <input type="text" id="spray_description" required>
                 </div>
             </div>
 
@@ -284,7 +281,7 @@
 
             <select id="project_ids" multiple class="select2">
                 {% for p in projects %}
-                <option value="{{p.ProjectLink}}" data-ha="{{p.ProjAttrHa}}">
+                <option value="{{p.ProjectLink}}" data-ha="{{p.ProjAttrHa}}" data-crop-id="{{p.ProjAttrCropId}}">
                     {{p.ProjectCode}} ({{p.ProjAttrHa}} ha)
                 </option>
                 {% endfor %}
@@ -385,6 +382,29 @@
 
         </form>
 
+        <!-- EDIT DEFAULTS MODAL -->
+        <div id="edit-defaults-modal" style="display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.5); z-index: 1000; align-items: center; justify-content: center;">
+            <div style="background: white; border-radius: 16px; padding: 24px; max-width: 500px; width: 90%; box-shadow: 0 20px 60px rgba(0,0,0,0.3);">
+                <h3 style="margin-top: 0;">Edit Defaults</h3>
+                <div style="margin-bottom: 14px;">
+                    <label>Registration Number</label>
+                    <input type="text" id="modal-reg-number" style="width: 100%; padding: 8px; border: 1px solid var(--line); border-radius: 8px;">
+                </div>
+                <div style="margin-bottom: 14px;">
+                    <label>Witholding Period</label>
+                    <input type="text" id="modal-witholding-period" style="width: 100%; padding: 8px; border: 1px solid var(--line); border-radius: 8px;">
+                </div>
+                <div style="margin-bottom: 14px;">
+                    <label>Function</label>
+                    <input type="text" id="modal-function" style="width: 100%; padding: 8px; border: 1px solid var(--line); border-radius: 8px;">
+                </div>
+                <div style="display: flex; gap: 10px; justify-content: flex-end; margin-top: 20px;">
+                    <button type="button" class="btn ghost" onclick="closeEditDefaultsModal()">Cancel</button>
+                    <button type="button" class="btn" onclick="saveEditDefaults()">Save</button>
+                </div>
+            </div>
+        </div>
+
         <!-- STICKY BAR -->
         <div class="sticky-bar">
             <div>Total Ha: <strong id="sticky-ha">0</strong></div>
@@ -410,12 +430,13 @@ $('.select2').select2({ width: '100%' }).on('select2:open', function () {
 });
 
 let PRODUCT_OPTIONS = "";
+let PRODUCTS_DATA = {}; // Store product data for modal editing: {stock_id: {reg_number, witholding_period, function}}
 
-// Function to fetch products when warehouse changes
-async function updateProductsByWarehouse(warehouseId) {
-    if (!warehouseId) {
-        PRODUCT_OPTIONS = '<option value="">Select product</option>';
-        // Update all existing product selects
+// Function to fetch products when warehouse or projects change
+async function updateProductsByWarehouse(warehouseId, projectIds) {
+    // Only fetch when both a warehouse and at least one project are selected
+    if (!warehouseId || !projectIds || !projectIds.length) {
+        PRODUCT_OPTIONS = '<option value="">Select warehouse and project(s)</option>';
         $('.product-select').each(function() {
             $(this).html(PRODUCT_OPTIONS).trigger('change');
         });
@@ -423,22 +444,29 @@ async function updateProductsByWarehouse(warehouseId) {
     }
 
     try {
-        const response = await fetch(`/agri/fetch_products_linked_with_warehouse?warehouse_id=${warehouseId}`);
+        const pidParam = encodeURIComponent(projectIds.join(','));
+        const response = await fetch(`/agri/fetch_products_linked_with_warehouse?warehouse_id=${warehouseId}&project_ids=${pidParam}`);
         const data = await response.json();
-        
+
         if (data.products && data.products.length > 0) {
-            // Build options HTML
+            // Build options HTML with useful data-* attributes
             let options = '<option value="">Select product</option>';
+            PRODUCTS_DATA = {}; // Reset products data
+            
             data.products.forEach(product => {
-                options += `<option value="${product.product_link}" 
-                    data-code="${product.product_desc}"
-                    data-uom="${product.stocking_uom_code}"
-                    data-uom-id="${product.stocking_uom_id}">
-                    ${product.active_ingredient} - ${product.product_desc} (${product.qty_in_whse} ${product.stocking_uom_code})
-                </option>`;
+                options += `<option value="${product.product_link}" data-uom-id="${product.stocking_uom_id || ''}" data-purchase-uom-id="${product.purchase_uom_id || ''}" data-uom-cat="${product.uom_cat_id || ''}" data-reg-number="${product.reg_number || ''}" data-witholding-period="${product.witholding_period || ''}" data-function="${product.function || ''}">` +
+                    `${product.active_ingredient} - ${product.product_desc}(${product.qty_in_whse} ${product.stocking_uom_code})` +
+                    `</option>`;
+                
+                // Store product data for later reference
+                PRODUCTS_DATA[product.product_link] = {
+                    reg_number: product.reg_number || '',
+                    witholding_period: product.witholding_period || '',
+                    function: product.function || ''
+                };
             });
             PRODUCT_OPTIONS = options;
-            
+
             // Update all existing product dropdowns
             $('.product-select').each(function() {
                 const currentVal = $(this).val();
@@ -446,11 +474,29 @@ async function updateProductsByWarehouse(warehouseId) {
                 if (currentVal) $(this).val(currentVal);
                 $(this).trigger('change');
             });
+
+            // If products returned and there are no product lines, add one automatically
+            if (data.products.length > 0 && document.querySelectorAll('.product-card').length === 0) {
+                addLine();
+                // set first select to first product
+                setTimeout(() => {
+                    const firstSelect = document.querySelector('.product-select');
+                    if (firstSelect) {
+                        firstSelect.value = data.products[0].product_link;
+                        $(firstSelect).trigger('change');
+                    }
+                    recalcEverything();
+                }, 50);
+            }
+
         } else {
-            PRODUCT_OPTIONS = '<option value="">No products available in this warehouse</option>';
+            // show reason from server if provided
+            const message = data.message || 'No products available for the selected warehouse and projects.';
+            PRODUCT_OPTIONS = `<option value="">${message}</option>`;
             $('.product-select').each(function() {
                 $(this).html(PRODUCT_OPTIONS).trigger('change');
             });
+            Swal.fire({ icon: 'info', title: 'No products', text: message });
         }
     } catch (error) {
         console.error('Error fetching products:', error);
@@ -458,6 +504,7 @@ async function updateProductsByWarehouse(warehouseId) {
         $('.product-select').each(function() {
             $(this).html(PRODUCT_OPTIONS).trigger('change');
         });
+        Swal.fire({ icon: 'error', title: 'Error', text: 'Error fetching products' });
     }
 }
 
@@ -629,6 +676,10 @@ function updateProjectConfigs() {
 
     renderModeUI();
     recalcEverything();
+    // After rendering projects, refetch products for the selected warehouse + projects
+    const warehouseId = document.getElementById('warehouse_id')?.value;
+    const projectIds = $('#project_ids').val() || [];
+    updateProductsByWarehouse(warehouseId, projectIds);
 }
 
 function updateLineLabels() {
@@ -642,6 +693,7 @@ function updateLineLabels() {
 function addLine() {
     let row = document.createElement('div');
     row.className = 'product-card';
+    const lineId = 'product-line-' + Date.now(); // Unique ID for this line
 
     row.innerHTML = `
         <div class="product-grid">
@@ -649,6 +701,9 @@ function addLine() {
                 <select class="product-select">
                     ${PRODUCT_OPTIONS || '<option value="">Select product</option>'}
                 </select>
+                <input type="hidden" class="line-reg-number" value="">
+                <input type="hidden" class="line-witholding-period" value="">
+                <input type="hidden" class="line-function" value="">
             </div>
 
             <div>
@@ -666,9 +721,11 @@ function addLine() {
                 <div class="readonly-box per-tank">-</div>
             </div>
 
-            <div>
-                <button type="button"
-                    onclick="this.closest('.product-card').remove(); recalcEverything()">
+            <div style="display: flex; gap: 8px;">
+                <button type="button" class="edit-defaults-btn" title="Edit defaults">
+                    ⚙️
+                </button>
+                <button type="button" class="delete-line-btn" title="Delete line">
                     ✕
                 </button>
             </div>
@@ -676,7 +733,59 @@ function addLine() {
     `;
 
     document.getElementById('lines').appendChild(row);
-    $(row).find('.product-select').select2({ width: '100%' });
+    const selectEl = $(row).find('.product-select');
+    selectEl.select2({ width: '100%' });
+    
+    // Update hidden fields when product is selected
+    selectEl.on('change', function() {
+        const productId = $(this).val();
+        const card = $(this).closest('.product-card');
+        
+        // Check for duplicate product selection
+        if (productId) {
+            const isDuplicate = document.querySelectorAll('.product-select').some((sel, index) => {
+                // Check if any other select (not this one) has the same value
+                return sel !== this && sel.value === productId;
+            });
+            
+            if (isDuplicate) {
+                $(this).val('').trigger('change');
+                const productName = this.options[this.selectedIndex]?.text || 'Product';
+                Swal.fire({
+                    icon: 'warning',
+                    title: 'Duplicate Product',
+                    text: `"${productName}" is already selected in another line.`,
+                    confirmButtonText: 'OK'
+                });
+                return;
+            }
+        }
+        
+        if (productId && PRODUCTS_DATA[productId]) {
+            card.find('.line-reg-number').val(PRODUCTS_DATA[productId].reg_number || '');
+            card.find('.line-witholding-period').val(PRODUCTS_DATA[productId].witholding_period || '');
+            card.find('.line-function').val(PRODUCTS_DATA[productId].function || '');
+        }
+        recalcEverything();
+    });
+    
+    // Edit defaults button
+    $(row).find('.edit-defaults-btn').on('click', function(e) {
+        e.preventDefault();
+        const card = $(this).closest('.product-card');
+        const regNumber = card.find('.line-reg-number').val();
+        const witholdingPeriod = card.find('.line-witholding-period').val();
+        const func = card.find('.line-function').val();
+        
+        openEditDefaultsModal(card, regNumber, witholdingPeriod, func);
+    });
+    
+    // Delete line button
+    $(row).find('.delete-line-btn').on('click', function(e) {
+        e.preventDefault();
+        $(this).closest('.product-card').remove();
+        recalcEverything();
+    });
     
     updateLineLabels();
     recalcEverything();
@@ -847,6 +956,7 @@ function renderTankBreakdown(totalWater, waterPerTank) {
 function validateSprayForm(mode, projects, lines) {
     const errors = [];
     const sprayDate = document.getElementById('spray_date').value;
+    const sprayDescription = (document.getElementById('spray_description').value || '').trim();
     const warehouseId = document.getElementById('warehouse_id').value;
     const methodId = document.getElementById('method_id')?.value;
     const waterPerTank = parseFloat(document.getElementById('global_water_per_tank').value) || 0;
@@ -854,6 +964,9 @@ function validateSprayForm(mode, projects, lines) {
 
     if (!sprayDate) {
         errors.push('Please select a spray date.');
+    }
+    if (!sprayDescription) {
+        errors.push('Please enter a description.');
     }
     if (new Date(sprayDate) < new Date().setHours(0, 0, 0, 0)) {
         errors.push('Spray date cannot be in the past.');
@@ -910,6 +1023,20 @@ function validateSprayForm(mode, projects, lines) {
         }
     });
 
+    // Check for duplicate products
+    const selectedProducts = new Map();
+    document.querySelectorAll('.product-card').forEach((card, idx) => {
+        const select = card.querySelector('.product-select');
+        if (select.value) {
+            if (selectedProducts.has(select.value)) {
+                const productName = select.options[select.selectedIndex].text;
+                errors.push(`Product "${productName}" is selected more than once.`);
+            } else {
+                selectedProducts.set(select.value, idx);
+            }
+        }
+    });
+
     return errors;
 }
 
@@ -958,12 +1085,73 @@ function syncProjectWaterFields(row) {
     }
 }
 
+// Modal management for editing defaults
+let currentEditingCard = null;
+
+function openEditDefaultsModal(card, regNumber, witholdingPeriod, func) {
+    currentEditingCard = card;
+    document.getElementById('modal-reg-number').value = regNumber || '';
+    document.getElementById('modal-witholding-period').value = witholdingPeriod || '';
+    document.getElementById('modal-function').value = func || '';
+    document.getElementById('edit-defaults-modal').style.display = 'flex';
+}
+
+function closeEditDefaultsModal() {
+    document.getElementById('edit-defaults-modal').style.display = 'none';
+    currentEditingCard = null;
+}
+
+function saveEditDefaults() {
+    if (!currentEditingCard) return;
+    
+    currentEditingCard.find('.line-reg-number').val(document.getElementById('modal-reg-number').value);
+    currentEditingCard.find('.line-witholding-period').val(document.getElementById('modal-witholding-period').value);
+    currentEditingCard.find('.line-function').val(document.getElementById('modal-function').value);
+    
+    closeEditDefaultsModal();
+}
+
 // Event Listeners
 document.querySelectorAll('input[name="dose_mode"]').forEach(r => {
     r.addEventListener('change', renderModeUI);
 });
 
-$('#project_ids').on('change', updateProjectConfigs);
+// Validate crop consistency when projects change
+$('#project_ids').on('change', function() {
+    const selectedIds = $(this).val() || [];
+    
+    if (selectedIds.length <= 1) {
+        // Single or no project: always ok
+        updateProjectConfigs();
+        return;
+    }
+
+    // Get crop IDs for all selected projects
+    const cropIds = new Set();
+    selectedIds.forEach(id => {
+        const option = $(`#project_ids option[value="${id}"]`);
+        const cropId = option.data('crop-id');
+        if (cropId) cropIds.add(cropId);
+    });
+
+    // Check if all projects have the same crop
+    if (cropIds.size > 1) {
+        // Different crops selected - unselect the last one
+        const lastId = selectedIds[selectedIds.length - 1];
+        $(this).val(selectedIds.slice(0, -1)).trigger('change');
+        
+        Swal.fire({
+            icon: 'warning',
+            title: 'Different Crops',
+            text: 'All selected projects must belong to the same crop. The last selection has been removed.',
+            confirmButtonText: 'OK'
+        });
+        return;
+    }
+
+    // All projects have same crop: proceed
+    updateProjectConfigs();
+});
 
 // Live recalculation
 document.addEventListener('input', function (e) {
@@ -1004,7 +1192,8 @@ document.addEventListener('change', function (e) {
 // Event listener for warehouse change
 $('#warehouse_id').on('change', function() {
     const warehouseId = $(this).val();
-    updateProductsByWarehouse(warehouseId);
+    const projectIds = $('#project_ids').val() || [];
+    updateProductsByWarehouse(warehouseId, projectIds);
     recalcEverything(); // Recalculate if needed
 });
 
@@ -1063,13 +1252,19 @@ document.getElementById('spray-form').addEventListener('submit', function (e) {
         const rate = parseFloat(card.querySelector('.qty-input').value || 0);
         const totalQty = parseFloat(card.querySelector('.total-qty').textContent) || 0;
         const uomId = select.selectedOptions[0]?.dataset.uomId || select.selectedOptions[0]?.dataset.uom;
+        const regNumber = card.querySelector('.line-reg-number').value;
+        const witholdingPeriod = card.querySelector('.line-witholding-period').value;
+        const func = card.querySelector('.line-function').value;
 
         lines.push({
             stock_id: parseInt(select.value),
             qty_per_100l: mode === "per_100l" ? rate : null,
             qty_per_ha: mode !== "per_100l" ? rate : null,
             total_qty: totalQty,
-            uom_id: parseInt(uomId) || uomId
+            uom_id: parseInt(uomId) || uomId,
+            reg_number: regNumber,
+            witholding_period: witholdingPeriod,
+            function: func
         });
     });
 
@@ -1156,6 +1351,13 @@ document.getElementById('spray-form').addEventListener('submit', function (e) {
         }
     })
     .catch(err => alert('Error: ' + err));
+});
+
+// Close modal when clicking outside of it
+document.getElementById('edit-defaults-modal').addEventListener('click', function(e) {
+    if (e.target === this) {
+        closeEditDefaultsModal();
+    }
 });
 
 // Initial render
