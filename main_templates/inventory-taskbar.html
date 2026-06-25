@@ -231,31 +231,50 @@
         </a>
       </li>
       {% endif %}
-      {% if "SPRAY_EXEC_VIEW" in current_user.permissions %}
+      {% if spray_exec or spray_rec or spray_rec_create %}
       <li class="mobile-nav-item">
+        {% if spray_exec and spray_rec %}
+        <a href="#" class="mobile-nav-link">
+          <div class="mobile-nav-content">
+            <span class="mobile-nav-icon">🧪</span>
+            <span>Spray</span>
+          </div>
+          <span class="mobile-nav-chevron">›</span>
+        </a>
+        <ul class="mobile-submenu">
+          <li><a href="/agri/spray-executions-summary" class="mobile-submenu-link">Executions</a></li>
+          <li><a href="/agri/spray-recommendations-summary" class="mobile-submenu-link">Recommendations</a></li>
+        </ul>
+        {% elif spray_exec %}
         <a href="/agri/spray-executions-summary" class="mobile-nav-link">
           <div class="mobile-nav-content">
             <span class="mobile-nav-icon">🧾</span>
             <span>Spray Executions</span>
           </div>
         </a>
-      </li>
-      {% endif %}
-      {% if "SPRAY_REC_VIEW" in current_user.permissions %}
-      <li class="mobile-nav-item">
+        {% elif spray_rec %}
         <a href="/agri/spray-recommendations-summary" class="mobile-nav-link">
           <div class="mobile-nav-content">
             <span class="mobile-nav-icon">🧪</span>
             <span>Spray Recommendations</span>
           </div>
         </a>
-      </li>
-      {% elif "SPRAY_REC_CREATE" in current_user.permissions %}
-      <li class="mobile-nav-item">
+        {% elif spray_rec_create %}
         <a href="/agri/spray-recommendation/create" class="mobile-nav-link">
           <div class="mobile-nav-content">
             <span class="mobile-nav-icon">🧪</span>
             <span>New Recommendation</span>
+          </div>
+        </a>
+        {% endif %}
+      </li>
+      {% endif %}
+      {% if "AGR_MAIN" in current_user.permissions %}
+      <li class="mobile-nav-item">
+        <a href="/agri/setup" class="mobile-nav-link">
+          <div class="mobile-nav-content">
+            <span class="mobile-nav-icon">⚙️</span>
+            <span>Agri Maintanance</span>
           </div>
         </a>
       </li>
