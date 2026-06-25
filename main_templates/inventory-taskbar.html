@@ -19,23 +19,31 @@
   <!-- Desktop Navigation -->
   <nav class="desktop-nav">
     <ul>
-      {% if "IBT_DISPATCH" in current_user.permissions or "IBT_RECEIVE" in current_user.permissions %}
+      {% set ibt_dispatch = "IBT_DISPATCH" in current_user.permissions %}
+      {% set ibt_receive = "IBT_RECEIVE" in current_user.permissions %}
+      {% if ibt_dispatch or ibt_receive %}
       <li class="dropdown-parent">
-        <a href="#" class="taskbar-link">IBT <span>▼</span></a>
+        {% if ibt_dispatch and ibt_receive %}
+          <a href="#" class="taskbar-link">IBT <span>▼</span></a>
+        {% elif ibt_dispatch %}
+          <a href="/inventory/SDK/IBT_issue" class="taskbar-link">IBT</a>
+        {% else %}
+          <a href="/inventory/SDK/IBT_receive" class="taskbar-link">IBT</a>
+        {% endif %}
+        {% if ibt_dispatch and ibt_receive %}
         <ul class="dropdown-menu">
-          {% if "IBT_DISPATCH" in current_user.permissions %}
           <li><a href="/inventory/SDK/IBT_issue" class="dropdown-item">Issue</a></li>
-          {% endif %}
-          {% if "IBT_RECEIVE" in current_user.permissions %}
           <li><a href="/inventory/SDK/IBT_receive" class="dropdown-item">Receive</a></li>
-          {% endif %}
         </ul>
+        {% endif %}
       </li>
       {% endif %}
       {% if "WHSE_TRANSFER" in current_user.permissions %}
       <li><a href="/inventory/warehouse-transfer" class="taskbar-link">Whse Transfer</a></li>
       {% endif %}
+      {% if "WHSE_QTYS" in current_user.permissions %}
       <li><a href="/inventory/qty" class="taskbar-link">Warehouse Qty's</a></li>
+      {% endif %}
       {% if "GRV_CREATE" in current_user.permissions %}
       <li><a href="/inventory/grv" class="taskbar-link">GRV</a></li>
       {% endif %}
@@ -45,13 +53,31 @@
       {% if "STOCK_ISSUE" in current_user.permissions %}
       <li><a href="/inventory/SDK/stock_issue_summary" class="taskbar-link">Stock Issue</a></li>
       {% endif %}
+      {% set spray_exec = "SPRAY_EXEC_VIEW" in current_user.permissions %}
+      {% set spray_rec = "SPRAY_REC_VIEW" in current_user.permissions %}
+      {% set spray_rec_create = "SPRAY_REC_CREATE" in current_user.permissions %}
+      {% set spray_exec_create = "SPRAY_EXEC_CREATE" in current_user.permissions %}
+      {% if spray_exec or spray_rec or spray_rec_create or spray_exec_create %}
       <li class="dropdown-parent">
-        <a href="#" class="taskbar-link">Spray <span>▼</span></a>
+        {% if spray_exec and spray_rec %}
+          <a href="#" class="taskbar-link">Spray <span>▼</span></a>
+        {% elif spray_exec %}
+          <a href="/agri/spray-executions-summary" class="taskbar-link">Spray</a>
+        {% elif spray_rec %}
+          <a href="/agri/spray-recommendations-summary" class="taskbar-link">Spray</a>
+        {% elif spray_rec_create %}
+          <a href="/agri/spray-recommendation/create" class="taskbar-link">Spray</a>
+        {% else %}
+          <a href="#" class="taskbar-link">Spray</a>
+        {% endif %}
+        {% if spray_exec and spray_rec %}
         <ul class="dropdown-menu">
           <li><a href="/agri/spray-executions-summary" class="dropdown-item">Executions</a></li>
           <li><a href="/agri/spray-recommendations-summary" class="dropdown-item">Recommendations</a></li>
         </ul>
+        {% endif %}
       </li>
+      {% endif %}
       {% if "AGR_MAIN" in current_user.permissions %}
       <li><a href="/agri/setup" class="taskbar-link">Agri Maintanance</a></li>
       {% endif %}
@@ -105,7 +131,6 @@
         {% if current_user.has_feature("MARKET") %}
         <a href="/market/dashboard">Fermesync Market</a>
         {% endif %}
-        <a href="{{ url_for('account.view_account') }}">View Account</a>
         {% if "MANAGE_USERS" in current_user.permissions %}
         <a href="{{ url_for('admin.manage_users') }}">Manage Users</a>
         {% endif %}
@@ -153,7 +178,11 @@
 
     
     <ul class="mobile-nav-list">
+      {% set ibt_dispatch = "IBT_DISPATCH" in current_user.permissions %}
+      {% set ibt_receive = "IBT_RECEIVE" in current_user.permissions %}
+      {% if ibt_dispatch or ibt_receive %}
       <li class="mobile-nav-item">
+        {% if ibt_dispatch and ibt_receive %}
         <a href="#" class="mobile-nav-link">
           <div class="mobile-nav-content">
             <span class="mobile-nav-icon">↔️</span>
@@ -165,7 +194,24 @@
           <li><a href="/inventory/SDK/IBT_issue" class="mobile-submenu-link">Issue</a></li>
           <li><a href="/inventory/SDK/IBT_receive" class="mobile-submenu-link">Receive</a></li>
         </ul>
+        {% elif ibt_dispatch %}
+        <a href="/inventory/SDK/IBT_issue" class="mobile-nav-link">
+          <div class="mobile-nav-content">
+            <span class="mobile-nav-icon">↔️</span>
+            <span>Inter-branch Transfer</span>
+          </div>
+        </a>
+        {% else %}
+        <a href="/inventory/SDK/IBT_receive" class="mobile-nav-link">
+          <div class="mobile-nav-content">
+            <span class="mobile-nav-icon">↔️</span>
+            <span>Inter-branch Transfer</span>
+          </div>
+        </a>
+        {% endif %}
       </li>
+      {% endif %}
+      {% if "WHSE_QTYS" in current_user.permissions %}
       <li class="mobile-nav-item">
         <a href="/inventory/qty" class="mobile-nav-link">
           <div class="mobile-nav-content">
@@ -174,6 +220,7 @@
           </div>
         </a>
       </li>
+      {% endif %}
       {% if "WHSE_TRANSFER" in current_user.permissions %}
       <li class="mobile-nav-item">
         <a href="/inventory/warehouse-transfer" class="mobile-nav-link">
@@ -184,16 +231,35 @@
         </a>
       </li>
       {% endif %}
-       {% if "SPRAY_REC" in current_user.permissions %}
+      {% if "SPRAY_EXEC_VIEW" in current_user.permissions %}
+      <li class="mobile-nav-item">
+        <a href="/agri/spray-executions-summary" class="mobile-nav-link">
+          <div class="mobile-nav-content">
+            <span class="mobile-nav-icon">🧾</span>
+            <span>Spray Executions</span>
+          </div>
+        </a>
+      </li>
+      {% endif %}
+      {% if "SPRAY_REC_VIEW" in current_user.permissions %}
       <li class="mobile-nav-item">
         <a href="/agri/spray-recommendations-summary" class="mobile-nav-link">
           <div class="mobile-nav-content">
             <span class="mobile-nav-icon">🧪</span>
-            <span>Spray</span>
+            <span>Spray Recommendations</span>
           </div>
         </a>
       </li>
-        {% endif %}
+      {% elif "SPRAY_REC_CREATE" in current_user.permissions %}
+      <li class="mobile-nav-item">
+        <a href="/agri/spray-recommendation/create" class="mobile-nav-link">
+          <div class="mobile-nav-content">
+            <span class="mobile-nav-icon">🧪</span>
+            <span>New Recommendation</span>
+          </div>
+        </a>
+      </li>
+      {% endif %}
       {% if "GRV_CREATE" in current_user.permissions %}
       <li class="mobile-nav-item">
         <a href="/inventory/grv" class="mobile-nav-link">
@@ -247,7 +313,6 @@
       {% if current_user.market_module %}
       <a href="/market/dashboard" class="mobile-nav-footer-link">Fermesync Market</a>
       {% endif %}
-      <a href="{{ url_for('account.view_account') }}" class="mobile-nav-footer-link">View Account</a>
       <a href="{{ url_for('logout') }}" class="mobile-nav-footer-link">Logout</a>
     </div>
   </nav>
@@ -998,6 +1063,20 @@ document.addEventListener("DOMContentLoaded", function () {
       }
     });
   }
+  
+  // Prevent parent links with href '#' from adding a hash and toggle menu on click
+  document.querySelectorAll('.dropdown-parent > a').forEach(function(anchor) {
+    anchor.addEventListener('click', function(e) {
+      const parent = this.closest('.dropdown-parent');
+      const menu = parent && parent.querySelector('.dropdown-menu');
+      if (menu) {
+        e.preventDefault();
+        if (window.innerWidth > 768) {
+          menu.style.display = (menu.style.display === 'block') ? 'none' : 'block';
+        }
+      }
+    });
+  });
   
   // Desktop: Dropdown handling for nav (hover)
   document.querySelectorAll('.dropdown-parent').forEach(function(parent) {

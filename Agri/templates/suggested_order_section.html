@@ -1,0 +1,67 @@
+<style>
+    .sd-container { padding: 16px; font-family: Inter, system-ui, -apple-system, 'Segoe UI', Roboto, Arial; color:#0f172a }
+    .sd-title { margin: 0 0 12px 0; font-size: 1.25rem; font-weight:700 }
+    .sd-controls { display:flex; align-items:center; gap:8px; margin-bottom:12px; flex-wrap:wrap; }
+    .sd-input { padding:6px 10px; width:140px; border:1px solid #d1d5db; border-radius:6px; background:#fff }
+    .sd-btn { padding:7px 12px; border-radius:6px; background:#0b5ed7; color:white; border:none; cursor:pointer; box-shadow: 0 1px 0 rgba(11,94,215,0.15) }
+    .sd-btn:hover { background:#0a58ca }
+    .sd-hint { color:#6b7280; font-size:0.88rem; margin-left:8px }
+    .sd-table-wrap { overflow:auto; max-height:68vh; border:1px solid #e6e9ef; border-radius:8px; background:#fff; box-shadow:0 1px 3px rgba(15,23,42,0.04) }
+    .sd-table { width:100%; border-collapse:collapse; font-size:0.95rem }
+    .sd-table th, .sd-table td { padding:10px 12px; border-bottom:1px solid #f1f5f9; text-align:center }
+    .sd-table thead th { background:#ffffff; position:sticky; top:0; z-index:2; text-align:center; border-bottom:2px solid #eef2f7 }
+    .sd-table tbody tr:nth-child(odd) { background:#ffffff }
+    .sd-table tbody tr:nth-child(even) { background:#fbfdff }
+    .sd-table tbody tr:hover { background:#f8fbff }
+    .col-product { width:40%; font-weight:600; text-align:left }
+    .col-num { white-space:nowrap; font-variant-numeric: tabular-nums; text-align:center }
+    .col-action { width:70px; text-align:center }
+    .expand, .expand-spray { padding:6px 10px; border-radius:6px; background:#eef6ff; border:1px solid #dbeffd; cursor:pointer }
+    .expand:hover, .expand-spray:hover { background:#dbeeff }
+    .detail-row td { background:#fafafa; padding:14px }
+    .detail-table { width:100%; border-collapse:collapse; margin-top:6px }
+    .detail-table td.action-col { width:70px; text-align:center }
+    .detail-table tbody tr.clickable { cursor:pointer }
+    .detail-table tbody tr.clickable:hover td { background:#f7fbff }
+    .detail-table th, .detail-table td { padding:8px 10px; border-bottom:1px solid #f1f5f9 }
+    .detail-table thead th { background:transparent; font-weight:600 }
+
+    .th-label { display:flex; flex-direction:column; gap:2px; align-items:center }
+    .th-main { font-weight:700; font-size:0.95rem }
+    .th-sub { font-size:0.78rem; color:#6b7280; font-weight:500 }
+    .uom { color:#6b7280; font-size:0.82rem; margin-left:6px }
+
+    @media (max-width:900px) {
+        .col-product { width:50% }
+        .sd-controls { gap:6px }
+    }
+</style>
+<div class="sd-container">
+    <h2 class="sd-title">Order Recommendation</h2>
+
+    <div class="sd-controls">
+        <select id="week" class="sd-input sd-select"></select>
+    </div>
+
+    <div class="sd-table-wrap">
+        <table id="results" class="sd-table">
+            <thead>
+                <tr>
+                    <th class="col-action"></th>
+                    <th class="col-product"><div class="th-label"><span class="th-main">Product</span><span class="th-sub">Code — Description</span></div></th>
+                    <th class="col-num"><div class="th-label"><span class="th-main">Purchase On Hand</span><span class="th-sub">In purchasing units</span></div></th>
+                    <th class="col-num"><div class="th-label"><span class="th-main">Purchase On PO</span><span class="th-sub">Outstanding POs (purchase units)</span></div></th>
+                    <th class="col-num"><div class="th-label"><span class="th-main">Purchase Needed</span><span class="th-sub">To selected week (purchase units)</span></div></th>
+                    <th class="col-num"><div class="th-label"><span class="th-main">Qty To Order</span><span class="th-sub">(purchase units)</span></div></th>
+                </tr>
+            </thead>
+            <tbody></tbody>
+        </table>
+    </div>
+
+    <template id="detail-row">
+        <tr class="detail-row"><td colspan="6">
+            <div class="detail-content"></div>
+        </td></tr>
+    </template>
+</div>

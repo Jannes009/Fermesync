@@ -2,8 +2,6 @@
 {% block content %}
 
 <link rel="stylesheet" href="{{ url_for('static', filename='color-template.css') }}">
-<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
-
 <div class="inventory-dashboard">
   <!-- ===================== -->
   <!-- HEADER SECTION -->
@@ -13,21 +11,23 @@
       <div class="header-title">
         <i class="fas fa-boxes header-icon"></i>
         <div>
-          <h1>Warehouse Stock Quantity Center</h1>
-          <p class="header-subtitle">Monitor stock levels, upcoming demand, and warehouse operations</p>
+          <h1>Stock Quantity</h1>
         </div>
       </div>
 
       <div class="header-actions">
-        <div class="select-container">
-          <label for="warehouseSelect">Warehouse</label>
-          <select id="warehouseSelect" onchange="onWarehouseChange()">
-            {% for wh in warehouses %}
-            <option value="{{ wh.WhseLink }}" {% if wh.WhseLink == selected_warehouse %}selected{% endif %}>
-              {{ wh.WhseCode }} - {{ wh.WhseDescription }}
-            </option>
-            {% endfor %}
-          </select>
+        <div class="warehouse-picker">
+          <div class="select-container">
+            <label for="warehouseSelect">Warehouse</label>
+            <select id="warehouseSelect" onchange="onWarehouseChange()">
+              {% for wh in warehouses %}
+              <option value="{{ wh.WhseLink }}" {% if wh.WhseLink == selected_warehouse %}selected{% endif %}>
+                {{ wh.WhseCode }} - {{ wh.WhseDescription }}
+              </option>
+              {% endfor %}
+            </select>
+          </div>
+          <button class="btn-primary btn-suggested-order" onclick="suggestedOrder()">Suggested Order</button>
         </div>
       </div>
     </div>
@@ -39,15 +39,17 @@
   <div class="dashboard-grid">
 
     <!-- ⚠️ NEEDS ATTENTION -->
-    <div class="dashboard-card attention-card">
+    <div class="dashboard-card attention-card collapsed">
       <div class="card-header">
         <div class="card-title">
           <i class="fas fa-exclamation-triangle"></i>
           Below Reorder Level
         </div>
-        <div class="card-badge">{{ low_stock|length }}</div>
+        <div class="card-controls">
+          <div class="card-badge">{{ low_stock|length }}</div>
+          <button class="card-toggle" onclick="toggleCardCollapse(this)">Show details</button>
+        </div>
       </div>
-
       <div class="card-content">
         {% if low_stock %}
         <div class="attention-grid">
@@ -84,15 +86,16 @@
     </div>
 
     <!-- 📅 UPCOMING DEMAND -->
-    <div class="dashboard-card demand-card">
+    <div class="dashboard-card demand-card collapsed">
       <div class="card-header">
-        <div class="card-title">
-          <i class="fas fa-calendar-alt"></i>
-          Upcoming Spray Instructions
+        <div>
+          <div class="card-title">
+            <i class="fas fa-calendar-alt"></i>
+            Upcoming Spray Instructions
+          </div>
         </div>
-        <div class="card-subtitle">Stock requirements for scheduled spray activities</div>
+        <button class="card-toggle" onclick="toggleCardCollapse(this)">Show details</button>
       </div>
-
       <div class="card-content">
         <div class="demand-container">
           {% for group in demand_groups %}
@@ -196,7 +199,7 @@
         <div class="stock-toolbar">
         <div class="search-container stock-search">
             <i class="fas fa-search search-icon"></i>
-            <input type="text" id="stockSearch" placeholder="Search code or description..." onkeyup="filterStockTable()" />
+            <input type="text" id="stockSearch" placeholder="Search Active Ingredient or description..." onkeyup="filterStockTable()" />
         </div>
         </div>
         <div class="table-container">
@@ -230,6 +233,16 @@
       </div>
     </div>
 
+  </div>
+</div>
+
+<div id="suggestedOrderModal" class="modal hidden">
+  <div class="modal-content" style="max-width: 1100px; width: min(100%, 1100px);">
+    <div class="modal-header">
+      <h2>Suggested Order</h2>
+      <button onclick="closeSuggestedOrderModal()">&times;</button>
+    </div>
+    <div id="suggestedOrderModalBody" class="modal-body" style="padding: 0; overflow: auto; max-height: calc(100vh - 140px);"></div>
   </div>
 </div>
 
@@ -396,8 +409,9 @@
 <!-- ===================== -->
 <!-- JS -->
 <!-- ===================== -->
+<script src="{{ url_for('agri.static', filename='suggested_order.js') }}?{{ filemtime('inventory', 'suggested_order.js') }}"></script>
 <script>
-function getSelectedWarehouseId() {
+function getSelectedWarehouseId() { 
   const el = document.getElementById('warehouseSelect');
   return el ? parseInt(el.value) : null;
 }
@@ -408,6 +422,17 @@ function onWarehouseChange() {
   const url = new URL(window.location.href);
   url.searchParams.set('whse', wh);
   window.location.href = url.toString();
+}
+
+function suggestedOrder() {
+  openSuggestedOrderModal();
+}
+
+function toggleCardCollapse(button) {
+  const card = button.closest('.dashboard-card');
+  if (!card) return;
+  card.classList.toggle('collapsed');
+  button.textContent = card.classList.contains('collapsed') ? 'Show details' : 'Hide details';
 }
 
 let sortDirection = {};
@@ -734,6 +759,28 @@ function submitChemstockForm(event) {
     .catch(err => alert('Error saving ChemStock: ' + err));
 }
 
+function initWarehouseSelect2() {
+  if (typeof $ === 'undefined' || typeof $.fn.select2 === 'undefined') {
+    return;
+  }
+
+  const select = $('#warehouseSelect');
+  select.select2({
+    width: '100%',
+    placeholder: 'Select warehouse',
+    allowClear: false,
+    dropdownAutoWidth: false,
+    dropdownCssClass: 'warehouse-select2-dropdown'
+  });
+
+  select.on('select2:open', function () {
+    const searchField = document.querySelector('.select2-search__field');
+    if (searchField) {
+      searchField.focus();
+    }
+  });
+}
+
 function submitReorderingForm(event) {
   event.preventDefault();
   const whse = getSelectedWarehouseId();
@@ -759,6 +806,8 @@ function submitReorderingForm(event) {
     })
     .catch(err => alert('Error saving Reordering: ' + err));
 }
+
+document.addEventListener('DOMContentLoaded', initWarehouseSelect2);
 </script>
 
 <!-- ===================== -->
@@ -800,9 +849,9 @@ function submitReorderingForm(event) {
 .dashboard-header {
   background: linear-gradient(135deg, var(--container-bg, #ffffff) 0%, var(--form-bg, #f8fafc) 100%);
   border-radius: 16px;
-  padding: 2rem;
-  margin-bottom: 2rem;
-  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.08);
+  padding: 1.25rem 1.5rem;
+  margin-bottom: 1.5rem;
+  box-shadow: 0 3px 14px rgba(0, 0, 0, 0.06);
   border: 1px solid var(--table-border, #e5e7eb);
 }
 
@@ -810,30 +859,26 @@ function submitReorderingForm(event) {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  gap: 2rem;
+  gap: 1rem;
 }
 
 .header-title {
   display: flex;
   align-items: center;
-  gap: 1rem;
+  gap: 0.75rem;
 }
 
 .header-icon {
-  font-size: 2.5rem;
+  font-size: 1.9rem;
   color: var(--logo-color, #2563eb);
-  background: linear-gradient(135deg, var(--button-bg, #2563eb), var(--button-hover, #1d4ed8));
-  -webkit-background-clip: text;
-  -webkit-text-fill-color: transparent;
-  background-clip: text;
 }
 
 .header-title h1 {
   margin: 0;
-  font-size: 2rem;
+  font-size: 1.6rem;
   font-weight: 700;
   color: var(--primary-text, #1f2937);
-  letter-spacing: -0.025em;
+  letter-spacing: -0.02em;
 }
 
 .header-subtitle {
@@ -849,26 +894,53 @@ function submitReorderingForm(event) {
   gap: 1rem;
 }
 
-.select-container {
+.warehouse-picker {
   display: flex;
-  flex-direction: column;
-  margin-right: 1rem;
+  align-items: flex-end;
+  gap: 0.75rem;
+  flex-wrap: wrap;
+}
+
+.select-container {
+  display: grid;
+  gap: 0.4rem;
   font-size: 0.85rem;
   color: var(--secondary-text, #6b7280);
+  min-width: 280px;
 }
 
 .select-container label {
-  margin-bottom: 0.25rem;
   font-weight: 600;
 }
 
+.select-container input,
 .select-container select {
   border: 2px solid var(--input-border, #d1d5db);
   border-radius: 12px;
-  padding: 0.55rem 0.75rem;
+  padding: 0.6rem 0.75rem;
   background: var(--form-bg, #ffffff);
   color: var(--primary-text, #1f2937);
-  min-width: 220px;
+  width: 100%;
+}
+
+.select2-container {
+  width: 100% !important;
+  max-width: 100%;
+}
+
+.select2-container--default .select2-selection--single {
+  height: auto;
+  min-height: 40px;
+  padding: 0.35rem 0.75rem;
+}
+
+.select2-container {
+  width: 100% !important;
+}
+
+.btn-suggested-order {
+  min-height: 40px;
+  padding: 0.8rem 1rem;
 }
 
 .search-container {
@@ -972,6 +1044,41 @@ function submitReorderingForm(event) {
 .dashboard-card:hover {
   transform: translateY(-2px);
   box-shadow: 0 8px 32px rgba(0, 0, 0, 0.12);
+}
+
+.dashboard-card.collapsed .card-content {
+  display: none;
+}
+
+.dashboard-card.collapsed .card-summary {
+  display: block;
+}
+
+.card-summary {
+  display: none;
+  padding: 0 1.5rem 1rem;
+  color: var(--secondary-text, #6b7280);
+  font-size: 0.95rem;
+}
+
+.card-controls {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+}
+
+.card-toggle {
+  background: transparent;
+  border: 1px solid var(--button-bg, #2563eb);
+  color: var(--button-bg, #2563eb);
+  padding: 0.4rem 0.75rem;
+  border-radius: 999px;
+  cursor: pointer;
+  font-size: 0.85rem;
+}
+
+.card-toggle:hover {
+  background: rgba(37, 99, 235, 0.08);
 }
 
 .card-header {

@@ -214,6 +214,8 @@ input[type="text"]:focus, input[type="date"]:focus, input[type="number"]:focus, 
 <script>
 
 const sprayId = {{ spray_id }};
+const canEdit = {{ 'true' if 'SPRAY_REC_EDIT' in current_user.permissions else 'false' }};
+const canCreate = {{ 'true' if 'SPRAY_REC_CREATE' in current_user.permissions else 'false' }};
 let sprayData = null;
 let sprayType = null;
 let editModes = {
@@ -308,8 +310,11 @@ async function renderHeader() {
             </div>
         `;
 
-    const actionButtons = [];;
-    if (!editModes.header && !header.execution_id) {
+    const actionButtons = [];
+    if (header.execution_id) {
+        actionButtons.push(`<button class="edit-btn" onclick="openExecution(${header.execution_id})">Open Execution</button>`);
+    }
+    if (!editModes.header && !header.execution_id && canCreate) {
         actionButtons.push(`<button class="cancel-btn" onclick="cancelRecommendation()">Cancel Recommendation</button>`);
     }
     if (!editModes.header && header.finalised && header.execution_finalised) {
@@ -331,9 +336,9 @@ async function renderHeader() {
             <div>${actionButtons.join(' ')}</div>
         </div>
         <div class="section-card" style="margin-top:1rem;">
-            <div class="section-header" id="header-section-header">
+                <div class="section-header" id="header-section-header">
                 <span>Basic Details</span>
-                                <button class="edit-btn" onclick="toggleEditMode('header')">${editModes.header ? 'Cancel' : 'Edit'}</button>
+                                ${canEdit ? `<button class="edit-btn" onclick="toggleEditMode('header')">${editModes.header ? 'Cancel' : 'Edit'}</button>` : ''}
             </div>
             <div class="section-body" id="header-section-content">
                 ${headerEditBody}
@@ -372,7 +377,7 @@ async function renderLines() {
             <div class="section-header ${editModeClass}">
                 <span>Spray Lines</span>
                 <div>
-                    ${editModes.lines ? `<button class="save-btn" onclick="saveLinesEdit()">Save</button><button class="cancel-btn" onclick="cancelLinesEdit()">Cancel</button><button class="add-btn" onclick="addLine()">Add Line</button>` : (sprayData.header.issues_exist ? '' : `<button class="edit-btn" onclick="toggleEditMode('lines')">Edit</button>`)}
+                    ${editModes.lines ? `<button class="save-btn" onclick="saveLinesEdit()">Save</button><button class="cancel-btn" onclick="cancelLinesEdit()">Cancel</button><button class="add-btn" onclick="addLine()">Add Line</button>` : (sprayData.header.issues_exist || !canEdit ? '' : `<button class="edit-btn" onclick="toggleEditMode('lines')">Edit</button>`) }
                 </div>
             </div>
             <div class="section-body">
@@ -905,6 +910,12 @@ function recalculateMixes() {
 
     sprayData.mixLines = updatedMixLines;
     renderMix();
+}
+
+function openExecution(executionId) {
+    // Navigate to the execution view for this execution
+    if (!executionId) return;
+    window.location.href = `/agri/execution/${executionId}`;
 }
 
 </script>

@@ -347,7 +347,7 @@ def save_product():
         cursor.execute("""
         EXEC [mkt].[SIGUpdatePackagingCost]
         EXEC [mkt].[SIGUpdateWeightTransport]
-        EXEC [mkt]..[SIGUpdateDeliveryNoteLineTotals]
+        EXEC [mkt].[SIGUpdateDeliveryNoteLineTotals]
         """)
         conn.commit()
         return jsonify({'message': 'Product updated successfully'})

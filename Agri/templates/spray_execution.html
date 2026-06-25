@@ -656,10 +656,10 @@
         <div style="display: flex; gap: 0.5rem;">
           <a href="/agri/execution/{{ execution.id }}/instruction_pdf" target="_blank" class="btn-success">Print Instructions</a>
           {% if not execution.finalised %}
-            {% if execution.can_finalize %}
+            {% if execution.can_finalize and 'SPRAY_EXEC_CREATE' in current_user.permissions %}
             <button class="btn-primary" onclick="finalizeExecution({{ execution.id }})">Finalize Execution</button>
             {% endif %}
-            {% if execution.can_delete %}
+            {% if execution.can_delete and 'SPRAY_EXEC_CREATE' in current_user.permissions %}
             <button class="btn-secondary" style="background: #dc3545;" onclick="deleteExecution({{ execution.id }})">Delete Execution</button>
             {% endif %}
           {% endif %}
@@ -689,7 +689,7 @@
     <!-- Stock Movements -->
     <div class="card">
       <h2 class="section-title">Stock Movements</h2>
-      {% if not execution.finalised %}
+      {% if not execution.finalised and 'STOCK_ISSUE' in current_user.permissions %}
       <div style="margin-bottom: 1rem;">
         <a href="/inventory/SDK/stock_issue_wizard?execution_id={{ execution.id }}&step=2&next_url={{ request.path|urlencode }}" class="btn-primary">Issue Stock</a>
       </div>
@@ -743,7 +743,7 @@
                     <td>{{ detail.time_issued_display }}</td>
                     <td>{{ detail.time_finalised_display }}</td>
                     <td>
-                      {% if detail.qty_unfinalised %}
+                      {% if detail.qty_unfinalised and 'STOCK_ISSUE' in current_user.permissions %}
                         <button type="button" class="btn-success" onclick="startReturnWizard({{ detail.issue_id }})">Return</button>
                       {% else %}
                         —
@@ -779,7 +779,7 @@
             </div>
           </div>
           <div class="update-instruction-actions" style="margin-top: 0.75rem;">
-            {% if not instruction.finalised %}
+            {% if not instruction.finalised and 'SPRAY_EXEC_CREATE' in current_user.permissions %}
               <button type="button" class="btn-success" onclick="openInstructionModal({{ instruction.id }}, '{{ instruction.spray_date or '' }}', '{{ instruction.start_date_time or '' }}', '{{ instruction.end_date_time or '' }}', '{{ instruction.weather or '' }}')">Finalise instruction</button>
             {% endif %}
             <button type="button" class="btn-secondary" onclick="window.location.href='/agri/spray/{{ instruction.id }}'">View details</button>

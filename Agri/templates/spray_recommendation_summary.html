@@ -679,13 +679,17 @@
     <div class="card">
       <header style="display:flex; justify-content:space-between; align-items:center; margin-bottom:1.5rem;">
         <h1>Spray Recommendations</h1>
+        {% if 'SPRAY_REC_CREATE' in current_user.permissions %}
         <a href="/agri/spray-recommendation/create" class="btn-primary" style="text-decoration:none; margin:0; white-space: nowrap;">+ New Recommendation</a>
+        {% endif %}
       </header>
       <div class="card" style="margin-bottom: 2rem; position: relative;">
         <div style="display:flex; justify-content:space-between; align-items:flex-start; gap:1rem; flex-wrap:wrap;">
           <div style="display:flex; gap:0.75rem; align-items:center; flex-wrap:wrap;">
             <button id="filterToggle" type="button" class="btn-secondary">Filters</button>
+            {% if 'SPRAY_EXEC_CREATE' in current_user.permissions %}
             <button id="createExecutionButton" type="button" class="btn-primary" disabled>Create Execution</button>
+            {% endif %}
             <button id="cancelSelectionButton" type="button" class="btn-secondary" style="display:none;">Cancel</button>
             <span id="selectionSummary" style="color: var(--secondary-text); font-size:0.95rem;"></span>
           </div>

@@ -10,6 +10,8 @@ import json
 @login_required
 def inventory_qty():
     # Get currently selected warehouse
+    if "WHSE_QTYS" not in current_user.permissions:
+        abort(403)
     warehouse_id = request.args.get('whse', type=int)
 
     # Build warehouse list from user-accessible warehouses

@@ -1345,7 +1345,13 @@ document.getElementById('spray-form').addEventListener('submit', function (e) {
     .then(data => {
         if (data.success) {
             alert('Spray recommendation saved: ' + data.id);
-            window.location.href = '/agri/spray-recommendations-summary';
+            const canView = {{ 'true' if 'SPRAY_REC_VIEW' in current_user.permissions else 'false' }};
+            if (canView) {
+                window.location.href = '/agri/spray-recommendations-summary';
+            } else {
+                // User cannot view list — return to create page
+                window.location.href = '/agri/spray-recommendation/create';
+            }
         } else {
             alert('Error: ' + data.message);
         }

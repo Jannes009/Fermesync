@@ -129,11 +129,15 @@ def fetch_issued_ibts():
     conn = create_db_connection()
     cursor = conn.cursor()
 
-    cursor.execute("""
+    warehouses = current_user.warehouses
+    if len(warehouses) == 0:
+        return jsonify({"ibts": []})
+    placeholders = ",".join(["?"] * len(warehouses))
+    cursor.execute(f"""
     Select Distinct cIBTNumber, cIBTDescription, FromWhseName, ToWhseName
     from [stk].[_uvIBTSummary]
-    Where StatusID = 1
-    """)
+    Where StatusID = 1 AND ToWhseLink IN ({placeholders})
+    """, warehouses)
     ibts = [
         {
             "ibt_number": row[0],

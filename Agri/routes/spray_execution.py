@@ -1,5 +1,5 @@
 from datetime import datetime
-from flask import render_template, request, redirect, url_for, jsonify
+from flask import render_template, request, redirect, url_for, jsonify, abort
 from flask_login import login_required, current_user
 from Core.auth import create_db_connection
 from . import agri_bp
@@ -25,10 +25,18 @@ def format_datetime(value):
 @agri_bp.route("/spray-executions-summary", methods=["GET"])
 @login_required
 def spray_executions_summary():
+    if "SPRAY_EXEC_VIEW" not in current_user.permissions:
+        abort(403)
     conn = create_db_connection()
     cur = conn.cursor()
 
-    cur.execute("""
+    whse_ids = tuple(current_user.warehouses or [])
+    if not whse_ids:
+        return jsonify([])
+
+    placeholders = ','.join('?' for _ in whse_ids)
+
+    cur.execute(f"""
     SELECT
         EXE.IdSprExec,
         EXE.SprExecDate,
@@ -45,8 +53,9 @@ def spray_executions_summary():
     FROM agr.SprayExecution EXE
     LEFT JOIN agr.People PPL ON PPL.IdPerson = EXE.SprExecResponsiblePerson
     LEFT JOIN agr.SprayHeader HEA ON HEA.SprayHExecutionId = EXE.IdSprExec
+    WHERE HEA.SprayHWhseId IN ({placeholders})
     ORDER BY EXE.SprExecDate DESC, EXE.IdSprExec DESC
-    """)
+    """, whse_ids)
 
     executions = {}
     for row in cur.fetchall():
@@ -79,6 +88,8 @@ def spray_executions_summary():
 @agri_bp.route("/execution/<int:execution_id>", methods=["GET"])
 @login_required
 def view_execution(execution_id):
+    if "SPRAY_EXEC_VIEW" not in current_user.permissions:
+        abort(403)
     conn = create_db_connection()
     cur = conn.cursor()
 
@@ -248,6 +259,8 @@ def view_execution(execution_id):
 @agri_bp.route("/execution/issue/<int:issue_id>", methods=["GET"])
 @login_required
 def get_issue_details(issue_id):
+    if "SPRAY_EXEC_VIEW" not in current_user.permissions:
+        abort(403)
     conn = create_db_connection()
     cur = conn.cursor()
 
@@ -304,6 +317,8 @@ def get_issue_details(issue_id):
 @agri_bp.route("/execution/<int:execution_id>/update_instruction/<int:instruction_id>", methods=["POST"])
 @login_required
 def update_instruction(execution_id, instruction_id):
+    if "SPRAY_EXEC_CREATE" not in current_user.permissions:
+        abort(403)
     conn = create_db_connection()
     cur = conn.cursor()
 
@@ -346,6 +361,8 @@ def update_instruction(execution_id, instruction_id):
 @agri_bp.route("/execution/<int:execution_id>/finalize", methods=["POST"])
 @login_required
 def finalize_execution(execution_id):
+    if "SPRAY_EXEC_CREATE" not in current_user.permissions:
+        abort(403)
     conn = create_db_connection()
     cur = conn.cursor()
     
@@ -390,6 +407,8 @@ def finalize_execution(execution_id):
 @agri_bp.route("/execution/<int:execution_id>/delete", methods=["POST"])
 @login_required
 def delete_execution(execution_id):
+    if "SPRAY_EXEC_CREATE" not in current_user.permissions:
+        abort(403)
     conn = create_db_connection()
     cur = conn.cursor()
     

@@ -67,7 +67,7 @@ def manage_users():
         users = cursor.fetchall()
 
         # Permissions
-        cursor.execute("SELECT PermissionId, PermissionCode FROM users.Permission ORDER BY PermissionCode")
+        cursor.execute("SELECT PermissionId, PermissionCode FROM users.Permission Where IsActive = 1 ORDER BY PermissionCode")
         permissions = cursor.fetchall()
 
         # Warehouses

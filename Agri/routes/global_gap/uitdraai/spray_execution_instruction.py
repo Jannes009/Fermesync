@@ -115,6 +115,7 @@ def execution_instruction_pdf(execution_id):
             SELECT 
                 LIN.SprayMixLineStockId,
                 EVOSTK.StockCode,
+                EVOSTK.StockDescription,
                 LIN.SprayMixLineQty,
                 UOM.cUnitCode,
                 SME.SprayMixNumber,
@@ -132,6 +133,7 @@ def execution_instruction_pdf(execution_id):
         lines_list = [
             {
                 "code": r.StockCode,
+                "description": getattr(r, 'StockDescription', None) or r.StockCode,
                 "qty": float(r.SprayMixLineQty or 0),
                 "uom": r.cUnitCode,
                 "mix_number": r.SprayMixNumber,
@@ -168,6 +170,7 @@ def execution_instruction_pdf(execution_id):
     cur.execute("""
         SELECT 
             EVOSTK.StockCode,
+            EVOSTK.StockDescription,
             SUM(REQ.TotalQty) as total_qty,
             UOM.cUnitCode
 			--Select *
@@ -176,13 +179,14 @@ def execution_instruction_pdf(execution_id):
         LEFT JOIN agr.ChemStock STK ON STK.IdChemStock = REQ.StockId
         LEFT JOIN cmn._uvUOM UOM ON UOM.idUnits = REQ.UoMId
         WHERE REQ.SprayId IN (SELECT IdSprayH FROM agr.SprayHeader WHERE SprayHExecutionId = ?)
-        GROUP BY EVOSTK.StockCode, UOM.cUnitCode
+        GROUP BY EVOSTK.StockCode, UOM.cUnitCode, EVOSTK.StockDescription
     """, execution_id)
 
     stock_reqs = cur.fetchall()
     stock_requirements = [
         {
             "code": r.StockCode,
+            "description": getattr(r, 'StockDescription', None) or r.StockCode,
             "min_qty": float(r.total_qty or 0),
             "uom": r.cUnitCode
         }

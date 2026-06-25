@@ -1,5 +1,5 @@
 
-from flask import render_template, request, redirect, url_for, flash, jsonify
+from flask import render_template, request, redirect, url_for, flash, jsonify, abort
 from flask_login import login_required, current_user
 from Core.auth import create_db_connection
 from . import agri_bp
@@ -9,12 +9,16 @@ import math
 @login_required
 def spray_execution_page(spray_id):
     # render the HTML page; data loaded via separate API
+    if "SPRAY_REC_VIEW" not in current_user.permissions:
+        abort(403)
     return render_template("spray_instruction.html", spray_id=spray_id)
 
 @agri_bp.route("/fetch_spray_instructions", methods=["GET"])
 @login_required
 def fetch_spray_instructions():
     """Fetch all spray instructions for the user to select from"""
+    if "SPRAY_REC_VIEW" not in current_user.permissions:
+        abort(403)
     conn = create_db_connection()
     cur = conn.cursor()
 
@@ -40,6 +44,8 @@ def fetch_spray_instructions():
 @agri_bp.route("/spray/<int:spray_id>/spray_header", methods=["GET"])
 @login_required
 def get_spray_header(spray_id):
+    if "SPRAY_REC_VIEW" not in current_user.permissions:
+        abort(403)
 
     conn = create_db_connection()
     cur = conn.cursor()
@@ -128,6 +134,8 @@ def get_spray_header(spray_id):
 @agri_bp.route("/spray/<int:spray_id>/spray_lines", methods=["GET"])
 @login_required
 def get_spray_lines(spray_id):
+    if "SPRAY_REC_VIEW" not in current_user.permissions:
+        abort(403)
     conn = create_db_connection()
     cur = conn.cursor()
     cur.execute("""
@@ -167,6 +175,8 @@ def get_spray_lines(spray_id):
 @agri_bp.route("/spray/<int:spray_id>/edit_spray_lines", methods=["POST"])
 @login_required
 def save_spray_lines(spray_id):
+    if "SPRAY_REC_EDIT" not in current_user.permissions:
+        abort(403)
     data = request.get_json(silent=True) or {}
     lines = data.get('lines')
     if not isinstance(lines, list):
@@ -332,6 +342,8 @@ def save_spray_lines(spray_id):
 @agri_bp.route("/spray/<int:spray_id>/edit_spray_header", methods=["POST"])
 @login_required
 def save_spray_header(spray_id):
+    if "SPRAY_REC_EDIT" not in current_user.permissions:
+        abort(403)
     data = request.get_json(silent=True) or {}
     spray_description = data.get('spray_description')
     spray_date = data.get('spray_date')
@@ -364,6 +376,9 @@ def save_spray_header(spray_id):
 @agri_bp.route("/spray/<int:spray_id>/cancel", methods=["POST"])
 @login_required
 def cancel_spray(spray_id):
+    # Cancelling a recommendation requires the ability to create recommendations
+    if "SPRAY_REC_CREATE" not in current_user.permissions:
+        abort(403)
     conn = create_db_connection()
     cur = conn.cursor()
     try:

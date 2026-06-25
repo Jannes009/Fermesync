@@ -109,6 +109,7 @@ def download_freshlinq_report(username, password, report_date, status):
             page.goto(report_url)
             page.wait_for_load_state("domcontentloaded")
             yield from status("Report page loaded.")
+            print(page.locator("#export-dropdown").get_attribute("class"))
 
             # WAIT FOR REPORT TO FINISH
             yield from status("Waiting for report to finish generating...")

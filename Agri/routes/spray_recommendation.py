@@ -1,4 +1,4 @@
-from flask import render_template, request, redirect, url_for, jsonify
+from flask import render_template, request, redirect, url_for, jsonify, abort
 from flask_login import login_required, current_user
 from Core.auth import create_db_connection
 from . import agri_bp
@@ -10,6 +10,8 @@ import math
 @agri_bp.route("/spray-recommendation/create", methods=["GET"])
 @login_required
 def create_spray_recommendation():
+    if "SPRAY_REC_CREATE" not in current_user.permissions:
+        abort(403)
     conn = create_db_connection()
     cur = conn.cursor()
 
@@ -38,10 +40,16 @@ def create_spray_recommendation():
         """)
     spray_methods = cur.fetchall()
 
-    cur.execute("""
+    whse_ids = tuple(current_user.warehouses or [])
+    if not whse_ids:
+        return jsonify([])
+
+    placeholders = ','.join('?' for _ in whse_ids)
+    cur.execute(f"""
 		Select WhseLink, WhseDescription 
         from [cmn]._uvWarehouses
-        """)
+        where WhseLink IN ({placeholders})
+        """, whse_ids)
     warehouses = cur.fetchall()
 
     # Generate next spray number prefix SPR###
@@ -193,7 +201,9 @@ def generate_spray_no(cursor):
 
 @agri_bp.route('/spray-recommendation/submit', methods=['POST'])
 def submit_spray_recommendation():
-
+    if "SPRAY_REC_CREATE" not in current_user.permissions:
+        abort(403)
+    
     conn = None
     cursor = None
 
@@ -486,16 +496,25 @@ def submit_spray_recommendation():
 @agri_bp.route("/spray-recommendations-summary", methods=["GET"])
 @login_required
 def spray_recommendations_summary():
+    if "SPRAY_REC_VIEW" not in current_user.permissions:
+        abort(403)
     return render_template("spray_recommendation_summary.html")
 
 
 @agri_bp.route("/spray-recommendations", methods=["GET"])
 @login_required
 def get_spray_recommendations():
+    if "SPRAY_REC_VIEW" not in current_user.permissions:
+        abort(403)
     conn = create_db_connection()
     cur = conn.cursor()
 
-    query = """
+    whse_ids = tuple(current_user.warehouses or [])
+    if not whse_ids:
+        return jsonify([])
+
+    placeholders = ','.join('?' for _ in whse_ids)
+    query = f"""
     SELECT
         HEA.IdSprayH,
         HEA.SprayHNo,
@@ -533,9 +552,10 @@ def get_spray_recommendations():
             WHERE SPROJ.SprayPSprayId = HEA.IdSprayH
         ) X
     ) FRM
+    WHERE SprayHWhseId IN ({placeholders})
     ORDER BY HEA.SprayHNo DESC;
     """
-    cur.execute(query)
+    cur.execute(query, whse_ids)
     rows = cur.fetchall()
 
     result = []
@@ -575,6 +595,8 @@ def get_method_water(method_id):
 @agri_bp.route("/execution/responsible-persons", methods=["GET"])
 @login_required
 def get_responsible_persons():
+    if "SPRAY_EXEC_CREATE" not in current_user.permissions and "SPRAY_EXEC_VIEW" not in current_user.permissions:
+        abort(403)
     conn = create_db_connection()
     cur = conn.cursor()
     
@@ -594,6 +616,9 @@ def get_responsible_persons():
 @agri_bp.route("/execution/create", methods=["POST"])
 @login_required
 def create_execution():
+    if "SPRAY_EXEC_CREATE" not in current_user.permissions:
+        abort(403)
+    
     data = request.get_json()
     execution_date = data.get("execution_date")
     responsible_person = data.get("responsible_person")
@@ -671,6 +696,8 @@ def create_execution():
 @agri_bp.route("/executions/pending", methods=["GET"])
 @login_required
 def get_pending_executions():
+    if "SPRAY_EXEC_VIEW" not in current_user.permissions:
+        abort(403)
     conn = create_db_connection()
     cur = conn.cursor()
     
@@ -700,6 +727,8 @@ def get_pending_executions():
 @agri_bp.route("/executions/completed", methods=["GET"])
 @login_required
 def get_completed_executions():
+    if "SPRAY_EXEC_VIEW" not in current_user.permissions:
+        abort(403)
     conn = create_db_connection()
     cur = conn.cursor()
 

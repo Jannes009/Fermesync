@@ -339,11 +339,14 @@
             <tr class="mix-header">
                 <td colspan="2" class="mix-name">
                     💧 {{ mix_key.split('-')[-1] if '-' in mix_key else mix_key }} · {{ mix.water }} L water · {{ mix.ha }} ha
+                    {% if mix.ha and mix.ha > 0 %}
+                        · {{ (mix.water / mix.ha)|round(1) }} L/ha
+                    {% endif %}
                 </td>
              </tr>
             {% for line in mix.lines %}
             <tr>
-                <td style="width: 70%;">{{ line.code }} 
+                <td style="width: 70%;">{{ line.description or line.code }} 
                     {% if line.ingredient %}
                     <span style="font-size:0.7rem; color:#4f6f8f;">({{ line.ingredient }})</span>
                     {% endif %}
@@ -375,7 +378,7 @@
     <table class="stock-table">
         <thead>
             <tr>
-                <th>Product code</th>
+                <th>Product</th>
                 <th>Qty Needed</th>
                 <th>Qty Out</th>
                 <th></th>
@@ -387,7 +390,7 @@
         <tbody>
             {% for req in execution.stock_requirements %}
             <tr class="stock-row">
-                <td><strong>{{ req.code }}</strong> 
+                <td><strong>{{ req.description }}</strong> 
                     {% if req.ingredient %}<div style="font-size:0.6rem; color:#4e6f8c;">{{ req.ingredient }}</div>{% endif %}
                 </td>
                 <td>{{ "%.1f"|format(req.min_qty) }} {{ req.uom }}</td>
