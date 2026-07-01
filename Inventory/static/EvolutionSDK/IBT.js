@@ -16,7 +16,7 @@ document.addEventListener("DOMContentLoaded", async () => {
 
     // Initialize warehouse dropdowns with Select2
     warehouses.forEach(w => {
-        whFrom.innerHTML += `<option value="${w.code}">${w.name}</option>`;
+        whFrom.innerHTML += `<option value="${w.id}">${w.name}</option>`;
     });
 
     // Make warehouse dropdowns searchable
@@ -33,7 +33,7 @@ document.addEventListener("DOMContentLoaded", async () => {
 
     // Initialize warehouse dropdowns with Select2
     warehouses2.forEach(w => {
-        whTo.innerHTML += `<option value="${w.code}">${w.name}</option>`;
+        whTo.innerHTML += `<option value="${w.id}">${w.name}</option>`;
     });
 
     $('#wh-to').select2({
@@ -69,7 +69,7 @@ document.addEventListener("DOMContentLoaded", async () => {
             const res = await fetch("/inventory/fetch_products_in_both_whses", {
                 method: "POST",
                 headers: { "Content-Type": "application/json" },
-                body: JSON.stringify({ whse_from_code: fromWh, whse_to_code: toWh })
+                body: JSON.stringify({ whse_from_id: fromWh, whse_to_id: toWh })
             });
 
             if (!res.ok) {
@@ -161,7 +161,7 @@ document.addEventListener("DOMContentLoaded", async () => {
             const uomLabel = line.querySelector(".stock-unit");
 
             const productId = select.value;
-            const qtyToSend = Number(qtyInput.value);
+            const qtyToSend = Math.round(Number(qtyInput.value) * 100) / 100;
 
             if (!productId) {
                 return Swal.fire("Missing Product", "Each line must have a product selected.", "warning");
@@ -172,13 +172,18 @@ document.addEventListener("DOMContentLoaded", async () => {
             }
 
             const productData = $(select).find(":selected").data();
-            const availableQty = Number(productData.qty);
-            const uom = productData.unit || "EA"; // Default to "EA" if no UOM
+            const availableQty = Math.round(Number(productData.qty) * 100) / 100;
+            const uom_code = productData.purchasing_unit_code || "";
+            const uom_id = productData.purchasing_unit_id || null;
+            const stocking_uom_code = productData.stocking_unit_code || "";
+            const stocking_uom_id = productData.stocking_unit_id || null;
+            const conversion_factor = Number(productData.conversion_factor) || 1;
+            const stockQty = Math.round(qtyToSend * conversion_factor * 100) / 100;
 
             if (qtyToSend > availableQty) {
                 return Swal.fire(
                     "Not Enough Stock",
-                    `Product: ${select.options[select.selectedIndex].text}\nAvailable: ${availableQty} ${uom}`,
+                    `Product: ${select.options[select.selectedIndex].text}\nAvailable: ${availableQty} ${uom_code}\nRequested: ${qtyToSend} ${uom_code}`,
                     "error"
                 );
             }
@@ -188,7 +193,12 @@ document.addEventListener("DOMContentLoaded", async () => {
                 qty: qtyToSend,
                 productText: select.options[select.selectedIndex].text,
                 availableQty: availableQty,
-                uom: uom // Capture UOM
+                uom_code: uom_code,
+                uom_id: uom_id,
+                stocking_uom_code: stocking_uom_code,
+                stocking_uom_id: stocking_uom_id,
+                conversion_factor: conversion_factor,
+                stock_qty: stockQty
             });
         }
 
@@ -206,7 +216,8 @@ document.addEventListener("DOMContentLoaded", async () => {
             WarehouseTo: $('#wh-to').val(),
             Lines: ibtLines.map(line => ({
                 ProductId: line.product_id,
-                QtyIssued: line.qty
+                QtyIssued: line.stock_qty,
+                UoMId: line.stocking_uom_id
             }))
         };
 
@@ -283,6 +294,10 @@ function addIbtLine() {
                     <i class="fas fa-trash"></i>
                 </button>
             </div>
+            <div class="stock-equivalent">
+                <span class="stock-qty-value">0</span>
+                <span class="stock-unit-code">—</span>
+            </div>
         </div>
     `;
 
@@ -293,6 +308,9 @@ function addIbtLine() {
     removeBtn.addEventListener('click', () => {
         lineDiv.remove();
     });
+
+    const qtyInput = lineDiv.querySelector('.qty-input');
+    qtyInput.addEventListener('input', () => updateStockQtyDisplay(lineDiv));
 
     // Populate select2 dropdown
     populateSelect(selectId, lineDiv);
@@ -323,10 +341,13 @@ function populateSelect(selectId, lineDiv) {
     const select = document.getElementById(selectId);
 
     products.forEach(p => {
-        const opt = new Option(`${p.product_desc} (In: ${p.qty_in_whse})`, p.product_id, false, false);
-        const uom = p.stocking_unit || "EA"; // Default to "EA" if missing
-        $(opt).data("unit", uom);
-        $(opt).data("qty", p.qty_in_whse);
+        const displayQty = Number(p.qty_in_whse) || 0;
+        const opt = new Option(`${p.product_desc} (In: ${displayQty.toFixed(2)} ${p.purchasing_unit_code || ""})`, p.product_id, false, false);
+        $(opt).data("purchasing_unit_code", p.purchasing_unit_code || "");
+        $(opt).data("purchasing_unit_id", p.purchasing_unit_id || null);
+        $(opt).data("qty", Number(displayQty.toFixed(2)));
+        $(opt).data("stocking_unit_code", p.stocking_unit_code || "");
+        $(opt).data("conversion_factor", Number(p.conversion_factor) || 1);
 
         // Disable the option if it is already in ibtLines
         if (selectedProducts.has(p.product_id)) {
@@ -348,8 +369,12 @@ function populateSelect(selectId, lineDiv) {
     // When a product is chosen → update the stocking unit
     $(`#${selectId}`).on("select2:select", function (e) {
         const selected = $(this).find(":selected").data();
-        const uom = selected.unit || "EA"; // Default to "EA"
-        lineDiv.querySelector(".stock-unit").textContent = uom;
+        const uom_code = selected.purchasing_unit_code || "";
+        const uom_id = selected.purchasing_unit_id || null;
+        const stock_unit_code = selected.stocking_unit_code || "";
+
+        lineDiv.querySelector(".stock-unit").textContent = uom_code;
+        lineDiv.querySelector(".stock-unit-code").textContent = stock_unit_code;
 
         const val = this.value;
         selectedProducts.add(val);
@@ -362,13 +387,7 @@ function populateSelect(selectId, lineDiv) {
             }
         });
 
-        // Disable the selected product in other dropdowns
-        document.querySelectorAll(".product-select").forEach(otherSelect => {
-            if (otherSelect.id !== selectId) {
-                $(otherSelect).find(`option[value="${this.value}"]`).prop("disabled", true);
-                $(otherSelect).trigger('change.select2'); // refresh select2
-            }
-        });
+        updateStockQtyDisplay(lineDiv);
     });
 
     // When a product is cleared → re-enable in other dropdowns
@@ -383,6 +402,9 @@ function populateSelect(selectId, lineDiv) {
         });
 
         lineDiv.querySelector(".stock-unit").textContent = "—";
+        lineDiv.querySelector(".stock-unit-code").textContent = "—";
+        lineDiv.querySelector(".stock-qty-value").textContent = "0";
+
         document.querySelectorAll(".product-select").forEach(otherSelect => {
             if (otherSelect.id !== selectId) {
                 $(otherSelect).find("option").prop("disabled", false);
@@ -395,6 +417,28 @@ function populateSelect(selectId, lineDiv) {
             }
         });
     });
+}
+
+function updateStockQtyDisplay(lineDiv) {
+    const select = lineDiv.querySelector('.product-select');
+    const qtyInput = lineDiv.querySelector('.qty-input');
+    const stockQtyValue = lineDiv.querySelector('.stock-qty-value');
+    const stockUnitCode = lineDiv.querySelector('.stock-unit-code');
+
+    if (!select.value) {
+        stockQtyValue.textContent = '0';
+        stockUnitCode.textContent = '—';
+        return;
+    }
+
+    const selected = $(select).find(':selected').data();
+    const conversionFactor = Number(selected.conversion_factor) || 1;
+    const qty = Number(qtyInput.value) || 0;
+    const stockQty = Math.round(qty * conversionFactor * 100) / 100;
+    console.log(qty, conversionFactor, stockQty);
+
+    stockQtyValue.textContent = stockQty.toLocaleString(undefined, {maximumFractionDigits: 2});
+    stockUnitCode.textContent = selected.stocking_unit_code || '—';
 }
 
 function renderSummaryUltraCompact() {
@@ -459,19 +503,22 @@ function renderCompactProducts(summaryDiv) {
         emptyMsg.style.color = "var(--secondary-text)";
         productsSection.appendChild(emptyMsg);
     } else {
-        ibtLines.forEach((line, index) => {
+        ibtLines.forEach((line) => {
             const productItem = document.createElement("div");
             productItem.className = "compact-product-item";
             
+            const qtyDisplay = Number(line.qty).toLocaleString(undefined, {maximumFractionDigits:2});
+            const stockDisplay = Number(line.stock_qty).toLocaleString(undefined, {maximumFractionDigits:2});
+
             productItem.innerHTML = `
                 <div class="product-details">
                     <div class="product-name">${line.productText}</div>
                     <div class="product-meta">
-                        Available: ${line.availableQty} ${line.uom}
+                        ${qtyDisplay} ${line.uom_code} → ${stockDisplay} ${line.stocking_uom_code}
                     </div>
                 </div>
                 <div class="product-qty">
-                    <span class="qty-badge">${line.qty} ${line.uom}</span>
+                    <span class="qty-badge">${qtyDisplay} ${line.uom_code}</span>
                 </div>
             `;
             
@@ -483,13 +530,13 @@ function renderCompactProducts(summaryDiv) {
 }
 
 function updateLineQty(index, newQty) {
-    const qty = Number(newQty);
+    const qty = Math.round(Number(newQty) * 100) / 100;
     if (qty > 0 && qty <= ibtLines[index].availableQty) {
         ibtLines[index].qty = qty;
         // Re-render summary to reflect changes
         renderSummaryUltraCompact();
     } else {
-        // Revert to previous value if invalid
+        // Re-render (previous value remains)
         renderSummaryUltraCompact();
     }
 }

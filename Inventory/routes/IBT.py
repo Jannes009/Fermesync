@@ -30,32 +30,44 @@ def fetch_all_warehouses():
 
 @inventory_bp.route("/fetch_products_in_both_whses", methods=["POST"])
 def fetch_products_in_both_whses():
-    whse_from_code = request.json.get("whse_from_code")
-    whse_to_code = request.json.get("whse_to_code")
+    whse_from_id = request.json.get("whse_from_id")
+    whse_to_id = request.json.get("whse_to_id")
 
     conn = create_db_connection()
     cursor = conn.cursor()
 
     cursor.execute("""
-    SELECT FROMQTY.StockCode FromStockCode, FROMQTY.StockDescription, FROMQTY.QtyOnHand, FROMQTY.StockingUnitCode
+    SELECT FROMQTY.StockLink FromStockLink,
+           FROMQTY.StockDescription,
+           FROMQTY.QtyOnHand / CONV.ConversionFactor PurchaseQtyOnHand,
+           FROMQTY.PurchaseUnitId,
+           FROMQTY.PurchaseUnitCode,
+           CONV.iUOMStockingUnitID,
+           CONV.StockingUnitCode,
+           CONV.ConversionFactor
     FROM [stk]._uvInventoryQty FROMQTY
-    WHERE  EXISTS(
-        SELECT StockLink ToStckLink
+    JOIN [cmn].[_uvStockUnitConversion] CONV on CONV.StockLink = FROMQTY.StockLink
+    WHERE EXISTS(
+        SELECT StockLink ToStockLink
         FROM [stk]._uvInventoryQty TOQTY
-        where TOQTY.WhseCode = ? and TOQTY.StockLink = FROMQTY.StockLink
+        WHERE TOQTY.WhseLink = ? AND TOQTY.StockLink = FROMQTY.StockLink
     )
-    And FROMQTY.QtyOnHand > 0 And FROMQTY.WhseCode = ? And FROMQty.ItemActive = 1
-    """, (whse_to_code, whse_from_code,))
+    AND FROMQTY.QtyOnHand > 0 AND FROMQTY.WhseLink = ? AND FROMQTY.ItemActive = 1
+    """, (whse_to_id, whse_from_id,))
 
     rows = cursor.fetchall()
     conn.close()
 
     products_list = [
         {
-            "product_id": row[0],
-            "product_desc": row[1],
-            "qty_in_whse": row[2],
-            "stocking_unit": row[3]
+            "product_id": row.FromStockLink,
+            "product_desc": row.StockDescription,
+            "qty_in_whse": row.PurchaseQtyOnHand,
+            "purchasing_unit_id": row.PurchaseUnitId,
+            "purchasing_unit_code": row.PurchaseUnitCode,
+            "stocking_unit_id": row.iUOMStockingUnitID,
+            "stocking_unit_code": row.StockingUnitCode,
+            "conversion_factor": row.ConversionFactor
         }
         for row in rows
     ]
@@ -72,13 +84,13 @@ def submit_ibt():
     try:
         with EvolutionConnection():
             ibt = Evo.WarehouseIBT()
-            ibt.WarehouseFrom = Evo.Warehouse((data["WarehouseFrom"]))
-            ibt.WarehouseTo = Evo.Warehouse(data["WarehouseTo"])
+            ibt.WarehouseFrom = Evo.Warehouse(int(data["WarehouseFrom"]))
+            ibt.WarehouseTo = Evo.Warehouse(int(data["WarehouseTo"]))
             ibt.Description = current_user.username + " IBT"
 
             for l in data["Lines"]:
                 line = Evo.WarehouseIBTLine()
-                line.InventoryItem = Evo.InventoryItem(l["ProductId"])
+                line.InventoryItem = Evo.InventoryItem(int(l["ProductId"]))
                 line.QuantityIssued = l["QtyIssued"]
                 line.Description = "IBT line issued via SDK"
                 line.Reference = current_user.username
@@ -162,8 +174,10 @@ def display_ibt():
     cursor.execute("""
     Select 
     cIBTNumber, cIBTDescription, FromWhseName, ToWhseName
-    ,StockLink, StockDesc ,cDescription, cReference, fQtyIssued
-    from [stk].[_uvIBTSummary]
+    ,IBT.StockLink, StockDesc ,cDescription, cReference, fQtyIssued,
+    CONV.StockingUnitCode, CONV.PurchasingUnitCode, CONV.ConversionFactor
+    from [stk].[_uvIBTSummary] IBT
+	JOIN [cmn].[_uvStockUnitConversion] CONV on CONV.StockLink = IBT.StockLink
     Where StatusID = 1 and cIBTNumber = ?
     """, (ibt_number,))
 
@@ -172,15 +186,18 @@ def display_ibt():
 
     ibt_details = [
         {
-            "ibt_number": row[0],
-            "description": row[1],
-            "warehouse_from": row[2],
-            "warehouse_to": row[3],
-            "product_code": row[4],
-            "product_desc": row[5],
-            "line_description": row[6],
-            "line_reference": row[7],
-            "qty_issued": row[8]
+            "ibt_number": row.cIBTNumber,
+            "description": row.cIBTDescription,
+            "warehouse_from": row.FromWhseName,
+            "warehouse_to": row.ToWhseName,
+            "product_id": row.StockLink,
+            "product_desc": row.StockDesc,
+            "line_description": row.cDescription,
+            "line_reference": row.cReference,
+            "qty_issued": row.fQtyIssued,
+            "stocking_unit_code": row.StockingUnitCode,
+            "purchasing_unit_code": row.PurchasingUnitCode,
+            "conversion_factor": row.ConversionFactor
         }
         for row in rows
     ]
@@ -199,7 +216,6 @@ def submit_ibt_receive():
                 for ibt_line in ibt.Detail:
                     if ibt_line.InventoryItemID == int(line_data["InventoryItemID"]):
                         ibt_line.QuantityReceived = line_data.get("QuantityReceived")
-                        ibt_line.QuantityDamaged = line_data.get("QuantityDamaged")
                         ibt_line.QuantityVariance = line_data.get("QuantityVariance")
                         ibt_line.Description = line_data.get("Description", "")
                         ibt_line.Reference = line_data.get("Reference", "")

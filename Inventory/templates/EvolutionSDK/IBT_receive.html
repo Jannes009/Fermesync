@@ -12,7 +12,7 @@
     .btn-primary, .btn-secondary, .btn-danger {
       padding:6px 12px; border-radius:6px; font-size:0.85rem; font-weight:500; cursor:pointer; text-decoration:none; display:inline-block;
     }
-    .btn-primary { background:var(--button-bg); color:var(--button-text); }
+    .btn-primary { background:var(--button-bg); color:var(--button-text); border:none; }
     .btn-secondary { background:#6c757d; color:#fff; }
     .btn-danger { background:#e74c3c; color:#fff; }
     .btn-primary:hover { background:var(--button-hover); }
@@ -43,20 +43,32 @@
     .product-line { background:var(--form-bg); padding:10px; border-radius:6px; margin-bottom:8px; border-left:3px solid #3498db; }
     .product-line-header { display:flex; justify-content:space-between; align-items:flex-start; margin-bottom:8px; gap:8px; }
     .product-info { flex:1; }
-    .product-code { font-weight:600; font-size:0.95rem; margin-bottom:2px; }
+    .product-id { font-weight:600; font-size:0.95rem; margin-bottom:2px; }
     .product-desc { font-size:0.8rem; color:var(--secondary-text); margin-bottom:2px; }
     .line-reference { font-size:0.75rem; color:#888; font-style:italic; }
     .qty-issued { background:#e8f4fd; padding:4px 8px; border-radius:5px; font-weight:600; font-size:0.8rem; min-width:70px; text-align:center; }
 
     /* ==== QUANTITY INPUTS ==== */
-    .quantity-inputs { display:grid; grid-template-columns:1fr 1fr 1fr; gap:8px; margin-top:8px; }
-    .quantity-group label { font-size:0.8rem; margin-bottom:3px; font-weight:600; color:var(--secondary-text); }
+    .quantity-inputs { display:grid; grid-template-columns:1fr; gap:10px; margin-top:8px; }
+    .quantity-group { display:flex; flex-direction:column; gap:6px; }
+    .quantity-group label { font-size:0.85rem; margin-bottom:3px; font-weight:600; color:var(--secondary-text); }
     .quantity-input {
-      padding:6px 8px; border:1px solid var(--input-border); border-radius:5px; background:var(--form-bg); font-size:0.9rem;
+      padding:10px 12px; border:1px solid var(--input-border); border-radius:8px; background:var(--form-bg); font-size:0.95rem;
     }
     .quantity-input:focus { outline:none; border-color:var(--input-focus); box-shadow:0 0 0 2px var(--input-shadow); }
-    .quantity-total { grid-column:1/-1; background:#f8f9fa; padding:6px; border-radius:5px; text-align:center; font-size:0.8rem; font-weight:600; margin-top:4px; }
-    .quantity-error { color:#e74c3c; font-size:0.75rem; margin-top:2px; display:none; }
+    .quantity-status { display:flex; justify-content:space-between; gap:10px; align-items:center; background:#f8f9fa; padding:10px 12px; border-radius:8px; font-size:0.85rem; color:var(--secondary-text); }
+    .quantity-status strong { font-weight:700; color:var(--primary-text); }
+    .quantity-total { background:transparent; padding:0; border-radius:0; text-align:left; font-size:0.9rem; font-weight:600; margin-top:0; }
+    .quantity-error { color:#e74c3c; font-size:0.8rem; margin-top:2px; display:none; }
+    .unit-toggle { margin-top:16px; display:flex; align-items:center; gap:12px; flex-wrap:wrap; }
+    .toggle-option { display:inline-flex; position:relative; }
+    .toggle-option input { position:absolute; opacity:0; pointer-events:none; }
+    .toggle-option label { display:inline-flex; align-items:center; justify-content:center; min-width:110px; height:36px; padding:0 14px; border-radius:999px; background:#eef3fb; color:#334155; font-size:0.86rem; cursor:pointer; transition: background .2s, color .2s, transform .15s; border:1px solid transparent; }
+    .toggle-option input:checked + label { background:var(--button-bg); color:var(--button-text); border-color: rgba(0,0,0,0.08); }
+    .toggle-option label:hover { transform: translateY(-1px); }
+    .unit-toggle span { color:var(--secondary-text); font-size:0.85rem; }
+    .qty-issued { display:inline-flex; align-items:center; gap:6px; background:#e8f4fd; padding:4px 8px; border-radius:5px; font-weight:600; font-size:0.8rem; min-width:70px; text-align:center; }
+    .qty-issued span { color:var(--secondary-text); font-size:0.8rem; font-weight:500; }
 
     /* ==== ACTION BUTTONS ==== */
     .acceptance-row {
@@ -109,7 +121,9 @@
     <!-- IBT DETAIL -->
     <div class="card hidden" id="ibt-detail-view">
       <header>
-        <h1 id="detail-view-title">IBT Details</h1>
+        <div>
+          <h1 id="detail-view-title">IBT Details</h1>
+        </div>
         <button type="button" id="back-to-list" class="btn-secondary">Back</button>
       </header>
       <div id="ibt-detail-container"><div class="loading">Loading details...</div></div>
@@ -126,25 +140,37 @@
 <script>
 document.addEventListener("DOMContentLoaded", async () => {
     let currentIbt = null;
+    let currentUnitMode = 'stocking';
 
     await loadIbtList();
 
-    document.getElementById("back-to-list").addEventListener("click", () => {
+    const initialIbt = new URLSearchParams(window.location.search).get('ibt_number');
+    if (initialIbt) {
+        loadIbtDetail(initialIbt);
+    }
+
+    document.getElementById("back-to-list").addEventListener("click", async () => {
         document.getElementById("ibt-detail-view").classList.add("hidden");
         document.getElementById("ibt-list-view").classList.remove("hidden");
+        history.replaceState(null, "", window.location.pathname);
+        await loadIbtList();
     });
 
     document.getElementById("submit-receipt").addEventListener("click", submitReceipt);
+});
 
-    async function loadIbtList() {
-        try {
-            const res = await fetch("/inventory/fetch_issued_ibts");
-            const { ibts } = await res.json();
-            displayIbtList(ibts);
-        } catch (err) {
-            document.getElementById("ibt-list-container").innerHTML = `<div class="empty-state"><h3>Error</h3><p>Failed to load IBTs.</p></div>`;
-        }
+async function loadIbtList() {
+    const container = document.getElementById("ibt-list-container");
+    container.innerHTML = '<div class="loading">Loading IBTs...</div>';
+
+    try {
+        const res = await fetch("/inventory/fetch_issued_ibts");
+        const { ibts } = await res.json();
+        displayIbtList(ibts);
+    } catch (err) {
+        container.innerHTML = `<div class="empty-state"><h3>Error</h3><p>Failed to load IBTs.</p></div>`;
     }
+}
 
     function displayIbtList(ibts) {
         const container = document.getElementById("ibt-list-container");
@@ -186,6 +212,8 @@ document.addEventListener("DOMContentLoaded", async () => {
             const res = await fetch(`/inventory/display_ibt?ibt_number=${ibt_number}`);
             const { ibt_details } = await res.json();
             displayIbtDetail(ibt_details);
+            setupUnitToggle();
+            history.replaceState(null, "", `?ibt_number=${encodeURIComponent(ibt_number)}`);
         } catch (err) {
             container.innerHTML = `<div class="empty-state"><h3>Error</h3><p>Failed to load details.</p></div>`;
         }
@@ -198,92 +226,256 @@ document.addEventListener("DOMContentLoaded", async () => {
         }
         const first = lines[0];
         let html = `
-            <div class="ibt-detail-header">
-                <h2>${first.description || 'IBT'}</h2>
-                <p>IBT #: ${first.ibt_number}</p>
-            </div>
             <div class="ibt-detail-grid">
                 <div class="ibt-detail-item"><strong>From</strong><span>${first.warehouse_from}</span></div>
                 <div class="ibt-detail-item"><strong>To</strong><span>${first.warehouse_to}</span></div>
+            </div>
+            <div class="unit-toggle">
+                <div class="toggle-option">
+                    <input type="radio" id="unit_mode_stocking" name="unit_mode" value="stocking" checked>
+                    <label for="unit_mode_stocking">Stocking Units</label>
+                </div>
+                <div class="toggle-option">
+                    <input type="radio" id="unit_mode_purchasing" name="unit_mode" value="purchasing">
+                    <label for="unit_mode_purchasing">Purchasing Units</label>
+                </div>
             </div>
             <h3 style="margin:12px 0 8px;font-size:1rem;">Product Lines</h3>
             <div class="product-lines" id="product-lines-container">`;
 
         lines.forEach((line, i) => {
             html += `
-                <div class="product-line" data-line="${i}" data-product-code="${line.product_code}">
+                <div class="product-line" data-line="${i}" data-product-id="${line.product_id}" data-conversion-factor="${line.conversion_factor || 1}" data-purchasing-unit-code="${line.purchasing_unit_code || ''}" data-stocking-unit-code="${line.stocking_unit_code || ''}" data-issued-purchase="${line.qty_issued}">
                     <div class="product-line-header">
                         <div class="product-info">
-                            <div class="product-code">${line.product_code}</div>
                             <div class="product-desc">${line.product_desc}</div>
-                            <div class="line-reference">${line.line_reference || '—'}</div>
+                            <div class="line-reference" style="font-size:0.75rem;color:#888;margin-top:4px;">${line.reference || ''}</div>
                         </div>
-                        <div class="qty-issued">Issued: ${line.qty_issued}</div>
+                        <div class="qty-issued"><span>Issued</span>${line.qty_issued} ${line.purchasing_unit_code || ''} / ${Math.round(line.qty_issued * (line.conversion_factor || 1) * 100) / 100} ${line.stocking_unit_code || ''}</div>
                     </div>
                     <div class="quantity-inputs">
                         <div class="quantity-group">
-                            <label>Received</label>
-                            <input type="number" class="quantity-input qty-received" data-line="${i}" min="0" max="${line.qty_issued}" value="0" onchange="updateQty(${i})">
+                            <label id="received-label-${i}">Received (${line.stocking_unit_code || ''})</label>
+                            <input type="number" class="quantity-input qty-received" data-line="${i}" min="0" step="0.01" value="0" oninput="updateQty(${i})">
                         </div>
-                        <div class="quantity-group">
-                            <label>Damaged</label>
-                            <input type="number" class="quantity-input qty-damaged" data-line="${i}" min="0" max="${line.qty_issued}" value="0" onchange="updateQty(${i})">
+                        <div class="quantity-status">
+                            <span id="variance-label-${i}">Variance: 0 ${line.stocking_unit_code || ''}</span>
+                            <span id="mode-label-${i}">In stocking units</span>
                         </div>
-                        <div class="quantity-group">
-                            <label>Variance</label>
-                            <input type="number" class="quantity-input qty-variance" data-line="${i}" value="0" readonly style="background:#f8f9fa;">
-                        </div>
-                        <div class="quantity-total" id="total-${i}">Total: 0 / ${line.qty_issued}</div>
-                        <div class="quantity-error" id="err-${i}" style="display:none;">Must equal ${line.qty_issued}</div>
                     </div>
                 </div>`;
         });
         html += `</div>`;
         document.getElementById("ibt-detail-container").innerHTML = html;
-        document.getElementById("detail-view-title").textContent = `IBT: ${first.description || 'Details'}`;
+        document.getElementById("detail-view-title").textContent = `IBT: ${first.ibt_number}`;
+    }
+
+    function setupUnitToggle() {
+        const radios = document.querySelectorAll('input[name="unit_mode"]');
+        radios.forEach(radio => {
+            radio.addEventListener('change', (event) => {
+                currentUnitMode = event.target.value;
+                document.querySelectorAll('.product-line').forEach(line => {
+                    // preserve previous input values where possible
+                    const i = line.dataset.line;
+                    const input = document.querySelector(`.qty-received[data-line="${i}"]`);
+                    if (input) input.dataset.prev = input.value;
+                    updateQty(i);
+                });
+            });
+        });
+
+        // attach smarter input handlers that keep previous valid value
+        document.querySelectorAll('.qty-received').forEach(input => {
+            // store previous valid value to revert when invalid char typed
+            input.dataset.prev = input.value || '';
+
+            input.addEventListener('input', (e) => {
+                const i = input.dataset.line;
+                const lineEl = document.querySelector(`.product-line[data-line="${i}"]`);
+                if (!lineEl) return;
+                const issuedPurchase = Number(lineEl.dataset.issuedPurchase) || 0;
+                const conversionFactor = Number(lineEl.dataset.conversionFactor) || 1;
+                const expectedStock = Math.round(issuedPurchase * conversionFactor * 100) / 100;
+                const maxAllowed = (currentUnitMode === 'stocking') ? expectedStock : issuedPurchase;
+
+                const raw = input.value;
+
+                // allow empty or single dot while typing (partial decimal)
+                if (raw === '' || raw === '.' || raw === '-' ) {
+                    input.dataset.prev = raw;
+                    updateQty(i);
+                    return;
+                }
+
+                // parse float from the raw input
+                const parsed = parseFloat(raw);
+                if (isNaN(parsed)) {
+                    // non-numeric character typed - revert to previous and refresh
+                    input.value = input.dataset.prev || '';
+                    updateQty(i);
+                    return;
+                }
+
+                // negative not allowed
+                if (parsed < 0) {
+                    input.value = '0';
+                    input.dataset.prev = '0';
+                    updateQty(i);
+                    return;
+                }
+
+                // if parsed value exceeds max, revert to previous (do not clamp)
+                if (parsed > maxAllowed) {
+                    // revert the last change (don't clamp) and refresh calculations
+                    input.value = input.dataset.prev || '';
+                    updateQty(i);
+                    return;
+                }
+
+                // valid value - store as previous and update
+                input.dataset.prev = input.value;
+                updateQty(i);
+            });
+        });
+
+        currentUnitMode = document.querySelector('input[name="unit_mode"]:checked')?.value || 'stocking';
+        document.querySelectorAll('.product-line').forEach(line => updateQty(line.dataset.line));
     }
 
     window.updateQty = function(i) {
-        const issued = parseFloat(document.querySelector(`#total-${i}`).textContent.match(/\d+$/)[0]);
-        const rec = parseFloat(document.querySelector(`.qty-received[data-line="${i}"]`).value) || 0;
-        const dam = parseFloat(document.querySelector(`.qty-damaged[data-line="${i}"]`).value) || 0;
-        const varr = issued - rec - dam;
-        document.querySelector(`.qty-variance[data-line="${i}"]`).value = varr;
-        const total = rec + dam + varr;
-        document.getElementById(`total-${i}`).textContent = `Total: ${total} / ${issued}`;
-        document.getElementById(`err-${i}`).style.display = total !== issued ? 'block' : 'none';
+        const lineEl = document.querySelector(`.product-line[data-line="${i}"]`);
+        const receivedInput = document.querySelector(`.qty-received[data-line="${i}"]`);
+        if (!lineEl || !receivedInput) return;
+        const issuedPurchase = Number(lineEl.dataset.issuedPurchase) || 0;
+        const conversionFactor = Number(lineEl.dataset.conversionFactor) || 1;
+        const raw = receivedInput.value;
+        const receivedNum = isNaN(parseFloat(raw)) ? 0 : parseFloat(raw);
+        const receivedLabel = document.getElementById(`received-label-${i}`);
+        const varianceLabel = document.getElementById(`variance-label-${i}`);
+        const modeLabel = document.getElementById(`mode-label-${i}`);
+
+        const expectedStock = Math.round(issuedPurchase * conversionFactor * 100) / 100;
+        let variance = 0;
+        let unitCode = lineEl.dataset.stockingUnitCode || '';
+        let maxAllowed = 0;
+
+        if (currentUnitMode === 'stocking') {
+            maxAllowed = expectedStock;
+            unitCode = lineEl.dataset.stockingUnitCode || '';
+            receivedLabel.textContent = `Received (${unitCode})`;
+            modeLabel.textContent = `Mode: Stocking Units`;
+        } else {
+            maxAllowed = issuedPurchase;
+            unitCode = lineEl.dataset.purchasingUnitCode || '';
+            receivedLabel.textContent = `Received (${unitCode})`;
+            modeLabel.textContent = `Mode: Purchasing Units`;
+        }
+
+        // Only use numeric value for calculations; do not overwrite user's partial input
+        const usedReceived = Math.min(Math.max(receivedNum || 0, 0), maxAllowed);
+
+        // Recalculate variance using usedReceived
+        if (currentUnitMode === 'stocking') {
+            variance = Math.round((expectedStock - usedReceived) * 100) / 100;
+        } else {
+            variance = Math.round((issuedPurchase - usedReceived) * 100) / 100;
+        }
+
+        // Ensure input max attribute is correct for native UI
+        receivedInput.max = maxAllowed;
+
+        varianceLabel.textContent = `Variance: ${variance.toLocaleString(undefined, {maximumFractionDigits:2})} ${unitCode}`;
     };
 
     async function submitReceipt() {
         const lines = document.querySelectorAll('.product-line');
         const payload = { ibt_number: currentIbt, lines: [] };
-        let valid = true;
+        const varianceLines = [];
 
         lines.forEach(line => {
             const i = line.dataset.line;
-            const productCode = line.dataset.productCode; // ← Get product code
-            const issued = parseFloat(document.getElementById(`total-${i}`).textContent.match(/\d+$/)[0]);
-            const rec = parseFloat(document.querySelector(`.qty-received[data-line="${i}"]`).value) || 0;
-            const dam = parseFloat(document.querySelector(`.qty-damaged[data-line="${i}"]`).value) || 0;
-            const varr = issued - rec - dam;
+            const productCode = line.dataset.productId;
+            const productDesc = line.querySelector('.product-desc').textContent.trim();
+            const issuedPurchase = Number(line.dataset.issuedPurchase) || 0;
+            const conversionFactor = Number(line.dataset.conversionFactor) || 1;
+            const received = Number(document.querySelector(`.qty-received[data-line="${i}"]`).value) || 0;
+            let qtyReceived = received;
+            let qtyVariance = 0;
+            let displayIssued = 0;
+            let displayReceived = 0;
+            let displayVariance = 0;
+            let unitCode = '';
 
-            if (rec + dam + varr !== issued) valid = false;
+            if (currentUnitMode === 'stocking') {
+                // Convert to purchasing for payload submission
+                const receivedPurchase = Math.round((received / conversionFactor) * 100) / 100;
+                qtyReceived = receivedPurchase;
+                qtyVariance = Math.round((issuedPurchase - receivedPurchase) * 100) / 100;
+                
+                // Display in stocking units
+                const expectedStock = Math.round(issuedPurchase * conversionFactor * 100) / 100;
+                displayIssued = expectedStock;
+                displayReceived = received;
+                displayVariance = Math.round((expectedStock - received) * 100) / 100;
+                unitCode = line.dataset.stockingUnitCode || '';
+            } else {
+                // Display in purchasing units
+                qtyVariance = Math.round((issuedPurchase - received) * 100) / 100;
+                displayIssued = issuedPurchase;
+                displayReceived = received;
+                displayVariance = qtyVariance;
+                unitCode = line.dataset.purchasingUnitCode || '';
+            }
+
+            // Track lines with variance
+            if (qtyVariance !== 0) {
+                varianceLines.push({
+                    productDesc,
+                    issued: displayIssued,
+                    received: displayReceived,
+                    variance: displayVariance,
+                    unit: unitCode
+                });
+            }
 
             payload.lines.push({
-                InventoryItemID: productCode, 
-                QuantityReceived: rec,
-                QuantityDamaged: dam,
-                QuantityVariance: varr,
+                InventoryItemID: productCode,
+                QuantityReceived: qtyReceived,
+                QuantityDamaged: 0,
+                QuantityVariance: qtyVariance,
                 Description: document.querySelector(`.product-line[data-line="${i}"] .line-reference`).textContent.trim() || "",
-                Reference: document.querySelector(`.product-line[data-line="${i}"] .product-code`).textContent.trim()
+                Reference: productCode
             });
         });
 
-        if (!valid) {
-            Swal.fire("Error", "All lines must add up to issued quantity", "error");
-            return;
+        // Show variance warning if any exist
+        if (varianceLines.length > 0) {
+            let varianceHtml = '<div style="text-align:left; max-height:300px; overflow-y:auto;">';
+            varianceHtml += '<p style="margin-bottom:12px;"><strong>The following products have variances:</strong></p>';
+            varianceHtml += '<ul style="margin:0; padding-left:20px;">';
+            varianceLines.forEach(line => {
+                varianceHtml += `<li style="margin-bottom:6px;"><strong>${line.productDesc}</strong><br/>Issued: ${line.issued} ${line.unit} | Received: ${line.received} ${line.unit} | Variance: ${line.variance} ${line.unit}</li>`;
+            });
+            varianceHtml += '</ul></div>';
+
+            const result = await Swal.fire({
+                title: "Variance Warning",
+                html: varianceHtml,
+                icon: "warning",
+                showCancelButton: true,
+                confirmButtonText: "Continue Anyway",
+                cancelButtonText: "Cancel",
+                allowOutsideClick: false,
+                allowEscapeKey: false
+            });
+
+            if (!result.isConfirmed) {
+                return;
+            }
         }
 
+        // Proceed with submission
         try {
             const res = await fetch("/inventory/submit_ibt_receive", {
                 method: "POST",
@@ -304,6 +496,5 @@ document.addEventListener("DOMContentLoaded", async () => {
             Swal.fire("Error", "Submission failed", "error");
         }
     }
-});
 </script>
 {% endblock %}
