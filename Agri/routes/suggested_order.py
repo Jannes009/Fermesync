@@ -143,11 +143,13 @@ def suggested_order_detail(stock_id):
             ISNULL(P.PurchaseUnitsNeeded, 0) AS PurchaseUnitsNeeded,
             ISNULL(P.PurchasingUnitCode, '') AS PurchasingUnitCode,
             P.SprayHWeek,
+			ISNULL(Inv.QtyOnIBT / NULLIF(CONV.InverseConversionFactor, 0), 0) AS PurchaseQtyOnIBT,
             ROW_NUMBER() OVER (
                 PARTITION BY P.SprayHWhseId
                 ORDER BY P.SprayHWeek DESC
             ) AS rn
         FROM agr._uvStockProjectionUnitsNeededPerWH P
+		JOIN agr._uvChemStockUnitConversion  CONV ON CONV.ChemStockLink = P.SprayLineStkId
         LEFT JOIN stk._uvInventoryQty Inv
             ON Inv.WhseLink = P.SprayHWhseId
             AND Inv.StockLink = P.SprayLineStkId
@@ -164,7 +166,8 @@ def suggested_order_detail(stock_id):
         StockingUnitCode,
         PurchaseUnitsNeeded,
         PurchasingUnitCode,
-        SprayHWeek
+        SprayHWeek,
+		PurchaseQtyOnIBT
     FROM LatestWeek
     WHERE rn = 1
     ORDER BY WhseName;
@@ -185,7 +188,8 @@ def suggested_order_detail(stock_id):
             'stocking_uom': r.StockingUnitCode,
             'purchase_units_needed': float(r.PurchaseUnitsNeeded),
             'purchasing_unit_code': r.PurchasingUnitCode,
-            'spray_h_week': r.SprayHWeek
+            'spray_h_week': r.SprayHWeek,
+            'PurchaseQtyOnIBT': float(r.PurchaseQtyOnIBT or 0)
         }
         for r in rows
     ]

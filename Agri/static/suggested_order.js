@@ -149,9 +149,9 @@ function initSuggestedOrder(container = document) {
                         detailContent.innerHTML = 'Error loading details';
                         return;
                     }
-                    let html = '<table class="detail-table"><thead><tr><th></th><th>Warehouse</th><th>Stock Description</th><th class="col-num">Qty On Hand</th><th class="col-num">Qty On PO</th><th class="col-num">Qty to Order</th><th>Spray Week</th></tr></thead><tbody>';
+                    let html = '<table class="detail-table"><thead><tr><th></th><th>Warehouse</th><th>Stock Description</th><th class="col-num">Qty On Hand</th><th class="col-num">Qty On PO</th><th class="col-num">Qty to Order</th><th class="col-num">Qty On IBT</th></tr></thead><tbody>';
                     for (const w of dpayload.warehouses) {
-                        html += `<tr data-whse-id="${w.whse_id}" data-stock-link="${w.stock_link}"><td class="action-col"><button class="expand expand-spray" data-whse="${w.whse_id}" data-stock="${w.stock_link}" aria-expanded="false">+</button></td><td>${w.whse_name}</td><td>${w.stock_description}</td><td class="col-num">${nf.format(w.qty_on_hand)}<span class="uom"> ${w.stocking_uom}</span></td><td class="col-num">${nf.format(w.qty_on_po)}<span class="uom"> ${w.stocking_uom}</span></td><td class="col-num">${nf.format(w.purchase_units_needed)}<span class="uom"> ${w.purchasing_unit_code}</span></td><td>${w.spray_h_week}</td></tr>`;
+                        html += `<tr data-whse-id="${w.whse_id}" data-stock-link="${w.stock_link}"><td class="action-col"><button class="expand expand-spray" data-whse="${w.whse_id}" data-stock="${w.stock_link}" aria-expanded="false">+</button></td><td>${w.whse_name}</td><td>${w.stock_description}</td><td class="col-num">${nf.format(w.qty_on_hand)}<span class="uom"> ${w.stocking_uom}</span></td><td class="col-num">${nf.format(w.qty_on_po)}<span class="uom"> ${w.stocking_uom}</span></td><td class="col-num">${nf.format(w.purchase_units_needed)}<span class="uom"> ${w.purchasing_unit_code}</span></td><td class="col-num">${nf.format(w.PurchaseQtyOnIBT)}<span class="uom"> ${w.purchasing_unit_code}</span></td></tr>`;
                     }
                     html += '</tbody></table>';
                     detailContent.innerHTML = html;

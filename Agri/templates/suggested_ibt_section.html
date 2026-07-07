@@ -1,0 +1,28 @@
+<style>
+    .sd-container { padding: 16px; font-family: Inter, system-ui, -apple-system, 'Segoe UI', Roboto, Arial; color:#0f172a }
+    .sd-title { margin: 0 0 12px 0; font-size: 1.25rem; font-weight:700 }
+    .sd-controls { display:flex; align-items:center; gap:8px; margin-bottom:12px; flex-wrap:wrap; }
+    .sd-input { padding:6px 10px; width:180px; border:1px solid #d1d5db; border-radius:6px; background:#fff }
+    .sd-btn { padding:7px 12px; border-radius:6px; background:#0b5ed7; color:white; border:none; cursor:pointer }
+    .sd-btn:disabled { background:#94a3b8 }
+    .sd-hint { color:#6b7280; font-size:0.88rem; margin-left:8px }
+    .ibt-warehouse-group { margin-bottom:16px; border:1px solid #e6e9ef; border-radius:8px; overflow:hidden }
+    .ibt-whse-header { background:#f8fafc; padding:12px 16px; font-weight:600; border-bottom:2px solid #eef2f7 }
+    .ibt-table-wrap { overflow:auto; max-height:50vh; border:1px solid #e6e9ef; border-radius:8px; background:#fff }
+    .ibt-table { width:100%; border-collapse:collapse; font-size:0.95rem }
+    .ibt-table th, .ibt-table td { padding:8px 10px; border-bottom:1px solid #f1f5f9; text-align:left }
+    .col-product { width:40%; font-weight:600 }
+    .col-num { white-space:nowrap; font-variant-numeric: tabular-nums; text-align:right }
+    @media (max-width:900px) { .col-product { width:50% } }
+</style>
+<div class="sd-container">
+    <h2 class="sd-title">Inter-Branch Transfer (IBT)</h2>
+
+    <div class="sd-controls">
+        <label>Week: <select id="ibt_week" class="sd-input"></select></label>
+        <button id="ibt_load" class="sd-btn">Load Suggestions</button>
+        <div style="flex:1"></div>
+    </div>
+
+    <div id="ibt_content"></div>
+</div>

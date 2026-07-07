@@ -3,6 +3,9 @@ let lineIndex = 0;
 let products = [];
 let selectedProducts = new Set();
 
+// Promise that resolves when warehouse selects are populated
+window.__ibtWarehousesLoaded = new Promise((res) => { window.__resolveIbtWarehouses = res; });
+
 
 document.addEventListener("DOMContentLoaded", async () => {
     const whFrom = document.getElementById("wh-from");
@@ -41,6 +44,11 @@ document.addEventListener("DOMContentLoaded", async () => {
         allowClear: false,
         width: '100%'
     });
+
+        // mark warehouse population complete so prefill logic can proceed
+        if (typeof window.__resolveIbtWarehouses === 'function') {
+            try { window.__resolveIbtWarehouses(); } catch (e) { /* ignore */ }
+        }
 
     // --- Step 1 → Step 2 ---
     document.getElementById("ibt-step-1-next").addEventListener("click", async () => {
@@ -286,6 +294,82 @@ document.addEventListener("DOMContentLoaded", async () => {
         document.getElementById("ibt-step-3").classList.add("hidden");
         document.getElementById("ibt-step-2").classList.remove("hidden");
     });
+});
+
+// Helper: read query param
+function getQueryParam(name) {
+    const params = new URLSearchParams(window.location.search);
+    return params.get(name);
+}
+
+// If a prefill payload is present in the URL, decode it and prefill step 2 (but do NOT auto-submit)
+document.addEventListener('DOMContentLoaded', async () => {
+    // Support both URL prefill (legacy) and sessionStorage (preferred for large payloads)
+    const prefillRawUrl = getQueryParam('prefill');
+    const prefillRawSession = sessionStorage.getItem('ibt_prefill');
+    const prefillRaw = prefillRawSession || prefillRawUrl;
+    if (!prefillRaw) return;
+
+    try {
+        const prefill = prefillRawSession ? JSON.parse(prefillRawSession) : JSON.parse(decodeURIComponent(prefillRawUrl));
+
+        // prefills expected: { from_whse, to_whse, lines: [{ stock_link, qty }...] }
+        // Wait for warehouse selects to be populated (so Select2 has options)
+        if (window.__ibtWarehousesLoaded) {
+            try { await window.__ibtWarehousesLoaded; } catch (e) { /* ignore */ }
+        }
+
+        if (prefill.from_whse) {
+            $('#wh-from').val(String(prefill.from_whse)).trigger('change');
+        }
+        if (prefill.to_whse) {
+            $('#wh-to').val(String(prefill.to_whse)).trigger('change');
+        }
+
+        // Fetch products for the selected warehouses (same as clicking Step 1 next)
+        const fetchRes = await fetch('/inventory/fetch_products_in_both_whses', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ whse_from_id: String(prefill.from_whse), whse_to_id: String(prefill.to_whse) })
+        });
+        const json = await fetchRes.json();
+        products = json.products || [];
+
+        // Clear any existing lines and selectedProducts
+        document.getElementById('ibt-lines-container').innerHTML = '';
+        selectedProducts = new Set();
+        ibtLines = [];
+
+        // Add a line for each prefill line
+        for (const ln of (prefill.lines || [])) {
+            addIbtLine();
+            const thisIndex = lineIndex;
+            const selectId = `product-select-${thisIndex}`;
+            // wait a tick for select2 initialization
+            await new Promise(r => setTimeout(r, 20));
+            const selectVal = String(ln.product_id || ln.stock_link || ln.stockLink || ln.stock_link);
+            try {
+                $(`#${selectId}`).val(selectVal).trigger('change');
+            } catch (e) {
+                // ignore
+            }
+            const thisLineDiv = document.getElementById(`ibt-line-${thisIndex}`);
+            if (thisLineDiv) {
+                const qtyInput = thisLineDiv.querySelector('.qty-input');
+                if (qtyInput) {
+                    qtyInput.value = String(ln.qty || ln.Qty || ln.units_suggested || 0);
+                    updateStockQtyDisplay(thisLineDiv);
+                }
+            }
+        }
+
+        // Move UI to step 2 and wait for user interaction
+        document.getElementById('ibt-step-1').classList.add('hidden');
+        document.getElementById('ibt-step-2').classList.remove('hidden');
+
+    } catch (err) {
+        console.error('Failed to prefill IBT:', err);
+    }
 });
 
 function addIbtLine() {

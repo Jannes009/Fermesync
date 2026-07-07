@@ -28,6 +28,7 @@
             </select>
           </div>
           <button class="btn-primary btn-suggested-order" onclick="suggestedOrder()">Suggested Order</button>
+          <button class="btn-primary btn-ibt" onclick="openIbt()">IBT Transfer</button>
         </div>
       </div>
     </div>
@@ -246,6 +247,16 @@
   </div>
 </div>
 
+<div id="ibtModal" class="modal hidden">
+  <div class="modal-content" style="max-width: 1100px; width: min(100%, 1100px);">
+    <div class="modal-header">
+      <h2>IBT Transfer</h2>
+      <button onclick="closeIbtModal()">&times;</button>
+    </div>
+    <div id="ibtModalBody" class="modal-body" style="padding: 0; overflow: auto; max-height: calc(100vh - 140px);"></div>
+  </div>
+</div>
+
 <!-- ===================== -->
 <!-- PRODUCT MODAL (GLOBAL) -->
 <!-- ===================== -->
@@ -410,6 +421,7 @@
 <!-- JS -->
 <!-- ===================== -->
 <script src="{{ url_for('agri.static', filename='suggested_order.js') }}?{{ filemtime('inventory', 'suggested_order.js') }}"></script>
+<script src="{{ url_for('agri.static', filename='suggested_ibt.js') }}?{{ filemtime('inventory', 'suggested_ibt.js') }}"></script>
 <script>
 function getSelectedWarehouseId() { 
   const el = document.getElementById('warehouseSelect');
@@ -426,6 +438,10 @@ function onWarehouseChange() {
 
 function suggestedOrder() {
   openSuggestedOrderModal();
+}
+
+function openIbt() {
+  openIbtModal();
 }
 
 function toggleCardCollapse(button) {
@@ -808,6 +824,29 @@ function submitReorderingForm(event) {
 }
 
 document.addEventListener('DOMContentLoaded', initWarehouseSelect2);
+// If redirected back after creating IBT, open the suggested IBT modal
+document.addEventListener('DOMContentLoaded', function () {
+  const params = new URLSearchParams(window.location.search);
+  if (params.get('openSuggestedIbt')) {
+    // openIbtModal is defined in suggested_ibt.js
+    if (typeof openIbtModal === 'function') {
+      openIbtModal();
+    } else {
+      // in case script order differs: try after short delay
+      setTimeout(() => { if (typeof openIbtModal === 'function') openIbtModal(); }, 300);
+    }
+    // clean up URL to avoid re-opening on reload
+    const url = new URL(window.location.href);
+    url.searchParams.delete('openSuggestedIbt');
+    window.history.replaceState({}, document.title, url.toString());
+  }
+  // Also clear ibt_prefill from sessionStorage after use
+  if (sessionStorage.getItem('ibt_prefill')) {
+    setTimeout(() => {
+      sessionStorage.removeItem('ibt_prefill');
+    }, 500);
+  }
+});
 </script>
 
 <!-- ===================== -->
@@ -939,6 +978,11 @@ document.addEventListener('DOMContentLoaded', initWarehouseSelect2);
 }
 
 .btn-suggested-order {
+  min-height: 40px;
+  padding: 0.8rem 1rem;
+}
+
+.btn-ibt {
   min-height: 40px;
   padding: 0.8rem 1rem;
 }
