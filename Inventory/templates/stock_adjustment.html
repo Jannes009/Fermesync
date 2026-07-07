@@ -1,0 +1,69 @@
+{% if not embed %}
+<link rel="stylesheet" href="{{ url_for('inventory.static', filename='css/stock_adjustment.css') }}">
+<script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/js/select2.min.js"></script>
+<script type="module" src="{{ url_for('inventory.static', filename='stock_adjustment_ui.js') }}?{{ filemtime('inventory', 'stock_adjustment_ui.js') }}"></script>
+<script>
+    document.addEventListener('DOMContentLoaded', function() {
+        if (typeof initStockAdjustment === 'function') {
+            initStockAdjustment(document);
+        }
+    });
+</script>
+{% endif %}
+<div class="sd-container" id="stock-adjustment-root">
+    <h2 class="sd-title">Stock Adjustment</h2>
+
+    <div class="sd-form">
+        <div class="sd-field full-width">
+            <label for="sa_product">Product</label>
+            <select id="sa_product" class="sd-select"></select>
+        </div>
+
+        <div class="sd-field">
+            <label for="sa_warehouse">Warehouse</label>
+            <select id="sa_warehouse" class="sd-select" disabled></select>
+        </div>
+
+        <div id="sa_qty_info" class="sd-summary full-width">
+            <div class="sd-summary-item">
+                <span class="sd-summary-label">Qty On Hand</span>
+                <span class="sd-summary-value">—</span>
+            </div>
+            <div class="sd-summary-item">
+                <span class="sd-summary-label">Unit</span>
+                <span class="sd-summary-value" id="sa_unit_display">—</span>
+            </div>
+        </div>
+        <div id="sa_needed_info" class="sd-hint full-width"></div>
+
+        <div class="sd-field full-width">
+            <label>Unit Selection</label>
+            <div class="sd-unit-toggle">
+                <button type="button" class="sd-unit-btn active" id="sa_unit_stocking" data-unit="stocking">Stocking Unit</button>
+                <button type="button" class="sd-unit-btn" id="sa_unit_purchasing" data-unit="purchasing">Purchasing Unit</button>
+            </div>
+            <div class="sd-hint">Selected unit for input (always submits in stocking units)</div>
+        </div>
+
+        <div class="sd-field full-width">
+            <label>Operation</label>
+            <div class="sd-radio-group">
+                <label class="sd-radio"><input type="radio" name="sa_operation" value="set" checked> Set</label>
+                <label class="sd-radio"><input type="radio" name="sa_operation" value="add"> Add</label>
+                <label class="sd-radio"><input type="radio" name="sa_operation" value="subtract"> Subtract</label>
+            </div>
+        </div>
+
+        <div class="sd-field">
+            <label for="sa_quantity">Quantity <span id="sa_unit_label" style="font-weight: 400; color: #6b7280;">(Stocking Units)</span></label>
+            <input id="sa_quantity" class="sd-input" type="number" step="0.01" min="0" placeholder="0.00" />
+        </div>
+
+        <div class="sd-actions full-width">
+            <button id="sa_submit" class="sd-btn">Submit Adjustment</button>
+        </div>
+    </div>
+
+    <div id="sa_result" class="sd-result"></div>
+</div>

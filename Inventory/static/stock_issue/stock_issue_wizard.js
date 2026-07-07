@@ -349,8 +349,42 @@ async function step2Next() {
     const qtyRequested = parseFloat(qtyInput.value);
 
     if (qtyRequested > product.qty_in_whse) {
-      Swal.fire("Insufficient Stock", `Requested quantity for ${product.product_desc} exceeds available stock (${parseFloat(product.qty_in_whse).toFixed(2)} ${product.stocking_uom_code}).`, "error");
-      return;
+      const canAdjust = window.FERMESYNC && Array.isArray(window.FERMESYNC.permissions) && window.FERMESYNC.permissions.includes('STOCK_ADJUSTMENT');
+      const available = parseFloat(product.qty_in_whse).toFixed(2);
+      const requested = parseFloat(qtyRequested).toFixed(2);
+      const message = `Requested ${requested} ${product.stocking_uom_code} but only ${available} available.`;
+      if (canAdjust) {
+        const confirm = await Swal.fire({
+          title: 'Insufficient Stock',
+          text: `${message} Open stock adjustment?`,
+          icon: 'warning',
+          showCancelButton: true,
+          confirmButtonText: 'Open stock adjustment',
+          cancelButtonText: 'Cancel'
+        });
+        if (!confirm.isConfirmed) return;
+
+        const adjusted = await promptStockAdjustment(product.product_link, selectedWarehouse, 'stocking');
+        if (!adjusted) {
+          return;
+        }
+
+        const refreshRes = await fetch(`/inventory/adjust_stock/qty?stock_link=${encodeURIComponent(product.product_link)}&warehouse_link=${encodeURIComponent(selectedWarehouse)}`);
+        const refreshJson = await refreshRes.json();
+        if (refreshJson.status !== 'ok') {
+          await Swal.fire('Stock Refresh Failed', refreshJson.message || 'Could not refresh stock quantity after adjustment.', 'error');
+          return;
+        }
+
+        product.qty_in_whse = Number(refreshJson.qty_on_hand) || 0;
+        if (qtyRequested > product.qty_in_whse) {
+          await Swal.fire('Still Insufficient Stock', `Product still has only ${parseFloat(product.qty_in_whse).toFixed(2)} ${product.stocking_uom_code} available after adjustment.`, 'error');
+          return;
+        }
+      } else {
+        await Swal.fire("Insufficient Stock", `Requested quantity for ${product.product_desc} exceeds available stock (${parseFloat(product.qty_in_whse).toFixed(2)} ${product.stocking_uom_code}).`, "error");
+        return;
+      }
     }
     console.log(recommendedByProductId, product.product_link, recommendedByProductId[product.product_link], qtyRequested)
     lines.push({
@@ -373,7 +407,8 @@ async function step2Next() {
   
   const productItemsHtml = lines.map(l => {
     console.log(l)
-    const isUnderIssued = l.qty_recommended && l.nett_issued < l.qty_recommended;
+    const isUnderIssued = l.qty_recommended && l.nett_issued + l.qty_issued < parseFloat(l.qty_recommended);
+    console.log("isUnderIssued", l.product_desc, isUnderIssued, l.qty_recommended, l.nett_issued)
     const flagStyle = isUnderIssued ? 'background-color: #fff3cd; border-left: 4px solid #ff9800;' : '';
     const recommendedHtml = l.qty_recommended 
       ? `<span style="font-size: 0.85rem; color: var(--secondary-text); margin-left: 2rem;">Recommended: ${parseFloat(l.qty_recommended).toFixed(2)} ${l.uom_code}${isUnderIssued ? ' ⚠️ Partial' : ''}</span>`
@@ -414,6 +449,126 @@ async function step2Next() {
 
   document.getElementById("step-2").classList.add("hidden");
   document.getElementById("step-3").classList.remove("hidden");
+}
+
+async function promptStockAdjustment(stockLink, warehouseLink, unit = 'stocking') {
+  if (!stockLink || !warehouseLink) {
+    await Swal.fire('Error', 'Product and warehouse are required to adjust stock.', 'error');
+    return false;
+  }
+
+  const cssPath = '/inventory/static/css/stock_adjustment.css';
+  const modulePath = '/inventory/static/stock_adjustment_ui.js';
+
+  const ensureCss = (href) => new Promise((resolve, reject) => {
+    if (document.querySelector(`link[href^="${href}"]`)) return resolve();
+    const link = document.createElement('link');
+    link.rel = 'stylesheet';
+    link.href = href;
+    link.onload = () => resolve();
+    link.onerror = () => reject(new Error('Failed to load CSS: ' + href));
+    document.head.appendChild(link);
+  });
+
+  const ensureModule = (src) => new Promise((resolve, reject) => {
+    if (document.querySelector(`script[src^="${src}"]`)) return resolve();
+    const script = document.createElement('script');
+    script.type = 'module';
+    script.src = src;
+    script.onload = () => resolve();
+    script.onerror = () => reject(new Error('Failed to load module: ' + src));
+    document.body.appendChild(script);
+  });
+
+  try {
+    await ensureCss(cssPath);
+    if (typeof initStockAdjustment !== 'function') {
+      await ensureModule(modulePath);
+    }
+
+    const htmlRes = await fetch('/inventory/adjust_stock/popup');
+    if (!htmlRes.ok) {
+      await Swal.fire('Error', 'Unable to load stock adjustment UI.', 'error');
+      return false;
+    }
+
+    const html = await htmlRes.text();
+    let modal = document.getElementById('stockAdjustmentModal');
+    if (!modal) {
+      modal = document.createElement('div');
+      modal.id = 'stockAdjustmentModal';
+      Object.assign(modal.style, { position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.4)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 99999 });
+      const inner = document.createElement('div');
+      inner.id = 'stockAdjustmentModalBody';
+      Object.assign(inner.style, { background: '#fff', borderRadius: '12px', maxWidth: '920px', width: '100%', maxHeight: '90vh', overflow: 'auto', padding: '16px', boxSizing: 'border-box', position: 'relative' });
+      modal.appendChild(inner);
+      modal.addEventListener('click', (event) => {
+        if (event.target === modal) {
+          modal.remove();
+        }
+      });
+      document.body.appendChild(modal);
+    }
+
+    const modalBody = document.getElementById('stockAdjustmentModalBody');
+    if (!modalBody) {
+      await Swal.fire('Error', 'Adjustment modal body not available.', 'error');
+      return false;
+    }
+
+    modalBody.innerHTML = '';
+    const closeButton = document.createElement('button');
+    closeButton.type = 'button';
+    closeButton.textContent = '×';
+    Object.assign(closeButton.style, { position: 'absolute', top: '12px', right: '12px', width: '34px', height: '34px', border: 'none', borderRadius: '50%', background: '#f1f5f9', color: '#334155', fontSize: '20px', cursor: 'pointer', lineHeight: '0.9', boxShadow: '0 1px 3px rgba(0,0,0,0.12)' });
+    closeButton.addEventListener('click', () => modal.remove());
+    modalBody.appendChild(closeButton);
+
+    const contentWrapper = document.createElement('div');
+    Object.assign(contentWrapper.style, { paddingTop: '10px' });
+    contentWrapper.innerHTML = html;
+    modalBody.appendChild(contentWrapper);
+
+    modalBody.dataset.product = stockLink;
+    modalBody.dataset.warehouse = warehouseLink;
+    modalBody.dataset.unit = unit;
+    // compact layout for modal embedding to reduce scrolling on mobile
+    modalBody.classList.add('sd-compact');
+
+    if (typeof initStockAdjustment === 'function') {
+      initStockAdjustment(modalBody);
+    }
+
+    return await new Promise((resolve) => {
+      let resolved = false;
+      const handler = () => {
+        if (resolved) return;
+        resolved = true;
+        window.removeEventListener('stockAdjustment:success', handler);
+        modal.remove();
+        resolve(true);
+      };
+
+      const cleanup = () => {
+        if (resolved) return;
+        resolved = true;
+        window.removeEventListener('stockAdjustment:success', handler);
+        try { modal.remove(); } catch (e) {}
+        resolve(false);
+      };
+
+      window.addEventListener('stockAdjustment:success', handler);
+      modal.addEventListener('click', (event) => {
+        if (event.target === modal) cleanup();
+      });
+      // also cleanup if modal is removed by close button
+      closeButton.addEventListener('click', cleanup);
+    });
+  } catch (err) {
+    console.error('Stock adjustment modal failed', err);
+    await Swal.fire('Error', err.message || 'Failed to open adjustment modal.', 'error');
+    return false;
+  }
 }
 
 async function submitIssue() {

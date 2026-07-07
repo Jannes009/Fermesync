@@ -24,7 +24,7 @@ function initSuggestedOrder(container = document) {
         return `${date.getUTCFullYear()}-${String(weekNo).padStart(2,'0')}`;
     }
 
-    function populateWeekSelect(before = 0, after = 5) {
+    function populateWeekSelect(before = 0, after = 2) {
         const select = weekInput;
         const today = new Date();
         select.innerHTML = '';
@@ -46,21 +46,81 @@ function initSuggestedOrder(container = document) {
         if (!week) return alert('Please enter week (YYYY-WW)');
 
         clear();
+
         const res = await fetch(`/agri/suggested-order/data?week=${encodeURIComponent(week)}`);
         const payload = await res.json();
         if (payload.status !== 'ok') return alert(payload.message || 'Error');
 
         for (const row of payload.data) {
             const tr = document.createElement('tr');
+
+            function computeStatus(r) {
+                const qty = Number(r.purchase_units_to_order || 0);
+                if (!r.supplier_dc_link) return 'no-supplier';
+                if (qty <= 0) return 'ok';
+                return 'needs';
+            }
+
+            const status = computeStatus(row);
+
+            // supplier select
+            const supSelect = document.createElement('select');
+            supSelect.className = 'sd-input';
+            const emptyOpt = document.createElement('option');
+            emptyOpt.value = '';
+            emptyOpt.textContent = '—';
+            supSelect.appendChild(emptyOpt);
+            // fetch suppliers for this stock only
+            let stockSuppliers = [];
+            try {
+                const ssres = await fetch(`/agri/suggested-order/stock-suppliers/${encodeURIComponent(row.stock_link)}`);
+                const sspayload = await ssres.json();
+                if (sspayload.status === 'ok') stockSuppliers = sspayload.suppliers || [];
+            } catch (e) {
+                stockSuppliers = [];
+            }
+
+            for (const s of stockSuppliers) {
+                const opt = document.createElement('option');
+                opt.value = s.dc_link;
+                opt.textContent = `${s.name} — ${s.last_invoice_price ? 'R' + nf.format(s.last_invoice_price) + ' / ' + (s.unit_code || '') : 'No price'}`;
+                opt.dataset.supplierName = s.name;
+                opt.dataset.price = s.last_invoice_price || 0;
+                opt.dataset.unitId = s.unit_id || '';
+                if (row.supplier_dc_link && Number(row.supplier_dc_link) === Number(s.dc_link)) opt.selected = true;
+                supSelect.appendChild(opt);
+            }
+
+            tr.dataset.stockLink = row.stock_link;
+            tr.dataset.lastInvoicePrice = row.last_invoice_price || 0;
+            tr.dataset.purchaseUnitsToOrder = row.purchase_units_to_order || 0;
+            tr.dataset.purchasingUom = row.purchasing_uom || '';
+            tr.dataset.productName = row.stock_description || '';
+
             tr.innerHTML = `
                 <td class="col-action"><button class="expand" data-id="${row.stock_link}" aria-expanded="false">+</button></td>
-                <td class="col-product">${row.stock_code} — ${row.stock_description}</td>
+                <td class="col-num"><span class="status" data-status="${status}">${status === 'ok' ? '✔' : status === 'needs' ? '⚠' : '🚫'}</span></td>
+                <td class="col-product">${row.stock_description}</td>
+                <td class="col-num supplier-cell"></td>
                 <td class="col-num">${nf.format(row.purchase_unit_on_hand)}<span class="uom">${row.purchasing_uom}</span></td>
                 <td class="col-num">${nf.format(row.purchase_unit_on_po)}<span class="uom">${row.purchasing_uom}</span></td>
                 <td class="col-num">${nf.format(row.purchase_units_needed)}<span class="uom">${row.purchasing_uom}</span></td>
-                <td class="col-num">${nf.format(row.purchase_units_to_order)}<span class="uom">${row.purchasing_uom}</span></td>
+                <td class="col-num qty-to-order">${nf.format(row.purchase_units_to_order)}<span class="uom">${row.purchasing_uom}</span></td>
             `;
             tbody.appendChild(tr);
+            tr.querySelector('.supplier-cell').appendChild(supSelect);
+
+            supSelect.addEventListener('change', function () {
+                // update price metadata from selected option
+                const opt = supSelect.selectedOptions && supSelect.selectedOptions[0];
+                const price = opt && opt.dataset ? Number(opt.dataset.price || 0) : 0;
+                tr.dataset.lastInvoicePrice = price;
+                renderPreview();
+                const st = (supSelect.value === '' ? 'no-supplier' : (Number(tr.dataset.purchaseUnitsToOrder) > 0 ? 'needs' : 'ok'));
+                const span = tr.querySelector('.status');
+                span.dataset.status = st;
+                span.textContent = st === 'ok' ? '✔' : st === 'needs' ? '⚠' : '🚫';
+            });
 
             const detailRow = detailTemplate.content.cloneNode(true);
             const detailTr = detailRow.querySelector('tr');
@@ -146,7 +206,241 @@ function initSuggestedOrder(container = document) {
                 }
             });
         }
+        renderPreview();
     }
+
+    function updateRowVisibility(tr) {
+        const filter = document.getElementById('filter_needs_only');
+        if (!filter) return;
+        const onlyNeeds = filter.checked;
+        const qty = Number(tr.dataset.purchaseUnitsToOrder || 0);
+        if (onlyNeeds && qty <= 0) tr.style.display = 'none';
+        else tr.style.display = '';
+    }
+
+    const supplierOrderStatus = {};
+    const supplierWarehouseSelection = {};
+    const warehouseOptionsCache = {};
+    const warehouseOptionsLoading = {};
+
+    function getWarehouseCacheKey(stockIds) {
+        return stockIds.slice().sort((a, b) => Number(a) - Number(b)).join(',');
+    }
+
+    async function ensureWarehouseOptions(stockIds) {
+        const key = getWarehouseCacheKey(stockIds);
+        if (warehouseOptionsCache[key]) return warehouseOptionsCache[key];
+        if (warehouseOptionsLoading[key]) return warehouseOptionsLoading[key];
+
+        warehouseOptionsLoading[key] = fetch('/agri/suggested-order/order-warehouses', {
+            method: 'POST',
+            headers: {'Content-Type': 'application/json'},
+            body: JSON.stringify({stock_ids: stockIds})
+        })
+            .then(res => res.ok ? res.json() : Promise.reject(new Error('Unable to load warehouses')))
+            .then(payload => {
+                if (payload.status === 'ok') {
+                    warehouseOptionsCache[key] = payload.warehouses || [];
+                    return warehouseOptionsCache[key];
+                }
+                warehouseOptionsCache[key] = [];
+                return [];
+            })
+            .catch(() => {
+                warehouseOptionsCache[key] = [];
+                return [];
+            })
+            .finally(() => { delete warehouseOptionsLoading[key]; });
+
+        warehouseOptionsLoading[key].then(() => renderPreview());
+        return warehouseOptionsLoading[key];
+    }
+
+    function renderPreview() {
+        const preview = document.getElementById('poPreview');
+        if (!preview) return;
+        const groups = {};
+        tbody.querySelectorAll('tr').forEach(tr => {
+            if (tr.classList && (tr.classList.contains('detail-row') || tr.classList.contains('spray-detail-row'))) return;
+            updateRowVisibility(tr);
+            const qty = Number((tr.dataset.purchaseUnitsToOrder || 0));
+            if (!qty || qty <= 0) return;
+            const sel = tr.querySelector('select');
+            const sup = sel ? sel.value || 'NO_SUP' : 'NO_SUP';
+            if (!groups[sup]) groups[sup] = {lines: [], totalQty: 0, totalValue: 0, supplierName: '', stockIds: []};
+            const price = Number(tr.dataset.lastInvoicePrice || 0);
+            const desc = tr.dataset.productName || tr.querySelector('.col-product')?.textContent.trim() || '';
+            const unit = tr.dataset.purchasingUom || '';
+            groups[sup].lines.push({stock_link: tr.dataset.stockLink, product: desc, qty: qty, price: price, units: unit});
+            groups[sup].stockIds.push(tr.dataset.stockLink);
+            groups[sup].totalQty += qty;
+            groups[sup].totalValue += qty * price;
+            const opt = sel && sel.selectedOptions && sel.selectedOptions[0];
+            groups[sup].supplierName = opt ? (opt.dataset.supplierName || opt.textContent || '') : groups[sup].supplierName;
+        });
+
+        let html = '<div class="po-preview">';
+        html += '<div class="po-card-header" style="border:none;padding:0;margin-bottom:0"><div class="po-card-title">Purchase Orders Preview</div></div>';
+        if (Object.keys(groups).length === 0) {
+            html += '<div class="po-card"><div class="po-card-body open"><div class="sd-hint">No items selected for ordering.</div></div></div>';
+        } else {
+            for (const k of Object.keys(groups)) {
+                const g = groups[k];
+                const supplierLabel = g.supplierName || (k === 'NO_SUP' ? 'No Supplier' : k);
+                const warehouseKey = getWarehouseCacheKey(g.stockIds);
+                const warehouseOptions = warehouseOptionsCache[warehouseKey] || [];
+                if (!warehouseOptions.length && !warehouseOptionsLoading[warehouseKey]) {
+                    ensureWarehouseOptions(g.stockIds);
+                }
+                const selectedWarehouse = supplierWarehouseSelection[k] || '';
+                const hasWarehouseSelection = !!(warehouseOptions.length && selectedWarehouse);
+                html += `<div class="po-card" data-supplier="${k}">`;
+                html += '<div class="po-card-header">';
+                html += `<div><div class="po-card-title">${supplierLabel}</div><div class="po-card-summary">${g.lines.length} products · Qty ${nf.format(g.totalQty)} · R ${nf.format(g.totalValue)}</div></div>`;
+                html += '<div class="po-card-actions">';
+                if (k !== 'NO_SUP' && k !== '') {
+                    html += '<div class="warehouse-picker-inline">';
+                    if (warehouseOptionsLoading[warehouseKey]) {
+                        html += '<span class="sd-hint">Loading warehouses...</span>';
+                    } else if (!warehouseOptions.length) {
+                        html += '<span class="sd-hint">No purchase warehouses available.</span>';
+                    } else {
+                        html += `<label class="sd-hint">Warehouse: <select class="sd-input warehouse-select" data-supplier="${k}">`;
+                        html += `<option value="">Select warehouse</option>`;
+                        for (const wh of warehouseOptions) {
+                            const selected = String(selectedWarehouse) === String(wh.whse_id) ? 'selected' : '';
+                            html += `<option value="${wh.whse_id}" ${selected}>${wh.whse_description}</option>`;
+                        }
+                        html += '</select></label>';
+                    }
+                    html += '</div>';
+                }
+                const status = supplierOrderStatus[k];
+                if (status?.status === 'created') {
+                    html += `<span class="order-created-pill">Order created · ${status.orderNumber || ''}</span>`;
+                } else if (status?.status === 'error') {
+                    html += `<span class="order-error-pill" title="${status.message || 'Order error'}">${status.message || 'Order error'}</span>`;
+                    if (k !== 'NO_SUP' && k !== '' && hasWarehouseSelection) html += `<button class="sd-btn" data-supplier="${k}">Try again</button>`;
+                } else if (k !== 'NO_SUP' && k !== '') {
+                    const disabled = warehouseOptions.length && selectedWarehouse ? '' : 'disabled';
+                    html += `<button class="sd-btn" data-supplier="${k}" ${disabled}>Create Order</button>`;
+                }
+                html += `<button class="collapse-toggle" type="button">Show details</button>`;
+                html += '</div></div>';
+                html += '<div class="po-card-body" aria-hidden="true">';
+                html += '<table class="po-card-table"><thead><tr><th>Product</th><th>Qty</th><th>Units</th><th>Unit Price</th></tr></thead><tbody>';
+                for (const line of g.lines) {
+                    html += `<tr><td>${line.product}</td><td style="text-align:right">${nf.format(line.qty)}</td><td style="text-align:center">${line.units || ''}</td><td style="text-align:right">${nf.format(line.price)}</td></tr>`;
+                }
+                html += '</tbody></table>';
+                html += '</div></div>';
+            }
+        }
+        html += '</div>';
+        preview.innerHTML = html;
+        // attach create buttons and expand toggles
+        preview.querySelectorAll('.warehouse-select').forEach(sel => {
+            sel.addEventListener('change', function (e) {
+                const supplier = e.currentTarget.getAttribute('data-supplier');
+                supplierWarehouseSelection[supplier] = e.currentTarget.value;
+                const createButton = preview.querySelector(`button.sd-btn[data-supplier="${supplier}"]`);
+                if (createButton && createButton.textContent.trim().startsWith('Create Order')) {
+                    createButton.disabled = !e.currentTarget.value;
+                }
+            });
+        });
+        preview.querySelectorAll('button[data-supplier]').forEach(b => {
+            b.addEventListener('click', function (e) {
+                const sup = e.currentTarget.getAttribute('data-supplier');
+                handleCreateOrderForSupplier(sup);
+            });
+        });
+        preview.querySelectorAll('.collapse-toggle').forEach(btn => {
+            btn.addEventListener('click', function () {
+                const card = btn.closest('.po-card');
+                const body = card.querySelector('.po-card-body');
+                const open = body.classList.toggle('open');
+                body.setAttribute('aria-hidden', String(!open));
+                btn.textContent = open ? 'Hide details' : 'Show details';
+            });
+        });
+    }
+
+    async function handleCreateOrders() {
+        const week = weekInput.value.trim();
+        const orders = {};
+        tbody.querySelectorAll('tr').forEach(tr => {
+            if (tr.classList && (tr.classList.contains('detail-row') || tr.classList.contains('spray-detail-row'))) return;
+            const qty = Number(tr.dataset.purchaseUnitsToOrder || 0);
+            if (!qty || qty <= 0) return;
+            const sel = tr.querySelector('select');
+            const sup = sel ? (sel.value || '') : '';
+            if (!orders[sup]) orders[sup] = [];
+            orders[sup].push({stock_link: tr.dataset.stockLink, qty: qty, price: Number(tr.dataset.lastInvoicePrice || 0), unit_price: Number(tr.dataset.lastInvoicePrice || 0)});
+        });
+
+        const res = await fetch('/agri/suggested-order/create-orders', {
+            method: 'POST', headers: {'Content-Type': 'application/json'},
+            body: JSON.stringify({week: week, orders: orders})
+        });
+        const payload = await res.json();
+        if (payload.status === 'ok') {
+            const preview = document.getElementById('poPreview');
+            preview.innerHTML = `<div style="padding:10px;border-radius:8px;background:#eefef6;border:1px solid #c6f6e1">Created ${payload.created_orders.length} orders.</div>`;
+        } else {
+            alert(payload.message || 'Error creating orders');
+        }
+    }
+
+    async function handleCreateOrderForSupplier(supplierId) {
+        const lines = [];
+        tbody.querySelectorAll('tr').forEach(tr => {
+            if (tr.classList && (tr.classList.contains('detail-row') || tr.classList.contains('spray-detail-row'))) return;
+            const qty = Number(tr.dataset.purchaseUnitsToOrder || 0);
+            if (!qty || qty <= 0) return;
+            const sel = tr.querySelector('select');
+            const sup = sel ? (sel.value || '') : '';
+            if (String(sup) !== String(supplierId)) return;
+            const opt = sel && sel.selectedOptions && sel.selectedOptions[0];
+            const unitId = opt ? (opt.dataset.unitId || '') : '';
+            lines.push({
+                product_id: tr.dataset.stockLink,
+                unit_id: unitId,
+                qty: qty,
+                unit_price: Number(tr.dataset.lastInvoicePrice || 0)
+            });
+        });
+
+        if (!lines.length) {
+            alert('No products selected for this supplier.');
+            return;
+        }
+
+        const warehouseId = supplierWarehouseSelection[supplierId] || '';
+        if (!warehouseId) {
+            alert('Please select a warehouse for this order before creating it.');
+            return;
+        }
+
+        try {
+            const res = await fetch('/agri/suggested-order/create-orders', {
+                method: 'POST', headers: {'Content-Type': 'application/json'},
+                body: JSON.stringify({supplier_id: supplierId, warehouse_id: warehouseId, lines: lines})
+            });
+            const payload = await res.json();
+            if (payload.status === 'ok') {
+                supplierOrderStatus[supplierId] = {status: 'created', orderNumber: payload.order_number || '', message: ''};
+            } else {
+                supplierOrderStatus[supplierId] = {status: 'error', orderNumber: '', message: payload.message || 'Error creating order'};
+            }
+        } catch (err) {
+            supplierOrderStatus[supplierId] = {status: 'error', orderNumber: '', message: err.message || 'Network error'};
+        }
+        renderPreview();
+    }
+
+    document.getElementById('filter_needs_only')?.addEventListener('change', renderPreview);
+    document.getElementById('createOrders')?.addEventListener('click', handleCreateOrders);
 
     weekInput.addEventListener('change', loadData);
     populateWeekSelect(0, 5);

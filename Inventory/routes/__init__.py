@@ -25,7 +25,6 @@ from . import Barcode
 from . import notifications
 from . import offline
 from . import stock_adjustment
-from . import QtySummary
 from . import warehouse_transfer
 from . import qty
 from . import edit_product

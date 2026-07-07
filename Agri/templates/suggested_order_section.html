@@ -31,6 +31,31 @@
     .th-sub { font-size:0.78rem; color:#6b7280; font-weight:500 }
     .uom { color:#6b7280; font-size:0.82rem; margin-left:6px }
 
+    .po-preview { margin-top:16px; display:grid; gap:12px }
+    .po-card { border:1px solid #e6e9ef; border-radius:10px; background:#ffffff; box-shadow:0 1px 2px rgba(15,23,42,0.06); overflow:hidden }
+    .po-card-header { display:flex; flex-wrap:wrap; align-items:center; justify-content:space-between; gap:10px; padding:14px 16px; background:#f8fafc }
+    .po-card-title { font-weight:700; color:#0f172a; margin:0; font-size:0.98rem }
+    .po-card-summary { color:#475569; font-size:0.92rem; display:flex; flex-wrap:wrap; gap:12px; align-items:center }
+    .po-card-actions { display:flex; gap:8px; flex-wrap:wrap; }
+    .order-created-pill, .order-error-pill { display:inline-flex; align-items:center; padding:8px 12px; border-radius:999px; font-size:0.88rem; font-weight:600; }
+    .order-created-pill { background:#d1fae5; color:#065f46; border:1px solid #a7f3d0; }
+    .order-error-pill { background:#fee2e2; color:#991b1b; border:1px solid #fecaca; }
+    .warehouse-picker { margin-bottom: 10px; }
+    .warehouse-picker .sd-hint { display:inline-flex; align-items:center; font-size:0.9rem; }
+    .warehouse-picker select { min-width:180px; margin-left:8px; }
+    .warehouse-picker-inline { display:flex; align-items:center; gap:10px; }
+    .warehouse-picker-inline .sd-hint { margin:0; }
+    .warehouse-picker-inline select { min-width:220px; margin-left:4px; }
+    .sd-btn:disabled { background:#94a3b8; cursor:not-allowed; box-shadow:none; }
+    .po-card-body { padding:0 16px 16px 16px; display:none }
+    .po-card-body.open { display:block }
+    .po-card-table { width:100%; border-collapse:collapse; margin-top:12px }
+    .po-card-table th, .po-card-table td { padding:10px 12px; border-bottom:1px solid #e2e8f0; text-align:left }
+    .po-card-table th { background:#f8fafc; color:#334155; font-weight:700 }
+    .po-card-table td { color:#475569 }
+    .collapse-toggle { background:transparent; border:1px solid #cbd5e1; color:#0f172a; border-radius:6px; padding:7px 10px; cursor:pointer }
+    .collapse-toggle:hover { background:#f8fafc }
+
     @media (max-width:900px) {
         .col-product { width:50% }
         .sd-controls { gap:6px }
@@ -41,6 +66,7 @@
 
     <div class="sd-controls">
         <select id="week" class="sd-input sd-select"></select>
+        <label style="display:flex;align-items:center;gap:8px;margin-left:8px"><input type="checkbox" id="filter_needs_only" checked> <span class="sd-hint">Show only products needing ordering</span></label>
     </div>
 
     <div class="sd-table-wrap">
@@ -48,19 +74,23 @@
             <thead>
                 <tr>
                     <th class="col-action"></th>
-                    <th class="col-product"><div class="th-label"><span class="th-main">Product</span><span class="th-sub">Code — Description</span></div></th>
-                    <th class="col-num"><div class="th-label"><span class="th-main">Purchase On Hand</span><span class="th-sub">In purchasing units</span></div></th>
-                    <th class="col-num"><div class="th-label"><span class="th-main">Purchase On PO</span><span class="th-sub">Outstanding POs (purchase units)</span></div></th>
-                    <th class="col-num"><div class="th-label"><span class="th-main">Purchase Needed</span><span class="th-sub">To selected week (purchase units)</span></div></th>
-                    <th class="col-num"><div class="th-label"><span class="th-main">Qty To Order</span><span class="th-sub">(purchase units)</span></div></th>
+                    <th class="col-num"><div class="th-label"><span class="th-main">Status</span></div></th>
+                    <th class="col-product"><div class="th-label"><span class="th-main">Product</span></div></th>
+                    <th class="col-num"><div class="th-label"><span class="th-main">Supplier</span></div></th>
+                    <th class="col-num"><div class="th-label"><span class="th-main">On Hand</span></div></th>
+                    <th class="col-num"><div class="th-label"><span class="th-main">On PO</span></div></th>
+                    <th class="col-num"><div class="th-label"><span class="th-main">Needed</span></div></th>
+                    <th class="col-num"><div class="th-label"><span class="th-main">Qty To Order</span></div></th>
                 </tr>
             </thead>
             <tbody></tbody>
         </table>
     </div>
 
+    <div id="poPreview" style="margin-top:12px"></div>
+
     <template id="detail-row">
-        <tr class="detail-row"><td colspan="6">
+        <tr class="detail-row"><td colspan="8">
             <div class="detail-content"></div>
         </td></tr>
     </template>

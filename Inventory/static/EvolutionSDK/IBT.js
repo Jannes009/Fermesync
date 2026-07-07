@@ -151,7 +151,7 @@ document.addEventListener("DOMContentLoaded", async () => {
     //--------------------------------------------------
     // Next Button → Validate & Collect All Lines
     //--------------------------------------------------
-    document.getElementById("step-2-next-btn").addEventListener("click", () => {
+    document.getElementById("step-2-next-btn").addEventListener("click", async () => {
         const lines = document.querySelectorAll(".ibt-line");
         ibtLines.length = 0;
 
@@ -181,11 +181,29 @@ document.addEventListener("DOMContentLoaded", async () => {
             const stockQty = Math.round(qtyToSend * conversion_factor * 100) / 100;
 
             if (qtyToSend > availableQty) {
-                return Swal.fire(
-                    "Not Enough Stock",
-                    `Product: ${select.options[select.selectedIndex].text}\nAvailable: ${availableQty} ${uom_code}\nRequested: ${qtyToSend} ${uom_code}`,
-                    "error"
-                );
+                const qtyNeeded = Math.round((qtyToSend - availableQty) * 100) / 100;
+                const adjusted = await promptStockAdjustment(productId, document.getElementById('wh-from')?.value || null, qtyNeeded);
+                if (!adjusted) {
+                    return;
+                }
+
+                const wh = document.getElementById('wh-from')?.value;
+                if (productId && wh) {
+                        const refreshRes = await fetch(`/inventory/adjust_stock/qty?stock_link=${encodeURIComponent(productId)}&warehouse_link=${encodeURIComponent(wh)}`);
+                    const refreshJson = await refreshRes.json();
+                    if (refreshJson.status === 'ok') {
+                        const newAvailableQty = Math.round(Number(refreshJson.qty_on_hand) * 100) / 100;
+                        const opt = $(select).find(`option[value="${productId}"]`);
+                        $(opt).data('qty', newAvailableQty);
+                        if (newAvailableQty < qtyToSend) {
+                            return Swal.fire(
+                                "Not Enough Stock",
+                                `Product: ${select.options[select.selectedIndex].text}\nAvailable: ${newAvailableQty} ${uom_code}\nRequested: ${qtyToSend} ${uom_code}`,
+                                "error"
+                            );
+                        }
+                    }
+                }
             }
 
             ibtLines.push({
@@ -439,6 +457,143 @@ function updateStockQtyDisplay(lineDiv) {
 
     stockQtyValue.textContent = stockQty.toLocaleString(undefined, {maximumFractionDigits: 2});
     stockUnitCode.textContent = selected.stocking_unit_code || '—';
+
+    // If requested stock qty (in stocking unit) exceeds available qty, prompt for adjustment
+    try {
+        const availableQty = Number(selected.qty) || 0; // purchasing UOM available
+    } catch (e) {
+        console.warn('Auto-check availability failed', e);
+    }
+}
+
+// Prompt user to open the stock adjustment modal if they have permission.
+// Returns a Promise that resolves true if an adjustment occurred, false otherwise.
+function promptStockAdjustment(stockLink, warehouseCode, qtyNeeded = 0) {
+    return new Promise(async (resolve) => {
+        try {
+            // Probe permission by calling the products endpoint (it returns 403 if unauthorized)
+            const probe = await fetch('/inventory/adjust_stock/products');
+            if (probe.status === 403) {
+                Swal.fire('Not enough stock', 'Requested quantity exceeds available and you do not have permission to adjust stock.', 'error');
+                return resolve(false);
+            }
+
+            const overageText = qtyNeeded > 0 ? `You need ${qtyNeeded} more units to continue.` : 'Requested quantity is greater than available.';
+            const resp = await Swal.fire({
+                title: 'Quantity exceeds available',
+                text: `${overageText} Open stock adjustment to add stock?`,
+                icon: 'warning',
+                showCancelButton: true,
+                confirmButtonText: 'Open stock adjustment',
+                cancelButtonText: 'Cancel'
+            });
+
+            if (!resp.isConfirmed) return resolve(false);
+
+            // Load popup HTML, inject into modal and execute module script.
+            const cssPath = '/inventory/static/css/stock_adjustment.css';
+            const modulePath = '/inventory/static/stock_adjustment_ui.js';
+            function ensureCss(href) {
+                return new Promise((resolve, reject) => {
+                    if (document.querySelector(`link[href^="${href}"]`)) return resolve();
+                    const link = document.createElement('link');
+                    link.rel = 'stylesheet';
+                    link.href = href;
+                    link.onload = () => resolve();
+                    link.onerror = () => reject(new Error('Failed to load CSS: ' + href));
+                    document.head.appendChild(link);
+                });
+            }
+            function ensureModule(src) {
+                return new Promise((resolve, reject) => {
+                    if (document.querySelector(`script[src^="${src}"]`)) return resolve();
+                    const script = document.createElement('script');
+                    script.type = 'module';
+                    script.src = src;
+                    script.onload = () => resolve();
+                    script.onerror = () => reject(new Error('Failed to load module: ' + src));
+                    document.body.appendChild(script);
+                });
+            }
+            await ensureCss(cssPath);
+            if (typeof initStockAdjustment !== 'function') {
+                await ensureModule(modulePath);
+            }
+            const htmlRes = await fetch('/inventory/adjust_stock/popup');
+            if (!htmlRes.ok) throw new Error('Failed to load adjustment UI');
+            const html = await htmlRes.text();
+
+            // Create modal container
+            let modal = document.getElementById('stockAdjustmentModal');
+            if (!modal) {
+                modal = document.createElement('div');
+                modal.id = 'stockAdjustmentModal';
+                Object.assign(modal.style, { position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.4)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 99999 });
+                const inner = document.createElement('div');
+                inner.id = 'stockAdjustmentModalBody';
+                Object.assign(inner.style, { background: '#fff', borderRadius: '12px', maxWidth: '920px', width: '100%', maxHeight: '90vh', overflow: 'auto', padding: '18px', boxSizing: 'border-box', position: 'relative' });
+                modal.appendChild(inner);
+                document.body.appendChild(modal);
+            }
+            const modalBody = document.getElementById('stockAdjustmentModalBody');
+            if (!modalBody) {
+                return resolve(false);
+            }
+            let closeModal = () => {
+                try { modal.remove(); } catch (e) {}
+                resolve(false);
+            };
+            const overlayHandler = (event) => {
+                if (event.target === modal) {
+                    closeModal();
+                }
+            };
+            modal.addEventListener('click', overlayHandler);
+            modalBody.innerHTML = '';
+            const closeButton = document.createElement('button');
+            closeButton.type = 'button';
+            closeButton.textContent = '×';
+            Object.assign(closeButton.style, { position: 'absolute', top: '14px', right: '14px', width: '34px', height: '34px', border: 'none', borderRadius: '50%', background: '#f8fafc', color: '#0f172a', fontSize: '20px', cursor: 'pointer', lineHeight: '1', boxShadow: '0 2px 6px rgba(0,0,0,0.12)' });
+            closeButton.addEventListener('click', closeModal);
+            modalBody.appendChild(closeButton);
+            const contentWrapper = document.createElement('div');
+            Object.assign(contentWrapper.style, { paddingTop: '10px' });
+            contentWrapper.innerHTML = html;
+            modalBody.appendChild(contentWrapper);
+            if (stockLink) modalBody.dataset.product = stockLink;
+            if (warehouseCode) modalBody.dataset.warehouse = warehouseCode;
+            modalBody.dataset.unit = 'purchasing';
+
+            if (typeof initStockAdjustment === 'function') {
+                initStockAdjustment(modalBody);
+            }
+
+            // Listen for success event, then resolve true
+            let resolved = false;
+            const cleanup = () => {
+                if (resolved) return;
+                resolved = true;
+                window.removeEventListener('stockAdjustment:success', handler);
+                modal.removeEventListener('click', overlayHandler);
+            };
+            const handler = (ev) => {
+                cleanup();
+                try { modal.remove(); } catch (e) {}
+                resolve(true);
+            };
+            closeModal = () => {
+                cleanup();
+                try { modal.remove(); } catch (e) {}
+                resolve(false);
+            };
+            window.addEventListener('stockAdjustment:success', handler);
+
+        } catch (err) {
+            console.warn('promptStockAdjustment error', err);
+            Swal.fire('Error', err.message || 'Failed to open adjustment UI', 'error');
+            return resolve(false);
+        }
+    });
 }
 
 function renderSummaryUltraCompact() {
