@@ -264,8 +264,17 @@
   <div class="modal-content">
 
     <div class="modal-header">
-      <h2>Product Details</h2>
-      <button onclick="closeProductModal()">&times;</button>
+      <div style="width:100%;">
+        <div style="display:flex;justify-content:space-between;align-items:center;">
+          <h2 style="margin:0;">Product Details</h2>
+          <button onclick="closeProductModal()">&times;</button>
+        </div>
+        <div style="display:flex;align-items:baseline;gap:1rem;margin-top:0.4rem;">
+          <h3 id="stockDesc" style="margin:0;font-size:1.1rem;font-weight:700;"></h3>
+          <div id="productWarehouse" style="color:var(--secondary-text,#6b7280);font-size:0.95rem;margin-top:0.25rem;"></div>
+        </div>
+        <p id="stockCode" style="margin:0.25rem 0 0 0;color:var(--secondary-text);"></p>
+      </div>
     </div>
 
     <div class="modal-body modal-with-sidebar">
@@ -288,11 +297,7 @@
       <!-- MAIN CONTENT -->
       <div class="modal-main">
 
-        <!-- PRODUCT HEADER -->
-        <div class="product-header">
-          <h2 id="stockCode"></h2>
-          <p id="stockDesc"></p>
-        </div>
+        <!-- PRODUCT HEADER moved to modal header -->
 
         <!-- TAB: QUANTITIES -->
         <div id="tab-qtys" class="modal-tab active">
@@ -398,7 +403,9 @@
           <form id="reorderingForm" onsubmit="submitReorderingForm(event)">
             <div class="form-group">
               <label for="reorderCategory">Category</label>
-              <input type="text" id="reorderCategory" name="category" placeholder="Category" readonly>
+              <select id="reorderCategory" name="category">
+                <option value="">Loading categories...</option>
+              </select>
             </div>
             <div class="form-group">
               <label for="reorderLevel">Reorder Level</label>
@@ -408,7 +415,7 @@
               <label for="reorderQty">Reorder Quantity</label>
               <input type="number" id="reorderQty" name="reorderQty" step="0.01">
             </div>
-            <button type="submit" class="btn-primary">Save Reordering</button>
+            <button type="submit" class="btn-primary">Save</button>
           </form>
         </div>
 
@@ -538,8 +545,11 @@ function openProductModal(id) {
   fetch(`/inventory/get-product/${id}${query}`)
     .then(res => res.json())
     .then(data => {
-      document.getElementById("stockCode").textContent = data.StockCode;
-      document.getElementById("stockDesc").textContent = data.StockDescription;
+    document.getElementById("stockCode").textContent = data.StockCode;
+    document.getElementById("stockDesc").textContent = data.StockDescription;
+    // Show current warehouse name if provided
+    const whEl = document.getElementById('productWarehouse');
+    if (whEl) whEl.textContent = data.WarehouseName ? `(${data.WarehouseName})` : '';
 
       document.getElementById("productQtyOnHand").textContent = data.QtyOnHand;
       document.getElementById("productQtyOnPo").textContent = data.QtyOnPo;
@@ -648,8 +658,8 @@ function openProductModal(id) {
   currentProductStockLink = id;
   const whse = getSelectedWarehouseId();
   document.getElementById("productModal").classList.remove("hidden");
-  document.getElementById("stockCode").textContent = "Loading...";
-  document.getElementById("stockDesc").textContent = "";
+  document.getElementById("stockDesc").textContent = "Loading...";
+  document.getElementById("stockCode").textContent = "";
 
   const query = whse ? `?whse=${whse}` : '';
   fetch(`/inventory/get-product/${id}${query}`)
@@ -657,6 +667,9 @@ function openProductModal(id) {
     .then(data => {
       document.getElementById("stockCode").textContent = data.StockCode;
       document.getElementById("stockDesc").textContent = data.StockDescription;
+      // Show current warehouse name if provided
+      const whEl = document.getElementById('productWarehouse');
+      if (whEl) whEl.textContent = data.WarehouseName ? `(${data.WarehouseName})` : '';
 
       document.getElementById("productQtyOnHand").textContent = data.QtyOnHand;
       document.getElementById("productQtyOnPo").textContent = data.QtyOnPo;
@@ -732,19 +745,79 @@ function loadChemstockData() {
 function loadReorderingData() {
   const whse = getSelectedWarehouseId();
   const query = whse ? `?whse=${whse}` : '';
-  fetch(`/inventory/get-reordering/${currentProductStockLink}${query}`)
-    .then(res => res.json())
-    .then(data => {
-      if (data.error) {
-        alert('Reordering data not found');
-        return;
+  
+  const categorySelect = document.getElementById('reorderCategory');
+  categorySelect.innerHTML = '<option value="">Select category</option>';
+
+  const applyReorderingData = (data) => {
+    if (data.error) {
+      console.error('Failed to load reordering data');
+      return;
+    }
+    console.log('Reordering data:', data);
+    // Prefer CategoryId (numeric) when available
+    if (data.CategoryId) {
+      categorySelect.value = String(data.CategoryId);
+    } else if (data.Category) {
+      // Try to match by category name
+      const match = Array.from(categorySelect.options).find(o => o.textContent === data.Category);
+      if (match) categorySelect.value = match.value;
+      else {
+        // If no categories loaded for this warehouse, create a fallback option
+        const opt = document.createElement('option');
+        opt.value = data.Category;
+        opt.textContent = data.Category;
+        categorySelect.appendChild(opt);
+        categorySelect.value = data.Category;
       }
-      console.log('Reordering data:', data);
-      document.getElementById('reorderCategory').value = data.Category || '';
-      document.getElementById('reorderLevel').value = data.ReorderLevel || '';
-      document.getElementById('reorderQty').value = data.ReorderQty || '';
+    } else {
+      categorySelect.value = '';
+    }
+
+    document.getElementById('reorderLevel').value = data.ReorderLevel || '';
+    document.getElementById('reorderQty').value = data.ReorderQty || '';
+  };
+
+  if (!whse) {
+    // No warehouse selected: load reordering without categories
+    fetch(`/inventory/get-reordering/${currentProductStockLink}${query}`)
+      .then(res => res.json())
+      .then(applyReorderingData)
+      .catch(err => console.error('Error loading Reordering:', err));
+    return;
+  }
+
+  // Fetch categories for the selected warehouse
+  fetch(`/inventory/categories?whse=${whse}`)
+    .then(res => res.json())
+    .then(catData => {
+      if (catData.status === 'ok' && catData.categories) {
+        // categories may be objects {category_id, category_name} or simple strings
+        catData.categories.forEach(cat => {
+          const opt = document.createElement('option');
+          const id = cat.category_id || cat.ItemCategoryID || cat.ItemCategoryID || cat.CategoryId || null;
+          const name = cat.category_name || cat.cCategoryName || (typeof cat === 'string' ? cat : null);
+          if (id !== null && id !== undefined) opt.value = id;
+          else opt.value = name || '';
+          opt.textContent = name || opt.value;
+          categorySelect.appendChild(opt);
+        });
+      }
+
+      // Now load the product's current reordering data
+      fetch(`/inventory/get-reordering/${currentProductStockLink}${query}`)
+        .then(res => res.json())
+        .then(applyReorderingData)
+        .catch(err => console.error('Error loading Reordering:', err));
     })
-    .catch(err => console.error('Error loading Reordering:', err));
+    .catch(err => {
+      console.error('Error loading categories:', err);
+      // still attempt to load reordering data
+      fetch(`/inventory/get-reordering/${currentProductStockLink}${query}`)
+        .then(res => res.json())
+        .then(applyReorderingData)
+        .catch(err => console.error('Error loading Reordering:', err));
+    });
 }
 
 function submitChemstockForm(event) {
@@ -767,12 +840,12 @@ function submitChemstockForm(event) {
     .then(res => res.json())
     .then(result => {
       if (result.success) {
-        alert('ChemStock updated successfully!');
+        alert('ChemStock information has been updated successfully.');
       } else {
-        alert('Error: ' + result.error);
+        alert('Unable to update ChemStock information. Please try again.');
       }
     })
-    .catch(err => alert('Error saving ChemStock: ' + err));
+    .catch(err => alert('An error occurred while saving changes. Please try again.'));
 }
 
 function initWarehouseSelect2() {
@@ -815,12 +888,12 @@ function submitReorderingForm(event) {
     .then(res => res.json())
     .then(result => {
       if (result.success) {
-        alert('Reordering data updated successfully!');
+        alert('Reordering settings have been saved successfully.');
       } else {
-        alert('Error: ' + result.error);
+        alert('Unable to save reordering settings. Please try again.');
       }
     })
-    .catch(err => alert('Error saving Reordering: ' + err));
+    .catch(err => alert('An error occurred while saving changes. Please try again.'));
 }
 
 document.addEventListener('DOMContentLoaded', initWarehouseSelect2);
@@ -2013,7 +2086,25 @@ document.addEventListener('DOMContentLoaded', function () {
   transition: border-color 0.2s ease;
 }
 
+.form-group select {
+  width: 100%;
+  padding: 0.65rem 0.75rem;
+  border: 2px solid var(--input-border, #d1d5db);
+  border-radius: 8px;
+  font-size: 0.875rem;
+  color: var(--primary-text, #1f2937);
+  background: white;
+  transition: border-color 0.2s ease;
+  cursor: pointer;
+}
+
 .form-group input:focus {
+  outline: none;
+  border-color: var(--button-bg, #2563eb);
+  box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.1);
+}
+
+.form-group select:focus {
   outline: none;
   border-color: var(--button-bg, #2563eb);
   box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.1);

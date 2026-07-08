@@ -239,26 +239,19 @@ def get_reordering(stock_link):
     try:
         warehouse_id = request.args.get('whse', type=int)
         cursor = conn.cursor()
-        
-        if warehouse_id:
-            cursor.execute("""
-                SELECT StockLink, ReorderLevel, ReorderQty, cCategoryName
-                FROM stk._uvInventoryQty
-                WHERE StockLink = ? AND WhseLink = ?
-            """, (stock_link, warehouse_id))
-        else:
-            cursor.execute("""
-                SELECT StockLink, ReorderLevel, ReorderQty, cCategoryName
-                FROM stk._uvInventoryQty
-                WHERE StockLink = ?
-            """, (stock_link,))
+        # Include category ID so frontend can select by id
+        cursor.execute("""
+            SELECT StockLink, ReorderLevel, ReorderQty, idStockCategories AS ItemCategoryID, cCategoryName
+            FROM stk._uvInventoryQty
+            WHERE StockLink = ? AND WhseLink = ?
+        """, (stock_link, warehouse_id))
         
         row = cursor.fetchone()
         if row:
-            print(row)
             return jsonify({
                 "ReorderLevel": row.ReorderLevel,
                 "ReorderQty": row.ReorderQty,
+                "CategoryId": getattr(row, 'ItemCategoryID', None),
                 "Category": row.cCategoryName
             })
         else:
@@ -284,14 +277,12 @@ def update_reordering(stock_link):
         cursor = conn.cursor()
         
         cursor.execute("""
-            INSERT INTO #StockIds (StockId)
-            VALUES (?);  
-
-            EXEC stk.sp_BulkUpdateStock
-                @Category = ?,
-                @ReorderLevel = ?,
-                @ReorderQty = ?,
-                @WarehouseId = ?
+        EXEC [stk].[sp_UpdateCategoryAndReordering]
+            @StockId = ?,
+            @Category = ?,
+            @ReorderLevel = ?,
+            @ReorderQty = ?,
+            @WarehouseId = ?;
         """, (
             stock_link,
             data.get("category"),
@@ -307,6 +298,34 @@ def update_reordering(stock_link):
         conn.rollback()
         print(f"Error updating reordering data: {e}")
         return jsonify({"error": "Failed to update reordering data"}), 500
+    finally:
+        close_db_connection(conn)
+
+@inventory_bp.route("/categories")
+@login_required
+def get_categories():
+    """Get all available product categories for a warehouse"""
+    conn = create_db_connection()
+    if not conn:
+        return jsonify({"error": "Database connection failed"}), 500
+
+    try:
+        warehouse_id = request.args.get('whse', type=int)
+        if not warehouse_id:
+            return jsonify({"error": "Warehouse ID is required"}), 400
+        
+        cursor = conn.cursor()
+        cursor.execute("""
+        Select ItemCategoryID, cCategoryName 
+        from [stk].[_uvWarehouseCategories]
+        Where WhseID = ?
+        """, (warehouse_id,))
+        rows = cursor.fetchall()
+        categories = [{"category_id": r.ItemCategoryID, "category_name": r.cCategoryName} for r in rows]
+        return jsonify({"status": "ok", "categories": categories})
+    except Exception as e:
+        print(f"Error fetching categories: {e}")
+        return jsonify({"error": "Failed to fetch categories"}), 500
     finally:
         close_db_connection(conn)
 
@@ -326,7 +345,7 @@ def get_product(stock_link):
 
         # Get product details from StkItem table
         cursor.execute("""
-            SELECT StockCode, StockDescription, ReorderLevel, ReorderQty
+            SELECT StockCode, StockDescription, ReorderLevel, ReorderQty, idStockCategories AS ItemCategoryID, cCategoryName
             FROM stk._uvInventoryQty
             WHERE StockLink = ?
         """, (stock_link,))
@@ -359,6 +378,24 @@ def get_product(stock_link):
             qty_on_issues = qty_row.QtyOnIssues
         else:
             qty_on_hand = qty_on_po = qty_on_issues = 0
+
+        # If a warehouse filter was provided, fetch its display name
+        warehouse_name = None
+        if warehouse_id is not None:
+            try:
+                # Use stk._uvInventoryQty which already contains warehouse display fields
+                cursor.execute("""
+                    SELECT WhseName, WhseCode
+                    FROM stk._uvInventoryQty
+                    WHERE StockLink = ? AND WhseLink = ?
+                """, (stock_link, warehouse_id))
+                wrow = cursor.fetchone()
+                if wrow and getattr(wrow, 'WhseName', None):
+                    warehouse_name = wrow.WhseName
+                elif wrow and getattr(wrow, 'WhseCode', None):
+                    warehouse_name = wrow.WhseCode
+            except Exception:
+                warehouse_name = None
 
         # Get quantities in other warehouses for this product
         other_wh_query = """
@@ -397,6 +434,9 @@ def get_product(stock_link):
             "StockDescription": row.StockDescription,
             "ReorderLevel": format_qty(row.ReorderLevel),
             "ReorderQty": format_qty(row.ReorderQty),
+            "CategoryId": row.ItemCategoryID,
+            "Category": row.cCategoryName,
+            "WarehouseName": warehouse_name,
             "QtyOnHand": format_qty(qty_on_hand),
             "QtyOnPo": format_qty(qty_on_po),
             "QtyOnIssues": format_qty(qty_on_issues),
@@ -409,7 +449,6 @@ def get_product(stock_link):
                     , "TotalQty": s.TotalQty
                 } for s in sprays]
         }
-        print(product)
 
         return jsonify(product)
 
