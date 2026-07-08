@@ -123,7 +123,7 @@
 
     .product-grid {
         display: grid;
-        grid-template-columns: 2fr 120px 120px 120px 40px;
+        grid-template-columns: 30% 15% 15% 15% 15%;
         gap: 10px;
         align-items: center;
     }
@@ -199,6 +199,134 @@
         gap: 20px;
         flex-wrap: wrap;
         box-shadow: 0 -4px 12px rgba(0, 0, 0, .05);
+    }
+
+    /* ====== SELECT2 CUSTOM STYLES ====== */
+
+    /* Normal Select2 elements - full width */
+    .select2-container {
+        width: 100% !important;
+    }
+
+    /* Product grid specific styles */
+    .product-grid .select2-container {
+        width: 100% !important;
+        max-width: 100%;
+    }
+
+    /* Fix the product select container to not overflow */
+    .product-grid .select2-container--default .select2-selection--single {
+        height: 38px;
+        border: 1px solid var(--line);
+        border-radius: 8px;
+        padding: 0 4px;
+    }
+
+    .product-grid .select2-container--default .select2-selection--single .select2-selection__rendered {
+        line-height: 38px;
+        padding-right: 30px;
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        font-size: 14px;
+    }
+
+    .product-grid .select2-container--default .select2-selection--single .select2-selection__arrow {
+        height: 36px;
+        right: 4px;
+    }
+
+    /* Dropdown styling - limit width to widest option with max-width */
+    .product-dropdown {
+        min-width: 200px !important;
+        max-width: 600px !important;
+        width: auto !important;
+    }
+
+    .product-dropdown .select2-results__options {
+        max-height: 300px;
+        overflow-y: auto;
+    }
+
+    .product-dropdown .select2-results__option {
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        padding: 8px 12px;
+        max-width: 580px;
+    }
+
+    /* For very long options, show ellipsis */
+    .product-dropdown .select2-results__option .select2-results__option--highlighted {
+        background-color: var(--accent-soft);
+    }
+
+    /* Ensure dropdown appears above other elements */
+    .product-grid.select2-container--open .select2-dropdown {
+        z-index: 1050;
+    }
+
+    /* Adjust the dropdown to match the selected item's text */
+    .product-grid.select2-container--default .select2-dropdown .select2-search--dropdown {
+        padding: 4px;
+    }
+
+    .product-grid.select2-container--default .select2-dropdown .select2-search--dropdown .select2-search__field {
+        padding: 8px 12px;
+        border: 1px solid var(--line);
+        border-radius: 6px;
+    }
+
+    /* Override to prevent full-width dropdown */
+    .product-grid.select2-container--open .product-grid.select2-dropdown--below,
+    .product-grid.select2-container--open .product-grid.select2-dropdown--above {
+        width: auto !important;
+        min-width: 200px !important;
+        max-width: 600px !important;
+    }
+
+    /* Fix for the button area in product grid */
+    .product-grid {
+        display: grid;
+        grid-template-columns: 1fr 120px 120px 120px minmax(90px, auto);
+        gap: 10px;
+        align-items: start;
+    }
+
+    @media (max-width: 950px) {
+        .product-grid {
+            grid-template-columns: 1fr;
+        }
+    }
+
+    /* Make the select container fill its grid cell properly */
+    .product-grid > div:first-child {
+        min-width: 0;
+        overflow: hidden;
+    }
+
+    /* Ensure the button cell can expand without pushing past the card */
+    .product-grid > div:last-child {
+        min-width: 0;
+        display: flex;
+        justify-content: flex-end;
+        gap: 8px;
+    }
+
+    /* Icon buttons for edit/delete in product grid */
+    .icon-btn {
+        background: transparent;
+        border: 1px solid transparent;
+        padding: 6px 8px;
+        border-radius: 8px;
+        cursor: pointer;
+        font-size: 14px;
+    }
+    .icon-btn:hover {
+        background: #f3f4f6;
+    }
+    .icon-btn.delete {
+        color: var(--danger);
     }
 
     .hidden {
@@ -279,12 +407,8 @@
             <!-- PROJECTS -->
             <div class="section-title">Projects</div>
 
-            <select id="project_ids" multiple class="select2">
-                {% for p in projects %}
-                <option value="{{p.ProjectLink}}" data-ha="{{p.ProjAttrHa}}" data-crop-id="{{p.ProjAttrCropId}}">
-                    {{p.ProjectCode}} ({{p.ProjAttrHa}} ha)
-                </option>
-                {% endfor %}
+            <select id="project_ids" multiple class="select2" disabled data-placeholder="Select warehouse first">
+                <option></option>
             </select>
 
             <div id="project-configs" style="margin-top:12px"></div>
@@ -347,34 +471,7 @@
                 <button type="button" class="btn ghost" onclick="clearLines()">Clear</button>
             </div>
 
-            <!-- TANK PLAN -->
-            <div id="tank-plan">
-
-                <div class="section-title">Tank Mix Plan</div>
-
-                <div class="tank-summary">
-                    <div class="metric">
-                        <div>Total Water</div>
-                        <div id="sum-water">0 L</div>
-                    </div>
-                    <div class="metric">
-                        <div>Tank Plan</div>
-                        <div id="sum-tanks">-</div>
-                    </div>
-                    <div class="metric">
-                        <div>Partial Tank</div>
-                        <div id="sum-partial">-</div>
-                    </div>
-                    <div class="metric">
-                        <div>Products</div>
-                        <div id="sum-products">0</div>
-                    </div>
-                </div>
-
-                <div id="tank-breakdown" class="tank-breakdown">
-                    No tank plan yet.
-                </div>
-            </div>
+            <!-- Tank plan removed; sticky bar shows summary -->
 
             <div style="margin-top:18px; text-align:right">
                 <button class="btn" type="submit">Save Recommendation</button>
@@ -422,12 +519,67 @@
 
 <script>
 
-$('.select2').select2({ width: '100%' }).on('select2:open', function () {
+$('.select2').each(function() {
+    const placeholder = $(this).data('placeholder');
+    $(this).select2({
+        width: '100%',
+        placeholder: placeholder || undefined,
+        allowClear: !!placeholder
+    });
+});
+
+// Ensure any Select2 opened anywhere on the page focuses its search input immediately
+$(document).on('select2:open', function () {
     setTimeout(() => {
         const search = document.querySelector('.select2-container--open .select2-search__field');
         if (search) search.focus();
     }, 0);
 });
+
+// Ensure any Select2 dropdown opened has a minimum width at least as wide
+// as its closed/select container so opened dropdowns don't shrink smaller
+// than the visible select. Applies globally to all Select2 instances.
+$(document).on('select2:opening', function(e) {
+    try {
+        const $el = $(e.target);
+        const s2 = $el.data('select2');
+        if (s2) {
+            const $container = s2.$container;
+            const closedWidth = $container ? $container.outerWidth() : null;
+            const $dropdown = s2.$dropdown;
+            if ($dropdown && closedWidth) {
+                $dropdown.css('min-width', closedWidth + 'px');
+            }
+        }
+    } catch (err) {
+        // swallow errors to avoid breaking other Select2 behavior
+        console.error('Select2 opening width-sync error', err);
+    }
+});
+
+// Custom initialization for product selects with better width control
+function initProductSelects() {
+    $('.product-select').each(function() {
+        if (!$(this).data('select2')) {
+            $(this).select2({
+                width: '100%',
+                dropdownAutoWidth: true,
+                dropdownCssClass: 'product-dropdown',
+                containerCssClass: 'product-select-container'
+            });
+        }
+        
+        // Sync closed select width to opened dropdown min-width
+        $(this).on('select2:opening', function() {
+            const $container = $(this).data('select2').$container;
+            const closedWidth = $container.outerWidth();
+            const $dropdown = $(this).data('select2').$dropdown;
+            if ($dropdown && closedWidth) {
+                $dropdown.css('min-width', closedWidth + 'px');
+            }
+        });
+    });
+}
 
 let PRODUCT_OPTIONS = "";
 let PRODUCTS_DATA = {}; // Store product data for modal editing: {stock_id: {reg_number, witholding_period, function}}
@@ -467,12 +619,34 @@ async function updateProductsByWarehouse(warehouseId, projectIds) {
             });
             PRODUCT_OPTIONS = options;
 
-            // Update all existing product dropdowns
+            // Update all existing product dropdowns: destroy/rebuild to apply new options and Select2 settings
             $('.product-select').each(function() {
-                const currentVal = $(this).val();
-                $(this).html(PRODUCT_OPTIONS);
-                if (currentVal) $(this).val(currentVal);
-                $(this).trigger('change');
+                const $sel = $(this);
+                const currentVal = $sel.val();
+                if ($sel.data('select2')) {
+                    $sel.select2('destroy');
+                }
+                $sel.html(PRODUCT_OPTIONS);
+                if (currentVal) $sel.val(currentVal);
+                // Re-initialize select2 with product-specific options
+                $sel.select2({
+                    width: '100%',
+                    dropdownAutoWidth: true,
+                    dropdownCssClass: 'product-dropdown',
+                    containerCssClass: 'product-select-container'
+                });
+                
+                // Sync closed select width to opened dropdown min-width
+                $sel.on('select2:opening', function() {
+                    const $container = $(this).data('select2').$container;
+                    const closedWidth = $container.outerWidth();
+                    const $dropdown = $(this).data('select2').$dropdown;
+                    if ($dropdown && closedWidth) {
+                        $dropdown.css('min-width', closedWidth + 'px');
+                    }
+                });
+                
+                $sel.trigger('change');
             });
 
             // If products returned and there are no product lines, add one automatically
@@ -505,6 +679,52 @@ async function updateProductsByWarehouse(warehouseId, projectIds) {
             $(this).html(PRODUCT_OPTIONS).trigger('change');
         });
         Swal.fire({ icon: 'error', title: 'Error', text: 'Error fetching products' });
+    }
+}
+
+async function updateProjectsForWarehouse(warehouseId) {
+    const $projectSelect = $('#project_ids');
+    $projectSelect.empty();
+    if (!warehouseId) {
+        $projectSelect.prop('disabled', true).trigger('change');
+        return;
+    }
+
+    try {
+        const response = await fetch(`/agri/fetch_projects_for_warehouse?warehouse_id=${warehouseId}`);
+        const data = await response.json();
+
+        if (data.status === 'ok' && data.projects && data.projects.length > 0) {
+            data.projects.forEach(project => {
+                const option = document.createElement('option');
+                option.value = project.project_id;
+                option.text = `${project.project_code} (${project.proj_attr_ha.toFixed(2)} ha)`;
+                option.setAttribute('data-ha', project.proj_attr_ha);
+                option.setAttribute('data-crop-id', project.proj_attr_crop_id);
+                $projectSelect.append(option);
+            });
+            $projectSelect.prop('disabled', false).trigger('change');
+        } else {
+            const placeholder = document.createElement('option');
+            placeholder.value = '';
+            placeholder.disabled = true;
+            placeholder.text = data.message || 'No projects available for this warehouse';
+            $projectSelect.append(placeholder);
+            $projectSelect.prop('disabled', true).trigger('change');
+        }
+
+        // Clear selected projects and product options until a project is chosen
+        $projectSelect.val(null).trigger('change');
+        updateProductsByWarehouse(warehouseId, []);
+    } catch (error) {
+        console.error('Error fetching projects:', error);
+        const placeholder = document.createElement('option');
+        placeholder.value = '';
+        placeholder.disabled = true;
+        placeholder.text = 'Error loading projects';
+        $projectSelect.append(placeholder);
+        $projectSelect.prop('disabled', true).trigger('change');
+        Swal.fire({ icon: 'error', title: 'Error', text: 'Error fetching projects' });
     }
 }
 
@@ -589,7 +809,7 @@ function renderModeUI() {
 
     document.getElementById('tank-fields').classList.add('hidden');
     document.getElementById('direct-fields').classList.add('hidden');
-    document.getElementById('tank-plan').classList.remove('hidden');
+    // tank plan removed; updates now appear in the sticky bar
 
     document.querySelectorAll('.per-100l-field').forEach(i => i.classList.add('hidden'));
     document.querySelectorAll('.per-ha-tank-field').forEach(i => i.classList.add('hidden'));
@@ -617,7 +837,7 @@ function renderModeUI() {
 
     if (mode === "per_ha_direct") {
         document.getElementById('direct-fields').classList.remove('hidden');
-        document.getElementById('tank-plan').classList.add('hidden');
+        // tank plan removed
         // All tank fields remain disabled
     }
 
@@ -722,10 +942,10 @@ function addLine() {
             </div>
 
             <div style="display: flex; gap: 8px;">
-                <button type="button" class="edit-defaults-btn" title="Edit defaults">
+                <button type="button" class="edit-defaults-btn icon-btn" title="Edit defaults">
                     ⚙️
                 </button>
-                <button type="button" class="delete-line-btn" title="Delete line">
+                <button type="button" class="delete-line-btn icon-btn delete" title="Delete line">
                     ✕
                 </button>
             </div>
@@ -733,8 +953,10 @@ function addLine() {
     `;
 
     document.getElementById('lines').appendChild(row);
-    const selectEl = $(row).find('.product-select');
-    selectEl.select2({ width: '100%' });
+    const $row = $(row);
+    // initialize select2 for product selects (uses dropdownCssClass and width control)
+    initProductSelects();
+    const selectEl = $row.find('.product-select');
     
     // Update hidden fields when product is selected
     selectEl.on('change', function() {
@@ -743,11 +965,10 @@ function addLine() {
         
         // Check for duplicate product selection
         if (productId) {
-            const isDuplicate = document.querySelectorAll('.product-select').some((sel, index) => {
-                // Check if any other select (not this one) has the same value
-                return sel !== this && sel.value === productId;
+            let isDuplicate = false;
+            document.querySelectorAll('.product-select').forEach(sel => {
+                if (sel !== this && sel.value === productId) isDuplicate = true;
             });
-            
             if (isDuplicate) {
                 $(this).val('').trigger('change');
                 const productName = this.options[this.selectedIndex]?.text || 'Product';
@@ -860,26 +1081,25 @@ function recalcEverything() {
         }
     }
 
-    // Update water display
-    document.getElementById('sum-water').textContent = totalWater.toFixed(1) + ' L';
+    // Update water display (sticky bar is primary; update legacy ids only if present)
+    const sumWaterEl = document.getElementById('sum-water');
+    if (sumWaterEl) sumWaterEl.textContent = totalWater.toFixed(1) + ' L';
     document.getElementById('sticky-water').textContent = totalWater.toFixed(1);
 
     if (!waterPerTank || totalWater <= 0) {
-        document.getElementById('sum-tanks').textContent = '-';
+        const sumTanksEl = document.getElementById('sum-tanks'); if (sumTanksEl) sumTanksEl.textContent = '-';
         document.getElementById('sticky-tanks').textContent = '-';
-        document.getElementById('sum-partial').textContent = '-';
+        const sumPartialEl = document.getElementById('sum-partial'); if (sumPartialEl) sumPartialEl.textContent = '-';
         updateProductTotals(totalHa, totalWater, null);
-        renderTankBreakdown(totalWater, waterPerTank);
         return;
     }
 
     let totalTanks = Math.ceil(totalWater / waterPerTank);
     let partial = totalWater - (Math.floor(totalWater / waterPerTank) * waterPerTank);
 
-    document.getElementById('sum-tanks').textContent = totalTanks;
+    const sumTanksEl2 = document.getElementById('sum-tanks'); if (sumTanksEl2) sumTanksEl2.textContent = totalTanks;
     document.getElementById('sticky-tanks').textContent = totalTanks;
-    document.getElementById('sum-partial').textContent =
-        partial > 0 ? partial.toFixed(1) + ' L' : '0 L';
+    const sumPartialEl2 = document.getElementById('sum-partial'); if (sumPartialEl2) sumPartialEl2.textContent = partial > 0 ? partial.toFixed(1) + ' L' : '0 L';
 
     updateProductTotals(totalHa, totalWater, waterPerTank);
     renderTankBreakdown(totalWater, waterPerTank);
@@ -923,34 +1143,13 @@ function updateProductTotals(totalHa, totalWater, waterPerTank) {
         card.querySelector('.per-tank').textContent = perTank;
     });
 
-    document.getElementById('sum-products').textContent = productCount;
+    const sumProductsEl = document.getElementById('sum-products'); if (sumProductsEl) sumProductsEl.textContent = productCount;
     document.getElementById('sticky-products').textContent = productCount;
 }
 
 function renderTankBreakdown(totalWater, waterPerTank) {
-    if (!waterPerTank || totalWater <= 0) {
-        document.getElementById('tank-breakdown').innerHTML =
-            '<div style="padding:12px;color:#999;">No tank plan yet.</div>';
-        return;
-    }
-
-    let tanks = Math.ceil(totalWater / waterPerTank);
-    let html = '';
-
-    for (let i = 1; i <= tanks; i++) {
-        let water = (i < tanks)
-            ? waterPerTank
-            : totalWater - ((tanks - 1) * waterPerTank);
-
-        html += `
-            <div class="tank-block">
-                <strong>Tank ${i}</strong><br>
-                Water: ${water.toFixed(1)} L
-            </div>
-        `;
-    }
-
-    document.getElementById('tank-breakdown').innerHTML = html;
+    // Tank breakdown UI removed; sticky bar contains summary values.
+    return;
 }
 
 function validateSprayForm(mode, projects, lines) {
@@ -1192,8 +1391,7 @@ document.addEventListener('change', function (e) {
 // Event listener for warehouse change
 $('#warehouse_id').on('change', function() {
     const warehouseId = $(this).val();
-    const projectIds = $('#project_ids').val() || [];
-    updateProductsByWarehouse(warehouseId, projectIds);
+    updateProjectsForWarehouse(warehouseId);
     recalcEverything(); // Recalculate if needed
 });
 
@@ -1206,7 +1404,14 @@ document.getElementById('spray-form').addEventListener('submit', function (e) {
 
     const mode = getMode();
     const totalHa = parseFloat(document.getElementById('total-ha').textContent) || 0;
-    const totalWater = parseFloat(document.getElementById('sum-water').textContent.replace(' L', '')) || 0;
+    // Safely read total water: prefer legacy #sum-water if present, otherwise fall back to sticky bar value
+    let totalWater = 0;
+    const sumWaterEl = document.getElementById('sum-water');
+    if (sumWaterEl && sumWaterEl.textContent) {
+        totalWater = parseFloat(sumWaterEl.textContent.replace(' L', '')) || 0;
+    } else {
+        totalWater = parseFloat((document.getElementById('sticky-water')?.textContent) || '0') || 0;
+    }
     const waterPerTank = parseFloat(document.getElementById('global_water_per_tank').value) || 0;
 
 
@@ -1344,19 +1549,35 @@ document.getElementById('spray-form').addEventListener('submit', function (e) {
     .then(r => r.json())
     .then(data => {
         if (data.success) {
-            alert('Spray recommendation saved: ' + data.id);
             const canView = {{ 'true' if 'SPRAY_REC_VIEW' in current_user.permissions else 'false' }};
-            if (canView) {
-                window.location.href = '/agri/spray-recommendations-summary';
-            } else {
-                // User cannot view list — return to create page
-                window.location.href = '/agri/spray-recommendation/create';
-            }
+            Swal.fire({
+                icon: 'success',
+                title: 'Saved',
+                text: 'Spray recommendation saved: ' + data.spray_no,
+                timer: 1800,
+                showConfirmButton: false
+            }).then(() => {
+                if (canView) {
+                    window.location.href = '/agri/spray-recommendations-summary';
+                } else {
+                    window.location.href = '/agri/spray-recommendation/create';
+                }
+            });
         } else {
-            alert('Error: ' + data.message);
+            Swal.fire({
+                icon: 'error',
+                title: 'Error',
+                text: data.message || 'An error occurred'
+            });
         }
     })
-    .catch(err => alert('Error: ' + err));
+    .catch(err => {
+        Swal.fire({
+            icon: 'error',
+            title: 'Error',
+            text: String(err)
+        });
+    });
 });
 
 // Close modal when clicking outside of it

@@ -153,67 +153,70 @@
 
         <div class="tab-pane" id="tab-projects">
           <div class="section-head">
-            <h2>Project Attributes</h2>
-            <form method="post" action="{{ url_for('agri.add_project_attr') }}" class="controls">
-              <select name="project_id" class="input select2" required>
-                <option value="">Select Project</option>
-                {% for p in projects %}<option value="{{ p.ProjectLink }}">{{ p.ProjectCode }} - {{ p.ProjectName }}</option>{% endfor %}
-              </select>
-              <select name="farm_id" class="input select2" required>
-                <option value="">Select Farm</option>
-                {% for f in farms %}<option value="{{ f.IdFarm }}">{{ f.FarmName }}</option>{% endfor %}
-              </select>
-              <select name="crop_id" class="input select2" required>
-                <option value="">Select Crop</option>
-                {% for c in crops %}<option value="{{ c.IdCrop }}">{{ c.CropCode }} - {{ c.CropDescription }}</option>{% endfor %}
-              </select>
-              <select name="variety_id" class="input select2" required>
-                <option value="">Select Variety</option>
-                {% for v in varieties %}<option value="{{ v.IdVariety }}">{{ v.VarietyCode }} - {{ v.VarietyDescription }}</option>{% endfor %}
-              </select>
-              <input name="ha" type="number" step="0.01" class="input" placeholder="Hectares" required>
-              <input name="plant_date" type="date" class="input" required>
-              <input name="project_manager" type="text" class="input" placeholder="Project Manager" required>
-              <input name="agriculturist" type="text" class="input" placeholder="Agriculturist" required>
-              <input name="block_no" type="text" class="input" placeholder="Block No" required>
-              <button class="btn">Add Project Attribute</button>
-            </form>
-          </div>
+              <h2>Project Attributes</h2>
+              <div class="controls" style="width:100%;">
+                <div style="flex:1; display:flex; gap:8px; align-items:center;">
+                  <select id="filter-farm" class="input select2" style="min-width:140px;">
+                    <option value="">All Farms</option>
+                    {% for f in farms %}<option value="{{ f.IdFarm }}">{{ f.FarmName }}</option>{% endfor %}
+                  </select>
+                  <select id="filter-warehouse" class="input select2" style="min-width:160px;">
+                    <option value="">All Warehouses</option>
+                    {% for w in warehouses %}<option value="{{ w.WhseLink }}">{{ w.WhseDescription }}</option>{% endfor %}
+                  </select>
+                  <select id="filter-crop" class="input select2" style="min-width:160px;">
+                    <option value="">All Crops</option>
+                    {% for c in crops %}<option value="{{ c.IdCrop }}">{{ c.CropCode }}</option>{% endfor %}
+                  </select>
+                  <input id="filter-search" class="input" placeholder="Search project or block..." style="min-width:220px;">
+                </div>
+                <div style="display:flex; gap:8px; align-items:center;">
+                  <button id="add-project-attr-btn" type="button" class="btn">+ New Project</button>
+                </div>
+              </div>
+            </div>
 
-          <div style="overflow:auto;">
-            <table class="summary-table">
-              <thead>
-                <tr>
-                  <th>Project</th>
-                  <th>Farm</th>
-                  <th>Crop</th>
-                  <th>Variety</th>
-                  <th>Hectares</th>
-                  <th>Plant Date</th>
-                  <th>Project Manager</th>
-                  <th>Agriculturist</th>
-                  <th>Block No</th>
-                  <th>Actions</th>
-                </tr>
-              </thead>
-              <tbody>
-                {% for pa in spray_projects %}
-                <tr data-entity="project_attr" data-id="{{ pa.IdProjAttr }}" data-project-id="{{ pa.ProjAttrProjectId }}" data-farm-id="{{ pa.ProjAttrFarmId }}" data-crop-id="{{ pa.ProjAttrCropId }}" data-variety-id="{{ pa.ProjAttrVarietyId }}" data-ha="{{ pa.ProjAttrHa }}" data-plant-date="{{ pa.ProjAttrPlantDate.strftime('%Y-%m-%d') if pa.ProjAttrPlantDate else '' }}" data-project-manager="{{ pa.ProjAttrProjectManager }}" data-agriculturist="{{ pa.ProjAttrAgriculturist }}" data-block-no="{{ pa.ProjAttrBlockNo }}">
-                  <td>{{ pa.ProjectName }}</td>
-                  <td>{{ pa.ProjAttrFarmName }}</td>
-                  <td>{{ pa.CropCode }}</td>
-                  <td>{{ pa.VarietyCode }}</td>
-                  <td>{{ pa.ProjAttrHa }}</td>
-                  <td>{{ pa.ProjAttrPlantDate.strftime('%Y-%m-%d') if pa.ProjAttrPlantDate else '' }}</td>
-                  <td>{{ pa.ProjAttrProjectManager }}</td>
-                  <td>{{ pa.ProjAttrAgriculturist }}</td>
-                  <td>{{ pa.ProjAttrBlockNo }}</td>
-                  <td><button class="btn edit-row-btn" type="button" data-entity="project_attr" data-id="{{ pa.IdProjAttr }}">Edit</button></td>
-                </tr>
-                {% endfor %}
-              </tbody>
-            </table>
-          </div>
+            <div style="overflow:auto;">
+              <table class="summary-table">
+                <thead>
+                  <tr>
+                    <th>Project</th>
+                    <th>Farm</th>
+                    <th>Crop</th>
+                    <th>Variety</th>
+                    <th>Ha</th>
+                    <th>Warehouse</th>
+                    <th>Actions</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {% for pa in spray_projects %}
+                  <tr class="main-row" data-entity="project_attr" data-id="{{ pa.IdProjAttr }}" data-project-id="{{ pa.ProjAttrProjectId }}" data-farm-id="{{ pa.ProjAttrFarmId }}" data-whse-id="{{ pa.ProjAttrWhseId }}" data-whse-name="{{ pa.ProjAttrWhseName }}" data-crop-id="{{ pa.ProjAttrCropId }}" data-variety-id="{{ pa.ProjAttrVarietyId }}" data-ha="{{ pa.ProjAttrHa }}" data-plant-date="{{ pa.ProjAttrPlantDate.strftime('%Y-%m-%d') if pa.ProjAttrPlantDate else '' }}" data-project-manager="{{ pa.ProjAttrProjectManager }}" data-agriculturist="{{ pa.ProjAttrAgriculturist }}" data-block-no="{{ pa.ProjAttrBlockNo }}">
+                    <td>{{ pa.ProjectName }}</td>
+                    <td>{{ pa.ProjAttrFarmName }}</td>
+                    <td>{{ pa.CropCode }}</td>
+                    <td>{{ pa.VarietyCode }}</td>
+                    <td>{{ pa.ProjAttrHa }}</td>
+                    <td>{{ pa.ProjAttrWhseName }}</td>
+                    <td style="white-space:nowrap;">
+                      <button class="btn edit-row-btn" type="button" data-entity="project_attr" data-id="{{ pa.IdProjAttr }}">Edit</button>
+                      <button class="btn ghost toggle-details-btn" type="button" data-id="{{ pa.IdProjAttr }}">▼</button>
+                    </td>
+                  </tr>
+                  <tr class="expand-row" data-parent-id="{{ pa.IdProjAttr }}" style="display:none;">
+                    <td colspan="7">
+                      <div style="display:flex; gap:24px;">
+                        <div><strong>Plant Date:</strong> {{ pa.ProjAttrPlantDate.strftime('%Y-%m-%d') if pa.ProjAttrPlantDate else '' }}</div>
+                        <div><strong>Manager:</strong> {{ pa.ProjAttrProjectManager }}</div>
+                        <div><strong>Agriculturist:</strong> {{ pa.ProjAttrAgriculturist }}</div>
+                        <div><strong>Block:</strong> {{ pa.ProjAttrBlockNo }}</div>
+                      </div>
+                    </td>
+                  </tr>
+                  {% endfor %}
+                </tbody>
+              </table>
+            </div>
         </div>
 
       </div>
@@ -224,7 +227,7 @@
     <div class="edit-modal-backdrop" id="edit-modal-backdrop"></div>
     <div class="edit-modal-content">
       <h3 id="edit-modal-title">Edit Item</h3>
-      <form id="edit-modal-form">
+        <form id="edit-modal-form" novalidate>
         <input type="hidden" id="edit-entity" name="entity">
         <input type="hidden" id="edit-id" name="id">
 
@@ -273,6 +276,13 @@
             </select>
           </div>
           <div class="form-row">
+            <label for="edit-project-attr-warehouse">Warehouse</label>
+            <select id="edit-project-attr-warehouse" name="warehouse_id" class="input select2" required>
+              <option value="">Select Warehouse</option>
+              {% for w in warehouses %}<option value="{{ w.WhseLink }}">{{ w.WhseDescription }}</option>{% endfor %}
+            </select>
+          </div>
+          <div class="form-row">
             <label for="edit-project-attr-crop">Crop</label>
             <select id="edit-project-attr-crop" name="crop_id" class="input select2" required>
               <option value="">Select Crop</option>
@@ -310,7 +320,7 @@
 
         <div class="edit-modal-footer">
           <button type="button" class="btn ghost" id="edit-modal-cancel">Cancel</button>
-          <button type="submit" class="btn">Save</button>
+           <button type="submit" class="btn">Save</button>
         </div>
       </form>
     </div>
@@ -400,11 +410,13 @@ document.addEventListener('DOMContentLoaded', function () {
     if (entity === 'project_attr') {
       const projectValue = row.dataset.projectId || '';
       const farmValue = row.dataset.farmId || '';
+      const whseValue = row.dataset.whseId || '';
       const cropValue = row.dataset.cropId || '';
       const varietyValue = row.dataset.varietyId || '';
 
       $('#edit-project-attr-project').val(projectValue).trigger('change');
       $('#edit-project-attr-farm').val(farmValue).trigger('change');
+      $('#edit-project-attr-warehouse').val(whseValue).trigger('change');
       $('#edit-project-attr-crop').val(cropValue).trigger('change');
       $('#edit-project-attr-variety').val(varietyValue).trigger('change');
 
@@ -413,6 +425,33 @@ document.addEventListener('DOMContentLoaded', function () {
       document.getElementById('edit-project-attr-manager').value = row.dataset.projectManager || '';
       document.getElementById('edit-project-attr-agriculturist').value = row.dataset.agriculturist || '';
       document.getElementById('edit-project-attr-block-no').value = row.dataset.blockNo || '';
+    }
+
+    modal.classList.add('active');
+  }
+
+  function showAddModal() {
+    const modal = document.getElementById('edit-modal');
+    const title = document.getElementById('edit-modal-title');
+    const entityInput = document.getElementById('edit-entity');
+    const idInput = document.getElementById('edit-id');
+
+    entityInput.value = 'project_attr';
+    idInput.value = '';
+    title.textContent = 'New Project Attribute';
+
+    document.querySelectorAll('.edit-modal-field').forEach(el => el.classList.remove('active'));
+    const activeField = document.querySelector('.edit-field-project_attr');
+    if (activeField) {
+      activeField.classList.add('active');
+      activeField.querySelectorAll('input, select').forEach(el => {
+        el.disabled = false;
+        if (el.tagName === 'SELECT') {
+          $(el).val('').trigger('change');
+        } else {
+          el.value = '';
+        }
+      });
     }
 
     modal.classList.add('active');
@@ -429,6 +468,18 @@ document.addEventListener('DOMContentLoaded', function () {
       const row = document.querySelector(`tr[data-entity="${entity}"][data-id="${id}"]`);
       if (row) {
         showEditModal(entity, id, row);
+      }
+    }
+    if (event.target.matches('#add-project-attr-btn')) {
+      showAddModal();
+    }
+    if (event.target.matches('.toggle-details-btn')) {
+      const id = event.target.dataset.id;
+      const expand = document.querySelector(`.expand-row[data-parent-id="${id}"]`);
+      if (expand) {
+        const isHidden = expand.style.display === 'none' || !expand.style.display;
+        expand.style.display = isHidden ? '' : 'none';
+        event.target.textContent = isHidden ? '▲' : '▼';
       }
     }
     if (event.target.matches('#edit-modal-backdrop') || event.target.matches('#edit-modal-cancel')) {
@@ -454,6 +505,7 @@ document.addEventListener('DOMContentLoaded', function () {
     if (entity === 'project_attr') {
       payload.project_id = document.getElementById('edit-project-attr-project').value;
       payload.farm_id = document.getElementById('edit-project-attr-farm').value;
+      payload.warehouse_id = document.getElementById('edit-project-attr-warehouse').value;
       payload.crop_id = document.getElementById('edit-project-attr-crop').value;
       payload.variety_id = document.getElementById('edit-project-attr-variety').value;
       payload.ha = document.getElementById('edit-project-attr-ha').value;
@@ -468,7 +520,12 @@ document.addEventListener('DOMContentLoaded', function () {
       spray_method: 'spraymethod',
       project_attr: 'projectattr'
     };
-    const endpoint = `/agri/setup/${routeMap[entity] || entity}/update`;
+    let endpoint = '';
+    if (entity === 'project_attr' && (!id || id === '')) {
+      endpoint = '/agri/setup/projectattr/add';
+    } else {
+      endpoint = `/agri/setup/${routeMap[entity] || entity}/update`;
+    }
     fetch(endpoint, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
@@ -483,6 +540,11 @@ document.addEventListener('DOMContentLoaded', function () {
       .then(result => {
         if (!result.success) {
           alert(result.message || 'Unable to save changes');
+          return;
+        }
+        if (!id) {
+          // newly added record - reload to show it in the list
+          window.location.reload();
           return;
         }
         const row = document.querySelector(`tr[data-entity="${entity}"][data-id="${id}"]`);
@@ -506,11 +568,14 @@ document.addEventListener('DOMContentLoaded', function () {
           if (entity === 'project_attr') {
             const projectOption = document.querySelector(`#edit-project-attr-project option[value="${payload.project_id}"]`);
             const farmOption = document.querySelector(`#edit-project-attr-farm option[value="${payload.farm_id}"]`);
+            const warehouseOption = document.querySelector(`#edit-project-attr-warehouse option[value="${payload.warehouse_id}"]`);
             const cropOption = document.querySelector(`#edit-project-attr-crop option[value="${payload.crop_id}"]`);
             const varietyOption = document.querySelector(`#edit-project-attr-variety option[value="${payload.variety_id}"]`);
 
             row.dataset.projectId = payload.project_id;
             row.dataset.farmId = payload.farm_id;
+            row.dataset.whseId = payload.warehouse_id;
+            row.dataset.whseName = warehouseOption ? warehouseOption.textContent : '';
             row.dataset.cropId = payload.crop_id;
             row.dataset.varietyId = payload.variety_id;
             row.dataset.ha = payload.ha;
@@ -524,10 +589,20 @@ document.addEventListener('DOMContentLoaded', function () {
             row.cells[2].textContent = cropOption ? cropOption.textContent.split(' - ')[0] : row.cells[2].textContent;
             row.cells[3].textContent = varietyOption ? varietyOption.textContent.split(' - ')[0] : row.cells[3].textContent;
             row.cells[4].textContent = payload.ha;
-            row.cells[5].textContent = payload.plant_date;
-            row.cells[6].textContent = payload.project_manager;
-            row.cells[7].textContent = payload.agriculturist;
-            row.cells[8].textContent = payload.block_no;
+            row.cells[5].textContent = warehouseOption ? warehouseOption.textContent : row.cells[5].textContent;
+            // update expanded details row
+            const expandRow = document.querySelector(`.expand-row[data-parent-id="${id}"]`);
+            if (expandRow) {
+              const container = expandRow.querySelector('td > div');
+              if (container) {
+                container.innerHTML = `
+                  <div><strong>Plant Date:</strong> ${payload.plant_date || ''}</div>
+                  <div><strong>Manager:</strong> ${payload.project_manager || ''}</div>
+                  <div><strong>Agriculturist:</strong> ${payload.agriculturist || ''}</div>
+                  <div><strong>Block:</strong> ${payload.block_no || ''}</div>
+                `;
+              }
+            }
           }
         }
         closeEditModal();
@@ -537,6 +612,38 @@ document.addEventListener('DOMContentLoaded', function () {
         alert('Error saving changes');
       });
   });
+
+  // Client-side filters for project attributes
+  const filterFarmEl = document.getElementById('filter-farm');
+  const filterWhseEl = document.getElementById('filter-warehouse');
+  const filterCropEl = document.getElementById('filter-crop');
+  const filterSearchEl = document.getElementById('filter-search');
+
+  function applyProjectFilters() {
+    const f = filterFarmEl ? filterFarmEl.value : '';
+    const w = filterWhseEl ? filterWhseEl.value : '';
+    const c = filterCropEl ? filterCropEl.value : '';
+    const s = filterSearchEl ? filterSearchEl.value.trim().toLowerCase() : '';
+    document.querySelectorAll('.main-row').forEach(row => {
+      const rid = row.dataset.id;
+      let show = true;
+      if (f && row.dataset.farmId !== f) show = false;
+      if (w && row.dataset.whseId !== w) show = false;
+      if (c && row.dataset.cropId !== c) show = false;
+      if (s) {
+        const combined = (row.textContent || '') + ' ' + (document.querySelector(`.expand-row[data-parent-id="${rid}"]`)?.textContent || '');
+        if (!combined.toLowerCase().includes(s)) show = false;
+      }
+      row.style.display = show ? '' : 'none';
+      const expand = document.querySelector(`.expand-row[data-parent-id="${rid}"]`);
+      if (expand) expand.style.display = 'none';
+    });
+  }
+
+  if (filterFarmEl) filterFarmEl.addEventListener('change', applyProjectFilters);
+  if (filterWhseEl) filterWhseEl.addEventListener('change', applyProjectFilters);
+  if (filterCropEl) filterCropEl.addEventListener('change', applyProjectFilters);
+  if (filterSearchEl) filterSearchEl.addEventListener('input', applyProjectFilters);
 
 });
 

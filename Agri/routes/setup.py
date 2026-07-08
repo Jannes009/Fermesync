@@ -42,6 +42,16 @@ def setup():
     """)
     projects = cur.fetchall()
 
+    # Warehouses
+    cur.execute("""
+        SELECT WhseLink, WhseDescription
+        FROM [cmn]._uvWarehouses WHSE
+		JOIN [agr].[WarehouseAttributes] ATTR on ATTR.WhAttrWhseId = WHSE.WhseLink
+        where ATTR.WhAttrWhseType = 'Chemical'
+        ORDER BY WhseDescription
+    """)
+    warehouses = cur.fetchall()
+
     # Spray Methods
     cur.execute("""
         SELECT
@@ -64,6 +74,8 @@ def setup():
         PRJ.ProjectName,
         pa.ProjAttrFarmId,
         F.FarmName AS ProjAttrFarmName,
+        pa.ProjAttrWhseId,
+        WHSE.WhseDescription AS ProjAttrWhseName,
         pa.ProjAttrCropId,
         CRP.CropCode,
         pa.ProjAttrVarietyId,
@@ -76,6 +88,7 @@ def setup():
     FROM agr.ProjectAttributes PA
     JOIN cmn._uvProject PRJ on PRJ.ProjectLink = PA.ProjAttrProjectId
     LEFT JOIN agr.Farm F on F.IdFarm = PA.ProjAttrFarmId
+    LEFT JOIN [cmn]._uvWarehouses WHSE on WHSE.WhseLink = PA.ProjAttrWhseId
     JOIN agr.Crop CRP on CRP.IdCrop = PA.ProjAttrCropId
     JOIN agr.Variety VA on VA.IdVariety = PA.ProjAttrVarietyId
     Order BY PRJ.ProjectName
@@ -89,6 +102,7 @@ def setup():
         farms=farms,
         crops=crops,
         varieties=varieties,
+        warehouses=warehouses,
         spray_methods=spray_methods,
         projects=projects,
         spray_projects=spray_projects
@@ -135,29 +149,47 @@ def add_spray_method():
     return redirect(url_for("agri.setup"))
 
 
-@agri_bp.route("/setup/projectattr", methods=["POST"])
+@agri_bp.route("/setup/projectattr/add", methods=["POST"])
 @login_required
 def add_project_attr():
-    project_id = request.form["project_id"]
-    farm_id = request.form["farm_id"]
-    crop_id = request.form["crop_id"]
-    variety_id = request.form["variety_id"]
-    ha = request.form["ha"]
-    plant_date = request.form["plant_date"]
-    project_manager = request.form["project_manager"]
-    agriculturist = request.form["agriculturist"]
-    block_no = request.form["block_no"]
+    # Accept both form-encoded and JSON payloads (modal posts JSON)
+    data = request.get_json(silent=True)
+    if data:
+        project_id = data.get('project_id')
+        farm_id = data.get('farm_id')
+        whse_id = data.get('warehouse_id')
+        crop_id = data.get('crop_id')
+        variety_id = data.get('variety_id')
+        ha = data.get('ha')
+        plant_date = data.get('plant_date')
+        project_manager = data.get('project_manager')
+        agriculturist = data.get('agriculturist')
+        block_no = data.get('block_no')
+    else:
+        project_id = request.form.get('project_id')
+        farm_id = request.form.get('farm_id')
+        whse_id = request.form.get('warehouse_id')
+        crop_id = request.form.get('crop_id')
+        variety_id = request.form.get('variety_id')
+        ha = request.form.get('ha')
+        plant_date = request.form.get('plant_date')
+        project_manager = request.form.get('project_manager')
+        agriculturist = request.form.get('agriculturist')
+        block_no = request.form.get('block_no')
 
     conn = create_db_connection()
     cur = conn.cursor()
     cur.execute("""
         INSERT INTO agr.ProjectAttributes
-        (ProjAttrProjectId, ProjAttrFarmId, ProjAttrCropId, ProjAttrVarietyId, ProjAttrHa, ProjAttrPlantDate, ProjAttrProjectManager, ProjAttrAgriculturist, ProjAttrBlockNo)
-        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
-    """, project_id, farm_id, crop_id, variety_id, ha, plant_date, project_manager, agriculturist, block_no)
+        (ProjAttrProjectId, ProjAttrFarmId, ProjAttrWhseId, ProjAttrCropId, ProjAttrVarietyId, ProjAttrHa, ProjAttrPlantDate, ProjAttrProjectManager, ProjAttrAgriculturist, ProjAttrBlockNo)
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+    """, project_id, farm_id, whse_id, crop_id, variety_id, ha, plant_date, project_manager, agriculturist, block_no)
     conn.commit()
     conn.close()
 
+    # If JSON was posted, return JSON response for AJAX flows; otherwise redirect for regular form
+    if data:
+        return jsonify({"success": True})
     return redirect(url_for("agri.setup"))
 
 
@@ -225,6 +257,7 @@ def update_project_attr():
     attr_id = data.get('id')
     project_id = data.get('project_id')
     farm_id = data.get('farm_id')
+    whse_id = data.get('warehouse_id')
     crop_id = data.get('crop_id')
     variety_id = data.get('variety_id')
     ha = data.get('ha')
@@ -233,16 +266,16 @@ def update_project_attr():
     agriculturist = (data.get('agriculturist') or '').strip()
     block_no = (data.get('block_no') or '').strip()
 
-    if not attr_id or not project_id or not farm_id or not crop_id or not variety_id:
-        return jsonify({"success": False, "message": "Project, farm, crop and variety are required"}), 400
+    if not attr_id or not project_id or not farm_id or not whse_id or not crop_id or not variety_id:
+        return jsonify({"success": False, "message": "Project, farm, warehouse, crop and variety are required"}), 400
 
     conn = create_db_connection()
     cur = conn.cursor()
     cur.execute("""
         UPDATE agr.ProjectAttributes
-        SET ProjAttrProjectId = ?, ProjAttrFarmId = ?, ProjAttrCropId = ?, ProjAttrVarietyId = ?, ProjAttrHa = ?, ProjAttrPlantDate = ?, ProjAttrProjectManager = ?, ProjAttrAgriculturist = ?, ProjAttrBlockNo = ?
+        SET ProjAttrProjectId = ?, ProjAttrFarmId = ?, ProjAttrWhseId = ?, ProjAttrCropId = ?, ProjAttrVarietyId = ?, ProjAttrHa = ?, ProjAttrPlantDate = ?, ProjAttrProjectManager = ?, ProjAttrAgriculturist = ?, ProjAttrBlockNo = ?
         WHERE IdProjAttr = ?
-    """, project_id, farm_id, crop_id, variety_id, ha, plant_date, project_manager, agriculturist, block_no, attr_id)
+    """, project_id, farm_id, whse_id, crop_id, variety_id, ha, plant_date, project_manager, agriculturist, block_no, attr_id)
     conn.commit()
     conn.close()
 

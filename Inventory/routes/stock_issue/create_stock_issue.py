@@ -56,6 +56,18 @@ def create_stock_issue():
         return generate_stock_issue_for_spray(spray_id, lines_payload, order_final)
 
 
+def get_next_document_number(cursor, document_type):
+    cursor.execute("""
+        DECLARE @DocumentNumber VARCHAR(30);
+        EXEC cmn.sp_GetNextDocumentNumber @DocumentType = ?, @DocumentNumber = @DocumentNumber OUTPUT;
+        SELECT @DocumentNumber AS DocumentNumber;
+    """, (document_type,))
+    row = cursor.fetchone()
+    if not row:
+        return None
+    return getattr(row, 'DocumentNumber', row[0])
+
+
 def generate_stock_issue_for_projects(project_ids, warehouse_id, lines_payload, order_final):
     conn = create_db_connection()
     cursor = conn.cursor()
@@ -73,13 +85,6 @@ def generate_stock_issue_for_projects(project_ids, warehouse_id, lines_payload, 
         """, (warehouse_id, current_user.id))
 
         stock_issue_id = cursor.fetchone()[0]
-        issue_no = f"ISS-{int(stock_issue_id):03d}"
-
-        cursor.execute("""
-            UPDATE [stk].IssueHeader
-            SET IssNo = ?
-            WHERE IdIssue = ?
-        """, (issue_no, stock_issue_id))
 
         if order_final:
             cursor.execute("""
@@ -172,6 +177,15 @@ def generate_stock_issue_for_projects(project_ids, warehouse_id, lines_payload, 
 
         issue_lines = cursor.fetchall()
 
+        issue_no = get_next_document_number(cursor, "ISS")
+        cursor.execute("""
+            UPDATE [stk].IssueHeader
+            SET IssNo = ?
+            WHERE IdIssue = ?
+        """, (issue_no, stock_issue_id))
+
+        cursor.commit()
+
         return jsonify({
             "status": "success",
             "message": "Stock issue created.",
@@ -249,13 +263,6 @@ def generate_stock_issue_for_spray(execution_id, lines_payload, order_final):
         ))
 
         stock_issue_id = cursor.fetchone()[0]
-        issue_no = f"ISS-{int(stock_issue_id):03d}"
-
-        cursor.execute("""
-            UPDATE stk.IssueHeader
-            SET IssNo = ?
-            WHERE IdIssue = ?
-        """, (issue_no, stock_issue_id))
 
         if order_final:
             cursor.execute("""
@@ -349,6 +356,14 @@ def generate_stock_issue_for_spray(execution_id, lines_payload, order_final):
                 entity_id=stock_issue_id,
                 entity_desc=order_number,
             )
+
+        issue_no = get_next_document_number(cursor, "ISS")
+
+        cursor.execute("""
+            UPDATE stk.IssueHeader
+            SET IssNo = ?
+            WHERE IdIssue = ?
+        """, (issue_no, stock_issue_id))
 
         conn.commit()
 

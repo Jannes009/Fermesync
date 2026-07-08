@@ -661,6 +661,20 @@ function openProductModal(id) {
   document.getElementById("stockDesc").textContent = "Loading...";
   document.getElementById("stockCode").textContent = "";
 
+  // Clear tab-specific content to avoid showing stale data
+  try {
+    const categorySelect = document.getElementById('reorderCategory');
+    if (categorySelect) categorySelect.innerHTML = '<option>Loading...</option>';
+    const reorderLevelEl = document.getElementById('reorderLevel');
+    const reorderQtyEl = document.getElementById('reorderQty');
+    if (reorderLevelEl) reorderLevelEl.value = '';
+    if (reorderQtyEl) reorderQtyEl.value = '';
+    const chemActiveIngr = document.getElementById('chemstockActiveIngr');
+    if (chemActiveIngr) chemActiveIngr.textContent = 'Loading...';
+    const chemCropsBody = document.getElementById('chemstockCropsBody');
+    if (chemCropsBody) chemCropsBody.innerHTML = '';
+  } catch (e) { /* ignore if elements not present yet */ }
+
   const query = whse ? `?whse=${whse}` : '';
   fetch(`/inventory/get-product/${id}${query}`)
     .then(res => res.json())
@@ -699,6 +713,13 @@ function openProductModal(id) {
           spraysBody.appendChild(row);
         });
       }
+      // Ensure tab data is refreshed for the newly opened product
+      try {
+        if (typeof loadChemstockData === 'function') loadChemstockData();
+      } catch (e) { console.error('loadChemstockData error', e); }
+      try {
+        if (typeof loadReorderingData === 'function') loadReorderingData();
+      } catch (e) { console.error('loadReorderingData error', e); }
     });
 }
 

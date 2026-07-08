@@ -15,24 +15,6 @@ def create_spray_recommendation():
     conn = create_db_connection()
     cur = conn.cursor()
 
-    # project attributes – each row joins a project to its crop/variety/ha
-    cur.execute("""
-    SELECT 
-        p.ProjectLink,
-        p.ProjectCode,
-        pa.ProjAttrCropId,
-        c.CropCode,
-        pa.ProjAttrVarietyId,
-        v.VarietyCode,
-        pa.ProjAttrHa
-    FROM cmn._uvProject p
-    JOIN agr.ProjectAttributes pa
-        ON pa.ProjAttrProjectId = p.ProjectLink
-    LEFT JOIN agr.Crop c ON c.IdCrop = pa.ProjAttrCropId
-    LEFT JOIN agr.Variety v ON v.IdVariety = pa.ProjAttrVarietyId
-    ORDER BY p.ProjectCode
-    """)
-    projects = cur.fetchall()
 
     cur.execute("""
         SELECT IdSprayMethod, SprayMethodName
@@ -47,30 +29,17 @@ def create_spray_recommendation():
     placeholders = ','.join('?' for _ in whse_ids)
     cur.execute(f"""
 		Select WhseLink, WhseDescription 
-        from [cmn]._uvWarehouses
-        where WhseLink IN ({placeholders})
+        from [cmn]._uvWarehouses WHSE
+		JOIN [agr].[WarehouseAttributes] ATTR on ATTR.WhAttrWhseId = WHSE.WhseLink
+        where ATTR.WhAttrWhseType = 'Chemical' and WhseLink IN ({placeholders})
         """, whse_ids)
     warehouses = cur.fetchall()
 
-    # Generate next spray number prefix SPR###
-    cur.execute("SELECT ISNULL(MAX(SprayHNo),0) AS max_no FROM agr.SprayHeader WHERE SprayHNo LIKE 'SPR%'")
-    max_no_row = cur.fetchone()
-    max_no = max_no_row.max_no if max_no_row else None
-    if max_no and max_no.upper().startswith('SPR'):
-        try:
-            next_num = int(max_no[3:]) + 1
-        except Exception:
-            next_num = 1
-    else:
-        next_num = 1
-    spray_no = f"SPR{next_num:03d}"
 
     conn.close()
 
     return render_template(
         "spray_recommendation.html",
-        spray_no=spray_no,
-        projects=projects,
         methods=spray_methods,
         warehouses=warehouses
     )
@@ -179,6 +148,40 @@ def fetch_products_linked_with_warehouse():
     return jsonify({"products": products_list})
 
 
+@agri_bp.route("/fetch_projects_for_warehouse", methods=["GET"])
+@login_required
+def fetch_projects_for_warehouse():
+    warehouse_id = request.args.get("warehouse_id")
+    if not warehouse_id:
+        return jsonify({"status": "error", "message": "Warehouse ID is required", "projects": []}), 400
+
+    conn = create_db_connection()
+    cursor = conn.cursor()
+    cursor.execute("""
+        SELECT DISTINCT p.ProjectLink, p.ProjectCode, pa.ProjAttrCropId, pa.ProjAttrHa
+        FROM cmn._uvProject p
+        JOIN agr.ProjectAttributes pa
+            ON pa.ProjAttrProjectId = p.ProjectLink
+        WHERE pa.ProjAttrWhseId = ?
+          AND pa.ProjAttrIsActive = 1
+        ORDER BY p.ProjectCode
+    """, (warehouse_id,))
+    rows = cursor.fetchall()
+    conn.close()
+
+    projects = [
+        {
+            "project_id": row.ProjectLink,
+            "project_code": row.ProjectCode,
+            "proj_attr_crop_id": row.ProjAttrCropId,
+            "proj_attr_ha": float(row.ProjAttrHa or 0)
+        }
+        for row in rows
+    ]
+
+    return jsonify({"status": "ok", "projects": projects})
+
+
 def to_decimal(val):
     if val is None or val == '':
         return None
@@ -186,17 +189,15 @@ def to_decimal(val):
 
 
 def generate_spray_no(cursor):
-    """
-    Example:
-    SPR000123
-    Replace with your numbering logic if you already have one.
-    """
     cursor.execute("""
-        SELECT ISNULL(MAX(IdSprayH),0)+1
-        FROM agr.SprayHeader
-    """)
-    next_id = cursor.fetchone()[0]
-    return f"SPR-{str(next_id).zfill(6)}"
+        DECLARE @DocumentNumber VARCHAR(30);
+        EXEC cmn.sp_GetNextDocumentNumber @DocumentType = ?, @DocumentNumber = @DocumentNumber OUTPUT;
+        SELECT @DocumentNumber AS DocumentNumber;
+    """, ('REC',))
+    row = cursor.fetchone()
+    if not row:
+        return None
+    return getattr(row, 'DocumentNumber', row[0])
 
 
 @agri_bp.route('/spray-recommendation/submit', methods=['POST'])
@@ -257,8 +258,6 @@ def submit_spray_recommendation():
         conn = create_db_connection()
         cursor = conn.cursor()
 
-        spray_no = generate_spray_no(cursor)
-
         # spray_description already validated above
         spray_date = data.get('spray_date', datetime.today().date())
         created_by = current_user.id
@@ -288,6 +287,7 @@ def submit_spray_recommendation():
             if crop_row:
                 crop_id = crop_row[0]
 
+        spray_no = generate_spray_no(cursor)
         # -------------------------------
         # INSERT HEADER
         # -------------------------------

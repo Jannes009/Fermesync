@@ -45,11 +45,23 @@ function initSuggestedOrder(container = document) {
         const week = weekInput.value.trim();
         if (!week) return alert('Please enter week (YYYY-WW)');
 
+        // clear old rows immediately and show loading placeholder
         clear();
+        const loadingRow = document.createElement('tr');
+        loadingRow.className = 'loading-row';
+        loadingRow.innerHTML = `<td colspan="8" style="text-align:center; padding:1.25rem; color:#6b7280;">Loading suggested order data...</td>`;
+        tbody.appendChild(loadingRow);
 
         const res = await fetch(`/agri/suggested-order/data?week=${encodeURIComponent(week)}`);
         const payload = await res.json();
-        if (payload.status !== 'ok') return alert(payload.message || 'Error');
+        if (payload.status !== 'ok') {
+            // remove loading row and show message
+            loadingRow.remove();
+            return alert(payload.message || 'Error');
+        }
+
+        // remove loading placeholder before rendering rows
+        loadingRow.remove();
 
         for (const row of payload.data) {
             const tr = document.createElement('tr');
@@ -81,6 +93,7 @@ function initSuggestedOrder(container = document) {
             }
 
             for (const s of stockSuppliers) {
+                console.log(s)
                 const opt = document.createElement('option');
                 opt.value = s.dc_link;
                 opt.textContent = `${s.name} — ${s.last_invoice_price ? 'R' + nf.format(s.last_invoice_price) + ' / ' + (s.unit_code || '') : 'No price'}`;
@@ -95,6 +108,8 @@ function initSuggestedOrder(container = document) {
             tr.dataset.lastInvoicePrice = row.last_invoice_price || 0;
             tr.dataset.purchaseUnitsToOrder = row.purchase_units_to_order || 0;
             tr.dataset.purchasingUom = row.purchasing_uom || '';
+            tr.dataset.purchaseUnitId = row.purchase_unit_id || '';
+            console.log(row.purchase_unit_id)
             tr.dataset.productName = row.stock_description || '';
 
             tr.innerHTML = `
@@ -366,31 +381,6 @@ function initSuggestedOrder(container = document) {
         });
     }
 
-    async function handleCreateOrders() {
-        const week = weekInput.value.trim();
-        const orders = {};
-        tbody.querySelectorAll('tr').forEach(tr => {
-            if (tr.classList && (tr.classList.contains('detail-row') || tr.classList.contains('spray-detail-row'))) return;
-            const qty = Number(tr.dataset.purchaseUnitsToOrder || 0);
-            if (!qty || qty <= 0) return;
-            const sel = tr.querySelector('select');
-            const sup = sel ? (sel.value || '') : '';
-            if (!orders[sup]) orders[sup] = [];
-            orders[sup].push({stock_link: tr.dataset.stockLink, qty: qty, price: Number(tr.dataset.lastInvoicePrice || 0), unit_price: Number(tr.dataset.lastInvoicePrice || 0)});
-        });
-
-        const res = await fetch('/agri/suggested-order/create-orders', {
-            method: 'POST', headers: {'Content-Type': 'application/json'},
-            body: JSON.stringify({week: week, orders: orders})
-        });
-        const payload = await res.json();
-        if (payload.status === 'ok') {
-            const preview = document.getElementById('poPreview');
-            preview.innerHTML = `<div style="padding:10px;border-radius:8px;background:#eefef6;border:1px solid #c6f6e1">Created ${payload.created_orders.length} orders.</div>`;
-        } else {
-            alert(payload.message || 'Error creating orders');
-        }
-    }
 
     async function handleCreateOrderForSupplier(supplierId) {
         const lines = [];
@@ -401,8 +391,8 @@ function initSuggestedOrder(container = document) {
             const sel = tr.querySelector('select');
             const sup = sel ? (sel.value || '') : '';
             if (String(sup) !== String(supplierId)) return;
-            const opt = sel && sel.selectedOptions && sel.selectedOptions[0];
-            const unitId = opt ? (opt.dataset.unitId || '') : '';
+            const unitId = tr.dataset.purchaseUnitId || '';
+            console.log(tr.dataset)
             lines.push({
                 product_id: tr.dataset.stockLink,
                 unit_id: unitId,
@@ -423,7 +413,7 @@ function initSuggestedOrder(container = document) {
         }
 
         try {
-            const res = await fetch('/agri/suggested-order/create-orders', {
+            const res = await fetch('/agri/suggested-order/create-order', {
                 method: 'POST', headers: {'Content-Type': 'application/json'},
                 body: JSON.stringify({supplier_id: supplierId, warehouse_id: warehouseId, lines: lines})
             });
@@ -440,7 +430,6 @@ function initSuggestedOrder(container = document) {
     }
 
     document.getElementById('filter_needs_only')?.addEventListener('change', renderPreview);
-    document.getElementById('createOrders')?.addEventListener('click', handleCreateOrders);
 
     weekInput.addEventListener('change', loadData);
     populateWeekSelect(0, 5);

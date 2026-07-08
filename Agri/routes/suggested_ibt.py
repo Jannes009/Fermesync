@@ -43,24 +43,55 @@ def ibt_suggested():
     conn = create_db_connection()
     cur = conn.cursor()
     sql = """
-    SELECT 
+    WITH LatestWeek AS
+    (
+        SELECT
+            sug.FromWhseId,
+            sug.ToWhseId,
+            sug.SprayLineStkId,
+            sug.SprayHWeek,
+            sug.PurchaseUnitsNeeded,
+            sug.PurchaseUnitOnHand,
+            sug.PurchaseUnitSuggestedIBT,
+            S.StockDescription,
+            FROMW.WhseDescription AS FromWhseDescription,
+            TOW.WhseDescription AS ToWhseDescription,
+            sug.PurchasingUnitCode,
+            ROW_NUMBER() OVER
+            (
+                PARTITION BY
+                    sug.FromWhseId,
+                    sug.ToWhseId,
+                    sug.SprayLineStkId
+                ORDER BY
+                    sug.SprayHWeek DESC
+            ) AS rn
+        FROM [agr].[_uvSuggestedIBT] sug
+        JOIN cmn._uvStockItems S
+            ON S.StockLink = sug.SprayLineStkId
+        JOIN cmn._uvWarehouses FROMW
+            ON FROMW.WhseLink = sug.FromWhseId
+        JOIN cmn._uvWarehouses TOW
+            ON TOW.WhseLink = sug.ToWhseId
+        WHERE sug.SprayHWeek <= ?
+    )
+    SELECT
         FromWhseId,
-		ToWhseId,
+        ToWhseId,
         SprayLineStkId,
         SprayHWeek,
         PurchaseUnitsNeeded,
         PurchaseUnitOnHand,
         PurchaseUnitSuggestedIBT,
-		S.StockDescription,
-		FROMW.WhseDescription FromWhseDescription,
-		TOW.WhseDescription ToWhseDescription,
-		PurchasingUnitCode
-    FROM [agr].[_uvSuggestedIBT] sug
-    JOIN cmn._uvStockItems S ON S.StockLink = sug.SprayLineStkId
-    JOIN cmn._uvWarehouses FROMW ON FROMW.WhseLink = sug.FromWhseId
-	JOIN cmn._uvWarehouses TOW ON TOW.WhseLink = sug.ToWhseId
-    WHERE sug.SprayHWeek <= ?
-    ORDER BY TOW.WhseDescription, S.StockLink
+        StockDescription,
+        FromWhseDescription,
+        ToWhseDescription,
+        PurchasingUnitCode
+    FROM LatestWeek
+    WHERE rn = 1
+    ORDER BY
+        ToWhseDescription,
+        StockDescription;
     """
     cur.execute(sql, (week,))
     rows = cur.fetchall()

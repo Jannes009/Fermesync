@@ -355,6 +355,13 @@ document.addEventListener('DOMContentLoaded', async () => {
             }
             const thisLineDiv = document.getElementById(`ibt-line-${thisIndex}`);
             if (thisLineDiv) {
+                // Manually update UOM labels since select2:select event may not fire during prefill
+                const selected = $(`#${selectId}`).find(':selected').data();
+                const uomCode = selected.purchasing_unit_code || '';
+                const stockUnitCode = selected.stocking_unit_code || '';
+                thisLineDiv.querySelector('.stock-unit').textContent = uomCode;
+                thisLineDiv.querySelector('.stock-unit-code').textContent = stockUnitCode;
+
                 const qtyInput = thisLineDiv.querySelector('.qty-input');
                 if (qtyInput) {
                     qtyInput.value = String(ln.qty || ln.Qty || ln.units_suggested || 0);

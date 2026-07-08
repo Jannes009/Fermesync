@@ -29,53 +29,46 @@ def grv_details(po_number):
 
 @inventory_bp.route("/SDK/fetch_outstanding_po_suppliers")
 def fetch_outstanding_po_suppliers():
-    conn = create_db_connection()
-    cursor = conn.cursor()
-
-    warehouses = current_user.warehouses
-    if len(warehouses) == 0:
-        return jsonify({"suppliers": []})
-    placeholders = ",".join(["?"] * len(warehouses))
-    query = f"""
-    SELECT DISTINCT DCLink, SupplierName
-    FROM [stk]._uvPO_Outstanding
-    WHERE WhseLink IN ({placeholders})
-    """
-
-    cursor.execute(query, warehouses)
-    suppliers = [
-        {"code": row[0], "name": row[1]}
-        for row in cursor.fetchall()
-    ]
-
-    conn.close()
-
-    return jsonify({"suppliers": suppliers})
+    # supplier endpoint removed — supplier dropdown no longer used
+    return jsonify({"suppliers": []})
 
 
 @inventory_bp.route("/get_po_numbers", methods=["POST"])
 def get_po_numbers():
-    supplier_code = request.json.get("supplier_code")
+    data = request.get_json(silent=True) or {}
+    supplier_code = data.get("supplier_code")
 
     conn = create_db_connection()
     cursor = conn.cursor()
 
-    query = f"""
-    SELECT DISTINCT OrderNum, OrderDate, OrderDesc, OrdTotIncl
-    FROM [stk]._uvPO_Outstanding
-    WHERE DcLink = ? and WhseLink IN ({','.join(['?'] * len(current_user.warehouses))})
-    """
-    cursor.execute(query, [supplier_code] + current_user.warehouses)
+    # If a supplier_code is provided, filter by it; otherwise return POs across all warehouses
+    if supplier_code:
+        query = f"""
+        SELECT DISTINCT DcLink, SupplierName, OrderNum, OrderDate, OrderDesc, OrdTotIncl
+        FROM [stk]._uvPO_Outstanding
+        WHERE DcLink = ? AND WhseLink IN ({','.join(['?'] * len(current_user.warehouses))})
+        """
+        params = [supplier_code] + current_user.warehouses
+    else:
+        query = f"""
+        SELECT DISTINCT DcLink, SupplierName, OrderNum, OrderDate, OrderDesc, OrdTotIncl
+        FROM [stk]._uvPO_Outstanding
+        WHERE WhseLink IN ({','.join(['?'] * len(current_user.warehouses))})
+        """
+        params = list(current_user.warehouses)
 
+    cursor.execute(query, params)
     rows = cursor.fetchall()
     conn.close()
 
     po_list = [
         {
-            "order_num": row[0],
-            "order_date": row[1],
-            "order_desc": row[2],
-            "order_total": row[3]
+            "supplier_code": row[0],
+            "supplier_name": row[1],
+            "order_num": row[2],
+            "order_date": row[3],
+            "order_desc": row[4],
+            "order_total": row[5]
         }
         for row in rows
     ]
