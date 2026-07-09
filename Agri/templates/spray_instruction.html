@@ -2,6 +2,8 @@
 {% block content %}
 
 <link rel="stylesheet" href="{{ url_for('market.static', filename='color-template.css') }}">
+<link href="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/css/select2.min.css" rel="stylesheet" />
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/sweetalert2@11/dist/sweetalert2.min.css" />
 
 <style>
 .page-wrap{ padding:1.5rem; max-width:1300px; margin:0 auto; }
@@ -171,6 +173,22 @@ input[type="text"]:focus, input[type="date"]:focus, input[type="number"]:focus, 
     box-shadow:0 0 0 3px rgba(45, 108, 223, 0.1);
 }
 
+.product-select-container .select2-selection--single {
+    min-width: 200px;
+}
+
+.product-dropdown {
+    width: auto !important;
+    min-width: 220px !important;
+    max-width: 700px !important;
+}
+
+.product-select-container.select2-container--open .select2-dropdown {
+    width: auto !important;
+    min-width: 220px !important;
+    max-width: 700px !important;
+}
+
 .form-group{
     margin-bottom:1rem;
 }
@@ -211,6 +229,9 @@ input[type="text"]:focus, input[type="date"]:focus, input[type="number"]:focus, 
   </div>
 </div>
 
+<script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/js/select2.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/sweetalert2@11/dist/sweetalert2.min.js"></script>
 <script>
 
 const sprayId = {{ spray_id }};
@@ -218,6 +239,17 @@ const canEdit = {{ 'true' if 'SPRAY_REC_EDIT' in current_user.permissions else '
 const canCreate = {{ 'true' if 'SPRAY_REC_CREATE' in current_user.permissions else 'false' }};
 let sprayData = null;
 let sprayType = null;
+
+function escapeHtml(value) {
+    if (value === null || value === undefined) return '';
+    return String(value)
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;')
+        .replace(/'/g, '&#39;');
+}
+
 let editModes = {
     header: false,
     methods: false,
@@ -372,6 +404,7 @@ async function renderLines() {
         productOptions = await fetchProductsOptions(sprayId);
     }
 
+    const productHeader = editModes.lines ? '<th colspan="2">Product</th>' : '<th>Stock Description</th><th>Active Ingredient</th>';
     let html = `
         <div class="section-card">
             <div class="section-header ${editModeClass}">
@@ -384,8 +417,7 @@ async function renderLines() {
                 <table>
                     <thead>
                         <tr>
-                            <th>Stock Description</th>
-                            <th>Active Ingredient</th>
+                            ${productHeader}
                             <th>${qtyColumnText}</th>
                             <th>Total Qty</th>
                             ${editModes.lines ? '<th></th>' : ''}
@@ -401,11 +433,17 @@ async function renderLines() {
         console.log(line.stock_description, typeof line.stock_id);
 
         if (editModes.lines) {
-            const options = productOptions.map(product => `<option value="${product.stock_link}" ${product.stock_link === parseInt(line.stock_id) ? 'selected' : ''}>${product.stock_description}</option>`).join('');
+            const options = productOptions.map(product => {
+                const ai = escapeHtml(product.active_ingredient || '');
+                const desc = escapeHtml(product.stock_description || '');
+                const qtyOnHand = product.qty_on_hand !== null ? parseFloat(product.qty_on_hand).toFixed(2) : '0.00';
+                const unit = product.stocking_uom_code || '';
+                return `<option value="${product.stock_link}" ${product.stock_link === parseInt(line.stock_id) ? 'selected' : ''} data-active-ingredient="${ai}">${ai} - ${desc} (Available: ${qtyOnHand} ${unit})</option>`;
+            }).join('');
             html += `
                 <tr data-line-idx="${idx}">
-                    <td>
-                        <select data-line-idx="${idx}" onchange="handleLineProductChange(${idx})">
+                    <td colspan="2">
+                        <select class="line-product-select" data-line-idx="${idx}" onchange="handleLineProductChange(${idx})">
                             <option value="">Select product</option>
                             ${options}
                         </select>
@@ -435,6 +473,47 @@ async function renderLines() {
     `;
 
     document.getElementById("spray-lines").innerHTML = html;
+    if (editModes.lines) {
+        initLineSelects();
+    }
+}
+
+function initLineSelects() {
+    if (typeof window.jQuery === 'undefined' || !window.jQuery.fn || !window.jQuery.fn.select2) {
+        return;
+    }
+    const $ = window.jQuery;
+    $('.line-product-select').each(function() {
+        const $select = $(this);
+        if ($select.data('select2')) {
+            $select.select2('destroy');
+        }
+        $select.select2({
+            width: '100%',
+            placeholder: 'Search product',
+            allowClear: true,
+            dropdownAutoWidth: true,
+            dropdownCssClass: 'product-dropdown',
+            containerCssClass: 'product-select-container'
+        }).on('select2:opening', function() {
+            const s2 = $(this).data('select2');
+            if (s2 && s2.$dropdown && s2.$container) {
+                const closedWidth = s2.$container.outerWidth();
+                if (closedWidth) {
+                    s2.$dropdown.css('min-width', closedWidth + 'px');
+                }
+            }
+        });
+    });
+
+    $(document).off('select2:open.sprayInstruction').on('select2:open.sprayInstruction', () => {
+        setTimeout(() => {
+            const search = document.querySelector('.select2-container--open .select2-search__field');
+            if (search) {
+                search.focus();
+            }
+        }, 0);
+    });
 }
 
 function handleLineProductChange(idx) {
@@ -549,11 +628,21 @@ async function saveLinesEdit() {
     const result = await response.json();
 
     if (!response.ok || !result.success) {
-        alert(`Error: ${result.message || 'Failed to save spray lines.'}`);
+        Swal.fire({
+            icon: 'error',
+            title: 'Save failed',
+            text: result.message || 'Failed to save spray lines.'
+        });
         return;
     }
 
-    alert('Spray lines saved successfully!');
+    await Swal.fire({
+        icon: 'success',
+        title: 'Saved',
+        text: 'Spray lines saved successfully!',
+        timer: 1500,
+        showConfirmButton: false
+    });
 
     editModes.lines = false;
     sprayData.lines = await fetchLines(sprayId);
@@ -712,12 +801,22 @@ function saveHeaderEdit() {
         body: JSON.stringify(payload)
     })
     .then(response => response.json())
-    .then(result => {
+    .then(async result => {
         if (!result.success) {
-            alert(`Error: ${result.message || 'Failed to save header changes.'}`);
+            await Swal.fire({
+                icon: 'error',
+                title: 'Save failed',
+                text: result.message || 'Failed to save header changes.'
+            });
             return;
         }
-        alert('Header changes saved successfully!');
+        await Swal.fire({
+            icon: 'success',
+            title: 'Saved',
+            text: 'Header changes saved successfully!',
+            timer: 1500,
+            showConfirmButton: false
+        });
         sprayData.header.spray_description = description;
         sprayData.header.spray_date = date;
         sprayData.header.spray_week = week;
@@ -725,8 +824,12 @@ function saveHeaderEdit() {
         editModes.header = false;
         renderHeader();
     })
-    .catch(err => {
-        alert(`Network error: ${err.message}`);
+    .catch(async err => {
+        await Swal.fire({
+            icon: 'error',
+            title: 'Network error',
+            text: err.message
+        });
     });
 }
 
@@ -735,26 +838,49 @@ function cancelInlineEdit() {
     renderHeader();
 }
 
-function cancelRecommendation() {
-    if (!confirm('Cancel this spray recommendation? This cannot be undone.')) {
+async function cancelRecommendation() {
+    const confirmation = await Swal.fire({
+        icon: 'warning',
+        title: 'Cancel recommendation?',
+        text: 'This cannot be undone.',
+        showCancelButton: true,
+        confirmButtonText: 'Yes, cancel it',
+        cancelButtonText: 'No, keep it'
+    });
+    if (!confirmation.isConfirmed) {
         return;
     }
+
     fetch(`/agri/spray/${sprayId}/cancel`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' }
     })
     .then(response => response.json())
-    .then(result => {
+    .then(async result => {
         if (!result.success) {
-            alert(`Error: ${result.message || 'Failed to cancel spray recommendation.'}`);
+            await Swal.fire({
+                icon: 'error',
+                title: 'Cancellation failed',
+                text: result.message || 'Failed to cancel spray recommendation.'
+            });
             return;
         }
-        alert('Spray recommendation cancelled.');
+        await Swal.fire({
+            icon: 'success',
+            title: 'Cancelled',
+            text: 'Spray recommendation cancelled.',
+            timer: 1500,
+            showConfirmButton: false
+        });
         sprayData.header.status = 'CANCELLED';
         renderHeader();
     })
-    .catch(err => {
-        alert(`Network error: ${err.message}`);
+    .catch(async err => {
+        await Swal.fire({
+            icon: 'error',
+            title: 'Network error',
+            text: err.message
+        });
     });
 }
 

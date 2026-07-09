@@ -482,16 +482,21 @@ def fetch_products_for_spray_whse(spray_id):
     cur = conn.cursor()
 
     cur.execute("""
-    SELECT QTY.StockLink, StockCode, StockDescription, QtyOnHand
+    SELECT QTY.StockLink, StockCode, StockDescription, QtyOnHand, ACT.ChemActIngredient, QTY.StockingUnitCode
     FROM [agr].SprayHeader HEA
     JOIN stk._uvInventoryQty QTY on QTY.WhseLink = HEA.SprayHWhseId
+	JOIN agr.ChemStock STK on STK.ChemStockLink = QTY.StockLink
+	JOIN agr.ChemActiveIngredient ACT on ACT.IdChemAct = STK.ChemStockActiveIngrId
     WHERE HEA.IdSprayH = ?
+    ORDER BY ACT.ChemActIngredient, StockDescription
     """, spray_id)
     products = [{
         "stock_link": row.StockLink,
         "stock_code": row.StockCode,
         "stock_description": row.StockDescription,
-        "qty_on_hand": float(row.QtyOnHand)
+        "qty_on_hand": float(row.QtyOnHand),
+        "active_ingredient": row.ChemActIngredient,
+        "stocking_uom_code": row.StockingUnitCode
     } for row in cur.fetchall()]
     conn.close()
     return jsonify(products)

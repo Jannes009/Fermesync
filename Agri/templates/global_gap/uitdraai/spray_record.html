@@ -108,12 +108,13 @@ body { font-family: Arial, sans-serif; color: var(--primary-text); background: v
       <div class="info-value">{{ instruction.grower_code or "N/A" }}</div>
     </div>
     <div class="info-box">
+      <div class="info-label">Scouting</div>
+      <div class="info-value">{{ instruction.scouting or "N/A" }}</div>
+    </div>
+    <div class="info-box">
       <div class="info-label">Total Ha</div>
       <div class="info-value">{{ instruction.total_ha }} ha</div>
     </div>
-  </div>
-
-  <div class="info-grid" style="margin-top:4mm;">
     <div class="info-box">
       <div class="info-label">Crop</div>
       <div class="info-value">{{ instruction.crop or "N/A" }}</div>
@@ -150,7 +151,7 @@ body { font-family: Arial, sans-serif; color: var(--primary-text); background: v
   <table class="stock-table">
     <thead>
       <tr>
-        <th>Product Code</th>
+        <th>Product</th>
         <th>Active Ingredient</th>
         <th>Reason</th>
         <th>Withholding Period</th>

@@ -485,7 +485,7 @@
                 <h3 style="margin-top: 0;">Edit Defaults</h3>
                 <div style="margin-bottom: 14px;">
                     <label>Registration Number</label>
-                    <input type="text" id="modal-reg-number" style="width: 100%; padding: 8px; border: 1px solid var(--line); border-radius: 8px;">
+                    <input type="text" id="modal-reg-number" readonly style="width: 100%; padding: 8px; border: 1px solid var(--line); border-radius: 8px; background: #f5f5f5; cursor: not-allowed;">
                 </div>
                 <div style="margin-bottom: 14px;">
                     <label>Witholding Period</label>
@@ -606,8 +606,9 @@ async function updateProductsByWarehouse(warehouseId, projectIds) {
             PRODUCTS_DATA = {}; // Reset products data
             
             data.products.forEach(product => {
+                const qtyFormatted = parseFloat(product.qty_in_whse).toFixed(2);
                 options += `<option value="${product.product_link}" data-uom-id="${product.stocking_uom_id || ''}" data-purchase-uom-id="${product.purchase_uom_id || ''}" data-uom-cat="${product.uom_cat_id || ''}" data-reg-number="${product.reg_number || ''}" data-witholding-period="${product.witholding_period || ''}" data-function="${product.function || ''}">` +
-                    `${product.active_ingredient} - ${product.product_desc}(${product.qty_in_whse} ${product.stocking_uom_code})` +
+                    `${product.active_ingredient} - ${product.product_desc}(${qtyFormatted} ${product.stocking_uom_code})` +
                     `</option>`;
                 
                 // Store product data for later reference

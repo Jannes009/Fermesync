@@ -3,6 +3,7 @@
 
 <link rel="stylesheet" href="{{ url_for('market.static', filename='color-template.css') }}">
 <link href="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/css/select2.min.css" rel="stylesheet" />
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/sweetalert2@11/dist/sweetalert2.min.css"/>
 
 <style>
   * { box-sizing: border-box; }
@@ -752,6 +753,7 @@
 </div>
 
 <script src="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/js/select2.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/sweetalert2@11/dist/sweetalert2.all.min.js"></script>
 <script>
 
 const recommendations = [];
@@ -982,7 +984,7 @@ function toggleRecommendationSelection(checkbox) {
 
     if (checkbox.checked) {
         if (selectedWarehouseId && selectedWarehouseId !== warehouseId) {
-            alert('All selected recommendations must be from the same warehouse.');
+            Swal.fire({icon: 'warning', title: 'Multiple Warehouses', text: 'All selected recommendations must be from the same warehouse.'});
             checkbox.checked = false;
             return;
         }
@@ -1031,7 +1033,7 @@ function handleCreateExecutionButtonClick() {
     }
 
     if (selectedRecommendationIds.length === 0) {
-        alert('Please select at least one recommendation before continuing.');
+        Swal.fire({icon: 'info', title: 'No Selection', text: 'Please select at least one recommendation before continuing.'});
         return;
     }
 
@@ -1150,7 +1152,7 @@ async function loadResponsiblePersonsForExecutionModal() {
             <option value="${person.id}">${escapeHtml(person.name)}</option>`).join('');
     } catch (error) {
         console.error('Error loading responsible persons:', error);
-        alert('Unable to load responsible persons.');
+        Swal.fire({icon: 'error', title: 'Error', text: 'Unable to load responsible persons.'});
     }
 }
 
@@ -1166,7 +1168,7 @@ async function submitExecutionCreation() {
     const responsiblePerson = responsibleSelect.value;
 
     if (!executionDate || !responsiblePerson) {
-        alert('Please choose a date and a responsible person.');
+        Swal.fire({icon: 'warning', title: 'Missing Information', text: 'Please choose a date and a responsible person.'});
         return;
     }
 
@@ -1188,13 +1190,14 @@ async function submitExecutionCreation() {
             throw new Error(result.message || 'Failed to create execution');
         }
 
-        alert('Execution created successfully.');
-        closeExecutionModal();
-        exitSelectionMode();
-        loadRecommendations();
+        Swal.fire({icon: 'success', title: 'Success', text: 'Execution created successfully.'}).then(() => {
+            closeExecutionModal();
+            exitSelectionMode();
+            loadRecommendations();
+        });
     } catch (error) {
         console.error('Error creating execution:', error);
-        alert(error.message || 'Unable to create execution.');
+        Swal.fire({icon: 'error', title: 'Error', text: error.message || 'Unable to create execution.'});
     }
 }
 

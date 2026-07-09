@@ -3,6 +3,7 @@
 
 <link rel="stylesheet" href="{{ url_for('market.static', filename='color-template.css') }}">
 <link href="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/css/select2.min.css" rel="stylesheet" />
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/sweetalert2@11/dist/sweetalert2.min.css" />
 
 <style>
   * { box-sizing: border-box; }
@@ -654,7 +655,6 @@
       <header style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1.5rem;">
         <h1>Spray Execution #{{ execution.id }}</h1>
         <div style="display: flex; gap: 0.5rem;">
-          <a href="/agri/execution/{{ execution.id }}/instruction_pdf" target="_blank" class="btn-success">Print Instructions</a>
           {% if not execution.finalised %}
             {% if execution.can_finalize and 'SPRAY_EXEC_CREATE' in current_user.permissions %}
             <button class="btn-primary" onclick="finalizeExecution({{ execution.id }})">Finalize Execution</button>
@@ -778,17 +778,15 @@
               <div class="rec-detail-value">Week {{ instruction.week_number }}</div>
             </div>
           </div>
-          <div class="update-instruction-actions" style="margin-top: 0.75rem;">
+          <div class="update-instruction-actions" style="margin-top: 0.75rem; flex-wrap: wrap; align-items: center;">
             {% if not instruction.finalised and 'SPRAY_EXEC_CREATE' in current_user.permissions %}
               <button type="button" class="btn-success" onclick="openInstructionModal({{ instruction.id }}, '{{ instruction.spray_date or '' }}', '{{ instruction.start_date_time or '' }}', '{{ instruction.end_date_time or '' }}', '{{ instruction.weather or '' }}')">Finalise instruction</button>
             {% endif %}
             <button type="button" class="btn-secondary" onclick="window.location.href='/agri/spray/{{ instruction.id }}'">View details</button>
+            {% if instruction.finalised and execution.finalised %}
+              <a href="/agri/instruction/{{ instruction.id }}/instruction_pdf" class="btn-secondary" style="background-color: #28a745;" target="_blank">Print instructions</a>
+            {% endif %}
           </div>
-          {% if instruction.finalised and execution.finalised %}
-          <div style="margin-top: 0.75rem;">
-            <a href="/agri/instruction/{{ instruction.id }}/instruction_pdf" class="btn-secondary" style="font-size: 0.8rem; padding: 0.25rem 0.5rem;" target="_blank">Print Instruction</a>
-          </div>
-          {% endif %}
           </div>
         {% endfor %}
       </div>
@@ -838,6 +836,7 @@
 </div>
 
 <script src="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/js/select2.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/sweetalert2@11/dist/sweetalert2.all.min.js"></script>
 <script src="{{ url_for('inventory.static', filename='stock_issue/stock_issue_list.js') }}?v={{ filemtime('inventory','stock_issue/stock_issue_list.js') }}"></script>
 <script>
 window.onStockIssueReturnSuccess = () => window.location.reload();
@@ -941,8 +940,15 @@ function toggleStockDetail(element) {
 }
 
 async function finalizeExecution(executionId) {
-    const confirmed = window.confirm('Finalize Execution?\nThis will mark the execution as finalized and cannot be undone.');
-    if (!confirmed) {
+    const confirmation = await Swal.fire({
+        icon: 'warning',
+        title: 'Finalize Execution?',
+        text: 'This will mark the execution as finalized and cannot be undone.',
+        showCancelButton: true,
+        confirmButtonText: 'Yes, finalize it',
+        cancelButtonText: 'Cancel'
+    });
+    if (!confirmation.isConfirmed) {
         return;
     }
 
@@ -952,20 +958,41 @@ async function finalizeExecution(executionId) {
         });
         const data = await response.json();
         if (data.success) {
-            alert('Execution finalized successfully.');
+            await Swal.fire({
+                icon: 'success',
+                title: 'Finalized',
+                text: 'Execution finalized successfully.',
+                timer: 1500,
+                showConfirmButton: false
+            });
             location.reload();
         } else {
-            alert('Failed to finalize execution: ' + (data.message || 'Unknown error.'));
+            await Swal.fire({
+                icon: 'error',
+                title: 'Finalize failed',
+                text: 'Failed to finalize execution: ' + (data.message || 'Unknown error.')
+            });
         }
     } catch (err) {
         console.error('Error finalizing execution:', err);
-        alert('Failed to finalize execution. Please try again.');
+        await Swal.fire({
+            icon: 'error',
+            title: 'Network error',
+            text: 'Failed to finalize execution. Please try again.'
+        });
     }
 }
 
 async function deleteExecution(executionId) {
-    const confirmed = window.confirm('Delete Execution?\nThis will delete the execution and remove it from all associated spray instructions. This action cannot be undone.');
-    if (!confirmed) {
+    const confirmation = await Swal.fire({
+        icon: 'warning',
+        title: 'Delete Execution?',
+        text: 'This will delete the execution and remove it from all associated spray instructions. This action cannot be undone.',
+        showCancelButton: true,
+        confirmButtonText: 'Yes, delete it',
+        cancelButtonText: 'Cancel'
+    });
+    if (!confirmation.isConfirmed) {
         return;
     }
 
@@ -975,14 +1002,28 @@ async function deleteExecution(executionId) {
         });
         const data = await response.json();
         if (data.success) {
-            alert('Execution deleted successfully.');
+            await Swal.fire({
+                icon: 'success',
+                title: 'Deleted',
+                text: 'Execution deleted successfully.',
+                timer: 1500,
+                showConfirmButton: false
+            });
             window.location.href = '/agri/spray-recommendations-summary';
         } else {
-            alert('Failed to delete execution: ' + (data.message || 'Unknown error.'));
+            await Swal.fire({
+                icon: 'error',
+                title: 'Delete failed',
+                text: 'Failed to delete execution: ' + (data.message || 'Unknown error.')
+            });
         }
     } catch (err) {
         console.error('Error deleting execution:', err);
-        alert('Failed to delete execution. Please try again.');
+        await Swal.fire({
+            icon: 'error',
+            title: 'Network error',
+            text: 'Failed to delete execution. Please try again.'
+        });
     }
 }
 
