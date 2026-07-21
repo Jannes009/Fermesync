@@ -655,6 +655,7 @@
       <header style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1.5rem;">
         <h1>Spray Execution #{{ execution.id }}</h1>
         <div style="display: flex; gap: 0.5rem;">
+          <a href="/agri/execution/{{ execution.id }}/instruction_pdf" target="_blank" class="btn-success">Print Instructions</a>
           {% if not execution.finalised %}
             {% if execution.can_finalize and 'SPRAY_EXEC_CREATE' in current_user.permissions %}
             <button class="btn-primary" onclick="finalizeExecution({{ execution.id }})">Finalize Execution</button>

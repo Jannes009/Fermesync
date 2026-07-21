@@ -148,12 +148,19 @@ def fetch_spray_record_data(instruction_id):
 
     total_ha = sum(item["ha"] for item in projects)
 
+    client_logo_jpeg_path = Path(__file__).resolve().parents[3] / "templates" / "global_gap" / "uitdraai" / "UitdraaiLogo.jpeg"
     assets_root = Path(__file__).resolve().parents[4] / "main_static" / "icons"
-    logo_path = assets_root / "LogoIcon.svg"
-    logo_data = None
-    if logo_path.exists():
-        raw = logo_path.read_bytes()
-        logo_data = "data:image/svg+xml;base64," + base64.b64encode(raw).decode("ascii")
+    app_logo_svg_path = assets_root / "LogoAndText.svg"
+    app_logo_data = None
+    client_logo_data = None
+    print(client_logo_jpeg_path, client_logo_jpeg_path.exists())
+
+    if app_logo_svg_path.exists():
+        raw = app_logo_svg_path.read_bytes()
+        app_logo_data = "data:image/svg+xml;base64," + base64.b64encode(raw).decode("ascii")
+    if client_logo_jpeg_path.exists():
+        raw = client_logo_jpeg_path.read_bytes()
+        client_logo_data = "data:image/jpeg;base64," + base64.b64encode(raw).decode("ascii")
 
     return {
         "instruction_id": header.SprayHNo or instruction_id,
@@ -172,7 +179,8 @@ def fetch_spray_record_data(instruction_id):
         "total_ha": total_ha,
         "stock_requirements": stock_requirements,
         "created_by": getattr(current_user, "username", str(getattr(current_user, "id", "unknown"))),
-        "logo_data": logo_data
+        "app_logo_data": app_logo_data,
+        "client_logo_data": client_logo_data
     }
 
 

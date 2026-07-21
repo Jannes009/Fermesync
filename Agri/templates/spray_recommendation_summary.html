@@ -1139,20 +1139,28 @@ function closeExecutionModal() {
 
 async function loadResponsiblePersonsForExecutionModal() {
     try {
-        const response = await fetch('/agri/execution/responsible-persons');
+        const response = await fetch(
+            `/agri/execution/responsible-persons?spray_ids=${selectedRecommendationIds.join(',')}`
+        );
+
         if (!response.ok) {
             throw new Error(`Server returned ${response.status}`);
         }
+
         const persons = await response.json();
+
         const select = document.getElementById('execResponsible');
-        if (!select) {
-            return;
-        }
-        select.innerHTML = '<option value="">Select person...</option>' + persons.map(person => `
-            <option value="${person.id}">${escapeHtml(person.name)}</option>`).join('');
-    } catch (error) {
-        console.error('Error loading responsible persons:', error);
-        Swal.fire({icon: 'error', title: 'Error', text: 'Unable to load responsible persons.'});
+
+        select.innerHTML =
+            '<option value="">Select person...</option>' +
+            persons.map(person => `
+                <option value="${person.id}">
+                    ${escapeHtml(person.name)}
+                </option>
+            `).join('');
+
+    } catch (err) {
+        console.error(err);
     }
 }
 

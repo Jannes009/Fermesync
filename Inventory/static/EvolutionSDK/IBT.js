@@ -2,6 +2,7 @@ let ibtLines = [];
 let lineIndex = 0;  
 let products = [];
 let selectedProducts = new Set();
+let currentUnitMode = "purchasing";
 
 // Promise that resolves when warehouse selects are populated
 window.__ibtWarehousesLoaded = new Promise((res) => { window.__resolveIbtWarehouses = res; });
@@ -153,6 +154,10 @@ document.addEventListener("DOMContentLoaded", async () => {
         }
     });
 
+    document.querySelectorAll(".unit-mode-btn[data-global-unit-mode]").forEach((btn) => {
+        btn.addEventListener("click", () => setGlobalUnitMode(btn.dataset.globalUnitMode));
+    });
+
     // --- Add Product Button ---
     document.getElementById("add-line-btn").addEventListener("click", addIbtLine);
 
@@ -186,10 +191,18 @@ document.addEventListener("DOMContentLoaded", async () => {
             const stocking_uom_code = productData.stocking_unit_code || "";
             const stocking_uom_id = productData.stocking_unit_id || null;
             const conversion_factor = Number(productData.conversion_factor) || 1;
-            const stockQty = Math.round(qtyToSend * conversion_factor * 100) / 100;
+            const enteredQty = Math.round(Number(qtyInput.value) * 100) / 100;
+            const selectedUnitMode = currentUnitMode;
+            const availableQtyForMode = selectedUnitMode === "purchasing"
+                ? availableQty
+                : Math.round((availableQty * conversion_factor) * 100) / 100;
+            const requestedQtyForMode = enteredQty;
+            const stockQty = selectedUnitMode === "stocking"
+                ? Math.round(enteredQty * 100) / 100
+                : Math.round(enteredQty * conversion_factor * 100) / 100;
 
-            if (qtyToSend > availableQty) {
-                const qtyNeeded = Math.round((qtyToSend - availableQty) * 100) / 100;
+            if (requestedQtyForMode > availableQtyForMode) {
+                const qtyNeeded = Math.round((requestedQtyForMode - availableQtyForMode) * 100) / 100;
                 const adjusted = await promptStockAdjustment(productId, document.getElementById('wh-from')?.value || null, qtyNeeded);
                 if (!adjusted) {
                     return;
@@ -197,16 +210,20 @@ document.addEventListener("DOMContentLoaded", async () => {
 
                 const wh = document.getElementById('wh-from')?.value;
                 if (productId && wh) {
-                        const refreshRes = await fetch(`/inventory/adjust_stock/qty?stock_link=${encodeURIComponent(productId)}&warehouse_link=${encodeURIComponent(wh)}`);
+                    const refreshRes = await fetch(`/inventory/adjust_stock/qty?stock_link=${encodeURIComponent(productId)}&warehouse_link=${encodeURIComponent(wh)}`);
                     const refreshJson = await refreshRes.json();
                     if (refreshJson.status === 'ok') {
                         const newAvailableQty = Math.round(Number(refreshJson.qty_on_hand) * 100) / 100;
+                        const refreshedAvailableQtyForMode = selectedUnitMode === "purchasing"
+                            ? newAvailableQty
+                            : Math.round((newAvailableQty * conversion_factor) * 100) / 100;
                         const opt = $(select).find(`option[value="${productId}"]`);
                         $(opt).data('qty', newAvailableQty);
-                        if (newAvailableQty < qtyToSend) {
+                        refreshProductOptionLabels();
+                        if (refreshedAvailableQtyForMode < requestedQtyForMode) {
                             return Swal.fire(
                                 "Not Enough Stock",
-                                `Product: ${select.options[select.selectedIndex].text}\nAvailable: ${newAvailableQty} ${uom_code}\nRequested: ${qtyToSend} ${uom_code}`,
+                                `Product: ${select.options[select.selectedIndex].text}\nAvailable: ${refreshedAvailableQtyForMode} ${selectedUnitMode === 'purchasing' ? uom_code : stocking_uom_code}\nRequested: ${requestedQtyForMode} ${selectedUnitMode === 'purchasing' ? uom_code : stocking_uom_code}`,
                                 "error"
                             );
                         }
@@ -216,7 +233,7 @@ document.addEventListener("DOMContentLoaded", async () => {
 
             ibtLines.push({
                 product_id: productId,
-                qty: qtyToSend,
+                qty: enteredQty,
                 productText: select.options[select.selectedIndex].text,
                 availableQty: availableQty,
                 uom_code: uom_code,
@@ -224,7 +241,9 @@ document.addEventListener("DOMContentLoaded", async () => {
                 stocking_uom_code: stocking_uom_code,
                 stocking_uom_id: stocking_uom_id,
                 conversion_factor: conversion_factor,
-                stock_qty: stockQty
+                stock_qty: stockQty,
+                selected_unit_mode: selectedUnitMode,
+                display_unit_code: selectedUnitMode === "purchasing" ? uom_code : stocking_uom_code
             });
         }
 
@@ -279,6 +298,7 @@ document.addEventListener("DOMContentLoaded", async () => {
             $('#wh-from, #wh-to').trigger('change'); // refresh Select2
             document.getElementById("ibt-lines-container").innerHTML = "";
             ibtLines = [];
+            selectedProducts = new Set();
             lineIndex = 0;
         });
     });
@@ -306,12 +326,21 @@ function getQueryParam(name) {
 document.addEventListener('DOMContentLoaded', async () => {
     // Support both URL prefill (legacy) and sessionStorage (preferred for large payloads)
     const prefillRawUrl = getQueryParam('prefill');
-    const prefillRawSession = sessionStorage.getItem('ibt_prefill');
-    const prefillRaw = prefillRawSession || prefillRawUrl;
-    if (!prefillRaw) return;
+    const returnTo = getQueryParam('return_to');
+    const prefillRawSession = (!prefillRawUrl && returnTo) ? sessionStorage.getItem('ibt_prefill') : null;
+    const prefillRaw = prefillRawUrl || prefillRawSession;
+    if (!prefillRaw) {
+        if (!prefillRawUrl && !returnTo) {
+            sessionStorage.removeItem('ibt_prefill');
+        }
+        return;
+    }
 
     try {
-        const prefill = prefillRawSession ? JSON.parse(prefillRawSession) : JSON.parse(decodeURIComponent(prefillRawUrl));
+        const prefill = JSON.parse(decodeURIComponent(prefillRawUrl || prefillRawSession));
+        if (prefillRawSession) {
+            sessionStorage.removeItem('ibt_prefill');
+        }
 
         // prefills expected: { from_whse, to_whse, lines: [{ stock_link, qty }...] }
         // Wait for warehouse selects to be populated (so Select2 has options)
@@ -325,6 +354,7 @@ document.addEventListener('DOMContentLoaded', async () => {
         if (prefill.to_whse) {
             $('#wh-to').val(String(prefill.to_whse)).trigger('change');
         }
+        console.log("Prefilling IBT with:", prefill);
 
         // Fetch products for the selected warehouses (same as clicking Step 1 next)
         const fetchRes = await fetch('/inventory/fetch_products_in_both_whses', {
@@ -379,6 +409,104 @@ document.addEventListener('DOMContentLoaded', async () => {
     }
 });
 
+function roundTo2(value) {
+    return Math.round(Number(value) * 100) / 100;
+}
+
+function convertQtyBetweenUnits(qty, conversionFactor, fromMode, toMode) {
+    const value = Number(qty) || 0;
+    if (fromMode === toMode) {
+        return roundTo2(value);
+    }
+    if (fromMode === "purchasing" && toMode === "stocking") {
+        return roundTo2(value * conversionFactor);
+    }
+    if (fromMode === "stocking" && toMode === "purchasing") {
+        return roundTo2(value / conversionFactor);
+    }
+    return roundTo2(value);
+}
+
+function syncSelectOptionsState() {
+    document.querySelectorAll(".product-select").forEach((select) => {
+        const currentValue = $(select).val();
+        $(select).find("option").each(function () {
+            const optionValue = $(this).val();
+            if (!optionValue) {
+                $(this).prop("disabled", false);
+                return;
+            }
+            const isSelectedElsewhere = selectedProducts.has(String(optionValue)) && String(optionValue) !== String(currentValue);
+            $(this).prop("disabled", isSelectedElsewhere);
+        });
+        $(select).trigger("change.select2");
+    });
+}
+
+function refreshProductOptionLabels() {
+    document.querySelectorAll(".product-select").forEach((select) => {
+        $(select).find("option").each(function () {
+            const option = $(this);
+            if (!option.val()) {
+                return;
+            }
+            const productDesc = option.data("product_desc") || option.text().split(" (In:")[0] || "";
+            const qty = Number(option.data("qty")) || 0;
+            const conversionFactor = Number(option.data("conversion_factor")) || 1;
+            const displayQty = currentUnitMode === "purchasing"
+                ? roundTo2(qty)
+                : roundTo2(qty * conversionFactor);
+            const unitCode = currentUnitMode === "purchasing"
+                ? option.data("purchasing_unit_code") || ""
+                : option.data("stocking_unit_code") || "";
+            option.text(`${productDesc} (In: ${displayQty.toFixed(2)} ${unitCode})`);
+        });
+
+        const selectedOption = $(select).find("option:selected");
+        if (selectedOption.length) {
+            const productDesc = selectedOption.data("product_desc") || selectedOption.text().split(" (In:")[0] || "";
+            const qty = Number(selectedOption.data("qty")) || 0;
+            const conversionFactor = Number(selectedOption.data("conversion_factor")) || 1;
+            const displayQty = currentUnitMode === "purchasing"
+                ? roundTo2(qty)
+                : roundTo2(qty * conversionFactor);
+            const unitCode = currentUnitMode === "purchasing"
+                ? selectedOption.data("purchasing_unit_code") || ""
+                : selectedOption.data("stocking_unit_code") || "";
+            const displayText = `${productDesc} (In: ${displayQty.toFixed(2)} ${unitCode})`;
+            $(select).next('.select2-container').find('.select2-selection__rendered').text(displayText);
+        }
+
+        $(select).trigger("change.select2");
+        $(select).trigger("change");
+    });
+}
+
+function setGlobalUnitMode(newMode) {
+    if (currentUnitMode === newMode) {
+        return;
+    }
+
+    currentUnitMode = newMode;
+    document.querySelectorAll(".unit-mode-btn[data-global-unit-mode]").forEach((btn) => {
+        btn.classList.toggle("active", btn.dataset.globalUnitMode === newMode);
+    });
+
+    document.querySelectorAll(".ibt-line").forEach((lineDiv) => {
+        const qtyInput = lineDiv.querySelector(".qty-input");
+        const currentQty = Number(qtyInput?.value) || 0;
+        const currentMode = lineDiv.dataset.unitMode || "purchasing";
+        const conversionFactor = Number(lineDiv.dataset.conversionFactor || 1);
+        if (currentMode !== newMode) {
+            qtyInput.value = convertQtyBetweenUnits(currentQty, conversionFactor, currentMode, newMode);
+        }
+        lineDiv.dataset.unitMode = newMode;
+        updateStockQtyDisplay(lineDiv);
+    });
+
+    refreshProductOptionLabels();
+}
+
 function addIbtLine() {
     lineIndex++;
 
@@ -388,6 +516,8 @@ function addIbtLine() {
     const lineDiv = document.createElement("div");
     lineDiv.className = "ibt-line";
     lineDiv.id = lineId;
+    lineDiv.dataset.unitMode = currentUnitMode;
+    lineDiv.dataset.selectedProductId = "";
 
     lineDiv.innerHTML = `
         <div class="product-row">
@@ -397,7 +527,9 @@ function addIbtLine() {
                 </select>
             </div>
             <div class="product-row-bottom">
-                <input type="number" class="qty-input" min="0" step="1" placeholder="Qty"/>
+                <div class="qty-control">
+                    <input type="number" class="qty-input" min="0" step="1" placeholder="Qty"/>
+                </div>
                 <div class="uom-label stock-unit">—</div>
                 <button type="button" class="issue-remove-btn" title="Remove line">
                     <i class="fas fa-trash"></i>
@@ -412,54 +544,77 @@ function addIbtLine() {
 
     document.getElementById("ibt-lines-container").appendChild(lineDiv);
 
-    // Remove button handler
     const removeBtn = lineDiv.querySelector('.issue-remove-btn');
     removeBtn.addEventListener('click', () => {
+        const removedProduct = lineDiv.dataset.selectedProductId;
+        if (removedProduct) {
+            selectedProducts.delete(removedProduct);
+        }
         lineDiv.remove();
+        syncSelectOptionsState();
     });
 
     const qtyInput = lineDiv.querySelector('.qty-input');
     qtyInput.addEventListener('input', () => updateStockQtyDisplay(lineDiv));
 
-    // Populate select2 dropdown
     populateSelect(selectId, lineDiv);
 }
 
 function formatProductOption (state) {
     if (!state.id) return state.text;
 
-    const isDisabled = $(state.element).prop("disabled");
+    const $element = $(state.element);
+    const productDesc = $element.data("product_desc") || state.text.split(" (In:")[0] || state.text;
+    const qty = Number($element.data("qty")) || 0;
+    const conversionFactor = Number($element.data("conversion_factor")) || 1;
+    const displayQty = currentUnitMode === "purchasing"
+        ? roundTo2(qty)
+        : roundTo2(qty * conversionFactor);
+    const unitCode = currentUnitMode === "purchasing"
+        ? $element.data("purchasing_unit_code") || ""
+        : $element.data("stocking_unit_code") || "";
+    const displayText = `${productDesc} (In: ${displayQty.toFixed(2)} ${unitCode})`;
 
-    if (isDisabled) {
-        return $(`
-            <span style="
+    const $elementDom = $(state.element);
+    if ($elementDom.prop("disabled")) {
+        return $(
+            `<span style="
                 color:#999 !important;
                 opacity:0.6;
                 text-decoration: line-through;
             ">
-                ${state.text} (already used)
-            </span>
-        `);
+                ${displayText} (already used)
+            </span>`
+        );
     }
 
-    return state.text;
+    return displayText;
 }
-
 
 function populateSelect(selectId, lineDiv) {
     const select = document.getElementById(selectId);
 
     products.forEach(p => {
         const displayQty = Number(p.qty_in_whse) || 0;
-        const opt = new Option(`${p.product_desc} (In: ${displayQty.toFixed(2)} ${p.purchasing_unit_code || ""})`, p.product_id, false, false);
+        const displayUnitCode = currentUnitMode === "purchasing" ? (p.purchasing_unit_code || "") : (p.stocking_unit_code || "");
+        const displayQtyForMode = currentUnitMode === "purchasing"
+            ? roundTo2(displayQty)
+            : roundTo2(displayQty * Number(p.conversion_factor || 1));
+        const opt = new Option(`${p.product_desc} (In: ${displayQtyForMode.toFixed(2)} ${displayUnitCode})`, p.product_id, false, false);
+        opt.dataset.productDesc = p.product_desc || "";
+        opt.dataset.purchasingUnitCode = p.purchasing_unit_code || "";
+        opt.dataset.purchasingUnitId = p.purchasing_unit_id || "";
+        opt.dataset.qty = Number(displayQty.toFixed(2));
+        opt.dataset.stockingUnitCode = p.stocking_unit_code || "";
+        opt.dataset.conversionFactor = Number(p.conversion_factor) || 1;
+        $(opt).data("product_desc", p.product_desc || "");
         $(opt).data("purchasing_unit_code", p.purchasing_unit_code || "");
         $(opt).data("purchasing_unit_id", p.purchasing_unit_id || null);
         $(opt).data("qty", Number(displayQty.toFixed(2)));
         $(opt).data("stocking_unit_code", p.stocking_unit_code || "");
         $(opt).data("conversion_factor", Number(p.conversion_factor) || 1);
 
-        // Disable the option if it is already in ibtLines
-        if (selectedProducts.has(p.product_id)) {
+        if (selectedProducts.has(String(p.product_id))) {
             opt.disabled = true;
         }
 
@@ -475,56 +630,73 @@ function populateSelect(selectId, lineDiv) {
         templateSelection: formatProductOption
     });
 
-    // When a product is chosen → update the stocking unit
-    $(`#${selectId}`).on("select2:select", function (e) {
+    $(`#${selectId}`).on("select2:select", async function () {
         const selected = $(this).find(":selected").data();
-        const uom_code = selected.purchasing_unit_code || "";
-        const uom_id = selected.purchasing_unit_id || null;
-        const stock_unit_code = selected.stocking_unit_code || "";
-
-        lineDiv.querySelector(".stock-unit").textContent = uom_code;
-        lineDiv.querySelector(".stock-unit-code").textContent = stock_unit_code;
-
         const val = this.value;
-        selectedProducts.add(val);
+        const previousSelection = lineDiv.dataset.selectedProductId || "";
+        const conversionFactor = Number(selected.conversion_factor) || 1;
 
-        // Disable this product in all other dropdowns
-        document.querySelectorAll(".product-select").forEach(otherSelect => {
-            if (otherSelect.id !== selectId) {
-                $(otherSelect).find(`option[value="${val}"]`).prop("disabled", true);
-                $(otherSelect).trigger("change.select2");
+        if (previousSelection && previousSelection !== val) {
+            selectedProducts.delete(previousSelection);
+        }
+
+        const duplicateElsewhere = selectedProducts.has(val);
+        if (duplicateElsewhere && previousSelection !== val) {
+            const duplicateLine = Array.from(document.querySelectorAll('.ibt-line')).find((candidate) => candidate !== lineDiv && candidate.dataset.selectedProductId === val);
+            if (duplicateLine) {
+                const result = await Swal.fire({
+                    title: "Duplicate Product",
+                    text: "This product is already selected on another line. Merge the quantities into the existing line or cancel?",
+                    icon: "warning",
+                    showCancelButton: true,
+                    confirmButtonText: "Merge",
+                    cancelButtonText: "Cancel"
+                });
+
+                if (!result.isConfirmed) {
+                    $(this).val(previousSelection || null).trigger("change.select2");
+                    if (previousSelection) {
+                        selectedProducts.add(previousSelection);
+                    }
+                    syncSelectOptionsState();
+                    return;
+                }
+
+                const incomingQty = Number(lineDiv.querySelector('.qty-input').value) || 0;
+                const targetQtyInput = duplicateLine.querySelector('.qty-input');
+                const targetMode = duplicateLine.dataset.unitMode || 'purchasing';
+                const currentMode = lineDiv.dataset.unitMode || 'purchasing';
+                const convertedQty = convertQtyBetweenUnits(incomingQty, conversionFactor, currentMode, targetMode);
+                targetQtyInput.value = roundTo2((Number(targetQtyInput.value) || 0) + convertedQty);
+                updateStockQtyDisplay(duplicateLine);
+
+                lineDiv.remove();
+                syncSelectOptionsState();
+                return;
             }
-        });
+        }
 
+        if (val) {
+            selectedProducts.add(val);
+        }
+        lineDiv.dataset.selectedProductId = val;
+        lineDiv.dataset.conversionFactor = conversionFactor;
+
+        lineDiv.querySelector('.stock-unit').textContent = (lineDiv.dataset.unitMode === 'stocking' ? selected.stocking_unit_code : selected.purchasing_unit_code) || '—';
         updateStockQtyDisplay(lineDiv);
+        syncSelectOptionsState();
     });
 
-    // When a product is cleared → re-enable in other dropdowns
     $(`#${selectId}`).on("select2:clear", function () {
-        const val = $(this).val();
-        selectedProducts.delete(val);
-
-        // Re-enable everywhere
-        document.querySelectorAll(".product-select").forEach(otherSelect => {
-            $(otherSelect).find(`option[value="${val}"]`).prop("disabled", false);
-            $(otherSelect).trigger("change.select2");
-        });
-
-        lineDiv.querySelector(".stock-unit").textContent = "—";
-        lineDiv.querySelector(".stock-unit-code").textContent = "—";
-        lineDiv.querySelector(".stock-qty-value").textContent = "0";
-
-        document.querySelectorAll(".product-select").forEach(otherSelect => {
-            if (otherSelect.id !== selectId) {
-                $(otherSelect).find("option").prop("disabled", false);
-                // Re-disable options that are already selected in other lines
-                $(".product-select").each(function() {
-                    const val = $(this).val();
-                    if (val) $(otherSelect).find(`option[value="${val}"]`).prop("disabled", true);
-                });
-                $(otherSelect).trigger('change.select2');
-            }
-        });
+        const currentSelection = lineDiv.dataset.selectedProductId || "";
+        if (currentSelection) {
+            selectedProducts.delete(currentSelection);
+        }
+        lineDiv.dataset.selectedProductId = "";
+        lineDiv.querySelector('.stock-unit').textContent = "—";
+        lineDiv.querySelector('.stock-unit-code').textContent = "—";
+        lineDiv.querySelector('.stock-qty-value').textContent = "0";
+        syncSelectOptionsState();
     });
 }
 
@@ -543,18 +715,13 @@ function updateStockQtyDisplay(lineDiv) {
     const selected = $(select).find(':selected').data();
     const conversionFactor = Number(selected.conversion_factor) || 1;
     const qty = Number(qtyInput.value) || 0;
-    const stockQty = Math.round(qty * conversionFactor * 100) / 100;
-    console.log(qty, conversionFactor, stockQty);
+    const unitMode = lineDiv.dataset.unitMode || currentUnitMode;
+    const displayUnitCode = unitMode === 'purchasing' ? selected.purchasing_unit_code || '—' : selected.stocking_unit_code || '—';
+    const equivalentQty = unitMode === 'purchasing' ? roundTo2(qty * conversionFactor) : roundTo2(qty);
 
-    stockQtyValue.textContent = stockQty.toLocaleString(undefined, {maximumFractionDigits: 2});
+    lineDiv.querySelector('.stock-unit').textContent = displayUnitCode;
+    stockQtyValue.textContent = equivalentQty.toLocaleString(undefined, {maximumFractionDigits: 2});
     stockUnitCode.textContent = selected.stocking_unit_code || '—';
-
-    // If requested stock qty (in stocking unit) exceeds available qty, prompt for adjustment
-    try {
-        const availableQty = Number(selected.qty) || 0; // purchasing UOM available
-    } catch (e) {
-        console.warn('Auto-check availability failed', e);
-    }
 }
 
 // Prompt user to open the stock adjustment modal if they have permission.
@@ -755,16 +922,17 @@ function renderCompactProducts(summaryDiv) {
             
             const qtyDisplay = Number(line.qty).toLocaleString(undefined, {maximumFractionDigits:2});
             const stockDisplay = Number(line.stock_qty).toLocaleString(undefined, {maximumFractionDigits:2});
+            const displayUnit = line.display_unit_code || line.uom_code;
 
             productItem.innerHTML = `
                 <div class="product-details">
                     <div class="product-name">${line.productText}</div>
                     <div class="product-meta">
-                        ${qtyDisplay} ${line.uom_code} → ${stockDisplay} ${line.stocking_uom_code}
+                        ${qtyDisplay} ${displayUnit} → ${stockDisplay} ${line.stocking_uom_code}
                     </div>
                 </div>
                 <div class="product-qty">
-                    <span class="qty-badge">${qtyDisplay} ${line.uom_code}</span>
+                    <span class="qty-badge">${qtyDisplay} ${displayUnit}</span>
                 </div>
             `;
             

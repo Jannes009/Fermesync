@@ -593,6 +593,52 @@ button:active { transform: scale(0.98); }
       right: 6px !important;
     }
 
+    .qty-control {
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+    }
+
+    .unit-mode-selector {
+      margin: 16px 0 12px;
+      padding: 12px;
+      background: #f8f9fa;
+      border: 1px solid var(--input-border);
+      border-radius: 8px;
+    }
+
+    .unit-mode-selector label {
+      display: block;
+      margin-bottom: 8px;
+      font-size: 0.85rem;
+      font-weight: 700;
+      color: var(--secondary-text);
+    }
+
+    .unit-mode-options {
+      display: flex;
+      gap: 8px;
+      flex-wrap: wrap;
+    }
+
+    .unit-mode-btn {
+      border: 1px solid var(--input-border);
+      border-radius: 6px;
+      background: #fff;
+      color: var(--secondary-text);
+      font-size: 0.85rem;
+      font-weight: 600;
+      padding: 8px 12px;
+      cursor: pointer;
+      transition: all 0.15s ease;
+    }
+
+    .unit-mode-btn.active {
+      background: var(--button-bg);
+      color: var(--button-text);
+      border-color: var(--button-bg);
+    }
+
     .qty-input {
       height: 36px;
       font-size: 1rem;
@@ -819,6 +865,14 @@ button:active { transform: scale(0.98); }
         <!-- STEP 2 — LINES -->
         <div id="ibt-step-2" class="hidden">
             <h3>Step 2 – Select Products</h3>
+
+            <div class="unit-mode-selector">
+                <label>Quantity Mode</label>
+                <div class="unit-mode-options">
+                    <button type="button" class="unit-mode-btn active" data-global-unit-mode="purchasing">Purchasing Units</button>
+                    <button type="button" class="unit-mode-btn" data-global-unit-mode="stocking">Stocking Units</button>
+                </div>
+            </div>
 
             <!-- Product Lines Container -->
             <div id="ibt-lines-container"></div>

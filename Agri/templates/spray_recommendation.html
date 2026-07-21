@@ -341,7 +341,6 @@
         <div style="display:flex; justify-content:space-between; gap:12px; align-items:start;">
             <div>
                 <h2 style="margin:0;">Create Spray Recommendation</h2>
-                <div style="color:var(--muted)">Configure dose method, projects and products</div>
             </div>
         </div>
 
@@ -387,20 +386,17 @@
             <div class="mode-grid">
                 <label class="mode-card active" data-mode="per_100l">
                     <input type="radio" name="dose_mode" value="per_100l" checked>
-                    <div class="mode-title">Concentration Dose</div>
-                    <div class="mode-help">Dose per 100L water</div>
+                    <div class="mode-title">Per 100L Water</div>
                 </label>
 
                 <label class="mode-card" data-mode="per_ha_tank">
                     <input type="radio" name="dose_mode" value="per_ha_tank">
-                    <div class="mode-title">Area Dose (Tank Mix)</div>
-                    <div class="mode-help">Dose per hectare with tank mixes</div>
+                    <div class="mode-title">Per Ha(Mix)</div>
                 </label>
 
                 <label class="mode-card" data-mode="per_ha_direct">
                     <input type="radio" name="dose_mode" value="per_ha_direct">
-                    <div class="mode-title">Direct Area Dose</div>
-                    <div class="mode-help">Dose per hectare without mixing</div>
+                    <div class="mode-title">Per Ha(Direct)</div>
                 </label>
             </div>
 
@@ -1057,11 +1053,11 @@ function recalcEverything() {
 
     if (mode === "per_ha_direct") {
         // Direct mode: no water/tanks
-        document.getElementById('sticky-water').textContent = '-';
-        document.getElementById('sticky-tanks').textContent = '-';
-        document.getElementById('sum-water').textContent = '-';
-        document.getElementById('sum-tanks').textContent = '-';
-        document.getElementById('sum-partial').textContent = '-';
+        const stickyWaterEl = document.getElementById('sticky-water'); if (stickyWaterEl) stickyWaterEl.textContent = '-';
+        const stickyTanksEl = document.getElementById('sticky-tanks'); if (stickyTanksEl) stickyTanksEl.textContent = '-';
+        const sumWaterElDirect = document.getElementById('sum-water'); if (sumWaterElDirect) sumWaterElDirect.textContent = '-';
+        const sumTanksElDirect = document.getElementById('sum-tanks'); if (sumTanksElDirect) sumTanksElDirect.textContent = '-';
+        const sumPartialElDirect = document.getElementById('sum-partial'); if (sumPartialElDirect) sumPartialElDirect.textContent = '-';
         updateProductTotals(totalHa, null, null);
         return;
     }
@@ -1085,11 +1081,11 @@ function recalcEverything() {
     // Update water display (sticky bar is primary; update legacy ids only if present)
     const sumWaterEl = document.getElementById('sum-water');
     if (sumWaterEl) sumWaterEl.textContent = totalWater.toFixed(1) + ' L';
-    document.getElementById('sticky-water').textContent = totalWater.toFixed(1);
+    const stickyWaterEl2 = document.getElementById('sticky-water'); if (stickyWaterEl2) stickyWaterEl2.textContent = totalWater.toFixed(1);
 
     if (!waterPerTank || totalWater <= 0) {
         const sumTanksEl = document.getElementById('sum-tanks'); if (sumTanksEl) sumTanksEl.textContent = '-';
-        document.getElementById('sticky-tanks').textContent = '-';
+        const stickyTanksEl2 = document.getElementById('sticky-tanks'); if (stickyTanksEl2) stickyTanksEl2.textContent = '-';
         const sumPartialEl = document.getElementById('sum-partial'); if (sumPartialEl) sumPartialEl.textContent = '-';
         updateProductTotals(totalHa, totalWater, null);
         return;
@@ -1099,7 +1095,7 @@ function recalcEverything() {
     let partial = totalWater - (Math.floor(totalWater / waterPerTank) * waterPerTank);
 
     const sumTanksEl2 = document.getElementById('sum-tanks'); if (sumTanksEl2) sumTanksEl2.textContent = totalTanks;
-    document.getElementById('sticky-tanks').textContent = totalTanks;
+    const stickyTanksEl3 = document.getElementById('sticky-tanks'); if (stickyTanksEl3) stickyTanksEl3.textContent = totalTanks;
     const sumPartialEl2 = document.getElementById('sum-partial'); if (sumPartialEl2) sumPartialEl2.textContent = partial > 0 ? partial.toFixed(1) + ' L' : '0 L';
 
     updateProductTotals(totalHa, totalWater, waterPerTank);
@@ -1145,7 +1141,7 @@ function updateProductTotals(totalHa, totalWater, waterPerTank) {
     });
 
     const sumProductsEl = document.getElementById('sum-products'); if (sumProductsEl) sumProductsEl.textContent = productCount;
-    document.getElementById('sticky-products').textContent = productCount;
+    const stickyProductsEl = document.getElementById('sticky-products'); if (stickyProductsEl) stickyProductsEl.textContent = productCount;
 }
 
 function renderTankBreakdown(totalWater, waterPerTank) {

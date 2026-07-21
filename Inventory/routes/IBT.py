@@ -92,6 +92,7 @@ def submit_ibt():
                 line = Evo.WarehouseIBTLine()
                 line.InventoryItem = Evo.InventoryItem(int(l["ProductId"]))
                 line.QuantityIssued = l["QtyIssued"]
+                print("QtyIssued:", l["QtyIssued"])
                 line.Description = "IBT line issued via SDK"
                 line.Reference = current_user.username
                 ibt.Detail.Add(line)
@@ -103,19 +104,21 @@ def submit_ibt():
 
         cursor.execute("""
         INSERT INTO [stk].[IBT](
+        [IBTId],
         [IBTDispatchUserId],
         [IBTDispatchTimeStamp],
         [IBTNo],
         [IBTDispatchAuditNo]
-        )VALUES(?,GETDATE(),?,?)
-        """, (current_user.id, ibt.Number, ibt.AuditNumberIssued))
+        )VALUES(?,?,GETDATE(),?,?)
+        """, (ibt.ID, current_user.id, ibt.Number, ibt.AuditNumberIssued))
         conn.commit()
         conn.close()
 
         return jsonify({
             "success": True,
             "message": "IBT successfully created",
-            "ibtNumber": ibt.Number
+            "ibtNumber": ibt.Number,
+            "ibtId": ibt.ID
         })
 
     except Exception as e:
@@ -146,16 +149,17 @@ def fetch_issued_ibts():
         return jsonify({"ibts": []})
     placeholders = ",".join(["?"] * len(warehouses))
     cursor.execute(f"""
-    Select Distinct cIBTNumber, cIBTDescription, FromWhseName, ToWhseName
+    Select Distinct IDWhseIBT, cIBTNumber, cIBTDescription, FromWhseName, ToWhseName
     from [stk].[_uvIBTSummary]
     Where StatusID = 1 AND ToWhseLink IN ({placeholders})
     """, warehouses)
     ibts = [
         {
-            "ibt_number": row[0],
-            "description": row[1],
-            "warehouse_from": row[2],
-            "warehouse_to": row[3]
+            "ibt_id": row.IDWhseIBT,
+            "ibt_number": row.cIBTNumber,
+            "description": row.cIBTDescription,
+            "warehouse_from": row.FromWhseName,
+            "warehouse_to": row.ToWhseName
         }
         for row in cursor.fetchall()
     ]
@@ -166,30 +170,33 @@ def fetch_issued_ibts():
 
 @inventory_bp.route("/display_ibt", methods=["GET"])
 def display_ibt():
-    ibt_number = request.args.get("ibt_number")
+    ibt_id = request.args.get("ibt_id")
 
     conn = create_db_connection()
     cursor = conn.cursor()
 
     cursor.execute("""
     Select 
-    cIBTNumber, cIBTDescription, FromWhseName, ToWhseName
+    IDWhseIBT, cIBTNumber, cIBTDescription, FromWhseName, ToWhseName
+    ,IDWhseIBTLines
     ,IBT.StockLink, StockDesc ,cDescription, cReference, fQtyIssued,
     CONV.StockingUnitCode, CONV.PurchasingUnitCode, CONV.ConversionFactor
     from [stk].[_uvIBTSummary] IBT
 	JOIN [cmn].[_uvStockUnitConversion] CONV on CONV.StockLink = IBT.StockLink
-    Where StatusID = 1 and cIBTNumber = ?
-    """, (ibt_number,))
+    Where StatusID = 1 and IDWhseIBT = ?
+    """, (ibt_id,))
 
     rows = cursor.fetchall()
     conn.close()
 
     ibt_details = [
         {
+            "ibt_id": row.IDWhseIBT,
             "ibt_number": row.cIBTNumber,
             "description": row.cIBTDescription,
             "warehouse_from": row.FromWhseName,
             "warehouse_to": row.ToWhseName,
+            "ibt_line_id": row.IDWhseIBTLines,
             "product_id": row.StockLink,
             "product_desc": row.StockDesc,
             "line_description": row.cDescription,
@@ -207,14 +214,17 @@ def display_ibt():
 def submit_ibt_receive():
     try:
         data = request.get_json()
+        ibt_id = data.get("ibt_id")
 
         with EvolutionConnection():
-            ibt = Evo.WarehouseIBT(data["ibt_number"])
+            ibt = Evo.WarehouseIBT(int(ibt_id))
 
             for line_data in data.get("lines", []):
                 matched = False
+                line_id = line_data.get("ibt_line_id")
                 for ibt_line in ibt.Detail:
-                    if ibt_line.InventoryItemID == int(line_data["InventoryItemID"]):
+                    if ibt_line.ID == int(line_id):
+                        print(line_data.get("QuantityReceived"), line_data.get("QuantityVariance"))
                         ibt_line.QuantityReceived = line_data.get("QuantityReceived")
                         ibt_line.QuantityVariance = line_data.get("QuantityVariance")
                         ibt_line.Description = line_data.get("Description", "")
@@ -222,7 +232,8 @@ def submit_ibt_receive():
                         matched = True
                         break
                 if not matched:
-                    return jsonify({"success": False, "message": f"IBT line not found for InventoryItemID {line_data['InventoryItemID']}"}), 400
+                    missing_id = line_id if line_id is not None else line_data.get("InventoryItemID")
+                    return jsonify({"success": False, "message": f"IBT line not found for line id {missing_id}"}), 400
 
             ibt.ReceiveStock()
         conn = create_db_connection()
@@ -231,8 +242,8 @@ def submit_ibt_receive():
         UPDATE [stk].[IBT]
         SET [IBTRecUserId] = ?, [IBTRecTimeStamp] = GETDATE(),
         [IBTRecAuditNo] = ?
-        WHERE [IBTNo] = ?
-        """, (current_user.id, ibt.AuditNumberReceived, data["ibt_number"]))
+        WHERE [IBTId] = ?
+        """, (current_user.id, ibt.AuditNumberReceived, ibt_id))
         conn.commit()
         conn.close()
 

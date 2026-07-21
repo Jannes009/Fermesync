@@ -18,6 +18,25 @@ def setup():
     """)
     farms = cur.fetchall()
 
+    # People
+    cur.execute("""
+        SELECT p.IdPerson, p.PersonName, p.PersonSprayExecutionResponsible
+        FROM agr.People p
+        ORDER BY p.PersonName
+    """)
+    people = cur.fetchall()
+    
+    # Get farm assignments for each person
+    people_farms = {}
+    for person in people:
+        cur.execute("""
+            SELECT f.IdFarm, f.FarmName FROM agr.FarmPeople fp
+            JOIN agr.Farm f ON f.IdFarm = fp.FarmId
+            WHERE fp.PersonId = ?
+            ORDER BY f.FarmName
+        """, person[0])
+        people_farms[person[0]] = cur.fetchall()
+
     # Crops
     cur.execute("""
         SELECT IdCrop, CropCode, CropDescription
@@ -105,7 +124,9 @@ def setup():
         warehouses=warehouses,
         spray_methods=spray_methods,
         projects=projects,
-        spray_projects=spray_projects
+        spray_projects=spray_projects,
+        people=people,
+        people_farms=people_farms
     )
 
 # =========================
@@ -280,3 +301,107 @@ def update_project_attr():
     conn.close()
 
     return jsonify({"success": True})
+
+
+# =========================
+# People Management
+# =========================
+
+@agri_bp.route("/setup/person", methods=["POST"])
+@login_required
+def add_person():
+    data = request.get_json(silent=True)
+    if data:
+        name = (data.get('name') or '').strip()
+        is_responsible = data.get('is_spray_execution_responsible', False)
+        farm_ids = data.get('farms', [])
+    else:
+        name = (request.form.get('person_name') or '').strip()
+        is_responsible = request.form.get('person_spray_responsible') == 'on'
+        farm_ids = request.form.getlist('person_farms')
+
+    if not name:
+        if data:
+            return jsonify({"success": False, "message": "Person name is required"}), 400
+        return redirect(url_for("agri.setup"))
+
+    conn = create_db_connection()
+    cur = conn.cursor()
+    cur.execute("""
+        INSERT INTO agr.People (PersonName, PersonSprayExecutionResponsible)
+        VALUES (?, ?)
+    """, name, 1 if is_responsible else 0)
+    
+    # Get the inserted person's ID
+    cur.execute("SELECT SCOPE_IDENTITY()")
+    person_id = cur.fetchone()[0]
+    
+    # Insert farm assignments
+    for farm_id in farm_ids:
+        cur.execute("""
+            INSERT INTO agr.FarmPeople (PersonId, FarmId)
+            VALUES (?, ?)
+        """, person_id, farm_id)
+    
+    conn.commit()
+    conn.close()
+
+    if data:
+        return jsonify({"success": True})
+    return redirect(url_for("agri.setup"))
+
+
+@agri_bp.route('/setup/person/update', methods=['POST'])
+@login_required
+def update_person():
+    data = request.get_json()
+    if not data:
+        return jsonify({"success": False, "message": "Missing payload"}), 400
+
+    person_id = data.get('id')
+    name = (data.get('name') or '').strip()
+    is_responsible = data.get('is_spray_execution_responsible', False)
+    farm_ids = data.get('farms', [])
+
+    if not person_id or not name:
+        return jsonify({"success": False, "message": "Person ID and name are required"}), 400
+
+    conn = create_db_connection()
+    cur = conn.cursor()
+    
+    # Update person
+    cur.execute("""
+        UPDATE agr.People
+        SET PersonName = ?, PersonSprayExecutionResponsible = ?
+        WHERE IdPerson = ?
+    """, name, 1 if is_responsible else 0, person_id)
+    
+    # Delete existing farm assignments
+    cur.execute("""
+        DELETE FROM agr.FarmPeople WHERE PersonId = ?
+    """, person_id)
+    
+    # Insert new farm assignments
+    for farm_id in farm_ids:
+        cur.execute("""
+            INSERT INTO agr.FarmPeople (PersonId, FarmId)
+            VALUES (?, ?)
+        """, person_id, farm_id)
+    
+    conn.commit()
+    conn.close()
+
+    return jsonify({"success": True})
+
+
+@agri_bp.route('/setup/person/<int:person_id>/farms', methods=['GET'])
+@login_required
+def get_person_farms(person_id):
+    conn = create_db_connection()
+    cur = conn.cursor()
+    cur.execute("""
+        SELECT FarmId FROM agr.FarmPeople WHERE PersonId = ?
+    """, person_id)
+    farm_ids = [row[0] for row in cur.fetchall()]
+    conn.close()
+    return jsonify({"farm_ids": farm_ids})

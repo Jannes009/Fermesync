@@ -19,17 +19,15 @@
 * { margin:0; padding:0; box-sizing:border-box; }
 body { font-family: Arial, sans-serif; color: var(--primary-text); background: var(--primary-bg); line-height:1.4; }
 .container { width:100%; max-width:210mm; margin:0 auto; padding:10mm; background:var(--container-bg); position:relative; }
-.header { border-bottom:2px solid var(--logo-color); padding-bottom:5mm; margin-bottom:5mm; position:relative; }
-.header .title { font-size:20px; font-weight:900; color:var(--primary-text); }
-.header .subtitle { font-size:10px; color:var(--muted); margin-top:2px; }
-.logo {
-  position:absolute;
-  top:0;
-  right:0;
-  width:45px;
-  opacity:0.5;
-  transform: translate(0px, -10px);
-}
+.header { border-bottom:2px solid var(--logo-color); padding-bottom:5mm; margin-bottom:5mm; display:flex; align-items:flex-start; justify-content:space-between; gap:12px; }
+.header-left { display:flex; align-items:center; gap:14px; flex:1 1 auto; min-width:0; }
+.header-title-group { display:flex; flex-direction:column; justify-content:center; min-width:0; }
+.header .title { font-size:26px; font-weight:900; color:var(--primary-text); margin:0; line-height:1.05; }
+.header .subtitle { font-size:11px; color:var(--muted); margin-top:4px; }
+.logo { display:block; width:auto; max-height:75px; object-fit:contain; }
+.logo.client-logo { max-width:210px; opacity:1; }
+.logo.app-logo { max-width:45px; max-height:45px; opacity:1; }
+.compact-signature .app-logo-container { flex:1 1 100%; display:flex; justify-content:flex-end; align-items:flex-end; margin-top:4mm; }
 .info-grid { display:grid; grid-template-columns:repeat(3,minmax(0,1fr)); gap:5mm; margin-bottom:5mm; }
 .info-box { border:1px solid var(--table-border); padding:4mm; background:#f9fbfd; border-radius:5px; }
 .info-label { font-size:8px; font-weight:700; color:var(--logo-color); text-transform:uppercase; margin-bottom:1px; }
@@ -80,10 +78,17 @@ body { font-family: Arial, sans-serif; color: var(--primary-text); background: v
 <body>
 <div class="container">
   <div class="header">
-    <div class="title">SPRAY RECORD</div>
-    {% if instruction.logo_data %}
-      <img class="logo" src="{{ instruction.logo_data }}" alt="Logo">
-    {% endif %}
+    <div class="header-left">
+      {% if instruction.client_logo_data %}
+        <img class="logo client-logo" src="{{ instruction.client_logo_data }}" alt="Client Logo">
+      {% endif %}
+      <div class="header-title-group">
+        <div class="title">SPRAY RECORD</div>
+        {% if instruction.app_logo_data %}
+          <div class="subtitle">{{ instruction.instruction_id }}</div>
+        {% endif %}
+      </div>
+    </div>
   </div>
 
   <div class="info-grid">
@@ -178,12 +183,17 @@ body { font-family: Arial, sans-serif; color: var(--primary-text); background: v
 
   <div class="compact-signature">
     <div class="compact-signature-item">
-      <span>Operator Name:</span><span class="compact-signature-line">&nbsp;</span>
+      <span>Manager Signature:</span><span class="compact-signature-line">&nbsp;</span>
     </div>
     <div class="compact-signature-item">
       <span>Operator Signature:</span><span class="compact-signature-line">&nbsp;</span>
     </div>
     <div class="compact-created">Created by: <strong>{{ instruction.created_by }}</strong></div>
+    {% if instruction.app_logo_data %}
+    <div class="app-logo-container">
+      <img class="logo app-logo" src="{{ instruction.app_logo_data }}" alt="App Logo">
+    </div>
+    {% endif %}
   </div>
 </div>
 </body>

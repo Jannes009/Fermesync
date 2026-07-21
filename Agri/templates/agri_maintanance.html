@@ -82,6 +82,7 @@
             <li><a class="nav-link active" data-tab="tab-farms">Farms</a></li>
             <li><a class="nav-link" data-tab="tab-spray">Spray Methods</a></li>
             <li><a class="nav-link" data-tab="tab-projects">Project Attributes</a></li>
+            <li><a class="nav-link" data-tab="tab-people">People</a></li>
           </ul>
         </div>
       </div>
@@ -219,6 +220,44 @@
             </div>
         </div>
 
+        <div class="tab-pane" id="tab-people">
+          <div class="section-head">
+            <h2>People</h2>
+            <form method="post" action="{{ url_for('agri.add_person') }}" class="controls">
+              <input name="person_name" class="input" placeholder="Person name" required>
+              <label style="display: flex; align-items: center; gap: 0.5rem; margin: 0;">
+                <input type="checkbox" name="person_spray_responsible" style="margin: 0; width: auto;">
+                <span>Spray Execution Responsible</span>
+              </label>
+              <button class="btn">Add Person</button>
+            </form>
+          </div>
+          <div style="overflow:auto;">
+            <table class="summary-table">
+              <thead><tr><th>ID</th><th>Name</th><th>Assigned Farms</th><th>Spray Execution Responsible</th><th>Actions</th></tr></thead>
+              <tbody>
+                {% for p in people %}
+                <tr data-entity="person" data-id="{{ p.IdPerson }}" data-name="{{ p.PersonName }}" data-is-responsible="{{ 1 if p.PersonSprayExecutionResponsible else 0 }}">
+                  <td>{{ p.IdPerson }}</td>
+                  <td>{{ p.PersonName }}</td>
+                  <td>
+                    {% if people_farms.get(p.IdPerson) %}
+                      {% for farm in people_farms[p.IdPerson] %}
+                        <span style="display: inline-block; background: #e8f4f8; color: #0284c7; padding: 0.25rem 0.5rem; border-radius: 4px; margin-right: 0.25rem; font-size: 0.85rem;">{{ farm.FarmName }}</span>
+                      {% endfor %}
+                    {% else %}
+                      <span style="color: #999;">No farms assigned</span>
+                    {% endif %}
+                  </td>
+                  <td>{% if p.PersonSprayExecutionResponsible %}<span style="color: #28a745; font-weight: 600;">✓ Yes</span>{% else %}<span style="color: #999;">No</span>{% endif %}</td>
+                  <td><button class="btn edit-row-btn" type="button" data-entity="person" data-id="{{ p.IdPerson }}">Edit</button></td>
+                </tr>
+                {% endfor %}
+              </tbody>
+            </table>
+          </div>
+        </div>
+
       </div>
     </div>
   </div>
@@ -318,6 +357,26 @@
           </div>
         </div>
 
+        <div class="edit-modal-field edit-field-person">
+          <div class="form-row">
+            <label for="edit-person-name">Person name</label>
+            <input type="text" id="edit-person-name" name="person_name" required>
+          </div>
+          <div class="form-row">
+            <label for="edit-person-farms">Assigned Farms</label>
+            <select id="edit-person-farms" name="person_farms" class="input select2" multiple>
+              <option value="">Select Farms</option>
+              {% for f in farms %}<option value="{{ f.IdFarm }}">{{ f.FarmName }}</option>{% endfor %}
+            </select>
+          </div>
+          <div class="form-row">
+            <label style="display: flex; align-items: center; gap: 0.5rem;">
+              <input type="checkbox" id="edit-person-responsible" name="person_responsible" style="margin: 0; width: auto;">
+              <span>Spray Execution Responsible</span>
+            </label>
+          </div>
+        </div>
+
         <div class="edit-modal-footer">
           <button type="button" class="btn ghost" id="edit-modal-cancel">Cancel</button>
            <button type="submit" class="btn">Save</button>
@@ -397,6 +456,19 @@ document.addEventListener('DOMContentLoaded', function () {
 
     if (entity === 'farm') {
       document.getElementById('edit-farm-name').value = row.dataset.name || '';
+    }
+
+    if (entity === 'person') {
+      document.getElementById('edit-person-name').value = row.dataset.name || '';
+      document.getElementById('edit-person-responsible').checked = row.dataset.isResponsible === '1';
+      
+      // Fetch person's current farm assignments
+      fetch(`/agri/setup/person/${id}/farms`)
+        .then(r => r.json())
+        .then(data => {
+          $('#edit-person-farms').val(data.farm_ids || []).trigger('change');
+        })
+        .catch(err => console.error('Error fetching person farms:', err));
     }
 
     if (entity === 'spray_method') {
@@ -502,6 +574,11 @@ document.addEventListener('DOMContentLoaded', function () {
       payload.water_per_ha = document.getElementById('edit-spray-method-water').value;
       payload.tank_size = document.getElementById('edit-spray-method-tank').value;
     }
+    if (entity === 'person') {
+      payload.name = document.getElementById('edit-person-name').value.trim();
+      payload.is_spray_execution_responsible = document.getElementById('edit-person-responsible').checked;
+      payload.farms = $('#edit-person-farms').val() || [];
+    }
     if (entity === 'project_attr') {
       payload.project_id = document.getElementById('edit-project-attr-project').value;
       payload.farm_id = document.getElementById('edit-project-attr-farm').value;
@@ -518,11 +595,12 @@ document.addEventListener('DOMContentLoaded', function () {
     const routeMap = {
       farm: 'farm',
       spray_method: 'spraymethod',
-      project_attr: 'projectattr'
+      project_attr: 'projectattr',
+      person: 'person'
     };
     let endpoint = '';
-    if (entity === 'project_attr' && (!id || id === '')) {
-      endpoint = '/agri/setup/projectattr/add';
+    if ((entity === 'project_attr' || entity === 'person') && (!id || id === '')) {
+      endpoint = `/agri/setup/${routeMap[entity]}/`;
     } else {
       endpoint = `/agri/setup/${routeMap[entity] || entity}/update`;
     }
@@ -564,6 +642,26 @@ document.addEventListener('DOMContentLoaded', function () {
             row.cells[1].textContent = payload.name;
             row.cells[2].textContent = payload.water_per_ha;
             row.cells[3].textContent = payload.tank_size;
+          }
+          if (entity === 'person') {
+            row.dataset.name = payload.name;
+            row.dataset.isResponsible = payload.is_spray_execution_responsible ? '1' : '0';
+            row.cells[1].textContent = payload.name;
+            
+            // Update farms display
+            const farmsCell = row.cells[2];
+            if (payload.farms && payload.farms.length > 0) {
+              const farmOptions = Array.from(document.querySelectorAll('#edit-person-farms option'))
+                .filter(opt => payload.farms.includes(opt.value))
+                .map(opt => opt.textContent);
+              farmsCell.innerHTML = farmOptions
+                .map(f => `<span style="display: inline-block; background: #e8f4f8; color: #0284c7; padding: 0.25rem 0.5rem; border-radius: 4px; margin-right: 0.25rem; font-size: 0.85rem;">${f}</span>`)
+                .join('');
+            } else {
+              farmsCell.innerHTML = '<span style="color: #999;">No farms assigned</span>';
+            }
+            
+            row.cells[3].innerHTML = payload.is_spray_execution_responsible ? '<span style="color: #28a745; font-weight: 600;">✓ Yes</span>' : '<span style="color: #999;">No</span>';
           }
           if (entity === 'project_attr') {
             const projectOption = document.querySelector(`#edit-project-attr-project option[value="${payload.project_id}"]`);

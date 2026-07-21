@@ -597,18 +597,36 @@ def get_method_water(method_id):
 def get_responsible_persons():
     if "SPRAY_EXEC_CREATE" not in current_user.permissions and "SPRAY_EXEC_VIEW" not in current_user.permissions:
         abort(403)
+    
+    spray_ids_raw = request.args.get("spray_ids", "")
+    spray_ids = [int(x) for x in spray_ids_raw.split(',') if x.strip().isdigit()] if spray_ids_raw else []
+    
     conn = create_db_connection()
     cur = conn.cursor()
     
-    # Get users who can be responsible for executions - you might want to filter by role or department
-    cur.execute("""
-        SELECT IdPerson, PersonName
-        FROM agr.People
-        WHERE PersonSprayExecutionResponsible = 1 
-        ORDER BY PersonName
-    """)
+    if spray_ids:
+        # Get farms for the selected sprays and then get people assigned to those farms
+        placeholders = ','.join('?' for _ in spray_ids)
+        cur.execute(f"""
+            SELECT DISTINCT p.IdPerson, p.PersonName
+            FROM agr.People p
+            JOIN agr.FarmPeople fp ON fp.PersonId = p.IdPerson
+            JOIN agr.ProjectAttributes pa ON pa.ProjAttrFarmId = fp.FarmId
+            JOIN agr.SprayProjects sp ON sp.SprayPProjectId = pa.ProjAttrProjectId
+            WHERE sp.SprayPSprayId IN ({placeholders})
+              AND p.PersonSprayExecutionResponsible = 1
+            ORDER BY p.PersonName
+        """, tuple(spray_ids))
+    else:
+        # Fallback: get all responsible persons if no spray IDs provided
+        cur.execute("""
+            SELECT IdPerson, PersonName
+            FROM agr.People
+            WHERE PersonSprayExecutionResponsible = 1 
+            ORDER BY PersonName
+        """)
     
-    persons = [{"id": row.IdPerson, "name": row.PersonName} for row in cur.fetchall()]
+    persons = [{"id": row[0], "name": row[1]} for row in cur.fetchall()]
     conn.close()
     return jsonify(persons)
 

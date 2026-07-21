@@ -144,7 +144,7 @@ document.addEventListener("DOMContentLoaded", async () => {
 
     await loadIbtList();
 
-    const initialIbt = new URLSearchParams(window.location.search).get('ibt_number');
+    const initialIbt = new URLSearchParams(window.location.search).get('ibt_id') || new URLSearchParams(window.location.search).get('ibt_number');
     if (initialIbt) {
         loadIbtDetail(initialIbt);
     }
@@ -181,7 +181,7 @@ async function loadIbtList() {
         let html = '<div class="ibt-list">';
         ibts.forEach((ibt) => {
             html += `
-                <div class="ibt-item" data-ibt-number="${ibt.ibt_number}">
+                <div class="ibt-item" data-ibt-id="${ibt.ibt_id || ibt.ibt_number}" data-ibt-number="${ibt.ibt_number}">
                     <div class="ibt-number">${ibt.ibt_number}</div>
                     <div class="ibt-description">${ibt.description || '—'}</div>
                     <div class="ibt-details">
@@ -195,25 +195,25 @@ async function loadIbtList() {
 
         container.querySelectorAll('.ibt-item').forEach(el => {
             el.addEventListener('click', function() {
-                const ibtNumber = this.getAttribute('data-ibt-number');
-                loadIbtDetail(ibtNumber);
+                const ibtId = this.getAttribute('data-ibt-id') || this.getAttribute('data-ibt-number');
+                loadIbtDetail(ibtId);
             });
         });
     }
 
-    async function loadIbtDetail(ibt_number) {
-        currentIbt = ibt_number;
+    async function loadIbtDetail(ibt_id) {
+        currentIbt = ibt_id;
         document.getElementById("ibt-list-view").classList.add("hidden");
         document.getElementById("ibt-detail-view").classList.remove("hidden");
         const container = document.getElementById("ibt-detail-container");
         container.innerHTML = '<div class="loading">Loading...</div>';
 
         try {
-            const res = await fetch(`/inventory/display_ibt?ibt_number=${ibt_number}`);
+            const res = await fetch(`/inventory/display_ibt?ibt_id=${encodeURIComponent(ibt_id)}`);
             const { ibt_details } = await res.json();
             displayIbtDetail(ibt_details);
             setupUnitToggle();
-            history.replaceState(null, "", `?ibt_number=${encodeURIComponent(ibt_number)}`);
+            history.replaceState(null, "", `?ibt_id=${encodeURIComponent(ibt_id)}`);
         } catch (err) {
             container.innerHTML = `<div class="empty-state"><h3>Error</h3><p>Failed to load details.</p></div>`;
         }
@@ -245,13 +245,13 @@ async function loadIbtList() {
 
         lines.forEach((line, i) => {
             html += `
-                <div class="product-line" data-line="${i}" data-product-id="${line.product_id}" data-conversion-factor="${line.conversion_factor || 1}" data-purchasing-unit-code="${line.purchasing_unit_code || ''}" data-stocking-unit-code="${line.stocking_unit_code || ''}" data-issued-purchase="${line.qty_issued}">
+                <div class="product-line" data-line="${i}" data-ibt-line-id="${line.ibt_line_id}" data-product-id="${line.product_id}" data-conversion-factor="${line.conversion_factor || 1}" data-purchasing-unit-code="${line.purchasing_unit_code || ''}" data-stocking-unit-code="${line.stocking_unit_code || ''}" data-issued-stocking="${line.qty_issued}">
                     <div class="product-line-header">
                         <div class="product-info">
                             <div class="product-desc">${line.product_desc}</div>
                             <div class="line-reference" style="font-size:0.75rem;color:#888;margin-top:4px;">${line.reference || ''}</div>
                         </div>
-                        <div class="qty-issued"><span>Issued</span>${line.qty_issued} ${line.purchasing_unit_code || ''} / ${Math.round(line.qty_issued * (line.conversion_factor || 1) * 100) / 100} ${line.stocking_unit_code || ''}</div>
+                        <div class="qty-issued"><span>Issued</span>${Math.round(line.qty_issued / line.conversion_factor)} ${line.purchasing_unit_code || ''} / ${line.qty_issued } ${line.stocking_unit_code || ''}</div>
                     </div>
                     <div class="quantity-inputs">
                         <div class="quantity-group">
@@ -294,10 +294,11 @@ async function loadIbtList() {
                 const i = input.dataset.line;
                 const lineEl = document.querySelector(`.product-line[data-line="${i}"]`);
                 if (!lineEl) return;
-                const issuedPurchase = Number(lineEl.dataset.issuedPurchase) || 0;
+                const issuedStocking = Number(lineEl.dataset.issuedStocking) || 0;
                 const conversionFactor = Number(lineEl.dataset.conversionFactor) || 1;
-                const expectedStock = Math.round(issuedPurchase * conversionFactor * 100) / 100;
-                const maxAllowed = (currentUnitMode === 'stocking') ? expectedStock : issuedPurchase;
+                const issuedPurchasing = Number(lineEl.dataset.issuedStocking / conversionFactor) || 0;
+                const expectedStock = Math.round(issuedStocking);
+                const maxAllowed = (currentUnitMode === 'stocking') ? expectedStock : issuedPurchasing;
 
                 const raw = input.value;
 
@@ -347,26 +348,26 @@ async function loadIbtList() {
         const lineEl = document.querySelector(`.product-line[data-line="${i}"]`);
         const receivedInput = document.querySelector(`.qty-received[data-line="${i}"]`);
         if (!lineEl || !receivedInput) return;
-        const issuedPurchase = Number(lineEl.dataset.issuedPurchase) || 0;
+        const issuedStocking = Number(lineEl.dataset.issuedStocking) || 0;
         const conversionFactor = Number(lineEl.dataset.conversionFactor) || 1;
+        const issuedPurchasing = Math.round(issuedStocking / conversionFactor);
         const raw = receivedInput.value;
         const receivedNum = isNaN(parseFloat(raw)) ? 0 : parseFloat(raw);
         const receivedLabel = document.getElementById(`received-label-${i}`);
         const varianceLabel = document.getElementById(`variance-label-${i}`);
         const modeLabel = document.getElementById(`mode-label-${i}`);
 
-        const expectedStock = Math.round(issuedPurchase * conversionFactor * 100) / 100;
         let variance = 0;
         let unitCode = lineEl.dataset.stockingUnitCode || '';
         let maxAllowed = 0;
 
         if (currentUnitMode === 'stocking') {
-            maxAllowed = expectedStock;
+            maxAllowed = issuedStocking;
             unitCode = lineEl.dataset.stockingUnitCode || '';
             receivedLabel.textContent = `Received (${unitCode})`;
             modeLabel.textContent = `Mode: Stocking Units`;
         } else {
-            maxAllowed = issuedPurchase;
+            maxAllowed = issuedPurchasing;
             unitCode = lineEl.dataset.purchasingUnitCode || '';
             receivedLabel.textContent = `Received (${unitCode})`;
             modeLabel.textContent = `Mode: Purchasing Units`;
@@ -377,9 +378,9 @@ async function loadIbtList() {
 
         // Recalculate variance using usedReceived
         if (currentUnitMode === 'stocking') {
-            variance = Math.round((expectedStock - usedReceived) * 100) / 100;
+            variance = Math.round((issuedStocking - usedReceived) * 100) / 100;
         } else {
-            variance = Math.round((issuedPurchase - usedReceived) * 100) / 100;
+            variance = Math.round((issuedPurchasing - usedReceived) * 100) / 100;
         }
 
         // Ensure input max attribute is correct for native UI
@@ -390,14 +391,14 @@ async function loadIbtList() {
 
     async function submitReceipt() {
         const lines = document.querySelectorAll('.product-line');
-        const payload = { ibt_number: currentIbt, lines: [] };
+        const payload = { ibt_id: currentIbt, ibt_number: currentIbt, lines: [] };
         const varianceLines = [];
 
         lines.forEach(line => {
             const i = line.dataset.line;
             const productCode = line.dataset.productId;
             const productDesc = line.querySelector('.product-desc').textContent.trim();
-            const issuedPurchase = Number(line.dataset.issuedPurchase) || 0;
+            const issuedStocking = Number(line.dataset.issuedStocking) || 0;
             const conversionFactor = Number(line.dataset.conversionFactor) || 1;
             const received = Number(document.querySelector(`.qty-received[data-line="${i}"]`).value) || 0;
             let qtyReceived = received;
@@ -407,24 +408,22 @@ async function loadIbtList() {
             let displayVariance = 0;
             let unitCode = '';
 
+            const issuedPurchasing = Math.round(issuedStocking / conversionFactor);
             if (currentUnitMode === 'stocking') {
-                // Convert to purchasing for payload submission
-                const receivedPurchase = Math.round((received / conversionFactor) * 100) / 100;
-                qtyReceived = receivedPurchase;
-                qtyVariance = Math.round((issuedPurchase - receivedPurchase) * 100) / 100;
-                
-                // Display in stocking units
-                const expectedStock = Math.round(issuedPurchase * conversionFactor * 100) / 100;
-                displayIssued = expectedStock;
-                displayReceived = received;
-                displayVariance = Math.round((expectedStock - received) * 100) / 100;
-                unitCode = line.dataset.stockingUnitCode || '';
-            } else {
-                // Display in purchasing units
-                qtyVariance = Math.round((issuedPurchase - received) * 100) / 100;
-                displayIssued = issuedPurchase;
+                // Already in stocking units, submit directly
+                qtyReceived = received;
+                qtyVariance = Math.round(issuedStocking - received);
+                displayIssued = issuedStocking;
                 displayReceived = received;
                 displayVariance = qtyVariance;
+                unitCode = line.dataset.stockingUnitCode || '';
+            } else {
+                // Convert purchasing units to stocking units for backend submission
+                qtyReceived = Math.round((received * conversionFactor) * 100) / 100;
+                qtyVariance = Math.round((issuedStocking - qtyReceived) * 100) / 100;
+                displayIssued = issuedStocking;
+                displayReceived = received;
+                displayVariance = Math.round((issuedPurchasing - received) * 100) / 100;
                 unitCode = line.dataset.purchasingUnitCode || '';
             }
 
@@ -440,6 +439,7 @@ async function loadIbtList() {
             }
 
             payload.lines.push({
+                ibt_line_id: line.dataset.ibtLineId,
                 InventoryItemID: productCode,
                 QuantityReceived: qtyReceived,
                 QuantityDamaged: 0,
