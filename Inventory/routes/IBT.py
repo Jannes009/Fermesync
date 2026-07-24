@@ -3,6 +3,7 @@ from flask import request, jsonify, render_template
 from . import inventory_bp
 from Core.auth import create_db_connection, close_db_connection
 from flask_login import login_required, current_user
+from Instance.config import DEFAULT_TRANSFER_PROJECT_ID
 
 from Inventory.routes.sdk_connection import EvolutionConnection
 import Pastel.Evolution as Evo
@@ -87,6 +88,7 @@ def submit_ibt():
             ibt.WarehouseFrom = Evo.Warehouse(int(data["WarehouseFrom"]))
             ibt.WarehouseTo = Evo.Warehouse(int(data["WarehouseTo"]))
             ibt.Description = current_user.username + " IBT"
+            ibt.Project = Evo.Project(DEFAULT_TRANSFER_PROJECT_ID)  # Set the project for the IBT
 
             for l in data["Lines"]:
                 line = Evo.WarehouseIBTLine()

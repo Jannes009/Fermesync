@@ -8,6 +8,7 @@ from datetime import datetime
 from ..db_conversions import category_link_to_name, warehouse_link_to_code
 from Inventory.routes.sdk_connection import EvolutionConnection
 import Pastel.Evolution as Evo
+from Instance.config import DEFAULT_STOCK_COUNT_PROJECT_ID
 
 @inventory_bp.route("/start_stock_count")
 @login_required
@@ -225,6 +226,7 @@ def finalise_stock_count(header_id):
 
                 trans = Evo.InventoryTransaction()
                 trans.TransactionCode = Evo.TransactionCode(Evo.Module.Inventory, "ADJ")
+                trans.Project = Evo.Project(DEFAULT_STOCK_COUNT_PROJECT_ID) 
                 trans.InventoryItem = Evo.InventoryItem(int(product_id))
                 trans.Quantity = abs(diff)
                 trans.Operation = (

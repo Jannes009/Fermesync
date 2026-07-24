@@ -5,7 +5,8 @@ from Core.auth import create_db_connection, close_db_connection
 from flask_login import login_required, current_user
 from Inventory.routes.db_conversions import warehouse_link_to_code, project_code_to_link, stock_link_to_code
 from Inventory.routes.sdk_connection import EvolutionConnection
-import Pastel.Evolution as Evo                   
+import Pastel.Evolution as Evo           
+from Instance.config import DEFAULT_STOCK_ADJUSTMENT_PROJECT_ID        
 
 @inventory_bp.route("/adjust_stock", methods=["POST"])
 @login_required
@@ -68,6 +69,7 @@ def adjust_stock():
             ItemInc.Warehouse = Evo.Warehouse(int(warehouse_link))
             ItemInc.Reference = f"ADJUSTMENT-{warehouse_link_to_code(warehouse_link, cursor)}"
             ItemInc.Description = f"{stock_code} adjusted from {qty_on_hand} to {qty_on_hand + float(quantity)} by {current_user.username}"
+            ItemInc.Project = Evo.Project(DEFAULT_STOCK_ADJUSTMENT_PROJECT_ID)
             ItemInc.Post()
 
             conn.close()

@@ -2,7 +2,7 @@ from flask import render_template, request, redirect, url_for, jsonify, abort
 from flask_login import login_required, current_user
 from Core.auth import create_db_connection
 from . import agri_bp
-from datetime import datetime
+from datetime import datetime, timedelta
 from decimal import Decimal
 import math
 
@@ -180,6 +180,154 @@ def fetch_projects_for_warehouse():
     ]
 
     return jsonify({"status": "ok", "projects": projects})
+
+
+@agri_bp.route("/spray-recommendation/context", methods=["GET"])
+@login_required
+def spray_recommendation_context():
+    if "SPRAY_REC_CREATE" not in current_user.permissions:
+        abort(403)
+
+    warehouse_id = request.args.get("warehouse_id", type=int)
+
+    if warehouse_id is None:
+        return jsonify({"status": "error", "message": "Warehouse ID is required"}), 400
+    
+    start_date = request.args.get('start_date')
+    if start_date:
+        try:
+            start_date = datetime.strptime(start_date, '%Y-%m-%d').date()
+        except ValueError:
+            return jsonify({"status": "error", "message": "Invalid start_date format"}), 400
+    else:
+        months = request.args.get('months', default=6, type=int)
+        if months and months > 0:
+            start_date = (datetime.now() - timedelta(days=months * 30)).date()
+        else:
+            start_date = None
+
+    filter_state = request.args.get('filter_state', default='both')  # 'recommended', 'issued', 'both'
+
+    conn = create_db_connection()
+    cur = conn.cursor()
+    
+
+    cur.execute("""
+    Select 
+    IssLinProjProjectId
+    ,StockDescription      
+    ,ACT.IdChemAct
+    ,ACT.ChemActIngredient
+    ,STKCRP.StkCrpType
+    ,Lin.SprayLineWitholdingPeriod
+    ,CLr.ChemColCode
+    ,SprayLineStkId
+    ,Sum(LIN.SprayLineTotalQty * IssLinProjWeight) QtyRecommended
+    ,ProjectQty Finalised,
+    cUnitCode,
+	HEA.SprayHDate RecommendedDate,
+	IssFinalisedTimeStamp,
+	SprayHWhseId,
+	PROJ.ProjectLink, PROJ.ProjectName, PROJATTR.ProjAttrCropId, CRP.CropDescription
+    --Select *
+    from [agr].[SprayHeader] HEA
+    JOIN [agr].[SprayLines] LIN on LIN.SprayLineHeaderId = HEA.IdSprayH
+    LEFT JOIN (
+        Select 
+        IssLinProjProjectId, IssLinProjSprayId, IssLineStockLink, IssLinProjWeight
+        ,SUM(IssLineQtyFinalised*IssLinProjWeight) ProjectQty, IssFinalisedTimeStamp
+        from  stk.IssueLineProjects WT 
+        JOIN stk.IssueLines ISSLIN on ISSLIN.IdIssLine = WT.IssLinProjLineId
+		JOIN stk.IssueHeader ISSHEA on ISSHEA.IdIssue = ISSLIN.IssLineIssueId
+        GROUP BY IssLinProjSprayId, IssLineStockLink, IssLinProjProjectId, IssLinProjWeight, IssFinalisedTimeStamp
+	)ISSQTY on ISSQTY.IssLinProjSprayId = HEA.IdSprayH and ISSQTY.IssLineStockLink = LIN.SprayLineStkId
+    JOIN cmn._uvStockItems EVOSTK ON EVOSTK.StockLink = LIN.SprayLineStkId
+    LEFT JOIN agr.ChemStock STK ON STK.ChemStockLink = LIN.SprayLineStkId
+    LEFT JOIN agr.ChemActiveIngredient ACT on ACT.IdChemAct = stk.ChemStockActiveIngrId
+    LEFT JOIN [agr].[ChemColour] CLR on CLR.IdChemCol = STK.ChemStockColourCodeId
+    LEFT JOIN cmn._uvUOM UOM ON UOM.idUnits = LIN.SprayLineUoMId
+	LEFT JOIN agr.ProjectAttributes PROJATTR on PROJATTR.ProjAttrProjectId = IssLinProjProjectId
+	LEFT JOIN agr.ChemStockCrop STKCRP on STKCRP.StkCrpChemStockId = STK.IdChemStock and STKCRP.StkCrpCropId = PROJATTR.ProjAttrCropId
+	LEFT JOIN agr.Crop CRP on CRP.IdCrop = PROJATTR.ProjAttrCropId
+	LEFT JOIN [cmn].[_uvProject] PROJ on PROJ.ProjectLink = IssLinProjProjectId
+    where HEA.SprayHDate >= ? and SprayHWhseId = ?
+    GROUP BY IssLinProjSprayId ,StockDescription ,ACT.ChemActIngredient
+    ,LIN.SprayLineFunction ,Lin.SprayLineWitholdingPeriod ,CLr.ChemColCode ,ACT.IdChemAct
+    ,SprayLineStkId ,cUnitCode, ProjectQty, IssLinProjProjectId, SprayHDate, 
+	IssFinalisedTimeStamp, SprayHWhseId, StkCrpType, PROJ.ProjectLink, PROJ.ProjectName, PROJATTR.ProjAttrCropId, CRP.CropDescription
+    """, (start_date.isoformat(), warehouse_id))
+
+    rows = cur.fetchall()
+
+    # build structured response grouped by date
+    items_by_date = {}
+    lookups = { 'projects': {}, 'products': {}, 'types': {}, 'active_ingredients': {} }
+
+    for r in rows:
+        # row fields may be indices or attributes depending on driver; handle both
+        def get(col):
+            try:
+                return getattr(r, col)
+            except Exception:
+                try:
+                    return r[col]
+                except Exception:
+                    return None
+
+        project_id = get('IssLinProjProjectId')
+        project_name = get('ProjectName')
+        stock_id = get('SprayLineStkId')
+        stock_desc = get('StockDescription')
+        qty_rec = get('QtyRecommended') or 0
+        qty_iss = get('Finalised') or 0
+        spray_date = get('RecommendedDate')
+        crop_id = get('ProjAttrCropId')
+        crop_desc = get('CropDescription')
+        type = get('StkCrpType')
+        active_ingredient_id = get('IdChemAct')
+        active_ingredient = get('ChemActIngredient')
+
+        date_key = spray_date.date().isoformat() if hasattr(spray_date, 'date') else str(spray_date)
+
+        # state: 'issued' if QtyIssued>0, 'recommended' if QtyIssued==0 but recommended>0, 'both' if both >0
+        state = 'both' if (qty_rec and qty_iss) else ('issued' if qty_iss else ('recommended' if qty_rec else 'unknown'))
+
+        # apply optional server-side filter_state
+        if filter_state != 'both' and state != filter_state:
+            continue
+
+        lookups['projects'][project_id] = project_name
+        lookups['products'][stock_id] = stock_desc
+        lookups['active_ingredients'][active_ingredient_id] = active_ingredient
+        if type:
+            lookups['types'][type] = type
+
+        items_by_date.setdefault(date_key, []).append({
+            'project_id': project_id,
+            'project_name': project_name,
+            'stock_id': stock_id,
+            'stock_description': stock_desc,
+            'qty_recommended': float(qty_rec),
+            'qty_issued': float(qty_iss),
+            'uom': get('cUnitCode'),
+            'type': type,
+            'crop_id': crop_id,
+            'crop_description': crop_desc,
+            'state': state,
+            'issue_timestamp': get('IssFinalisedTimeStamp'),
+            'active_ingredient_id': active_ingredient_id,
+            'active_ingredient': active_ingredient
+        })
+
+    conn.close()
+
+    # convert grouped dict to list sorted by date desc
+    items = []
+    for date_key in sorted(items_by_date.keys(), reverse=True):
+        items.append({ 'date': date_key, 'entries': items_by_date[date_key] })
+
+    return jsonify({ 'items': items, 'lookups': lookups })
+
 
 
 def to_decimal(val):

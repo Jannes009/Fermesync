@@ -1,0 +1,1710 @@
+{% extends "inventory_base.html" %}
+{% block content %}
+<link rel="stylesheet" href="{{ url_for('static', filename='color-template.css') }}">
+
+<style>
+/* ===== VARIABLES ===== */
+:root {
+  --primary: #2563eb;
+  --primary-hover: #1d4ed8;
+  --primary-light: #eff6ff;
+  --danger: #dc2626;
+  --danger-light: #fef2f2;
+  --warning: #f59e0b;
+  --warning-light: #fffbeb;
+  --success: #16a34a;
+  --success-light: #f0fdf4;
+  --text-primary: #111827;
+  --text-secondary: #6b7280;
+  --text-muted: #9ca3af;
+  --border: #e5e7eb;
+  --bg-white: #ffffff;
+  --bg-gray: #f9fafb;
+  --bg-hover: #f3f4f6;
+}
+
+body {
+  background: var(--bg-gray);
+}
+
+/* ===== LAYOUT ===== */
+.erp-layout {
+  padding: 0;
+  background: var(--bg-white);
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+}
+
+.erp-header {
+  background: var(--bg-white);
+  border-bottom: 1px solid var(--border);
+  padding: 16px 24px;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05);
+}
+
+.header-content {
+  max-width: 1600px;
+  margin: 0 auto;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 20px;
+  flex-wrap: wrap;
+}
+
+.header-title {
+  flex: 1;
+  min-width: 300px;
+}
+
+.header-title h1 {
+  margin: 0;
+  font-size: 20px;
+  font-weight: 700;
+  color: var(--text-primary);
+}
+
+.header-title p {
+  margin: 4px 0 0 0;
+  font-size: 13px;
+  color: var(--text-secondary);
+}
+
+.header-controls {
+  display: flex;
+  gap: 12px;
+  align-items: flex-end;
+}
+
+.warehouse-selector {
+  display: flex;
+  gap: 8px;
+  align-items: flex-end;
+}
+
+.warehouse-selector label {
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--text-secondary);
+  margin-bottom: 0;
+}
+
+.warehouse-selector select {
+  padding: 8px 12px;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  font-size: 14px;
+  background: var(--bg-white);
+  color: var(--text-primary);
+  min-width: 200px;
+  cursor: pointer;
+}
+
+.warehouse-selector select:focus {
+  outline: none;
+  border-color: var(--primary);
+  box-shadow: 0 0 0 2px var(--primary-light);
+}
+
+.btn-back {
+  padding: 8px 16px;
+  background: transparent;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  color: var(--text-secondary);
+  font-size: 14px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.btn-back:hover {
+  background: var(--bg-hover);
+  border-color: var(--text-secondary);
+}
+
+/* ===== TABS ===== */
+.erp-tabs {
+  display: flex;
+  gap: 4px;
+  padding: 0 24px;
+  border-bottom: 1px solid var(--border);
+  background: var(--bg-white);
+  max-width: 1600px;
+  margin: 0 auto;
+  width: calc(100% - 48px);
+  position: sticky;
+  top: 0;
+  z-index: 20;
+}
+
+.tab-btn {
+  padding: 12px 16px;
+  background: transparent;
+  border: none;
+  border-bottom: 3px solid transparent;
+  color: var(--text-secondary);
+  font-size: 14px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  white-space: nowrap;
+}
+
+.tab-btn:hover {
+  color: var(--text-primary);
+  border-bottom-color: var(--border);
+}
+
+.tab-btn.active {
+  color: var(--primary);
+  border-bottom-color: var(--primary);
+}
+
+/* ===== CONTENT ===== */
+.erp-content {
+  flex: 1;
+  overflow-y: auto;
+}
+
+.tab-panel {
+  display: none;
+  padding: 24px;
+  max-width: 1600px;
+  margin: 0 auto;
+  width: 100%;
+}
+
+.tab-panel.active {
+  display: block;
+}
+
+/* ===== SECTION ===== */
+.section {
+  margin-bottom: 28px;
+  background: var(--bg-white);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  overflow: hidden;
+}
+
+.section-header {
+  padding: 16px 20px;
+  background: var(--bg-gray);
+  border-bottom: 1px solid var(--border);
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.section-header h3 {
+  margin: 0;
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--text-primary);
+}
+
+.section-content {
+  padding: 16px 20px;
+}
+
+/* ===== KPI GRID ===== */
+.kpi-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+  gap: 12px;
+  margin-bottom: 0;
+}
+
+.kpi-card {
+  background: var(--bg-gray);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  padding: 12px;
+}
+
+.kpi-label {
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--text-secondary);
+  margin-bottom: 6px;
+  text-transform: uppercase;
+  letter-spacing: 0.3px;
+}
+
+.kpi-value {
+  font-size: 18px;
+  font-weight: 700;
+  color: var(--text-primary);
+}
+
+.kpi-note {
+  font-size: 12px;
+  color: var(--text-muted);
+  margin-top: 4px;
+}
+
+/* ===== TABLES ===== */
+.table-container {
+  width: 100%;
+  overflow-x: auto;
+}
+
+.table-compact {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 13px;
+}
+
+.table-compact thead {
+  background: var(--bg-gray);
+}
+
+.table-compact th {
+  padding: 10px 12px;
+  text-align: left;
+  font-weight: 600;
+  color: var(--text-secondary);
+  border-bottom: 1px solid var(--border);
+  white-space: nowrap;
+  cursor: pointer;
+  user-select: none;
+}
+
+.table-compact th:hover {
+  background: var(--bg-hover);
+}
+
+.table-compact td {
+  padding: 10px 12px;
+  border-bottom: 1px solid var(--border);
+  color: var(--text-primary);
+}
+
+.table-compact tbody tr:hover {
+  background: var(--bg-hover);
+  cursor: pointer;
+}
+
+.table-compact tbody tr.expanded {
+  background: var(--primary-light);
+}
+
+.table-compact .text-right {
+  text-align: right;
+}
+
+.table-compact .text-center {
+  text-align: center;
+}
+
+.sort-indicator {
+  font-size: 10px;
+  margin-left: 4px;
+  opacity: 0.5;
+}
+
+/* ===== EXPANDABLE ROWS ===== */
+.expand-cell {
+  padding: 0 12px;
+}
+
+.expand-btn {
+  background: none;
+  border: none;
+  color: var(--primary);
+  cursor: pointer;
+  font-size: 12px;
+  padding: 0;
+  width: 20px;
+  height: 20px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.expand-btn.expanded::before {
+  content: "▼";
+}
+
+.expand-btn::before {
+  content: "▶";
+}
+
+.expanded-content {
+  display: none;
+  background: var(--primary-light);
+  padding: 12px;
+  border-top: 1px solid var(--border);
+}
+
+.expanded-content.visible {
+  display: block;
+}
+
+.expanded-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+  gap: 12px;
+}
+
+.expanded-field {
+  font-size: 12px;
+}
+
+.expanded-label {
+  font-weight: 600;
+  color: var(--text-secondary);
+  margin-bottom: 2px;
+}
+
+.expanded-value {
+  color: var(--text-primary);
+}
+
+/* ===== FILTERS ===== */
+.filters {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
+  gap: 12px;
+  margin-bottom: 16px;
+}
+
+.filter-group {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.filter-group label {
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--text-secondary);
+}
+
+.filter-group input,
+.filter-group select {
+  padding: 8px 10px;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  font-size: 13px;
+  background: var(--bg-white);
+  color: var(--text-primary);
+}
+
+.filter-group input:focus,
+.filter-group select:focus {
+  outline: none;
+  border-color: var(--primary);
+  box-shadow: 0 0 0 2px var(--primary-light);
+}
+
+.filter-actions {
+  display: flex;
+  gap: 8px;
+}
+
+.filter-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  margin-bottom: 16px;
+  flex-wrap: wrap;
+}
+
+.filter-summary {
+  font-size: 13px;
+  color: var(--text-secondary);
+}
+
+.filter-panel.hidden {
+  display: none;
+}
+
+.filter-group select[multiple] {
+  min-height: 140px;
+}
+
+.btn-filter-toggle {
+  padding: 8px 16px;
+  background: transparent;
+  color: var(--text-secondary);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  font-size: 13px;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.btn-filter-toggle:hover {
+  background: var(--bg-hover);
+}
+
+.btn-filter {
+  padding: 8px 16px;
+  background: var(--primary);
+  color: white;
+  border: none;
+  border-radius: 6px;
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.btn-filter:hover {
+  background: var(--primary-hover);
+}
+
+.btn-clear {
+  padding: 8px 16px;
+  background: transparent;
+  color: var(--text-secondary);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.btn-clear:hover {
+  background: var(--bg-hover);
+}
+
+/* ===== FORM ===== */
+.form-group {
+  margin-bottom: 16px;
+}
+
+.form-group label {
+  display: block;
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--text-secondary);
+  margin-bottom: 6px;
+}
+
+.form-group input,
+.form-group select {
+  width: 100%;
+  max-width: 400px;
+  padding: 8px 12px;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  font-size: 13px;
+  background: var(--bg-white);
+  color: var(--text-primary);
+}
+
+.form-group input:focus,
+.form-group select:focus {
+  outline: none;
+  border-color: var(--primary);
+  box-shadow: 0 0 0 2px var(--primary-light);
+}
+
+.form-actions {
+  display: flex;
+  gap: 12px;
+  margin-top: 20px;
+}
+
+.btn-primary {
+  padding: 10px 20px;
+  background: var(--primary);
+  color: white;
+  border: none;
+  border-radius: 6px;
+  font-size: 14px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.btn-primary:hover {
+  background: var(--primary-hover);
+  transform: translateY(-1px);
+}
+
+.btn-secondary {
+  padding: 10px 20px;
+  background: transparent;
+  color: var(--text-secondary);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  font-size: 14px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.btn-secondary:hover {
+  background: var(--bg-hover);
+}
+
+/* ===== STATUS MESSAGE ===== */
+.status-message {
+  padding: 12px 16px;
+  border-radius: 6px;
+  font-size: 13px;
+  font-weight: 500;
+  margin-bottom: 16px;
+  display: none;
+}
+
+.status-message.success {
+  display: block;
+  background: var(--success-light);
+  color: var(--success);
+  border: 1px solid #bbf7d0;
+}
+
+.status-message.error {
+  display: block;
+  background: var(--danger-light);
+  color: var(--danger);
+  border: 1px solid #fecaca;
+}
+
+/* ===== EMPTY STATE ===== */
+.empty-state {
+  text-align: center;
+  padding: 32px 20px;
+  color: var(--text-muted);
+}
+
+.empty-state i {
+  font-size: 28px;
+  margin-bottom: 8px;
+  display: block;
+  opacity: 0.5;
+}
+
+/* ===== RESPONSIVE ===== */
+@media (max-width: 1024px) {
+  .header-content {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .header-controls {
+    flex-direction: column;
+    width: 100%;
+  }
+
+  .warehouse-selector {
+    width: 100%;
+  }
+
+  .warehouse-selector select {
+    width: 100%;
+  }
+
+  .kpi-grid {
+    grid-template-columns: repeat(3, 1fr);
+  }
+
+  .table-compact {
+    font-size: 12px;
+  }
+
+  .table-compact th,
+  .table-compact td {
+    padding: 8px;
+  }
+}
+
+@media (max-width: 768px) {
+  .erp-header {
+    padding: 12px 16px;
+  }
+
+  .tab-panel {
+    padding: 16px;
+  }
+
+  .kpi-grid {
+    grid-template-columns: repeat(2, 1fr);
+  }
+
+  .filters {
+    grid-template-columns: 1fr;
+  }
+
+  .section-header {
+    padding: 12px 16px;
+  }
+
+  .section-content {
+    padding: 12px 16px;
+  }
+
+  .table-compact {
+    font-size: 11px;
+  }
+
+  .table-compact th,
+  .table-compact td {
+    padding: 6px;
+  }
+
+  .expanded-grid {
+    grid-template-columns: 1fr;
+  }
+}
+
+@media (max-width: 480px) {
+  .kpi-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .filters {
+    grid-template-columns: 1fr;
+  }
+
+  .form-group input,
+  .form-group select {
+    max-width: 100%;
+  }
+}
+</style>
+
+<div class="erp-layout">
+  <!-- HEADER -->
+  <div class="erp-header">
+    <div class="header-content">
+      <div class="header-title">
+        <h1>{{ product.StockCode }}</h1>
+        <p>{{ product.StockDescription }}</p>
+      </div>
+      <div class="header-controls">
+        <div class="warehouse-selector">
+          <label for="whseSelect">Warehouse</label>
+          <select id="whseSelect" onchange="changeWarehouse()">
+            {% for wh in warehouses %}
+            <option value="{{ wh.WhseLink }}" {% if wh.WhseLink == warehouse_id %}selected{% endif %}>
+              {{ wh.WhseCode }} - {{ wh.WhseName }}
+            </option>
+            {% endfor %}
+          </select>
+        </div>
+        <button class="btn-back" onclick="goBack()">← Back</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- TABS -->
+  <div class="erp-tabs">
+    <button class="tab-btn active" onclick="switchTab('overview')">Overview</button>
+    <button class="tab-btn" onclick="switchTab('history')">History</button>
+    <button class="tab-btn" onclick="switchTab('agriculture')">Agriculture</button>
+    <button class="tab-btn" onclick="switchTab('warehouses')">Warehouses</button>
+    <button class="tab-btn" onclick="switchTab('settings')">Settings</button>
+  </div>
+
+  <!-- CONTENT -->
+  <div class="erp-content">
+    <!-- TAB: OVERVIEW -->
+    <div id="tab-overview" class="tab-panel active">
+      <!-- KPI Summary -->
+      <div class="section">
+        <div class="section-header">
+          <h3>Inventory Summary</h3>
+        </div>
+        <div class="section-content">
+          <div class="kpi-grid">
+            <div class="kpi-card">
+              <div class="kpi-label">Qty On Hand</div>
+              <div class="kpi-value">{{ product.QtyOnHand }}</div>
+            </div>
+            <div class="kpi-card">
+              <div class="kpi-label">Qty Allocated</div>
+              <div class="kpi-value">{{ product.QtyOnIssues }}</div>
+            </div>
+            <div class="kpi-card">
+              <div class="kpi-label">Qty Available</div>
+              <div class="kpi-value">{{ product.Available }}</div>
+            </div>
+            <div class="kpi-card">
+              <div class="kpi-label">Qty On PO</div>
+              <div class="kpi-value">{{ product.QtyOnPo }}</div>
+            </div>
+            <div class="kpi-card">
+              <div class="kpi-label">Qty On IBT</div>
+              <div class="kpi-value">{{ product.QtyOnIBT }}</div>
+            </div>
+            <div class="kpi-card">
+              <div class="kpi-label">Reorder Level</div>
+              <div class="kpi-value">{{ product.ReorderLevel }}</div>
+            </div>
+            <div class="kpi-card">
+              <div class="kpi-label">Reorder Qty</div>
+              <div class="kpi-value">{{ product.ReorderQty }}</div>
+            </div>
+            <div class="kpi-card">
+              <div class="kpi-label">Days Until Empty</div>
+              <div class="kpi-value">{{ product.DaysUntilEmpty or 'N/A' }}</div>
+              <div class="kpi-note">Based on planned demand</div>
+            </div>
+            <div class="kpi-card">
+              <div class="kpi-label">Last Stock Count</div>
+              <div class="kpi-value">{{ product.LastStockCountDate or 'N/A' }}</div>
+            </div>
+            <div class="kpi-card">
+              <div class="kpi-label">Last Movement</div>
+              <div class="kpi-value">{{ product.LastMovement.date if product.LastMovement else 'N/A' }}</div>
+            </div>
+            {% if product.LastPurchaseInfo %}
+            <div class="kpi-card">
+              <div class="kpi-label">Last Purchase Date</div>
+              <div class="kpi-value">{{ product.LastPurchaseInfo.purchase_date or 'N/A' }}</div>
+            </div>
+            <div class="kpi-card">
+              <div class="kpi-label">Last Supplier</div>
+              <div class="kpi-value" style="font-size: 13px;">{{ product.LastPurchaseInfo.supplier or 'N/A' }}</div>
+            </div>
+            <div class="kpi-card">
+              <div class="kpi-label">Last Cost</div>
+              <div class="kpi-value">{{ product.LastPurchaseInfo.cost or 'N/A' }}</div>
+            </div>
+            {% endif %}
+          </div>
+        </div>
+      </div>
+
+      <!-- Upcoming Demand -->
+      {% if product.Sprays %}
+      <div class="section">
+        <div class="section-header">
+          <h3>Upcoming Demand</h3>
+        </div>
+        <div class="section-content">
+          <div class="table-container">
+            <table class="table-compact">
+              <thead>
+                <tr>
+                  <th>Spray</th>
+                  <th>Date</th>
+                  <th class="text-right">Required Qty</th>
+                </tr>
+              </thead>
+              <tbody>
+                {% for spray in product.Sprays[:8] %}
+                <tr>
+                  <td>{{ spray.SprayNo }}</td>
+                  <td>{{ spray.SprayDate or 'N/A' }}</td>
+                  <td class="text-right">{{ spray.TotalQty }}</td>
+                </tr>
+                {% endfor %}
+              </tbody>
+            </table>
+          </div>
+          {% if not product.Sprays %}
+          <div class="empty-state">
+            <p>No upcoming demand</p>
+          </div>
+          {% endif %}
+        </div>
+      </div>
+      {% endif %}
+
+      <!-- Recent Activity -->
+      {% if product.TransactionTimeline %}
+      <div class="section">
+        <div class="section-header">
+          <h3>Recent Activity (Latest 8)</h3>
+          <button class="tab-btn" style="border: none; padding: 0; margin: 0;" onclick="switchTab('history')">View Full History →</button>
+        </div>
+        <div class="section-content">
+          <div class="table-container">
+            <table class="table-compact">
+              <thead>
+                <tr>
+                  <th>Date</th>
+                  <th>Type</th>
+                  <th class="text-right">Qty</th>
+                  <th>Project</th>
+                  <th>Reference</th>
+                </tr>
+              </thead>
+              <tbody>
+                {% set count = 0 %}
+                {% for day in product.TransactionTimeline %}
+                  {% for item in day['items'] %}
+                    {% if count < 8 %}
+                    <tr>
+                      <td>{{ day['date'] }}</td>
+                      <td>{{ item['type'] }}</td>
+                      <td class="text-right">{{ item['qty'] }}</td>
+                      <td>{{ item['project'] }}</td>
+                      <td>{{ item['reference'] }}</td>
+                    </tr>
+                    {% set count = count + 1 %}
+                    {% endif %}
+                  {% endfor %}
+                {% endfor %}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+      {% endif %}
+    </div>
+
+    <!-- TAB: HISTORY -->
+    <div id="tab-history" class="tab-panel">
+      <!-- Filters -->
+      <div class="section">
+        <div class="section-header">
+          <h3>Transaction Filters</h3>
+        </div>
+        <div class="section-content">
+          <div class="filter-header">
+            <button type="button" id="toggleFilterPanel" class="btn-filter-toggle">Show filters</button>
+            <div id="filterSummary" class="filter-summary">0 filters applied</div>
+          </div>
+          <div id="filterPanel" class="filter-panel hidden">
+            <div class="filters">
+              <div class="filter-group">
+                <label>General Search</label>
+                <input type="text" id="filterSearch" placeholder="Search all columns...">
+              </div>
+              <div class="filter-group">
+                <label>Date From</label>
+                <input type="date" id="filterDateFrom" value="">
+              </div>
+              <div class="filter-group">
+                <label>Date To</label>
+                <input type="date" id="filterDateTo" value="">
+              </div>
+              <div class="filter-group">
+                <label>Transaction Type</label>
+                <select id="filterType" multiple></select>
+              </div>
+              <div class="filter-group">
+                <label>Warehouse</label>
+                <select id="filterWarehouse" multiple></select>
+              </div>
+              <div class="filter-group">
+                <label>Project</label>
+                <select id="filterProject" multiple></select>
+              </div>
+              <div class="filter-group">
+                <label>Reference</label>
+                <input type="text" id="filterReference" placeholder="Search references...">
+              </div>
+              <div class="filter-group">
+                <label>User</label>
+                <select id="filterUser" multiple></select>
+              </div>
+            </div>
+            <div class="filter-actions">
+              <button class="btn-filter" onclick="applyFilters()">Apply Filters</button>
+              <button class="btn-clear" onclick="clearFilters()">Clear All</button>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Transaction Table -->
+      <div class="section">
+        <div class="section-header">
+          <h3>Transactions</h3>
+        </div>
+        <div class="section-content">
+          <div class="table-container">
+            <table class="table-compact" id="transactionTable">
+              <thead>
+                <tr>
+                  <th style="width: 20px;"></th>
+                  <th onclick="sortTable(1)">Date <span class="sort-indicator"></span></th>
+                  <th onclick="sortTable(2)">Type <span class="sort-indicator"></span></th>
+                  <th class="text-right" onclick="sortTable(3)">Qty <span class="sort-indicator"></span></th>
+                  <th onclick="sortTable(4)">Warehouse <span class="sort-indicator"></span></th>
+                  <th onclick="sortTable(5)">Project <span class="sort-indicator"></span></th>
+                  <th onclick="sortTable(6)">Reference <span class="sort-indicator"></span></th>
+                  <th onclick="sortTable(7)">User <span class="sort-indicator"></span></th>
+                </tr>
+              </thead>
+              <tbody id="transactionTableBody"></tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- TAB: AGRICULTURE -->
+    <div id="tab-agriculture" class="tab-panel">
+      <!-- Chemical Information -->
+      <div class="section">
+        <div class="section-header">
+          <h3>Chemical Information</h3>
+        </div>
+        <div class="section-content">
+          <div class="kpi-grid">
+            <div class="kpi-card">
+              <div class="kpi-label">Active Ingredient</div>
+              <div class="kpi-value" style="font-size: 14px;">{{ product.ChemStockActiveIngr or 'N/A' }}</div>
+            </div>
+            <div class="kpi-card">
+              <div class="kpi-label">Colour Code</div>
+              <div class="kpi-value" style="font-size: 14px;">{{ product.ChemStockColourCode or 'N/A' }}</div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Linked Crop Registrations -->
+      {% if product.Crops %}
+      <div class="section">
+        <div class="section-header">
+          <h3>Linked Crop Registrations</h3>
+        </div>
+        <div class="section-content">
+          <div class="table-container">
+            <table class="table-compact">
+              <thead>
+                <tr>
+                  <th>Crop</th>
+                  <th>Reg Number</th>
+                  <th>Type</th>
+                  <th>Function</th>
+                  <th>Withholding Period</th>
+                </tr>
+              </thead>
+              <tbody>
+                {% for crop in product.Crops %}
+                <tr>
+                  <td>{{ crop.CropDescription or '-' }}</td>
+                  <td>{{ crop.RegNumber or '-' }}</td>
+                  <td>{{ crop.Type or '-' }}</td>
+                  <td>{{ crop.Function or '-' }}</td>
+                  <td>{{ crop.WitholdingPeriod or '-' }}</td>
+                </tr>
+                {% endfor %}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+      {% endif %}
+
+      <!-- Recent Spray Usage -->
+      {% if product.RecentSprayUsage %}
+      <div class="section">
+        <div class="section-header">
+          <h3>Recent Spray Usage</h3>
+        </div>
+        <div class="section-content">
+          <div class="table-container">
+            <table class="table-compact">
+              <thead>
+                <tr>
+                  <th>Date</th>
+                  <th>Spray</th>
+                  <th>Project</th>
+                  <th class="text-right">Qty Used</th>
+                </tr>
+              </thead>
+              <tbody>
+                {% for spray in product.RecentSprayUsage %}
+                <tr>
+                  <td>{{ spray.date }}</td>
+                  <td>{{ spray.spray_no }}</td>
+                  <td>{{ spray.project }}</td>
+                  <td class="text-right">{{ spray.qty }}</td>
+                </tr>
+                {% endfor %}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+      {% endif %}
+    </div>
+
+    <!-- TAB: WAREHOUSES -->
+    <div id="tab-warehouses" class="tab-panel">
+      <div class="section">
+        <div class="section-header">
+          <h3>Warehouse Network</h3>
+        </div>
+        <div class="section-content">
+          {% if product.AllWarehouses %}
+          <div class="table-container">
+            <table class="table-compact">
+              <thead>
+                <tr>
+                  <th style="width: 20px;"></th>
+                  <th>Warehouse</th>
+                  <th class="text-right">On Hand</th>
+                  <th class="text-right">Allocated</th>
+                  <th class="text-right">Available</th>
+                  <th class="text-right">On PO</th>
+                  <th class="text-right">Reorder Level</th>
+                  <th class="text-right">Days Until Empty</th>
+                </tr>
+              </thead>
+              <tbody>
+                {% for wh in product.AllWarehouses %}
+                <tr data-wh-index="{{ loop.index0 }}">
+                  <td class="expand-cell">
+                    <button class="expand-btn" onclick="toggleExpandWh(event)"></button>
+                  </td>
+                  <td>{{ wh.WhseCode }} - {{ wh.WhseName }}</td>
+                  <td class="text-right">{{ wh.QtyOnHand }}</td>
+                  <td class="text-right">{{ wh.QtyAllocated }}</td>
+                  <td class="text-right">{{ wh.QtyAvailable }}</td>
+                  <td class="text-right">{{ wh.QtyOnPO }}</td>
+                  <td class="text-right">{{ wh.ReorderLevel }}</td>
+                  <td class="text-right">-</td>
+                </tr>
+                <tr style="display: none;" class="expanded-wh-row">
+                  <td colspan="8" style="padding: 0;">
+                    <div class="expanded-content">
+                      <p><strong>Warehouse Details</strong></p>
+                      <p>Reorder Qty: {{ wh.ReorderQty }}</p>
+                    </div>
+                  </td>
+                </tr>
+                {% endfor %}
+              </tbody>
+            </table>
+          </div>
+          {% endif %}
+        </div>
+      </div>
+    </div>
+
+    <!-- TAB: SETTINGS -->
+    <div id="tab-settings" class="tab-panel">
+      <div class="section">
+        <div class="section-header">
+          <h3>Reordering Settings</h3>
+        </div>
+        <div class="section-content">
+          <form id="reorderingForm" onsubmit="submitReorderingForm(event)">
+            <div class="form-group">
+              <label>Category</label>
+              <select id="reorderCategory">
+                <option value="">Select a category</option>
+              </select>
+            </div>
+            <div class="form-group">
+              <label>Reorder Level</label>
+              <input type="number" id="reorderLevel" step="0.01" placeholder="e.g., 100">
+            </div>
+            <div class="form-group">
+              <label>Reorder Quantity</label>
+              <input type="number" id="reorderQty" step="0.01" placeholder="e.g., 500">
+            </div>
+            <div class="form-actions">
+              <button type="submit" class="btn-primary">Save Changes</button>
+              <button type="button" class="btn-secondary" onclick="resetForm()">Reset</button>
+            </div>
+          </form>
+          <div id="reorderMessage" class="status-message"></div>
+        </div>
+      </div>
+
+      <div class="section">
+        <div class="section-header">
+          <h3>Supplier Information</h3>
+        </div>
+        <div class="section-content">
+          {% if product.LastPurchaseInfo %}
+          <div class="form-group">
+            <label>Supplier</label>
+            <input type="text" readonly value="{{ product.LastPurchaseInfo.supplier or 'N/A' }}">
+          </div>
+          <div class="form-group">
+            <label>Last Purchase Date</label>
+            <input type="text" readonly value="{{ product.LastPurchaseInfo.purchase_date or 'N/A' }}">
+          </div>
+          <div class="form-group">
+            <label>Last Purchase Cost</label>
+            <input type="text" readonly value="{{ product.LastPurchaseInfo.cost or 'N/A' }}">
+          </div>
+          {% else %}
+          <p style="color: var(--text-muted);">No supplier information available</p>
+          {% endif %}
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+// ===== CONFIGURATION =====
+const PRODUCT_STOCK_LINK = {{ product.StockLink }};
+const CURRENT_WAREHOUSE_ID = {% if warehouse_id is not none %}{{ warehouse_id }}{% else %}null{% endif %};
+const INITIAL_CATEGORY_ID = {% if product.CategoryId is not none %}{{ product.CategoryId }}{% else %}null{% endif %};
+
+// ===== TAB SWITCHING =====
+function switchTab(tabName) {
+  // Hide all tabs
+  document.querySelectorAll('.tab-panel').forEach(panel => {
+    panel.classList.remove('active');
+  });
+  document.querySelectorAll('.tab-btn').forEach(btn => {
+    btn.classList.remove('active');
+  });
+
+  // Show selected tab
+  document.getElementById(`tab-${tabName}`).classList.add('active');
+  event.target.classList.add('active');
+
+  // Load categories if settings tab
+  if (tabName === 'settings') {
+    populateReorderingCategories();
+  }
+}
+
+// ===== WAREHOUSE SELECTOR =====
+function changeWarehouse() {
+  const whseId = document.getElementById('whseSelect').value;
+  const url = new URL(window.location);
+  url.searchParams.set('whse', whseId);
+  window.location.href = url.toString();
+}
+
+// ===== NAVIGATION =====
+function goBack() {
+  const url = new URL(window.location.origin + '/inventory/qty');
+  if (CURRENT_WAREHOUSE_ID) {
+    url.searchParams.set('whse', CURRENT_WAREHOUSE_ID);
+  }
+  window.location.href = url.toString();
+}
+
+// ===== EXPANDABLE ROWS - History ===== 
+function toggleExpand(event) {
+  event.preventDefault();
+  const btn = event.target;
+  const row = btn.closest('tr');
+  const nextRow = row.nextElementSibling;
+  
+  if (nextRow && nextRow.classList.contains('expanded-row')) {
+    const content = nextRow.querySelector('.expanded-content');
+    btn.classList.toggle('expanded');
+    if (content.classList.contains('visible')) {
+      content.classList.remove('visible');
+      nextRow.style.display = 'none';
+    } else {
+      content.classList.add('visible');
+      nextRow.style.display = '';
+    }
+  }
+}
+
+// ===== EXPANDABLE ROWS - Warehouses =====
+function toggleExpandWh(event) {
+  event.preventDefault();
+  const btn = event.target;
+  const row = btn.closest('tr');
+  const nextRow = row.nextElementSibling;
+  
+  if (nextRow && nextRow.classList.contains('expanded-wh-row')) {
+    const content = nextRow.querySelector('.expanded-content');
+    btn.classList.toggle('expanded');
+    if (content.classList.contains('visible')) {
+      content.classList.remove('visible');
+      nextRow.style.display = 'none';
+    } else {
+      content.classList.add('visible');
+      nextRow.style.display = '';
+    }
+  }
+}
+
+// ===== SORTING =====
+function sortTable(colIndex) {
+  const table = document.getElementById('transactionTable');
+  const tbody = table.querySelector('tbody');
+  const rows = Array.from(tbody.querySelectorAll('tr:not(.expanded-row)'));
+  
+  rows.sort((a, b) => {
+    let aVal = a.cells[colIndex].textContent.trim();
+    let bVal = b.cells[colIndex].textContent.trim();
+    
+    // Try numeric sort
+    const aNum = parseFloat(aVal);
+    const bNum = parseFloat(bVal);
+    
+    if (!isNaN(aNum) && !isNaN(bNum)) {
+      return aNum - bNum;
+    }
+    
+    return aVal.localeCompare(bVal);
+  });
+  
+  rows.forEach(row => tbody.appendChild(row));
+  rows.forEach((row, idx) => {
+    const nextRow = row.nextElementSibling;
+    if (nextRow && nextRow.classList.contains('expanded-row')) {
+      tbody.appendChild(nextRow);
+    }
+  });
+}
+
+// ===== TRANSACTION STATE =====
+const transactionState = {
+  all: [],
+  filtered: [],
+  sortCol: 1,
+  sortAsc: true,
+  filters: {
+    search: '',
+    dateFrom: '',
+    dateTo: '',
+    types: [],
+    warehouses: [],
+    projects: [],
+    reference: '',
+    users: []
+  }
+};
+
+function formatDateForDisplay(date) {
+  if (!date) return 'N/A';
+  const d = new Date(date);
+  return d.toLocaleDateString(undefined, { day: '2-digit', month: 'short', year: 'numeric' });
+}
+
+function normalizeTransaction(row) {
+  return {
+    ...row,
+    TxDate: row.TxDate ? new Date(row.TxDate) : null,
+    Reference: (row.Reference || row.cReference2 || '').trim(),
+    ProjectName: (row.ProjectName || '').trim(),
+    UserName: (row.UserName || '').trim(),
+    WhseCode: (row.WhseCode || '').trim(),
+    Qty: row.Qty != null ? Number(row.Qty) : 0
+  };
+}
+
+function setFilterOptions(selectId, options, defaultAll = true) {
+  const select = document.getElementById(selectId);
+  select.innerHTML = '';
+
+  if (defaultAll) {
+    const opt = document.createElement('option');
+    opt.value = '';
+    opt.textContent = 'All';
+    select.appendChild(opt);
+  }
+
+  options.forEach(value => {
+    const opt = document.createElement('option');
+    opt.value = value;
+    opt.textContent = value;
+    select.appendChild(opt);
+  });
+}
+
+function getSelectedOptions(id) {
+  const select = document.getElementById(id);
+  return Array.from(select.selectedOptions)
+    .map(option => option.value)
+    .filter(value => value);
+}
+
+function countAppliedFilters() {
+  const filters = transactionState.filters;
+  let count = 0;
+  if (filters.search) count += 1;
+  if (filters.dateFrom) count += 1;
+  if (filters.dateTo) count += 1;
+  if (filters.types.length) count += 1;
+  if (filters.warehouses.length) count += 1;
+  if (filters.projects.length) count += 1;
+  if (filters.reference) count += 1;
+  if (filters.users.length) count += 1;
+  return count;
+}
+
+function updateFilterSummary() {
+  const count = countAppliedFilters();
+  const label = count === 0 ? 'No filters applied' : `${count} filter${count === 1 ? '' : 's'} applied`;
+  document.getElementById('filterSummary').textContent = label;
+}
+
+function populateFilterSelectors(data) {
+  const types = Array.from(new Set(data.types || [])).sort();
+  const projects = Array.from(new Set(data.projects || [])).sort();
+  const users = Array.from(new Set(data.users || [])).sort();
+  const warehouses = (data.warehouses || []).map(w => ({
+    id: String(w.warehouse_id),
+    code: String(w.warehouse_code)
+  }));
+
+  setFilterOptions('filterType', types);
+  setFilterOptions('filterProject', projects);
+  setFilterOptions('filterUser', users);
+
+  const warehouseSelect = document.getElementById('filterWarehouse');
+  warehouseSelect.innerHTML = '';
+  const warehouseOpt = document.createElement('option');
+  warehouseOpt.value = '';
+  warehouseOpt.textContent = 'All Warehouses';
+  warehouseSelect.appendChild(warehouseOpt);
+  warehouses.forEach(warehouse => {
+    const opt = document.createElement('option');
+    opt.value = warehouse.id;
+    opt.textContent = warehouse.code;
+    warehouseSelect.appendChild(opt);
+  });
+
+  if (CURRENT_WAREHOUSE_ID) {
+    const defaultOption = Array.from(warehouseSelect.options).find(opt => opt.value === String(CURRENT_WAREHOUSE_ID));
+    if (defaultOption) {
+      defaultOption.selected = true;
+      transactionState.filters.warehouses = [defaultOption.value];
+    }
+  }
+}
+
+function applyFilters() {
+  transactionState.filters.search = document.getElementById('filterSearch').value.trim().toLowerCase();
+  transactionState.filters.dateFrom = document.getElementById('filterDateFrom').value;
+  transactionState.filters.dateTo = document.getElementById('filterDateTo').value;
+  transactionState.filters.types = getSelectedOptions('filterType');
+  transactionState.filters.warehouses = getSelectedOptions('filterWarehouse');
+  transactionState.filters.projects = getSelectedOptions('filterProject');
+  transactionState.filters.reference = document.getElementById('filterReference').value.trim().toLowerCase();
+  transactionState.filters.users = getSelectedOptions('filterUser');
+
+  renderTransactionRows();
+}
+
+function clearFilters() {
+  document.getElementById('filterSearch').value = '';
+  document.getElementById('filterDateFrom').value = '';
+  document.getElementById('filterDateTo').value = '';
+  document.getElementById('filterType').selectedIndex = 0;
+  document.getElementById('filterWarehouse').selectedIndex = 0;
+  document.getElementById('filterProject').selectedIndex = 0;
+  document.getElementById('filterReference').value = '';
+  document.getElementById('filterUser').selectedIndex = 0;
+  transactionState.filters = {
+    search: '',
+    dateFrom: '',
+    dateTo: '',
+    types: [],
+    warehouses: [],
+    projects: [],
+    reference: '',
+    users: []
+  };
+  renderTransactionRows();
+}
+
+function transactionMatchesFilters(transaction) {
+  const filters = transactionState.filters;
+  if (filters.search) {
+    const search = filters.search;
+    const values = [
+      formatDateForDisplay(transaction.TxDate).toLowerCase(),
+      transaction.TrnType.toLowerCase(),
+      transaction.Reference.toLowerCase(),
+      transaction.ProjectName.toLowerCase(),
+      transaction.UserName.toLowerCase(),
+      transaction.WhseCode.toLowerCase(),
+      String(transaction.Qty)
+    ];
+    if (!values.some(value => value.includes(search))) {
+      return false;
+    }
+  }
+  if (filters.dateFrom && transaction.TxDate) {
+    const fromDate = new Date(filters.dateFrom);
+    if (transaction.TxDate < fromDate) return false;
+  }
+  if (filters.dateTo && transaction.TxDate) {
+    const toDate = new Date(filters.dateTo);
+    toDate.setHours(23, 59, 59, 999);
+    if (transaction.TxDate > toDate) return false;
+  }
+  if (filters.types.length && !filters.types.includes(transaction.TrnType)) return false;
+  if (filters.warehouses.length && !filters.warehouses.includes(String(transaction.WhseLink))) return false;
+  if (filters.projects.length && !filters.projects.includes(transaction.ProjectName)) return false;
+  if (filters.reference && !transaction.Reference.toLowerCase().includes(filters.reference)) return false;
+  if (filters.users.length && !filters.users.includes(transaction.UserName)) return false;
+  return true;
+}
+
+function sortTransactionData() {
+  const keyMap = {
+    1: 'TxDate',
+    2: 'TrnType',
+    3: 'Qty',
+    4: 'WhseCode',
+    5: 'ProjectName',
+    6: 'Reference',
+    7: 'UserName'
+  };
+  const key = keyMap[transactionState.sortCol];
+  transactionState.filtered.sort((a, b) => {
+    let aVal = a[key];
+    let bVal = b[key];
+    if (key === 'TxDate') {
+      aVal = aVal ? aVal.getTime() : 0;
+      bVal = bVal ? bVal.getTime() : 0;
+      return transactionState.sortAsc ? aVal - bVal : bVal - aVal;
+    }
+    if (typeof aVal === 'number' || typeof bVal === 'number') {
+      return transactionState.sortAsc ? (aVal - bVal) : (bVal - aVal);
+    }
+    aVal = String(aVal || '').toLowerCase();
+    bVal = String(bVal || '').toLowerCase();
+    return transactionState.sortAsc ? aVal.localeCompare(bVal) : bVal.localeCompare(aVal);
+  });
+}
+
+function renderTransactionRows() {
+  const tbody = document.getElementById('transactionTableBody');
+  tbody.innerHTML = '';
+  transactionState.filtered = transactionState.all.filter(transactionMatchesFilters);
+  sortTransactionData();
+  updateFilterSummary();
+
+  transactionState.filtered.forEach((txn, index) => {
+    const row = document.createElement('tr');
+    row.dataset.index = index;
+
+    const expandCell = document.createElement('td');
+    expandCell.className = 'expand-cell';
+    const expandBtn = document.createElement('button');
+    expandBtn.className = 'expand-btn';
+    expandBtn.type = 'button';
+    expandBtn.addEventListener('click', toggleExpand);
+    expandCell.appendChild(expandBtn);
+    row.appendChild(expandCell);
+
+    const dateCell = document.createElement('td');
+    dateCell.textContent = formatDateForDisplay(txn.TxDate);
+    row.appendChild(dateCell);
+
+    const typeCell = document.createElement('td');
+    typeCell.textContent = txn.TrnType;
+    row.appendChild(typeCell);
+
+    const qtyCell = document.createElement('td');
+    qtyCell.className = 'text-right';
+    qtyCell.textContent = txn.Qty;
+    row.appendChild(qtyCell);
+
+    const warehouseCell = document.createElement('td');
+    warehouseCell.textContent = txn.WhseCode || 'N/A';
+    row.appendChild(warehouseCell);
+
+    const projectCell = document.createElement('td');
+    projectCell.textContent = txn.ProjectName || '-';
+    row.appendChild(projectCell);
+
+    const referenceCell = document.createElement('td');
+    referenceCell.textContent = txn.Reference || '-';
+    row.appendChild(referenceCell);
+
+    const userCell = document.createElement('td');
+    userCell.textContent = txn.UserName || '-';
+    row.appendChild(userCell);
+
+    const expandedRow = document.createElement('tr');
+    expandedRow.className = 'expanded-row';
+    expandedRow.style.display = 'none';
+    const expandedCell = document.createElement('td');
+    expandedCell.colSpan = 8;
+    expandedCell.style.padding = '0';
+
+    const expandedContent = document.createElement('div');
+    expandedContent.className = 'expanded-content';
+    const expandedGrid = document.createElement('div');
+    expandedGrid.className = 'expanded-grid';
+
+    const details = [
+      { label: 'Reference', value: txn.Reference || '-' },
+      { label: 'Type', value: txn.TrnType },
+      { label: 'Username', value: txn.UserName || '-' },
+      { label: 'Quantity', value: txn.Qty },
+      { label: 'Running Qty On Hand', value: txn.QtyOnHand != null ? txn.QtyOnHand : '-' },
+      { label: 'Project', value: txn.ProjectName || '-' },
+      { label: 'Warehouse', value: txn.WhseCode || 'N/A' }
+    ];
+
+    details.forEach(detail => {
+      const field = document.createElement('div');
+      field.className = 'expanded-field';
+      const label = document.createElement('div');
+      label.className = 'expanded-label';
+      label.textContent = detail.label;
+      const value = document.createElement('div');
+      value.className = 'expanded-value';
+      value.textContent = detail.value;
+      field.appendChild(label);
+      field.appendChild(value);
+      expandedGrid.appendChild(field);
+    });
+
+    expandedContent.appendChild(expandedGrid);
+    expandedCell.appendChild(expandedContent);
+    expandedRow.appendChild(expandedCell);
+
+    tbody.appendChild(row);
+    tbody.appendChild(expandedRow);
+  });
+}
+
+async function fetchTransactionHistory() {
+  try {
+    const suffix = CURRENT_WAREHOUSE_ID ? `?whse=${CURRENT_WAREHOUSE_ID}` : '';
+    const response = await fetch(`/inventory/product/${PRODUCT_STOCK_LINK}/transactions${suffix}`);
+    const data = await response.json();
+    transactionState.all = (data.transactions || []).map(normalizeTransaction);
+    populateFilterSelectors(data);
+    renderTransactionRows();
+  } catch (error) {
+    console.error('Error loading transaction history:', error);
+  }
+}
+
+function sortTable(colIndex) {
+  if (transactionState.sortCol === colIndex) {
+    transactionState.sortAsc = !transactionState.sortAsc;
+  } else {
+    transactionState.sortCol = colIndex;
+    transactionState.sortAsc = true;
+  }
+  renderTransactionRows();
+}
+
+function toggleExpand(event) {
+  event.preventDefault();
+  const btn = event.currentTarget;
+  const row = btn.closest('tr');
+  const nextRow = row.nextElementSibling;
+  if (nextRow && nextRow.classList.contains('expanded-row')) {
+    btn.classList.toggle('expanded');
+    const content = nextRow.querySelector('.expanded-content');
+    if (content.classList.contains('visible')) {
+      content.classList.remove('visible');
+      nextRow.style.display = 'none';
+    } else {
+      content.classList.add('visible');
+      nextRow.style.display = '';
+    }
+  }
+}
+
+function setupFilterToggles() {
+  const toggleButton = document.getElementById('toggleFilterPanel');
+  const panel = document.getElementById('filterPanel');
+  toggleButton.addEventListener('click', () => {
+    const isHidden = panel.classList.toggle('hidden');
+    toggleButton.textContent = isHidden ? 'Show filters' : 'Hide filters';
+  });
+}
+
+// ===== REORDERING FORM =====
+async function populateReorderingCategories() {
+  const select = document.getElementById('reorderCategory');
+  if (select.options.length > 1) return; // Already loaded
+  
+  if (!CURRENT_WAREHOUSE_ID) {
+    select.innerHTML = '<option value="">No warehouse selected</option>';
+    return;
+  }
+  
+  try {
+    const response = await fetch(`/inventory/categories?whse=${CURRENT_WAREHOUSE_ID}`);
+    const data = await response.json();
+    const categories = data.categories || [];
+    
+    select.innerHTML = '<option value="">Select a category</option>';
+    categories.forEach(cat => {
+      const opt = document.createElement('option');
+      opt.value = cat.category_id;
+      opt.textContent = cat.category_name;
+      select.appendChild(opt);
+    });
+  } catch (error) {
+    console.error('Error loading categories:', error);
+    select.innerHTML = '<option value="">Error loading categories</option>';
+  }
+}
+
+async function submitReorderingForm(event) {
+  event.preventDefault();
+  const message = document.getElementById('reorderMessage');
+  message.className = 'status-message';
+  
+  const category = document.getElementById('reorderCategory').value;
+  const level = document.getElementById('reorderLevel').value;
+  const qty = document.getElementById('reorderQty').value;
+  
+  if (!category && !level && !qty) {
+    message.classList.add('error');
+    message.textContent = 'Please fill in at least one field.';
+    return;
+  }
+  
+  const payload = {
+    categoryId: category || null,
+    reorderLevel: level ? parseFloat(level) : null,
+    reorderQty: qty ? parseFloat(qty) : null,
+    warehouseId: CURRENT_WAREHOUSE_ID
+  };
+  
+  const btn = event.target.querySelector('button[type="submit"]');
+  const orig = btn.innerHTML;
+  btn.innerHTML = 'Saving...';
+  btn.disabled = true;
+  
+  try {
+    const response = await fetch(`/inventory/update-reordering/${PRODUCT_STOCK_LINK}`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(payload)
+    });
+    
+    const data = await response.json();
+    if (data.success) {
+      message.classList.add('success');
+      message.textContent = data.message || 'Updated successfully.';
+    } else {
+      message.classList.add('error');
+      message.textContent = data.error || 'Failed to update.';
+    }
+  } catch (error) {
+    console.error('Error:', error);
+    message.classList.add('error');
+    message.textContent = 'Network error.';
+  } finally {
+    btn.innerHTML = orig;
+    btn.disabled = false;
+  }
+}
+
+function resetForm() {
+  document.getElementById('reorderLevel').value = '{{ product.ReorderLevel }}';
+  document.getElementById('reorderQty').value = '{{ product.ReorderQty }}';
+  document.getElementById('reorderMessage').className = 'status-message';
+}
+
+// ===== INIT =====
+document.addEventListener('DOMContentLoaded', function() {
+  if (!CURRENT_WAREHOUSE_ID) {
+    const select = document.getElementById('whseSelect');
+    if (select.options.length > 0) {
+      select.value = select.options[0].value;
+    }
+  }
+  setupFilterToggles();
+  fetchTransactionHistory();
+});
+</script>
+
+{% endblock %}

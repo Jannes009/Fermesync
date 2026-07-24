@@ -7,7 +7,7 @@ from Inventory.routes.sdk_connection import EvolutionConnection
 import Pastel.Evolution as Evo
 import System
 from System import DateTime
-from .config import DEFAULT_PURCHASE_ORDER_PROJECT_ID
+from Instance.config import DEFAULT_PURCHASE_ORDER_PROJECT_ID
 
 @agri_bp.route('/suggested-order/popup', methods=['GET'])
 @login_required

@@ -3,6 +3,7 @@ from flask_login import login_required, current_user
 from Inventory.routes import inventory_bp
 from Core.auth import create_db_connection, close_db_connection
 from datetime import datetime
+from Instance.config import DEFAULT_TRANSFER_PROJECT_ID
 
 from Inventory.routes.sdk_connection import EvolutionConnection
 import Pastel.Evolution as Evo
@@ -51,6 +52,7 @@ def warehouse_transfer_save():
             WT.Quantity = float(line["qty"])
             WT.Description = f"Warehouse Transfer {transfer_id} by {current_user.username} on {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}"
             WT.Reference = f"WT{transfer_id}"
+            WT.Project = Evo.Project(DEFAULT_TRANSFER_PROJECT_ID)
             WT.Post()
 
     conn.commit()
