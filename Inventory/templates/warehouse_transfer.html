@@ -462,7 +462,7 @@ function populateWarehouses(warehouses){
 // CREATE PRODUCT OPTIONS
 function buildProductOptions(){
     return products.map(p =>
-        `<option value="${p.product_link}" data-uom="${p.stocking_uom_code}">
+        `<option value="${p.product_link}" data-uom="${p.stocking_uom_code}" data-qty="${p.qty_in_whse}">
             ${p.product_code} - ${p.product_desc} (${parseFloat(p.qty_in_whse).toFixed(2)} ${p.stocking_uom_code} available)
         </option>`
     ).join("")
@@ -548,10 +548,14 @@ async function saveTransfer(){
         let stockId = sel ? sel.value : null
         let qtyInput = row.querySelector(".qty-input")
         let qty = qtyInput ? Number(qtyInput.value) : null
+        console.log(sel)
 
         if(stockId && qty && qty > 0){
-            const productData = $(sel).find(':selected').data() || {}
-            const availableQty = Number(productData.qty) || 0
+            // Prefer reading the quantity from the option's data-qty attribute (DOM),
+            // fallback to jQuery's stored data if present.
+            const option = sel.selectedOptions ? sel.selectedOptions[0] : null
+            const availableQty = option ? Number(option.dataset.qty || option.getAttribute('data-qty')) : (Number($(sel).find(':selected').data('qty')) || 0)
+            console.log(`Checking stock for ${stockId}: requested ${qty}, available ${availableQty}`)
             if (!overage && qty > availableQty) {
                 overage = {
                     stockId: stockId,
@@ -577,10 +581,12 @@ async function saveTransfer(){
 
         const refreshRes = await fetch(`/inventory/adjust_stock/qty?stock_link=${encodeURIComponent(overage.stockId)}&warehouse_link=${encodeURIComponent(fromWarehouse)}`)
         const refreshJson = await refreshRes.json()
-        if (refreshJson.status === 'ok') {
+            if (refreshJson.status === 'ok') {
             const newAvailableQty = Number(refreshJson.qty_on_hand) || 0
             document.querySelectorAll(`.product-select option[value="${overage.stockId}"]`).forEach(opt => {
+                // update both jQuery data cache and the DOM attribute so subsequent reads are consistent
                 $(opt).data('qty', newAvailableQty)
+                try { opt.setAttribute('data-qty', String(newAvailableQty)) } catch(e) {}
             })
             if (newAvailableQty < overage.requestedQty) {
                 return Swal.fire(

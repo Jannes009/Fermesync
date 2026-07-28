@@ -3,7 +3,7 @@ from flask_login import login_required, current_user
 from flask import jsonify, request, render_template, abort
 from Core.auth import create_db_connection, close_db_connection
 from Inventory.routes import inventory_bp
-from Inventory.routes.sdk_connection import EvolutionConnection
+from Core.sdk_connection import EvolutionConnection, EvolutionAgentNotFoundError, EvolutionConnectionError
 import Pastel.Evolution as Evo
 from Inventory.routes.notifications import emit_event, send_notification
 

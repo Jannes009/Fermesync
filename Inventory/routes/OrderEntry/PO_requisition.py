@@ -4,6 +4,7 @@ from Core.auth import create_db_connection, close_db_connection
 from flask_login import login_required, current_user
 from Inventory.routes.db_conversions import stock_link_to_code
 from Inventory.routes.OrderEntry.PurchaseOrder import create_purchase_order
+from Core.sdk_connection import EvolutionAgentNotFoundError, EvolutionConnectionError
 
 
 def load_po_udf_metadata():
@@ -400,6 +401,14 @@ def update_po_requisition(requisition_id):
 
         conn.commit()
 
+    except EvolutionAgentNotFoundError as e:
+        conn.rollback()
+        conn.close()
+        return {"success": False, "message": str(e)}, 400
+    except EvolutionConnectionError as e:
+        conn.rollback()
+        conn.close()
+        return {"success": False, "message": str(e)}, 500
     except Exception:
         conn.rollback()
         raise

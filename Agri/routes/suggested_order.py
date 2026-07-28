@@ -3,11 +3,11 @@ from flask_login import login_required, current_user
 from Core.auth import create_db_connection
 from . import agri_bp
 
-from Inventory.routes.sdk_connection import EvolutionConnection
+from Core.sdk_connection import EvolutionConnection, EvolutionAgentNotFoundError, EvolutionConnectionError
 import Pastel.Evolution as Evo
 import System
 from System import DateTime
-from Instance.config import DEFAULT_PURCHASE_ORDER_PROJECT_ID
+from Instance.local_settings import DEFAULT_PURCHASE_ORDER_PROJECT_ID
 
 @agri_bp.route('/suggested-order/popup', methods=['GET'])
 @login_required
@@ -51,7 +51,7 @@ def suggested_order_data():
             ISNULL(LINK.iDCLink, 0) AS SupplierDCLink,
             ISNULL(LINK.bDefaultSupplier, 0) AS DefaultSupplier,
             ISNULL(SUP.Name, '') AS SupplierName,
-            ISNULL(LINK.LastInvoicePrice, ISNULL(GRV.PurchaseUnitLastGRVCost, 0)) AS LastInvoicePrice,
+            COALESCE(LINKUNIT.LastInvoicePrice, GRV.PurchaseUnitLastGRVCost, 0) AS LastInvoicePrice,
             MAIN.SprayHWeek,
             ROW_NUMBER() OVER (
                 PARTITION BY MAIN.StockLink
@@ -62,10 +62,11 @@ def suggested_order_data():
             ON S.ChemStockLink = MAIN.StockLink
         LEFT JOIN stk._uvStockLinks LINK
             ON LINK.iStockID = MAIN.StockLink
+		LEFT JOIN stk._uvStockLinks LINKUNIT ON LINKUNIT.iStockID = MAIN.StockLink and LINKUNIT.iUnitsOfMeasureID = MAIN.PurchasingUnitId
         LEFT JOIN cmn._uvSuppliers SUP
             ON SUP.DCLink = LINK.iDCLink
-		LEFT JOIN [cmn].[_uvLastGRVCost] GRV on GRV.StockLink = MAIN.StockLink
-        WHERE MAIN.SprayHWeek <= ?
+		LEFT JOIN [cmn].[_uvLastGRVCost] GRV on GRV.StockLink = MAIN.StockLink AND GRV.iDCLink = LINK.iDCLink
+       WHERE MAIN.SprayHWeek <= ?
     )
     SELECT
         LatestWeek.StockLink,
@@ -278,7 +279,7 @@ def suggested_order_stock_suppliers(stock_id):
     FROM stk._uvStockLinks L
     LEFT JOIN cmn._uvSuppliers S ON S.DCLink = L.iDCLink
     LEFT JOIN cmn._uvUOM UOM on UOM.idUnits = iUnitsOfMeasureID
-	LEFT JOIN cmn._uvLastGRVCost GCST on GCST.StockLink = L.iStockID and GCST.iUOMDefPurchaseUnitID = L.iUnitsOfMeasureID
+	LEFT JOIN cmn._uvLastGRVCost GCST on GCST.StockLink = L.iStockID and GCST.iDCLink = L.iDCLink and GCST.iUOMDefPurchaseUnitID = L.iUnitsOfMeasureID
     WHERE L.iStockID = ?
     ORDER BY ISNULL(L.bDefaultSupplier,0) DESC, S.Name
     """

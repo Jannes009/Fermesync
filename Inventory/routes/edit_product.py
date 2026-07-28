@@ -30,7 +30,7 @@ def edit_product_page(product_id):
     return render_template('edit_product.html')
 
 
-@inventory_bp.route("/product/<int:stock_id>", methods=["GET"])
+@inventory_bp.route("/product/<int:stock_id>/modal", methods=["GET"])
 @login_required
 def get_product_for_modal(stock_id):
     """Get product details for the modal editor - REST API endpoint"""

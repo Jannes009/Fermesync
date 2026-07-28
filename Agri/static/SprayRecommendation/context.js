@@ -245,7 +245,7 @@ function renderContextTimeline() {
 
             const right = document.createElement('div');
             right.style.textAlign = 'right';
-            right.innerHTML = `<div class="context-date">${group.date}</div><div class="context-meta">Rec: ${qtyRec} • Iss: ${qtyIss}</div>`;
+            right.innerHTML = `<div class="context-date">${group.date}</div><div class="context-meta">Rec: ${qtyRec} ${it.uom || ''} • Iss: ${qtyIss} ${it.uom || ''}</div>`;
 
             summary.appendChild(left);
             summary.appendChild(right);

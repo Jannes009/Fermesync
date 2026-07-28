@@ -114,6 +114,14 @@ def new_product():
                 return value[0] if value else None
             return value
 
+        def parse_price(value):
+            if value is None or value == '':
+                return None
+            try:
+                return float(value)
+            except (TypeError, ValueError):
+                return None
+
         group_id = extract_value(data.get('group'))
         active_ing_id = extract_value(data.get('active_ing'))
         colour_code_id = extract_value(data.get('colour_code'))
@@ -173,7 +181,6 @@ def new_product():
             for warehouse_entry in warehouses_payload:
                 whse_id = extract_value(warehouse_entry.get('id'))
                 category_id = extract_value(warehouse_entry.get('shelf'))
-                print(whse_id, category_id)
                 cur.execute("""
                     EXEC [stk].[sp_UpdateCategoryAndReordering] 
                         @StockId = ?, 
@@ -181,18 +188,30 @@ def new_product():
                         @Category = ?;
                 """, (stock_id, whse_id, category_id))
 
+            cur.execute("""
+			    Select ConversionFactor
+                from [cmn].[_uvStockUnitConversion]
+                Where iUOMStockingUnitID = ? and iUOMDefPurchaseUnitID = ?
+                """, (stocking_unit_id, purchasing_unit_id))
+            row = cur.fetchone()
+            conversion_factor = row[0] if row else None
+            print(conversion_factor, stocking_unit_id, purchasing_unit_id)
+
             for supplier_entry in suppliers_payload:
                 supplier_id = extract_value(supplier_entry.get('id'))
-                price = extract_value(supplier_entry.get('price'))
+                price_purchasing = parse_price(supplier_entry.get('price'))
+                if price_purchasing is None:
+                    price_purchasing = 0.0
+                price_stocking = price_purchasing / conversion_factor if conversion_factor else price_purchasing
                 is_default = extract_value(supplier_entry.get('is_default'))
-                print(supplier_id, price, is_default)
+                print(stock_id, supplier_id, is_default, price_stocking)
                 cur.execute("""
                     EXEC [cmn].[sp_StockSupplier_Save]
                                 @StockId = ?, 
                                 @SupplierID = ?, 
                                 @IsDefaultSupplier = ?,
                                 @LastGRVCost = ?;
-                """, (stock_id, supplier_id, is_default, price))
+                """, (stock_id, supplier_id, is_default, price_stocking))
             conn.commit()
         except Exception as e:
             conn.rollback()
@@ -204,12 +223,6 @@ def new_product():
             }), 500
 
         close_db_connection(conn)
-
-        try:
-            print("--- New product posted data ---")
-            print(json.dumps(data, indent=2, ensure_ascii=False))
-        except Exception as e:
-            print("Error printing posted product data:", e)
 
         # Return JSON so AJAX flows get a friendly response
         return jsonify({"success": True, "product_code": product_code})

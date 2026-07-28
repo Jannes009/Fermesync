@@ -4,9 +4,9 @@ from Inventory.routes import inventory_bp
 from Core.auth import create_db_connection, close_db_connection
 from flask_login import login_required, current_user
 from Inventory.routes.db_conversions import warehouse_link_to_code, project_code_to_link, stock_link_to_code
-from Inventory.routes.sdk_connection import EvolutionConnection
+from Core.sdk_connection import EvolutionConnection, EvolutionAgentNotFoundError, EvolutionConnectionError
 import Pastel.Evolution as Evo           
-from Instance.config import DEFAULT_STOCK_ADJUSTMENT_PROJECT_ID        
+from Instance.local_settings import DEFAULT_STOCK_ADJUSTMENT_PROJECT_ID
 
 @inventory_bp.route("/adjust_stock", methods=["POST"])
 @login_required

@@ -2,8 +2,9 @@ from flask import Flask, render_template, request, redirect, session, url_for, m
 from flask_login import login_user, logout_user, current_user, login_required
 from Core.auth import login_manager, authenticate_user
 import os
-from Instance.config import DevelopmentConfig, ProductionConfig, TestingConfig
+from Core.config import DevelopmentConfig, ProductionConfig, TestingConfig
 import subprocess
+from Instance.local_settings import FLASK_ENV
 
 # -----------------------------
 # Flask App
@@ -15,7 +16,7 @@ def create_app():
         static_folder='main_static'
     )
 
-    env = os.getenv("FLASK_ENV", "development")
+    env = FLASK_ENV
 
     if env == "production":
         app.config.from_object(ProductionConfig)
@@ -158,7 +159,7 @@ if __name__ == "__main__":
 
     from waitress import serve
 
-    env = os.getenv("FLASK_ENV", "development")
+    env = FLASK_ENV
     print(env)
     if env == "production":
         serve(

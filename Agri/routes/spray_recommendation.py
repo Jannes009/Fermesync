@@ -296,9 +296,12 @@ def spray_recommendation_context():
         if filter_state != 'both' and state != filter_state:
             continue
 
-        lookups['projects'][project_id] = project_name
-        lookups['products'][stock_id] = stock_desc
-        lookups['active_ingredients'][active_ingredient_id] = active_ingredient
+        if project_id:
+            lookups['projects'][project_id] = project_name
+        if stock_id:
+            lookups['products'][stock_id] = stock_desc
+        if active_ingredient_id:
+            lookups['active_ingredients'][active_ingredient_id] = active_ingredient
         if type:
             lookups['types'][type] = type
 

@@ -4,6 +4,13 @@ from werkzeug.security import check_password_hash, generate_password_hash
 from flask_login import LoginManager, UserMixin
 import os
 from Core.key_manager import decrypt_password
+from Instance.local_settings import (
+    DB_SERVER,
+    DB_NAME,
+    DB_USERNAME,
+    DB_PASSWORD,
+    DB_DRIVER
+)
 
 login_manager = LoginManager()
 login_manager.login_view = 'login'
@@ -44,11 +51,11 @@ def create_db_connection():
     If db_config is None, defaults to common DB.
     """
     conn_str = (
-        f"DRIVER={{{os.getenv('DB_DRIVER')}}};"
-        f"SERVER={os.getenv('DB_SERVER')};"
-        f"DATABASE={os.getenv('DB_NAME')};"
-        f"UID={os.getenv('DB_USERNAME')};"
-        f"PWD={decrypt_password(os.getenv('DB_PASSWORD'))};"
+        f"DRIVER={{{DB_DRIVER}}};"
+        f"SERVER={DB_SERVER};"
+        f"DATABASE={DB_NAME};"
+        f"UID={DB_USERNAME};"
+        f"PWD={decrypt_password(DB_PASSWORD)};"
         f"Trust_Connection=no;"
     )
     conn = odbc.connect(conn_str)

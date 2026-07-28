@@ -6,7 +6,6 @@ build/
 venv/
 
 # Ignore python configuration and instance files
-config.py
 instance/
 
 # Ignore database files

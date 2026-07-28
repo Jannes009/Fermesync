@@ -935,16 +935,44 @@
 <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/js/select2.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11/dist/sweetalert2.all.min.js"></script>
-<script type="module"
+<script
   src="{{ url_for('agri.static',
     filename='SprayRecommendation/spray_recommendation.js') }}?v={{ filemtime('agri','SprayRecommendation/spray_recommendation.js') }}">
 </script>
-<script type="module"
+<script
   src="{{ url_for('agri.static',
     filename='SprayRecommendation/context.js') }}?v={{ filemtime('agri','SprayRecommendation/context.js') }}">
 </script>
 
 <script>
+// Get current dose mode
+function getMode() {
+    return document.querySelector('input[name="dose_mode"]:checked')?.value || 'per_100l';
+}
+
+// Validate spray form
+function validateSprayForm(mode, projects, lines) {
+    const errors = [];
+    
+    if (!document.getElementById('spray_date').value) {
+        errors.push('Date is required');
+    }
+    if (!document.getElementById('spray_description').value.trim()) {
+        errors.push('Description is required');
+    }
+    if (!document.getElementById('warehouse_id').value) {
+        errors.push('Warehouse is required');
+    }
+    if (!projects || projects.length === 0) {
+        errors.push('At least one project is required');
+    }
+    if (!lines || lines.length === 0) {
+        errors.push('At least one product is required');
+    }
+    
+    return errors;
+}
+
 // Form Submit
 document.getElementById('spray-form').addEventListener('submit', function (e) {
     e.preventDefault();

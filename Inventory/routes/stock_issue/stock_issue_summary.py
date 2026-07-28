@@ -8,7 +8,7 @@ from Inventory.routes.db_conversions import warehouse_code_to_link, project_code
 from datetime import datetime
 from Inventory.routes.notifications import emit_event
 
-from Inventory.routes.sdk_connection import EvolutionConnection
+from Core.sdk_connection import EvolutionConnection, EvolutionAgentNotFoundError, EvolutionConnectionError
 import Pastel.Evolution as Evo
 
 @inventory_bp.route("/SDK/stock_issue_summary", methods=["GET"])

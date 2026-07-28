@@ -1,8 +1,5 @@
-<!doctype html>
-<html lang="en">
-<head>
-  <meta charset="utf-8" />
-  <meta name="viewport" content="width=device-width,initial-scale=1" />
+{% extends "inventory_base.html" %}
+{% block content %}
   <title>New Product</title>
   <style>
     :root{--bg:#fff;--card:#ffffff;--muted:#6b7280}
@@ -148,7 +145,10 @@
                   <option value="{{ s[0] }}">{{ s[1] }}</option>
                   {% endfor %}
                 </select>
-                <input type="number" step="0.01" class="small-input supplier-price" placeholder="Price" style="flex:1;min-width:120px" />
+                <div style="display:flex;gap:8px;align-items:center;flex:1;min-width:180px">
+                  <input type="number" step="0.01" class="small-input supplier-price" placeholder="Price" style="width:100%;" />
+                  <span class="supplier-price-unit muted" style="white-space:nowrap"></span>
+                </div>
                 <label class="mini" style="display:flex;align-items:center;gap:6px;margin:0">
                   <input type="radio" name="default_supplier" class="supplier-default" value="" /> Default
                 </label>
@@ -201,6 +201,20 @@
     const supplierRowTemplate = document.getElementById('supplier-row-template');
     const addActiveIngButton = document.getElementById('add-active-ing');
     const addColourCodeButton = document.getElementById('add-colour-code');
+
+    function getPurchasingUnitInfo() {
+      const option = purchasingUnitInput.options[purchasingUnitInput.selectedIndex];
+      return {
+        code: option?.textContent || ''
+      };
+    }
+
+    function updateSupplierPriceUnitLabels() {
+      const { code } = getPurchasingUnitInfo();
+      document.querySelectorAll('.supplier-price-unit').forEach(el => {
+        el.textContent = code ? `per ${code}` : '';
+      });
+    }
 
     const show = (i)=>{
       steps.forEach(s=>s.classList.remove('active'));
@@ -334,9 +348,10 @@
         html += '</ul></div>';
       }
       if(data.suppliers.length){
+        const purchaseUnitLabel = purchasingUnitInput.options[purchasingUnitInput.selectedIndex]?.text || '';
         html += '<div style="margin-top:12px"><strong>Suppliers</strong><ul style="margin:6px 0 0 18px;">';
         data.suppliers.forEach(s=>{
-          html += `<li>${s.name || s.id}${s.is_default ? ' (default)' : ''}${s.price ? ' — ' + s.price : ''}</li>`;
+          html += `<li>${s.name || s.id}${s.is_default ? ' (default)' : ''}${s.price ? ' — ' + s.price + (purchaseUnitLabel ? ' / ' + purchaseUnitLabel : '') : ''}</li>`;
         });
         html += '</ul></div>';
       }
@@ -394,32 +409,6 @@
         }
       }catch(err){
         console.warn('Duplicate check failed', err);
-      }
-    }
-
-    async function fetchPurchasingUnits(stockId, selectedId){
-      purchasingUnitInput.disabled = true;
-      purchasingUnitInput.innerHTML = '<option value="">Loading...</option>';
-      if(!stockId){
-        purchasingUnitInput.innerHTML = '<option value="">Select stocking unit first</option>';
-        return;
-      }
-      try{
-        const res = await fetch(`/agri/product/purchasing-units?stocking_unit_id=${encodeURIComponent(stockId)}`);
-        if(!res.ok) throw new Error('Unable to load purchasing units');
-        const js = await res.json();
-        purchasingUnitInput.innerHTML = '<option value="">--</option>';
-        js.units.forEach(item=>{
-          const opt = document.createElement('option');
-          opt.value = item.id;
-          opt.textContent = item.code;
-          purchasingUnitInput.appendChild(opt);
-        });
-        purchasingUnitInput.disabled = false;
-        if(selectedId) purchasingUnitInput.value = selectedId;
-      }catch(err){
-        purchasingUnitInput.innerHTML = '<option value="">Unable to load units</option>';
-        console.warn(err);
       }
     }
 
@@ -506,6 +495,7 @@
       purchasingUnitInput.innerHTML = '<option value="">Loading...</option>';
       if(!stockId){
         purchasingUnitInput.innerHTML = '<option value="">Select stocking unit first</option>';
+        updateSupplierPriceUnitLabels();
         return;
       }
       try{
@@ -521,8 +511,10 @@
         });
         purchasingUnitInput.disabled = false;
         if(selectedId) purchasingUnitInput.value = selectedId;
+        updateSupplierPriceUnitLabels();
       }catch(err){
         purchasingUnitInput.innerHTML = '<option value="">Unable to load units</option>';
+        updateSupplierPriceUnitLabels();
         console.warn(err);
       }
     }
@@ -801,6 +793,7 @@
       });
 
       suppliersList.appendChild(row);
+      updateSupplierPriceUnitLabels();
     }
 
     productCodeInput.addEventListener('input', ()=>{
@@ -833,6 +826,7 @@
     addActiveIngButton.addEventListener('click', ()=>openEntityModal('ingredient'));
     addColourCodeButton.addEventListener('click', ()=>openEntityModal('colour'));
     document.getElementById('add-supplier').addEventListener('click', addSupplierRow);
+    purchasingUnitInput.addEventListener('change', updateSupplierPriceUnitLabels);
 
     function buildReview(){
       document.getElementById('review').innerHTML = createReviewHtml();
@@ -947,4 +941,4 @@
     show(0);
   </script>
 </body>
-</html>
+{% endblock %}

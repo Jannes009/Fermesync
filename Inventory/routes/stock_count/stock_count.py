@@ -6,9 +6,9 @@ from flask_login import current_user
 from flask_login import login_required
 from datetime import datetime
 from ..db_conversions import category_link_to_name, warehouse_link_to_code
-from Inventory.routes.sdk_connection import EvolutionConnection
+from Core.sdk_connection import EvolutionConnection, EvolutionAgentNotFoundError, EvolutionConnectionError
 import Pastel.Evolution as Evo
-from Instance.config import DEFAULT_STOCK_COUNT_PROJECT_ID
+from Instance.local_settings import DEFAULT_STOCK_COUNT_PROJECT_ID
 
 @inventory_bp.route("/start_stock_count")
 @login_required

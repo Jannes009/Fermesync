@@ -3,10 +3,11 @@ from flask_login import login_required, current_user
 from Inventory.routes import inventory_bp
 from Core.auth import create_db_connection, close_db_connection
 from datetime import datetime
-from Instance.config import DEFAULT_TRANSFER_PROJECT_ID
+from Instance.local_settings import DEFAULT_TRANSFER_PROJECT_ID
 
-from Inventory.routes.sdk_connection import EvolutionConnection
+from Core.sdk_connection import EvolutionConnection
 import Pastel.Evolution as Evo
+from Core.sdk_connection import EvolutionAgentNotFoundError, EvolutionConnectionError
 
 @inventory_bp.route("/warehouse-transfer")
 @login_required
@@ -35,25 +36,49 @@ def warehouse_transfer_save():
     """, from_whse, to_whse, current_user.id)
     transfer_id = cursor.fetchone()[0]
 
-    with EvolutionConnection():
+    try:
+        with EvolutionConnection():
+            for line in lines:
 
-        for line in lines:
+                cursor.execute("""
+                    INSERT INTO [stk].WarehouseTransferL
+                    (TransferLineHeaderId, TransferLineStockId, TransferLineQty)
+                    VALUES (?, ?, ?)
+                """, transfer_id, line["stockId"], line["qty"])
 
-            cursor.execute("""
-                INSERT INTO [stk].WarehouseTransferL
-                (TransferLineHeaderId, TransferLineStockId, TransferLineQty)
-                VALUES (?, ?, ?)
-            """, transfer_id, line["stockId"], line["qty"])
+                WT = Evo.WarehouseTransfer()
+                WT.FromWarehouse = Evo.Warehouse(int(from_whse))
+                WT.ToWarehouse = Evo.Warehouse(int(to_whse))
+                WT.Account = Evo.InventoryItem(int(line["stockId"]))
+                WT.Quantity = float(line["qty"])
+                WT.Description = f"Warehouse Transfer {transfer_id} by {current_user.username} on {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}"
+                WT.Reference = f"WT{transfer_id}"
+                WT.Project = Evo.Project(DEFAULT_TRANSFER_PROJECT_ID)
+                WT.Post()
 
-            WT = Evo.WarehouseTransfer()
-            WT.FromWarehouse = Evo.Warehouse(int(from_whse))
-            WT.ToWarehouse = Evo.Warehouse(int(to_whse))
-            WT.Account = Evo.InventoryItem(int(line["stockId"]))
-            WT.Quantity = float(line["qty"])
-            WT.Description = f"Warehouse Transfer {transfer_id} by {current_user.username} on {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}"
-            WT.Reference = f"WT{transfer_id}"
-            WT.Project = Evo.Project(DEFAULT_TRANSFER_PROJECT_ID)
-            WT.Post()
+    except EvolutionAgentNotFoundError as e:
+        try:
+            conn.rollback()
+        except Exception:
+            pass
+        close_db_connection(conn)
+        return jsonify({"success": False, "message": str(e)}), 400
+
+    except EvolutionConnectionError as e:
+        try:
+            conn.rollback()
+        except Exception:
+            pass
+        close_db_connection(conn)
+        return jsonify({"success": False, "message": str(e)}), 500
+
+    except Exception as e:
+        try:
+            conn.rollback()
+        except Exception:
+            pass
+        close_db_connection(conn)
+        return jsonify({"success": False, "message": f"Unexpected error: {e}"}), 500
 
     conn.commit()
     close_db_connection(conn)

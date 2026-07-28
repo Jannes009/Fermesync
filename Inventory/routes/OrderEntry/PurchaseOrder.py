@@ -6,7 +6,8 @@ from Core.auth import create_db_connection, close_db_connection
 from flask_login import login_required, current_user
 from Inventory.routes.db_conversions import stock_link_to_code, supplier_link_to_code, unit_link_to_code
 
-from Inventory.routes.sdk_connection import EvolutionConnection
+from Core.sdk_connection import EvolutionConnection
+from Core.sdk_connection import EvolutionAgentNotFoundError, EvolutionConnectionError
 import Pastel.Evolution as Evo
 import System
 from System import DateTime
@@ -26,14 +27,20 @@ def update_purchase_order(order_id):
     """, order_id)
     order_no = cursor.fetchone().OrderNum
     conn.close()
-    edit_purchase_order(
-        order_no=order_no,
-        header=data["header"],
-        lines=data["lines"],
-        header_udfs=data["header_udfs"]
-    )
-
-    return {"success": True}
+    try:
+        edit_purchase_order(
+            order_no=order_no,
+            header=data["header"],
+            lines=data["lines"],
+            header_udfs=data["header_udfs"]
+        )
+        return {"success": True}
+    except EvolutionAgentNotFoundError as e:
+        return {"success": False, "message": str(e)}, 400
+    except EvolutionConnectionError as e:
+        return {"success": False, "message": str(e)}, 500
+    except Exception as e:
+        return {"success": False, "message": str(e)}, 500
 
 
 def edit_purchase_order(order_no, header, lines, header_udfs):

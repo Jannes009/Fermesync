@@ -1283,65 +1283,15 @@ function updateConnectionStatus() {
   }
 }
 
-// Pending indicator update
-async function updatePendingIndicator() {
-  try {
-    const dbModule = await import('/main_static/offline/db.js?v=43');
-    const [outboxCount, returnsCount] = await Promise.all([
-      dbModule.db.outbox.count(),
-      dbModule.db.offlineReturns
-        .where('status')
-        .equals('queued')
-        .count()
-    ]);
-
-    const count = outboxCount + returnsCount;
-    
-    // Update desktop indicator
-    const desktop = document.getElementById("pending-indicator");
-    if (desktop) {
-      const countEl = desktop.querySelector("#pending-count");
-      if (countEl) {
-        countEl.textContent = count;
-      }
-      desktop.classList.toggle("active", count > 0);
-    }
-    
-    // Update mobile indicator on logo
-    const mobile = document.getElementById("pending-indicator-mobile");
-    if (mobile) {
-      const countEl = mobile.querySelector("#pending-count-mobile");
-      if (countEl) {
-        countEl.textContent = count;
-      }
-      mobile.classList.toggle("active", count > 0);
-    }
-    
-    // Update mobile text in menu
-    const mobileText = document.getElementById("mobile-pending-text");
-    if (mobileText) {
-      const countEl = mobileText.querySelector("#pending-count-text");
-      if (countEl) {
-        countEl.textContent = count;
-      }
-      mobileText.classList.toggle("active", count > 0);
-    }
-  } catch (error) {
-    console.error("Error updating pending indicator:", error);
-  }
-}
-
 // Initial state
 document.addEventListener("DOMContentLoaded", function() {
   // updateConnectionStatus();
-  // updatePendingIndicator();
   updateNotificationsCount();
 });
 
 // React to connection changes
 window.addEventListener("online", function() {
   // updateConnectionStatus();
-  // updatePendingIndicator();
 });
 
 window.addEventListener("offline", function() {

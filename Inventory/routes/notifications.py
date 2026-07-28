@@ -3,8 +3,9 @@ from flask_login import login_required, current_user
 from flask import jsonify, request, render_template, abort
 from Core.auth import create_db_connection, close_db_connection
 from Inventory.routes import inventory_bp
-from Core.auth import create_db_connection
+from Core.auth import create_db_connection, close_db_connection
 import os, requests
+from Instance.local_settings import ONESIGNAL_APP_ID, REST_API_KEY, BASE_URL
 
 
 # Return notifications count for current user
@@ -81,9 +82,9 @@ def link_user_and_subscription():
         return jsonify({"success": False, "error": str(e)}), 500
 
 
-ONESIGNAL_APP_ID = os.getenv("ONESIGNAL_APP_ID")
-ONESIGNAL_REST_API_KEY = os.getenv("REST_API_KEY")
-BASE_URL = os.getenv("BASE_URL")
+ONESIGNAL_APP_ID = ONESIGNAL_APP_ID
+ONESIGNAL_REST_API_KEY = REST_API_KEY
+BASE_URL = BASE_URL
 from jinja2 import Template
 
 def send_notification(

@@ -3,7 +3,6 @@
 <link rel="stylesheet" href="{{ url_for('static', filename='color-template.css') }}">
 
 <style>
-/* ===== VARIABLES ===== */
 :root {
   --primary: #2563eb;
   --primary-hover: #1d4ed8;
@@ -13,7 +12,6 @@
   --warning: #f59e0b;
   --warning-light: #fffbeb;
   --success: #16a34a;
-  --success-light: #f0fdf4;
   --text-primary: #111827;
   --text-secondary: #6b7280;
   --text-muted: #9ca3af;
@@ -23,24 +21,19 @@
   --bg-hover: #f3f4f6;
 }
 
-body {
-  background: var(--bg-gray);
-}
+body { background: var(--bg-gray); }
 
-/* ===== LAYOUT ===== */
 .erp-layout {
-  padding: 0;
-  background: var(--bg-white);
   min-height: 100vh;
   display: flex;
   flex-direction: column;
+  background: var(--bg-white);
 }
 
 .erp-header {
-  background: var(--bg-white);
   border-bottom: 1px solid var(--border);
-  padding: 16px 24px;
-  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05);
+  padding: 14px 20px;
+  background: var(--bg-white);
 }
 
 .header-content {
@@ -49,207 +42,212 @@ body {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  gap: 20px;
+  gap: 16px;
   flex-wrap: wrap;
-}
-
-.header-title {
-  flex: 1;
-  min-width: 300px;
 }
 
 .header-title h1 {
   margin: 0;
-  font-size: 20px;
+  font-size: 18px;
   font-weight: 700;
   color: var(--text-primary);
 }
 
 .header-title p {
-  margin: 4px 0 0 0;
+  margin: 2px 0 0;
   font-size: 13px;
   color: var(--text-secondary);
 }
 
 .header-controls {
   display: flex;
-  gap: 12px;
+  gap: 10px;
   align-items: flex-end;
-}
-
-.warehouse-selector {
-  display: flex;
-  gap: 8px;
-  align-items: flex-end;
+  flex-wrap: wrap;
 }
 
 .warehouse-selector label {
-  font-size: 12px;
+  display: block;
+  font-size: 11px;
   font-weight: 600;
   color: var(--text-secondary);
-  margin-bottom: 0;
+  margin-bottom: 2px;
 }
 
 .warehouse-selector select {
-  padding: 8px 12px;
+  padding: 7px 10px;
   border: 1px solid var(--border);
   border-radius: 6px;
-  font-size: 14px;
-  background: var(--bg-white);
-  color: var(--text-primary);
-  min-width: 200px;
-  cursor: pointer;
-}
-
-.warehouse-selector select:focus {
-  outline: none;
-  border-color: var(--primary);
-  box-shadow: 0 0 0 2px var(--primary-light);
+  font-size: 13px;
+  min-width: 180px;
 }
 
 .btn-back {
-  padding: 8px 16px;
-  background: transparent;
+  padding: 7px 14px;
   border: 1px solid var(--border);
   border-radius: 6px;
+  background: transparent;
   color: var(--text-secondary);
-  font-size: 14px;
-  font-weight: 500;
+  font-size: 13px;
   cursor: pointer;
-  transition: all 0.2s ease;
 }
 
-.btn-back:hover {
-  background: var(--bg-hover);
-  border-color: var(--text-secondary);
-}
+.btn-back:hover { background: var(--bg-hover); }
 
-/* ===== TABS ===== */
 .erp-tabs {
   display: flex;
-  gap: 4px;
-  padding: 0 24px;
+  gap: 2px;
+  padding: 0 20px;
   border-bottom: 1px solid var(--border);
   background: var(--bg-white);
   max-width: 1600px;
   margin: 0 auto;
-  width: calc(100% - 48px);
+  width: 100%;
+  overflow-x: auto;
   position: sticky;
   top: 0;
   z-index: 20;
 }
 
 .tab-btn {
-  padding: 12px 16px;
-  background: transparent;
+  padding: 11px 14px;
   border: none;
   border-bottom: 3px solid transparent;
+  background: transparent;
   color: var(--text-secondary);
-  font-size: 14px;
+  font-size: 13px;
   font-weight: 500;
   cursor: pointer;
-  transition: all 0.2s ease;
   white-space: nowrap;
 }
 
-.tab-btn:hover {
-  color: var(--text-primary);
-  border-bottom-color: var(--border);
-}
-
+.tab-btn:hover { color: var(--text-primary); }
 .tab-btn.active {
   color: var(--primary);
   border-bottom-color: var(--primary);
 }
 
-/* ===== CONTENT ===== */
-.erp-content {
-  flex: 1;
-  overflow-y: auto;
-}
+.erp-content { flex: 1; overflow-y: auto; }
 
 .tab-panel {
   display: none;
-  padding: 24px;
+  padding: 20px;
   max-width: 1600px;
   margin: 0 auto;
   width: 100%;
 }
 
-.tab-panel.active {
-  display: block;
-}
+.tab-panel.active { display: block; }
 
-/* ===== SECTION ===== */
 .section {
-  margin-bottom: 28px;
-  background: var(--bg-white);
+  margin-bottom: 20px;
   border: 1px solid var(--border);
   border-radius: 8px;
+  background: var(--bg-white);
   overflow: hidden;
 }
 
 .section-header {
-  padding: 16px 20px;
+  padding: 12px 16px;
   background: var(--bg-gray);
   border-bottom: 1px solid var(--border);
   display: flex;
   justify-content: space-between;
   align-items: center;
+  gap: 12px;
+  flex-wrap: wrap;
 }
 
 .section-header h3 {
   margin: 0;
-  font-size: 14px;
+  font-size: 13px;
   font-weight: 600;
   color: var(--text-primary);
 }
 
-.section-content {
-  padding: 16px 20px;
+.section-content { padding: 14px 16px; }
+
+.notices {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
 }
 
-/* ===== KPI GRID ===== */
-.kpi-grid {
+.notice {
+  padding: 8px 12px;
+  border-radius: 6px;
+  font-size: 12px;
+  font-weight: 500;
+}
+
+.notice.warning {
+  background: var(--warning-light);
+  color: #92400e;
+  border: 1px solid #fde68a;
+}
+
+.notice.error {
+  background: var(--danger-light);
+  color: var(--danger);
+  border: 1px solid #fecaca;
+}
+
+.stat-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
-  gap: 12px;
-  margin-bottom: 0;
+  grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
+  gap: 10px;
 }
 
-.kpi-card {
-  background: var(--bg-gray);
+.stat-card {
   border: 1px solid var(--border);
   border-radius: 6px;
-  padding: 12px;
+  padding: 10px 12px;
+  background: var(--bg-gray);
 }
 
-.kpi-label {
-  font-size: 11px;
+.stat-label {
+  font-size: 10px;
   font-weight: 600;
   color: var(--text-secondary);
-  margin-bottom: 6px;
   text-transform: uppercase;
   letter-spacing: 0.3px;
+  margin-bottom: 4px;
 }
 
-.kpi-value {
-  font-size: 18px;
+.stat-value {
+  font-size: 16px;
   font-weight: 700;
   color: var(--text-primary);
 }
 
-.kpi-note {
-  font-size: 12px;
-  color: var(--text-muted);
-  margin-top: 4px;
+.def-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+  gap: 8px 16px;
 }
 
-/* ===== TABLES ===== */
-.table-container {
-  width: 100%;
-  overflow-x: auto;
+.def-row {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 6px 0;
+  border-bottom: 1px solid var(--border);
+  font-size: 13px;
 }
+
+.def-row dt {
+  color: var(--text-secondary);
+  font-weight: 500;
+}
+
+.def-row dd {
+  margin: 0;
+  color: var(--text-primary);
+  font-weight: 600;
+  text-align: right;
+}
+
+.table-container { overflow-x: auto; }
 
 .table-compact {
   width: 100%;
@@ -257,118 +255,83 @@ body {
   font-size: 13px;
 }
 
-.table-compact thead {
-  background: var(--bg-gray);
+.table-compact thead { background: var(--bg-gray); }
+
+.table-compact th,
+.table-compact td {
+  padding: 8px 10px;
+  border-bottom: 1px solid var(--border);
+  text-align: left;
 }
 
 .table-compact th {
-  padding: 10px 12px;
-  text-align: left;
+  font-size: 11px;
   font-weight: 600;
   color: var(--text-secondary);
-  border-bottom: 1px solid var(--border);
+  text-transform: uppercase;
+  letter-spacing: 0.2px;
   white-space: nowrap;
   cursor: pointer;
   user-select: none;
 }
 
-.table-compact th:hover {
-  background: var(--bg-hover);
-}
+.table-compact th.no-sort { cursor: default; }
 
-.table-compact td {
-  padding: 10px 12px;
-  border-bottom: 1px solid var(--border);
-  color: var(--text-primary);
-}
+.table-compact tbody tr:hover { background: var(--bg-hover); }
 
-.table-compact tbody tr:hover {
-  background: var(--bg-hover);
-  cursor: pointer;
-}
+.table-compact .text-right { text-align: right; }
 
-.table-compact tbody tr.expanded {
+.table-compact .default-badge {
+  display: inline-block;
+  padding: 2px 6px;
+  border-radius: 4px;
   background: var(--primary-light);
-}
-
-.table-compact .text-right {
-  text-align: right;
-}
-
-.table-compact .text-center {
-  text-align: center;
-}
-
-.sort-indicator {
+  color: var(--primary);
   font-size: 10px;
-  margin-left: 4px;
-  opacity: 0.5;
+  font-weight: 700;
 }
 
-/* ===== EXPANDABLE ROWS ===== */
-.expand-cell {
-  padding: 0 12px;
-}
+.expand-cell { width: 24px; padding: 0 8px; }
 
 .expand-btn {
-  background: none;
   border: none;
+  background: none;
   color: var(--primary);
   cursor: pointer;
-  font-size: 12px;
+  font-size: 10px;
   padding: 0;
-  width: 20px;
-  height: 20px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
 }
 
-.expand-btn.expanded::before {
-  content: "▼";
-}
-
-.expand-btn::before {
-  content: "▶";
-}
+.expand-btn::before { content: "▶"; }
+.expand-btn.expanded::before { content: "▼"; }
 
 .expanded-content {
   display: none;
+  padding: 10px 12px;
   background: var(--primary-light);
-  padding: 12px;
   border-top: 1px solid var(--border);
 }
 
-.expanded-content.visible {
-  display: block;
-}
+.expanded-content.visible { display: block; }
 
 .expanded-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
-  gap: 12px;
+  grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
+  gap: 10px;
 }
 
-.expanded-field {
-  font-size: 12px;
-}
-
+.expanded-field { font-size: 12px; }
 .expanded-label {
   font-weight: 600;
   color: var(--text-secondary);
   margin-bottom: 2px;
 }
 
-.expanded-value {
-  color: var(--text-primary);
-}
-
-/* ===== FILTERS ===== */
 .filters {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
-  gap: 12px;
-  margin-bottom: 16px;
+  grid-template-columns: repeat(auto-fill, minmax(160px, 1fr));
+  gap: 10px;
+  margin-bottom: 12px;
 }
 
 .filter-group {
@@ -378,186 +341,100 @@ body {
 }
 
 .filter-group label {
-  font-size: 12px;
+  font-size: 11px;
   font-weight: 600;
   color: var(--text-secondary);
 }
 
 .filter-group input,
 .filter-group select {
-  padding: 8px 10px;
+  padding: 7px 9px;
   border: 1px solid var(--border);
   border-radius: 6px;
   font-size: 13px;
-  background: var(--bg-white);
-  color: var(--text-primary);
 }
 
-.filter-group input:focus,
-.filter-group select:focus {
-  outline: none;
-  border-color: var(--primary);
-  box-shadow: 0 0 0 2px var(--primary-light);
-}
+.filter-group select[multiple] { min-height: 90px; }
 
 .filter-actions {
   display: flex;
   gap: 8px;
-}
-
-.filter-header {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 16px;
-  margin-bottom: 16px;
   flex-wrap: wrap;
 }
 
-.filter-summary {
-  font-size: 13px;
-  color: var(--text-secondary);
-}
-
-.filter-panel.hidden {
-  display: none;
-}
-
-.filter-group select[multiple] {
-  min-height: 140px;
-}
-
-.btn-filter-toggle {
-  padding: 8px 16px;
-  background: transparent;
-  color: var(--text-secondary);
-  border: 1px solid var(--border);
+.btn-primary,
+.btn-filter,
+.btn-clear,
+.btn-secondary {
+  padding: 7px 14px;
   border-radius: 6px;
   font-size: 13px;
+  font-weight: 600;
   cursor: pointer;
-  transition: all 0.2s ease;
+  border: 1px solid transparent;
 }
 
-.btn-filter-toggle:hover {
-  background: var(--bg-hover);
-}
-
+.btn-primary,
 .btn-filter {
-  padding: 8px 16px;
   background: var(--primary);
-  color: white;
-  border: none;
-  border-radius: 6px;
-  font-size: 13px;
-  font-weight: 600;
-  cursor: pointer;
-  transition: all 0.2s ease;
+  color: #fff;
+  border-color: var(--primary);
 }
 
-.btn-filter:hover {
-  background: var(--primary-hover);
-}
+.btn-primary:hover,
+.btn-filter:hover { background: var(--primary-hover); }
 
-.btn-clear {
-  padding: 8px 16px;
+.btn-clear,
+.btn-secondary {
   background: transparent;
   color: var(--text-secondary);
-  border: 1px solid var(--border);
-  border-radius: 6px;
-  font-size: 13px;
-  font-weight: 600;
-  cursor: pointer;
-  transition: all 0.2s ease;
+  border-color: var(--border);
 }
 
-.btn-clear:hover {
-  background: var(--bg-hover);
-}
+.btn-clear:hover,
+.btn-secondary:hover { background: var(--bg-hover); }
 
-/* ===== FORM ===== */
-.form-group {
-  margin-bottom: 16px;
+.form-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+  gap: 12px 16px;
+  max-width: 800px;
 }
 
 .form-group label {
   display: block;
-  font-size: 13px;
+  font-size: 12px;
   font-weight: 600;
   color: var(--text-secondary);
-  margin-bottom: 6px;
+  margin-bottom: 4px;
 }
 
 .form-group input,
 .form-group select {
   width: 100%;
-  max-width: 400px;
-  padding: 8px 12px;
+  padding: 7px 10px;
   border: 1px solid var(--border);
   border-radius: 6px;
   font-size: 13px;
-  background: var(--bg-white);
-  color: var(--text-primary);
-}
-
-.form-group input:focus,
-.form-group select:focus {
-  outline: none;
-  border-color: var(--primary);
-  box-shadow: 0 0 0 2px var(--primary-light);
 }
 
 .form-actions {
   display: flex;
-  gap: 12px;
-  margin-top: 20px;
+  gap: 10px;
+  margin-top: 14px;
 }
 
-.btn-primary {
-  padding: 10px 20px;
-  background: var(--primary);
-  color: white;
-  border: none;
-  border-radius: 6px;
-  font-size: 14px;
-  font-weight: 600;
-  cursor: pointer;
-  transition: all 0.2s ease;
-}
-
-.btn-primary:hover {
-  background: var(--primary-hover);
-  transform: translateY(-1px);
-}
-
-.btn-secondary {
-  padding: 10px 20px;
-  background: transparent;
-  color: var(--text-secondary);
-  border: 1px solid var(--border);
-  border-radius: 6px;
-  font-size: 14px;
-  font-weight: 600;
-  cursor: pointer;
-  transition: all 0.2s ease;
-}
-
-.btn-secondary:hover {
-  background: var(--bg-hover);
-}
-
-/* ===== STATUS MESSAGE ===== */
 .status-message {
-  padding: 12px 16px;
+  display: none;
+  margin-top: 12px;
+  padding: 10px 12px;
   border-radius: 6px;
   font-size: 13px;
-  font-weight: 500;
-  margin-bottom: 16px;
-  display: none;
 }
 
 .status-message.success {
   display: block;
-  background: var(--success-light);
+  background: #f0fdf4;
   color: var(--success);
   border: 1px solid #bbf7d0;
 }
@@ -569,111 +446,45 @@ body {
   border: 1px solid #fecaca;
 }
 
-/* ===== EMPTY STATE ===== */
 .empty-state {
+  padding: 24px;
   text-align: center;
-  padding: 32px 20px;
   color: var(--text-muted);
+  font-size: 13px;
 }
 
-.empty-state i {
-  font-size: 28px;
-  margin-bottom: 8px;
-  display: block;
-  opacity: 0.5;
+.loading-state {
+  padding: 20px;
+  text-align: center;
+  color: var(--text-secondary);
+  font-size: 13px;
 }
 
-/* ===== RESPONSIVE ===== */
-@media (max-width: 1024px) {
-  .header-content {
-    flex-direction: column;
-    align-items: stretch;
-  }
-
-  .header-controls {
-    flex-direction: column;
-    width: 100%;
-  }
-
-  .warehouse-selector {
-    width: 100%;
-  }
-
-  .warehouse-selector select {
-    width: 100%;
-  }
-
-  .kpi-grid {
-    grid-template-columns: repeat(3, 1fr);
-  }
-
-  .table-compact {
-    font-size: 12px;
-  }
-
-  .table-compact th,
-  .table-compact td {
-    padding: 8px;
-  }
+.subsection-title {
+  margin: 0 0 10px;
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--text-secondary);
+  text-transform: uppercase;
+  letter-spacing: 0.3px;
 }
 
 @media (max-width: 768px) {
-  .erp-header {
-    padding: 12px 16px;
-  }
-
-  .tab-panel {
-    padding: 16px;
-  }
-
-  .kpi-grid {
-    grid-template-columns: repeat(2, 1fr);
-  }
-
-  .filters {
-    grid-template-columns: 1fr;
-  }
-
-  .section-header {
-    padding: 12px 16px;
-  }
-
-  .section-content {
-    padding: 12px 16px;
-  }
-
-  .table-compact {
-    font-size: 11px;
-  }
-
-  .table-compact th,
-  .table-compact td {
-    padding: 6px;
-  }
-
-  .expanded-grid {
-    grid-template-columns: 1fr;
-  }
+  .erp-header,
+  .tab-panel { padding: 12px; }
+  .erp-tabs { padding: 0 12px; }
+  .stat-grid { grid-template-columns: repeat(2, 1fr); }
+  .filters { grid-template-columns: 1fr; }
+  .header-content { flex-direction: column; align-items: stretch; }
+  .warehouse-selector select { width: 100%; min-width: 0; }
 }
 
 @media (max-width: 480px) {
-  .kpi-grid {
-    grid-template-columns: 1fr;
-  }
-
-  .filters {
-    grid-template-columns: 1fr;
-  }
-
-  .form-group input,
-  .form-group select {
-    max-width: 100%;
-  }
+  .stat-grid { grid-template-columns: 1fr; }
 }
 </style>
 
 <div class="erp-layout">
-  <!-- HEADER -->
   <div class="erp-header">
     <div class="header-content">
       <div class="header-title">
@@ -691,279 +502,263 @@ body {
             {% endfor %}
           </select>
         </div>
-        <button class="btn-back" onclick="goBack()">← Back</button>
+        <button type="button" class="btn-back" onclick="goBack()">← Back</button>
       </div>
     </div>
   </div>
 
-  <!-- TABS -->
-  <div class="erp-tabs">
-    <button class="tab-btn active" onclick="switchTab('overview')">Overview</button>
-    <button class="tab-btn" onclick="switchTab('history')">History</button>
-    <button class="tab-btn" onclick="switchTab('agriculture')">Agriculture</button>
-    <button class="tab-btn" onclick="switchTab('warehouses')">Warehouses</button>
-    <button class="tab-btn" onclick="switchTab('settings')">Settings</button>
+  <div class="erp-tabs" role="tablist">
+    <button type="button" class="tab-btn active" data-tab="warehouse" onclick="switchTab('warehouse', this)">Warehouse</button>
+    <button type="button" class="tab-btn" data-tab="warehouses" onclick="switchTab('warehouses', this)">Warehouses</button>
+    <button type="button" class="tab-btn" data-tab="history" onclick="switchTab('history', this)">History</button>
+    <button type="button" class="tab-btn" data-tab="suppliers" onclick="switchTab('suppliers', this)">Suppliers</button>
+    <button type="button" class="tab-btn" data-tab="registrations" onclick="switchTab('registrations', this)">Registrations</button>
+    <button type="button" class="tab-btn" data-tab="inventory" onclick="switchTab('inventory', this)">Inventory</button>
   </div>
 
-  <!-- CONTENT -->
   <div class="erp-content">
-    <!-- TAB: OVERVIEW -->
-    <div id="tab-overview" class="tab-panel active">
-      <!-- KPI Summary -->
+    <!-- WAREHOUSE -->
+    <div id="tab-warehouse" class="tab-panel active">
+      {% if notices %}
       <div class="section">
-        <div class="section-header">
-          <h3>Inventory Summary</h3>
-        </div>
+        <div class="section-header"><h3>Notices</h3></div>
         <div class="section-content">
-          <div class="kpi-grid">
-            <div class="kpi-card">
-              <div class="kpi-label">Qty On Hand</div>
-              <div class="kpi-value">{{ product.QtyOnHand }}</div>
-            </div>
-            <div class="kpi-card">
-              <div class="kpi-label">Qty Allocated</div>
-              <div class="kpi-value">{{ product.QtyOnIssues }}</div>
-            </div>
-            <div class="kpi-card">
-              <div class="kpi-label">Qty Available</div>
-              <div class="kpi-value">{{ product.Available }}</div>
-            </div>
-            <div class="kpi-card">
-              <div class="kpi-label">Qty On PO</div>
-              <div class="kpi-value">{{ product.QtyOnPo }}</div>
-            </div>
-            <div class="kpi-card">
-              <div class="kpi-label">Qty On IBT</div>
-              <div class="kpi-value">{{ product.QtyOnIBT }}</div>
-            </div>
-            <div class="kpi-card">
-              <div class="kpi-label">Reorder Level</div>
-              <div class="kpi-value">{{ product.ReorderLevel }}</div>
-            </div>
-            <div class="kpi-card">
-              <div class="kpi-label">Reorder Qty</div>
-              <div class="kpi-value">{{ product.ReorderQty }}</div>
-            </div>
-            <div class="kpi-card">
-              <div class="kpi-label">Days Until Empty</div>
-              <div class="kpi-value">{{ product.DaysUntilEmpty or 'N/A' }}</div>
-              <div class="kpi-note">Based on planned demand</div>
-            </div>
-            <div class="kpi-card">
-              <div class="kpi-label">Last Stock Count</div>
-              <div class="kpi-value">{{ product.LastStockCountDate or 'N/A' }}</div>
-            </div>
-            <div class="kpi-card">
-              <div class="kpi-label">Last Movement</div>
-              <div class="kpi-value">{{ product.LastMovement.date if product.LastMovement else 'N/A' }}</div>
-            </div>
-            {% if product.LastPurchaseInfo %}
-            <div class="kpi-card">
-              <div class="kpi-label">Last Purchase Date</div>
-              <div class="kpi-value">{{ product.LastPurchaseInfo.purchase_date or 'N/A' }}</div>
-            </div>
-            <div class="kpi-card">
-              <div class="kpi-label">Last Supplier</div>
-              <div class="kpi-value" style="font-size: 13px;">{{ product.LastPurchaseInfo.supplier or 'N/A' }}</div>
-            </div>
-            <div class="kpi-card">
-              <div class="kpi-label">Last Cost</div>
-              <div class="kpi-value">{{ product.LastPurchaseInfo.cost or 'N/A' }}</div>
-            </div>
-            {% endif %}
+          <div class="notices">
+            {% for notice in notices %}
+            <div class="notice {{ notice.severity }}">{{ notice.message }}</div>
+            {% endfor %}
           </div>
-        </div>
-      </div>
-
-      <!-- Upcoming Demand -->
-      {% if product.Sprays %}
-      <div class="section">
-        <div class="section-header">
-          <h3>Upcoming Demand</h3>
-        </div>
-        <div class="section-content">
-          <div class="table-container">
-            <table class="table-compact">
-              <thead>
-                <tr>
-                  <th>Spray</th>
-                  <th>Date</th>
-                  <th class="text-right">Required Qty</th>
-                </tr>
-              </thead>
-              <tbody>
-                {% for spray in product.Sprays[:8] %}
-                <tr>
-                  <td>{{ spray.SprayNo }}</td>
-                  <td>{{ spray.SprayDate or 'N/A' }}</td>
-                  <td class="text-right">{{ spray.TotalQty }}</td>
-                </tr>
-                {% endfor %}
-              </tbody>
-            </table>
-          </div>
-          {% if not product.Sprays %}
-          <div class="empty-state">
-            <p>No upcoming demand</p>
-          </div>
-          {% endif %}
         </div>
       </div>
       {% endif %}
 
-      <!-- Recent Activity -->
-      {% if product.TransactionTimeline %}
       <div class="section">
         <div class="section-header">
-          <h3>Recent Activity (Latest 8)</h3>
-          <button class="tab-btn" style="border: none; padding: 0; margin: 0;" onclick="switchTab('history')">View Full History →</button>
+          <h3>{{ selected_warehouse.WhseCode }} — {{ selected_warehouse.WhseName }}</h3>
         </div>
         <div class="section-content">
-          <div class="table-container">
-            <table class="table-compact">
-              <thead>
-                <tr>
-                  <th>Date</th>
-                  <th>Type</th>
-                  <th class="text-right">Qty</th>
-                  <th>Project</th>
-                  <th>Reference</th>
-                </tr>
-              </thead>
-              <tbody>
-                {% set count = 0 %}
-                {% for day in product.TransactionTimeline %}
-                  {% for item in day['items'] %}
-                    {% if count < 8 %}
-                    <tr>
-                      <td>{{ day['date'] }}</td>
-                      <td>{{ item['type'] }}</td>
-                      <td class="text-right">{{ item['qty'] }}</td>
-                      <td>{{ item['project'] }}</td>
-                      <td>{{ item['reference'] }}</td>
-                    </tr>
-                    {% set count = count + 1 %}
-                    {% endif %}
-                  {% endfor %}
-                {% endfor %}
-              </tbody>
-            </table>
+          <div class="stat-grid">
+            <div class="stat-card">
+              <div class="stat-label">Qty On Hand</div>
+              <div class="stat-value">{{ selected_warehouse.QtyOnHand }}</div>
+            </div>
+            <div class="stat-card">
+              <div class="stat-label">Qty On Issues</div>
+              <div class="stat-value">{{ selected_warehouse.QtyOnIssues }}</div>
+            </div>
+            <div class="stat-card">
+              <div class="stat-label">Qty On Purchase Orders</div>
+              <div class="stat-value">{{ selected_warehouse.QtyOnPO }}</div>
+            </div>
+            <div class="stat-card">
+              <div class="stat-label">Qty On IBT</div>
+              <div class="stat-value">{{ selected_warehouse.QtyOnIBT }}</div>
+            </div>
+            <div class="stat-card">
+              <div class="stat-label">Qty Available</div>
+              <div class="stat-value">{{ selected_warehouse.QtyAvailable }}</div>
+            </div>
+            <div class="stat-card">
+              <div class="stat-label">Reorder Level</div>
+              <div class="stat-value">{{ selected_warehouse.ReorderLevel }}</div>
+            </div>
+            <div class="stat-card">
+              <div class="stat-label">Reorder Qty</div>
+              <div class="stat-value">{{ selected_warehouse.ReorderQty }}</div>
+            </div>
+            <div class="stat-card">
+              <div class="stat-label">Last Stock Count</div>
+              <div class="stat-value">{{ selected_warehouse.LastStockCount or '—' }}</div>
+            </div>
+            <div class="stat-card">
+              <div class="stat-label">Weeks Until Negative</div>
+              <div class="stat-value">
+                {% if selected_warehouse.WeeksUntilNegative is not none %}
+                  {{ selected_warehouse.WeeksUntilNegative }}
+                {% else %}
+                  —
+                {% endif %}
+              </div>
+            </div>
           </div>
         </div>
       </div>
-      {% endif %}
     </div>
 
-    <!-- TAB: HISTORY -->
-    <div id="tab-history" class="tab-panel">
-      <!-- Filters -->
+    <!-- WAREHOUSES -->
+    <div id="tab-warehouses" class="tab-panel">
       <div class="section">
-        <div class="section-header">
-          <h3>Transaction Filters</h3>
-        </div>
+        <div class="section-header"><h3>All Warehouses</h3></div>
         <div class="section-content">
-          <div class="filter-header">
-            <button type="button" id="toggleFilterPanel" class="btn-filter-toggle">Show filters</button>
-            <div id="filterSummary" class="filter-summary">0 filters applied</div>
-          </div>
-          <div id="filterPanel" class="filter-panel hidden">
-            <div class="filters">
-              <div class="filter-group">
-                <label>General Search</label>
-                <input type="text" id="filterSearch" placeholder="Search all columns...">
-              </div>
-              <div class="filter-group">
-                <label>Date From</label>
-                <input type="date" id="filterDateFrom" value="">
-              </div>
-              <div class="filter-group">
-                <label>Date To</label>
-                <input type="date" id="filterDateTo" value="">
-              </div>
-              <div class="filter-group">
-                <label>Transaction Type</label>
-                <select id="filterType" multiple></select>
-              </div>
-              <div class="filter-group">
-                <label>Warehouse</label>
-                <select id="filterWarehouse" multiple></select>
-              </div>
-              <div class="filter-group">
-                <label>Project</label>
-                <select id="filterProject" multiple></select>
-              </div>
-              <div class="filter-group">
-                <label>Reference</label>
-                <input type="text" id="filterReference" placeholder="Search references...">
-              </div>
-              <div class="filter-group">
-                <label>User</label>
-                <select id="filterUser" multiple></select>
-              </div>
-            </div>
-            <div class="filter-actions">
-              <button class="btn-filter" onclick="applyFilters()">Apply Filters</button>
-              <button class="btn-clear" onclick="clearFilters()">Clear All</button>
-            </div>
+          <div class="table-container">
+            <table class="table-compact">
+              <thead>
+                <tr>
+                  <th>Warehouse</th>
+                  <th class="text-right">On Hand</th>
+                  <th class="text-right">Available</th>
+                  <th class="text-right">PO</th>
+                  <th class="text-right">IBT</th>
+                  <th>Last Stock Count</th>
+                  <th class="text-right">Weeks Until Negative</th>
+                </tr>
+              </thead>
+              <tbody>
+                {% for wh in all_warehouses %}
+                <tr{% if wh.WhseLink == warehouse_id %} style="background: var(--primary-light);"{% endif %}>
+                  <td>{{ wh.WhseCode }} — {{ wh.WhseName }}</td>
+                  <td class="text-right">{{ wh.QtyOnHand }}</td>
+                  <td class="text-right">{{ wh.QtyAvailable }}</td>
+                  <td class="text-right">{{ wh.QtyOnPO }}</td>
+                  <td class="text-right">{{ wh.QtyOnIBT }}</td>
+                  <td>{{ wh.LastStockCount or '—' }}</td>
+                  <td class="text-right">
+                    {% if wh.WeeksUntilNegative is not none %}{{ wh.WeeksUntilNegative }}{% else %}—{% endif %}
+                  </td>
+                </tr>
+                {% endfor %}
+              </tbody>
+            </table>
           </div>
         </div>
       </div>
+    </div>
 
-      <!-- Transaction Table -->
+    <!-- HISTORY -->
+    <div id="tab-history" class="tab-panel">
       <div class="section">
         <div class="section-header">
-          <h3>Transactions</h3>
+          <h3>Transaction History</h3>
+          <div class="filter-actions">
+            <button type="button" class="btn-filter" onclick="refreshHistory()">Refresh</button>
+            <button type="button" class="btn-clear" onclick="clearHistoryFilters()">Clear Filters</button>
+            <button type="button" class="btn-secondary" onclick="expandAllTransactions()">Expand All</button>
+            <button type="button" class="btn-secondary" onclick="collapseAllTransactions()">Collapse All</button>
+          </div>
         </div>
         <div class="section-content">
+          <div class="filters">
+            <div class="filter-group">
+              <label for="filterSearch">Search</label>
+              <input type="text" id="filterSearch" placeholder="Search transactions..." oninput="applyHistoryFilters()">
+            </div>
+            <div class="filter-group">
+              <label for="filterDateFrom">Date From</label>
+              <input type="date" id="filterDateFrom" onchange="onHistoryDateChange()">
+            </div>
+            <div class="filter-group">
+              <label for="filterDateTo">Date To</label>
+              <input type="date" id="filterDateTo" onchange="onHistoryDateChange()">
+            </div>
+            <div class="filter-group">
+              <label for="filterWarehouse">Warehouse</label>
+              <select id="filterWarehouse" multiple onchange="applyHistoryFilters()"></select>
+            </div>
+            <div class="filter-group">
+              <label for="filterType">Transaction Type</label>
+              <select id="filterType" multiple onchange="applyHistoryFilters()"></select>
+            </div>
+            <div class="filter-group">
+              <label for="filterProject">Project</label>
+              <select id="filterProject" multiple onchange="applyHistoryFilters()"></select>
+            </div>
+            <div class="filter-group">
+              <label for="filterUser">User</label>
+              <select id="filterUser" multiple onchange="applyHistoryFilters()"></select>
+            </div>
+          </div>
+
+          <div id="historyLoading" class="loading-state" style="display: none;">Loading transactions...</div>
+          <div id="historyError" class="status-message error" style="display: none;"></div>
+
           <div class="table-container">
             <table class="table-compact" id="transactionTable">
               <thead>
                 <tr>
-                  <th style="width: 20px;"></th>
-                  <th onclick="sortTable(1)">Date <span class="sort-indicator"></span></th>
-                  <th onclick="sortTable(2)">Type <span class="sort-indicator"></span></th>
-                  <th class="text-right" onclick="sortTable(3)">Qty <span class="sort-indicator"></span></th>
-                  <th onclick="sortTable(4)">Warehouse <span class="sort-indicator"></span></th>
-                  <th onclick="sortTable(5)">Project <span class="sort-indicator"></span></th>
-                  <th onclick="sortTable(6)">Reference <span class="sort-indicator"></span></th>
-                  <th onclick="sortTable(7)">User <span class="sort-indicator"></span></th>
+                  <th class="no-sort"></th>
+                  <th onclick="sortHistory(1)">Date</th>
+                  <th onclick="sortHistory(2)">Warehouse</th>
+                  <th onclick="sortHistory(3)">Type</th>
+                  <th class="text-right" onclick="sortHistory(4)">Quantity</th>
+                  <th onclick="sortHistory(5)">Reference</th>
+                  <th onclick="sortHistory(6)">Project</th>
                 </tr>
               </thead>
               <tbody id="transactionTableBody"></tbody>
             </table>
           </div>
+          <div id="historyEmpty" class="empty-state" style="display: none;">No transactions found for the selected filters.</div>
         </div>
       </div>
     </div>
 
-    <!-- TAB: AGRICULTURE -->
-    <div id="tab-agriculture" class="tab-panel">
-      <!-- Chemical Information -->
+    <!-- SUPPLIERS -->
+    <div id="tab-suppliers" class="tab-panel">
       <div class="section">
-        <div class="section-header">
-          <h3>Chemical Information</h3>
-        </div>
+        <div class="section-header"><h3>Suppliers</h3></div>
         <div class="section-content">
-          <div class="kpi-grid">
-            <div class="kpi-card">
-              <div class="kpi-label">Active Ingredient</div>
-              <div class="kpi-value" style="font-size: 14px;">{{ product.ChemStockActiveIngr or 'N/A' }}</div>
-            </div>
-            <div class="kpi-card">
-              <div class="kpi-label">Colour Code</div>
-              <div class="kpi-value" style="font-size: 14px;">{{ product.ChemStockColourCode or 'N/A' }}</div>
-            </div>
+          {% if suppliers %}
+          <div class="table-container">
+            <table class="table-compact">
+              <thead>
+                <tr>
+                  <th>Supplier</th>
+                  <th>Default</th>
+                  <th class="text-right">Last Price</th>
+                  <th>Invoice Date</th>
+                  <th>Unit</th>
+                </tr>
+              </thead>
+              <tbody>
+                {% for supplier in suppliers %}
+                <tr>
+                  <td>{{ supplier.SupplierName }}</td>
+                  <td>{% if supplier.IsDefault %}<span class="default-badge">Default</span>{% else %}—{% endif %}</td>
+                  <td class="text-right">{{ supplier.LastPrice }}</td>
+                  <td>{{ supplier.InvoiceDate or '—' }}</td>
+                  <td>{{ supplier.Unit or '—' }}</td>
+                </tr>
+                {% endfor %}
+              </tbody>
+            </table>
           </div>
+          {% else %}
+          <div class="empty-state">No suppliers linked to this product.</div>
+          {% endif %}
+        </div>
+      </div>
+    </div>
+
+    <!-- REGISTRATIONS -->
+    <div id="tab-registrations" class="tab-panel">
+      <div class="section">
+        <div class="section-header"><h3>Active Ingredient</h3></div>
+        <div class="section-content">
+          <dl class="def-grid">
+            <div class="def-row">
+              <dt>Active Ingredient</dt>
+              <dd>{{ registrations.ActiveIngredient or '—' }}</dd>
+            </div>
+          </dl>
         </div>
       </div>
 
-      <!-- Linked Crop Registrations -->
-      {% if product.Crops %}
       <div class="section">
-        <div class="section-header">
-          <h3>Linked Crop Registrations</h3>
-        </div>
+        <div class="section-header"><h3>Colour</h3></div>
         <div class="section-content">
+          <dl class="def-grid">
+            <div class="def-row">
+              <dt>Colour Code</dt>
+              <dd>{{ registrations.ColourCode or '—' }}</dd>
+            </div>
+          </dl>
+        </div>
+      </div>
+
+      <div class="section">
+        <div class="section-header"><h3>Crop Registrations</h3></div>
+        <div class="section-content">
+          {% if registrations.Crops %}
           <div class="table-container">
             <table class="table-compact">
               <thead>
@@ -976,161 +771,75 @@ body {
                 </tr>
               </thead>
               <tbody>
-                {% for crop in product.Crops %}
+                {% for crop in registrations.Crops %}
                 <tr>
-                  <td>{{ crop.CropDescription or '-' }}</td>
-                  <td>{{ crop.RegNumber or '-' }}</td>
-                  <td>{{ crop.Type or '-' }}</td>
-                  <td>{{ crop.Function or '-' }}</td>
-                  <td>{{ crop.WitholdingPeriod or '-' }}</td>
+                  <td>{{ crop.CropDescription }}</td>
+                  <td>{{ crop.RegNumber }}</td>
+                  <td>{{ crop.Type }}</td>
+                  <td>{{ crop.Function }}</td>
+                  <td>{{ crop.WithholdingPeriod }}</td>
                 </tr>
                 {% endfor %}
               </tbody>
             </table>
-          </div>
-        </div>
-      </div>
-      {% endif %}
-
-      <!-- Recent Spray Usage -->
-      {% if product.RecentSprayUsage %}
-      <div class="section">
-        <div class="section-header">
-          <h3>Recent Spray Usage</h3>
-        </div>
-        <div class="section-content">
-          <div class="table-container">
-            <table class="table-compact">
-              <thead>
-                <tr>
-                  <th>Date</th>
-                  <th>Spray</th>
-                  <th>Project</th>
-                  <th class="text-right">Qty Used</th>
-                </tr>
-              </thead>
-              <tbody>
-                {% for spray in product.RecentSprayUsage %}
-                <tr>
-                  <td>{{ spray.date }}</td>
-                  <td>{{ spray.spray_no }}</td>
-                  <td>{{ spray.project }}</td>
-                  <td class="text-right">{{ spray.qty }}</td>
-                </tr>
-                {% endfor %}
-              </tbody>
-            </table>
-          </div>
-        </div>
-      </div>
-      {% endif %}
-    </div>
-
-    <!-- TAB: WAREHOUSES -->
-    <div id="tab-warehouses" class="tab-panel">
-      <div class="section">
-        <div class="section-header">
-          <h3>Warehouse Network</h3>
-        </div>
-        <div class="section-content">
-          {% if product.AllWarehouses %}
-          <div class="table-container">
-            <table class="table-compact">
-              <thead>
-                <tr>
-                  <th style="width: 20px;"></th>
-                  <th>Warehouse</th>
-                  <th class="text-right">On Hand</th>
-                  <th class="text-right">Allocated</th>
-                  <th class="text-right">Available</th>
-                  <th class="text-right">On PO</th>
-                  <th class="text-right">Reorder Level</th>
-                  <th class="text-right">Days Until Empty</th>
-                </tr>
-              </thead>
-              <tbody>
-                {% for wh in product.AllWarehouses %}
-                <tr data-wh-index="{{ loop.index0 }}">
-                  <td class="expand-cell">
-                    <button class="expand-btn" onclick="toggleExpandWh(event)"></button>
-                  </td>
-                  <td>{{ wh.WhseCode }} - {{ wh.WhseName }}</td>
-                  <td class="text-right">{{ wh.QtyOnHand }}</td>
-                  <td class="text-right">{{ wh.QtyAllocated }}</td>
-                  <td class="text-right">{{ wh.QtyAvailable }}</td>
-                  <td class="text-right">{{ wh.QtyOnPO }}</td>
-                  <td class="text-right">{{ wh.ReorderLevel }}</td>
-                  <td class="text-right">-</td>
-                </tr>
-                <tr style="display: none;" class="expanded-wh-row">
-                  <td colspan="8" style="padding: 0;">
-                    <div class="expanded-content">
-                      <p><strong>Warehouse Details</strong></p>
-                      <p>Reorder Qty: {{ wh.ReorderQty }}</p>
-                    </div>
-                  </td>
-                </tr>
-                {% endfor %}
-              </tbody>
-            </table>
-          </div>
-          {% endif %}
-        </div>
-      </div>
-    </div>
-
-    <!-- TAB: SETTINGS -->
-    <div id="tab-settings" class="tab-panel">
-      <div class="section">
-        <div class="section-header">
-          <h3>Reordering Settings</h3>
-        </div>
-        <div class="section-content">
-          <form id="reorderingForm" onsubmit="submitReorderingForm(event)">
-            <div class="form-group">
-              <label>Category</label>
-              <select id="reorderCategory">
-                <option value="">Select a category</option>
-              </select>
-            </div>
-            <div class="form-group">
-              <label>Reorder Level</label>
-              <input type="number" id="reorderLevel" step="0.01" placeholder="e.g., 100">
-            </div>
-            <div class="form-group">
-              <label>Reorder Quantity</label>
-              <input type="number" id="reorderQty" step="0.01" placeholder="e.g., 500">
-            </div>
-            <div class="form-actions">
-              <button type="submit" class="btn-primary">Save Changes</button>
-              <button type="button" class="btn-secondary" onclick="resetForm()">Reset</button>
-            </div>
-          </form>
-          <div id="reorderMessage" class="status-message"></div>
-        </div>
-      </div>
-
-      <div class="section">
-        <div class="section-header">
-          <h3>Supplier Information</h3>
-        </div>
-        <div class="section-content">
-          {% if product.LastPurchaseInfo %}
-          <div class="form-group">
-            <label>Supplier</label>
-            <input type="text" readonly value="{{ product.LastPurchaseInfo.supplier or 'N/A' }}">
-          </div>
-          <div class="form-group">
-            <label>Last Purchase Date</label>
-            <input type="text" readonly value="{{ product.LastPurchaseInfo.purchase_date or 'N/A' }}">
-          </div>
-          <div class="form-group">
-            <label>Last Purchase Cost</label>
-            <input type="text" readonly value="{{ product.LastPurchaseInfo.cost or 'N/A' }}">
           </div>
           {% else %}
-          <p style="color: var(--text-muted);">No supplier information available</p>
+          <div class="empty-state">No crop registrations on file.</div>
           {% endif %}
+        </div>
+      </div>
+
+      <div class="section">
+        <div class="section-header"><h3>Sprays</h3></div>
+        <div class="section-content">
+          <div id="spraysLoading" class="loading-state">Loading sprays...</div>
+          <div id="spraysError" class="status-message error" style="display: none;"></div>
+          <div class="table-container" id="spraysTableWrap" style="display: none;">
+            <table class="table-compact">
+              <thead>
+                <tr>
+                  <th>Description</th>
+                  <th>Status</th>
+                  <th>Execution Date</th>
+                  <th class="text-right">Qty UOM</th>
+                </tr>
+              </thead>
+              <tbody id="spraysTableBody"></tbody>
+            </table>
+          </div>
+          <div id="spraysEmpty" class="empty-state" style="display: none;">No spray records found.</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- INVENTORY -->
+    <div id="tab-inventory" class="tab-panel">
+      <div class="section">
+        <div class="section-header"><h3>Inventory Settings</h3></div>
+        <div class="section-content">
+          <form id="inventoryForm" onsubmit="submitInventoryForm(event)">
+            <div class="form-grid">
+              <div class="form-group">
+                <label for="inventoryCategory">Shelf / Category</label>
+                <select id="inventoryCategory">
+                  <option value="">Select a category</option>
+                </select>
+              </div>
+              <div class="form-group">
+                <label for="inventoryReorderLevel">Reorder Level</label>
+                <input type="number" id="inventoryReorderLevel" step="0.01" value="{{ selected_warehouse.ReorderLevel }}">
+              </div>
+              <div class="form-group">
+                <label for="inventoryReorderQty">Reorder Quantity</label>
+                <input type="number" id="inventoryReorderQty" step="0.01" value="{{ selected_warehouse.ReorderQty }}">
+              </div>
+            </div>
+            <div class="form-actions">
+              <button type="submit" class="btn-primary">Save</button>
+              <button type="button" class="btn-secondary" onclick="resetInventoryForm()">Reset</button>
+            </div>
+          </form>
+          <div id="inventoryMessage" class="status-message"></div>
         </div>
       </div>
     </div>
@@ -1138,32 +847,42 @@ body {
 </div>
 
 <script>
-// ===== CONFIGURATION =====
 const PRODUCT_STOCK_LINK = {{ product.StockLink }};
-const CURRENT_WAREHOUSE_ID = {% if warehouse_id is not none %}{{ warehouse_id }}{% else %}null{% endif %};
-const INITIAL_CATEGORY_ID = {% if product.CategoryId is not none %}{{ product.CategoryId }}{% else %}null{% endif %};
+const CURRENT_WAREHOUSE_ID = {{ warehouse_id }};
+const INITIAL_CATEGORY_ID = {{ selected_warehouse.CategoryId if selected_warehouse.CategoryId is not none else 'null' }};
 
-// ===== TAB SWITCHING =====
-function switchTab(tabName) {
-  // Hide all tabs
-  document.querySelectorAll('.tab-panel').forEach(panel => {
-    panel.classList.remove('active');
-  });
-  document.querySelectorAll('.tab-btn').forEach(btn => {
-    btn.classList.remove('active');
-  });
+const pageState = {
+  historyLoaded: false,
+  historyLoading: false,
+  spraysLoaded: false,
+  spraysLoading: false,
+  categoriesLoaded: false,
+};
 
-  // Show selected tab
+const transactionState = {
+  all: [],
+  filtered: [],
+  sortCol: 1,
+  sortAsc: false,
+};
+
+function switchTab(tabName, button) {
+  document.querySelectorAll('.tab-panel').forEach(panel => panel.classList.remove('active'));
+  document.querySelectorAll('.tab-btn').forEach(btn => btn.classList.remove('active'));
   document.getElementById(`tab-${tabName}`).classList.add('active');
-  event.target.classList.add('active');
+  if (button) button.classList.add('active');
 
-  // Load categories if settings tab
-  if (tabName === 'settings') {
-    populateReorderingCategories();
+  if (tabName === 'history' && !pageState.historyLoaded && !pageState.historyLoading) {
+    fetchTransactionHistory();
+  }
+  if (tabName === 'registrations' && !pageState.spraysLoaded && !pageState.spraysLoading) {
+    fetchSprays();
+  }
+  if (tabName === 'inventory' && !pageState.categoriesLoaded) {
+    populateInventoryCategories();
   }
 }
 
-// ===== WAREHOUSE SELECTOR =====
 function changeWarehouse() {
   const whseId = document.getElementById('whseSelect').value;
   const url = new URL(window.location);
@@ -1171,132 +890,29 @@ function changeWarehouse() {
   window.location.href = url.toString();
 }
 
-// ===== NAVIGATION =====
 function goBack() {
   const url = new URL(window.location.origin + '/inventory/qty');
-  if (CURRENT_WAREHOUSE_ID) {
-    url.searchParams.set('whse', CURRENT_WAREHOUSE_ID);
-  }
+  url.searchParams.set('whse', CURRENT_WAREHOUSE_ID);
   window.location.href = url.toString();
 }
 
-// ===== EXPANDABLE ROWS - History ===== 
-function toggleExpand(event) {
-  event.preventDefault();
-  const btn = event.target;
-  const row = btn.closest('tr');
-  const nextRow = row.nextElementSibling;
-  
-  if (nextRow && nextRow.classList.contains('expanded-row')) {
-    const content = nextRow.querySelector('.expanded-content');
-    btn.classList.toggle('expanded');
-    if (content.classList.contains('visible')) {
-      content.classList.remove('visible');
-      nextRow.style.display = 'none';
-    } else {
-      content.classList.add('visible');
-      nextRow.style.display = '';
-    }
-  }
+function defaultHistoryDates() {
+  const end = new Date();
+  const start = new Date();
+  start.setMonth(start.getMonth() - 6);
+  document.getElementById('filterDateTo').value = end.toISOString().slice(0, 10);
+  document.getElementById('filterDateFrom').value = start.toISOString().slice(0, 10);
 }
 
-// ===== EXPANDABLE ROWS - Warehouses =====
-function toggleExpandWh(event) {
-  event.preventDefault();
-  const btn = event.target;
-  const row = btn.closest('tr');
-  const nextRow = row.nextElementSibling;
-  
-  if (nextRow && nextRow.classList.contains('expanded-wh-row')) {
-    const content = nextRow.querySelector('.expanded-content');
-    btn.classList.toggle('expanded');
-    if (content.classList.contains('visible')) {
-      content.classList.remove('visible');
-      nextRow.style.display = 'none';
-    } else {
-      content.classList.add('visible');
-      nextRow.style.display = '';
-    }
-  }
-}
-
-// ===== SORTING =====
-function sortTable(colIndex) {
-  const table = document.getElementById('transactionTable');
-  const tbody = table.querySelector('tbody');
-  const rows = Array.from(tbody.querySelectorAll('tr:not(.expanded-row)'));
-  
-  rows.sort((a, b) => {
-    let aVal = a.cells[colIndex].textContent.trim();
-    let bVal = b.cells[colIndex].textContent.trim();
-    
-    // Try numeric sort
-    const aNum = parseFloat(aVal);
-    const bNum = parseFloat(bVal);
-    
-    if (!isNaN(aNum) && !isNaN(bNum)) {
-      return aNum - bNum;
-    }
-    
-    return aVal.localeCompare(bVal);
-  });
-  
-  rows.forEach(row => tbody.appendChild(row));
-  rows.forEach((row, idx) => {
-    const nextRow = row.nextElementSibling;
-    if (nextRow && nextRow.classList.contains('expanded-row')) {
-      tbody.appendChild(nextRow);
-    }
-  });
-}
-
-// ===== TRANSACTION STATE =====
-const transactionState = {
-  all: [],
-  filtered: [],
-  sortCol: 1,
-  sortAsc: true,
-  filters: {
-    search: '',
-    dateFrom: '',
-    dateTo: '',
-    types: [],
-    warehouses: [],
-    projects: [],
-    reference: '',
-    users: []
-  }
-};
-
-function formatDateForDisplay(date) {
-  if (!date) return 'N/A';
-  const d = new Date(date);
+function formatDateForDisplay(dateStr) {
+  if (!dateStr) return '—';
+  const d = new Date(dateStr + 'T00:00:00');
   return d.toLocaleDateString(undefined, { day: '2-digit', month: 'short', year: 'numeric' });
 }
 
-function normalizeTransaction(row) {
-  return {
-    ...row,
-    TxDate: row.TxDate ? new Date(row.TxDate) : null,
-    Reference: (row.Reference || row.cReference2 || '').trim(),
-    ProjectName: (row.ProjectName || '').trim(),
-    UserName: (row.UserName || '').trim(),
-    WhseCode: (row.WhseCode || '').trim(),
-    Qty: row.Qty != null ? Number(row.Qty) : 0
-  };
-}
-
-function setFilterOptions(selectId, options, defaultAll = true) {
+function setMultiSelectOptions(selectId, options) {
   const select = document.getElementById(selectId);
   select.innerHTML = '';
-
-  if (defaultAll) {
-    const opt = document.createElement('option');
-    opt.value = '';
-    opt.textContent = 'All';
-    select.appendChild(opt);
-  }
-
   options.forEach(value => {
     const opt = document.createElement('option');
     opt.value = value;
@@ -1305,406 +921,333 @@ function setFilterOptions(selectId, options, defaultAll = true) {
   });
 }
 
-function getSelectedOptions(id) {
-  const select = document.getElementById(id);
-  return Array.from(select.selectedOptions)
-    .map(option => option.value)
-    .filter(value => value);
-}
-
-function countAppliedFilters() {
-  const filters = transactionState.filters;
-  let count = 0;
-  if (filters.search) count += 1;
-  if (filters.dateFrom) count += 1;
-  if (filters.dateTo) count += 1;
-  if (filters.types.length) count += 1;
-  if (filters.warehouses.length) count += 1;
-  if (filters.projects.length) count += 1;
-  if (filters.reference) count += 1;
-  if (filters.users.length) count += 1;
-  return count;
-}
-
-function updateFilterSummary() {
-  const count = countAppliedFilters();
-  const label = count === 0 ? 'No filters applied' : `${count} filter${count === 1 ? '' : 's'} applied`;
-  document.getElementById('filterSummary').textContent = label;
-}
-
-function populateFilterSelectors(data) {
-  const types = Array.from(new Set(data.types || [])).sort();
-  const projects = Array.from(new Set(data.projects || [])).sort();
-  const users = Array.from(new Set(data.users || [])).sort();
-  const warehouses = (data.warehouses || []).map(w => ({
-    id: String(w.warehouse_id),
-    code: String(w.warehouse_code)
-  }));
-
-  setFilterOptions('filterType', types);
-  setFilterOptions('filterProject', projects);
-  setFilterOptions('filterUser', users);
-
-  const warehouseSelect = document.getElementById('filterWarehouse');
-  warehouseSelect.innerHTML = '';
-  const warehouseOpt = document.createElement('option');
-  warehouseOpt.value = '';
-  warehouseOpt.textContent = 'All Warehouses';
-  warehouseSelect.appendChild(warehouseOpt);
-  warehouses.forEach(warehouse => {
+function setWarehouseFilterOptions(warehouses) {
+  const select = document.getElementById('filterWarehouse');
+  select.innerHTML = '';
+  warehouses.forEach(wh => {
     const opt = document.createElement('option');
-    opt.value = warehouse.id;
-    opt.textContent = warehouse.code;
-    warehouseSelect.appendChild(opt);
+    opt.value = String(wh.warehouse_id);
+    opt.textContent = wh.warehouse_code;
+    select.appendChild(opt);
   });
+}
 
-  if (CURRENT_WAREHOUSE_ID) {
-    const defaultOption = Array.from(warehouseSelect.options).find(opt => opt.value === String(CURRENT_WAREHOUSE_ID));
-    if (defaultOption) {
-      defaultOption.selected = true;
-      transactionState.filters.warehouses = [defaultOption.value];
-    }
+function getSelectedValues(selectId) {
+  return Array.from(document.getElementById(selectId).selectedOptions).map(o => o.value);
+}
+
+function populateHistoryFilterOptions(data) {
+  setMultiSelectOptions('filterType', data.types || []);
+  setMultiSelectOptions('filterProject', data.projects || []);
+  setMultiSelectOptions('filterUser', data.users || []);
+  setWarehouseFilterOptions(data.warehouses || []);
+}
+
+async function fetchTransactionHistory() {
+  pageState.historyLoading = true;
+  document.getElementById('historyLoading').style.display = 'block';
+  document.getElementById('historyError').style.display = 'none';
+
+  const startDate = document.getElementById('filterDateFrom').value;
+  const endDate = document.getElementById('filterDateTo').value;
+  const params = new URLSearchParams();
+  if (startDate) params.set('start_date', startDate);
+  if (endDate) params.set('end_date', endDate);
+
+  try {
+    const response = await fetch(`/inventory/product/${PRODUCT_STOCK_LINK}/history?${params.toString()}`);
+    const data = await response.json();
+    if (!response.ok) throw new Error(data.error || 'Failed to load history');
+
+    transactionState.all = data.transactions || [];
+    populateHistoryFilterOptions(data);
+    pageState.historyLoaded = true;
+    applyHistoryFilters();
+  } catch (error) {
+    document.getElementById('historyError').style.display = 'block';
+    document.getElementById('historyError').textContent = error.message;
+  } finally {
+    pageState.historyLoading = false;
+    document.getElementById('historyLoading').style.display = 'none';
   }
 }
 
-function applyFilters() {
-  transactionState.filters.search = document.getElementById('filterSearch').value.trim().toLowerCase();
-  transactionState.filters.dateFrom = document.getElementById('filterDateFrom').value;
-  transactionState.filters.dateTo = document.getElementById('filterDateTo').value;
-  transactionState.filters.types = getSelectedOptions('filterType');
-  transactionState.filters.warehouses = getSelectedOptions('filterWarehouse');
-  transactionState.filters.projects = getSelectedOptions('filterProject');
-  transactionState.filters.reference = document.getElementById('filterReference').value.trim().toLowerCase();
-  transactionState.filters.users = getSelectedOptions('filterUser');
-
-  renderTransactionRows();
+function onHistoryDateChange() {
+  pageState.historyLoaded = false;
+  fetchTransactionHistory();
 }
 
-function clearFilters() {
+function refreshHistory() {
+  pageState.historyLoaded = false;
+  fetchTransactionHistory();
+}
+
+function clearHistoryFilters() {
   document.getElementById('filterSearch').value = '';
-  document.getElementById('filterDateFrom').value = '';
-  document.getElementById('filterDateTo').value = '';
-  document.getElementById('filterType').selectedIndex = 0;
-  document.getElementById('filterWarehouse').selectedIndex = 0;
-  document.getElementById('filterProject').selectedIndex = 0;
-  document.getElementById('filterReference').value = '';
-  document.getElementById('filterUser').selectedIndex = 0;
-  transactionState.filters = {
-    search: '',
-    dateFrom: '',
-    dateTo: '',
-    types: [],
-    warehouses: [],
-    projects: [],
-    reference: '',
-    users: []
-  };
-  renderTransactionRows();
+  ['filterWarehouse', 'filterType', 'filterProject', 'filterUser'].forEach(id => {
+    const select = document.getElementById(id);
+    Array.from(select.options).forEach(opt => { opt.selected = false; });
+  });
+  defaultHistoryDates();
+  pageState.historyLoaded = false;
+  fetchTransactionHistory();
 }
 
-function transactionMatchesFilters(transaction) {
-  const filters = transactionState.filters;
-  if (filters.search) {
-    const search = filters.search;
-    const values = [
-      formatDateForDisplay(transaction.TxDate).toLowerCase(),
-      transaction.TrnType.toLowerCase(),
-      transaction.Reference.toLowerCase(),
-      transaction.ProjectName.toLowerCase(),
-      transaction.UserName.toLowerCase(),
-      transaction.WhseCode.toLowerCase(),
-      String(transaction.Qty)
-    ];
-    if (!values.some(value => value.includes(search))) {
-      return false;
-    }
+function transactionMatchesFilters(txn) {
+  const search = document.getElementById('filterSearch').value.trim().toLowerCase();
+  const warehouses = getSelectedValues('filterWarehouse');
+  const types = getSelectedValues('filterType');
+  const projects = getSelectedValues('filterProject');
+  const users = getSelectedValues('filterUser');
+
+  if (search) {
+    const haystack = [
+      txn.TxDate,
+      txn.WhseCode,
+      txn.TrnType,
+      String(txn.Qty),
+      txn.Reference,
+      txn.ProjectName,
+      txn.UserName,
+      txn.SecondaryReference,
+      txn.OrderNumber,
+    ].join(' ').toLowerCase();
+    if (!haystack.includes(search)) return false;
   }
-  if (filters.dateFrom && transaction.TxDate) {
-    const fromDate = new Date(filters.dateFrom);
-    if (transaction.TxDate < fromDate) return false;
-  }
-  if (filters.dateTo && transaction.TxDate) {
-    const toDate = new Date(filters.dateTo);
-    toDate.setHours(23, 59, 59, 999);
-    if (transaction.TxDate > toDate) return false;
-  }
-  if (filters.types.length && !filters.types.includes(transaction.TrnType)) return false;
-  if (filters.warehouses.length && !filters.warehouses.includes(String(transaction.WhseLink))) return false;
-  if (filters.projects.length && !filters.projects.includes(transaction.ProjectName)) return false;
-  if (filters.reference && !transaction.Reference.toLowerCase().includes(filters.reference)) return false;
-  if (filters.users.length && !filters.users.includes(transaction.UserName)) return false;
+  if (warehouses.length && !warehouses.includes(String(txn.WhseLink))) return false;
+  if (types.length && !types.includes(txn.TrnType)) return false;
+  if (projects.length && !projects.includes(txn.ProjectName)) return false;
+  if (users.length && !users.includes(txn.UserName)) return false;
   return true;
 }
 
-function sortTransactionData() {
-  const keyMap = {
-    1: 'TxDate',
-    2: 'TrnType',
-    3: 'Qty',
-    4: 'WhseCode',
-    5: 'ProjectName',
-    6: 'Reference',
-    7: 'UserName'
-  };
-  const key = keyMap[transactionState.sortCol];
-  transactionState.filtered.sort((a, b) => {
+function sortHistory(colIndex) {
+  if (transactionState.sortCol === colIndex) {
+    transactionState.sortAsc = !transactionState.sortAsc;
+  } else {
+    transactionState.sortCol = colIndex;
+    transactionState.sortAsc = colIndex === 1 ? false : true;
+  }
+  renderTransactionRows();
+}
+
+function sortTransactionData(rows) {
+  const keys = ['', 'TxDate', 'WhseCode', 'TrnType', 'Qty', 'Reference', 'ProjectName'];
+  const key = keys[transactionState.sortCol];
+  rows.sort((a, b) => {
     let aVal = a[key];
     let bVal = b[key];
-    if (key === 'TxDate') {
-      aVal = aVal ? aVal.getTime() : 0;
-      bVal = bVal ? bVal.getTime() : 0;
+    if (key === 'Qty') {
+      aVal = Number(aVal) || 0;
+      bVal = Number(bVal) || 0;
       return transactionState.sortAsc ? aVal - bVal : bVal - aVal;
-    }
-    if (typeof aVal === 'number' || typeof bVal === 'number') {
-      return transactionState.sortAsc ? (aVal - bVal) : (bVal - aVal);
     }
     aVal = String(aVal || '').toLowerCase();
     bVal = String(bVal || '').toLowerCase();
     return transactionState.sortAsc ? aVal.localeCompare(bVal) : bVal.localeCompare(aVal);
   });
+  return rows;
+}
+
+function toggleTransactionRow(event) {
+  event.preventDefault();
+  const btn = event.currentTarget;
+  const row = btn.closest('tr');
+  const detailRow = row.nextElementSibling;
+  if (!detailRow || !detailRow.classList.contains('expanded-row')) return;
+  btn.classList.toggle('expanded');
+  const content = detailRow.querySelector('.expanded-content');
+  const visible = content.classList.toggle('visible');
+  detailRow.style.display = visible ? '' : 'none';
 }
 
 function renderTransactionRows() {
   const tbody = document.getElementById('transactionTableBody');
   tbody.innerHTML = '';
-  transactionState.filtered = transactionState.all.filter(transactionMatchesFilters);
-  sortTransactionData();
-  updateFilterSummary();
+  const filtered = sortTransactionData(transactionState.all.filter(transactionMatchesFilters));
+  transactionState.filtered = filtered;
 
-  transactionState.filtered.forEach((txn, index) => {
+  document.getElementById('historyEmpty').style.display = filtered.length ? 'none' : 'block';
+
+  filtered.forEach(txn => {
     const row = document.createElement('tr');
-    row.dataset.index = index;
+    row.innerHTML = `
+      <td class="expand-cell"><button type="button" class="expand-btn"></button></td>
+      <td>${formatDateForDisplay(txn.TxDate)}</td>
+      <td>${txn.WhseCode || '—'}</td>
+      <td>${txn.TrnType || '—'}</td>
+      <td class="text-right">${txn.Qty}</td>
+      <td>${txn.Reference || '—'}</td>
+      <td>${txn.ProjectName || '—'}</td>
+    `;
+    row.querySelector('.expand-btn').addEventListener('click', toggleTransactionRow);
 
-    const expandCell = document.createElement('td');
-    expandCell.className = 'expand-cell';
-    const expandBtn = document.createElement('button');
-    expandBtn.className = 'expand-btn';
-    expandBtn.type = 'button';
-    expandBtn.addEventListener('click', toggleExpand);
-    expandCell.appendChild(expandBtn);
-    row.appendChild(expandCell);
-
-    const dateCell = document.createElement('td');
-    dateCell.textContent = formatDateForDisplay(txn.TxDate);
-    row.appendChild(dateCell);
-
-    const typeCell = document.createElement('td');
-    typeCell.textContent = txn.TrnType;
-    row.appendChild(typeCell);
-
-    const qtyCell = document.createElement('td');
-    qtyCell.className = 'text-right';
-    qtyCell.textContent = txn.Qty;
-    row.appendChild(qtyCell);
-
-    const warehouseCell = document.createElement('td');
-    warehouseCell.textContent = txn.WhseCode || 'N/A';
-    row.appendChild(warehouseCell);
-
-    const projectCell = document.createElement('td');
-    projectCell.textContent = txn.ProjectName || '-';
-    row.appendChild(projectCell);
-
-    const referenceCell = document.createElement('td');
-    referenceCell.textContent = txn.Reference || '-';
-    row.appendChild(referenceCell);
-
-    const userCell = document.createElement('td');
-    userCell.textContent = txn.UserName || '-';
-    row.appendChild(userCell);
-
-    const expandedRow = document.createElement('tr');
-    expandedRow.className = 'expanded-row';
-    expandedRow.style.display = 'none';
-    const expandedCell = document.createElement('td');
-    expandedCell.colSpan = 8;
-    expandedCell.style.padding = '0';
-
-    const expandedContent = document.createElement('div');
-    expandedContent.className = 'expanded-content';
-    const expandedGrid = document.createElement('div');
-    expandedGrid.className = 'expanded-grid';
-
-    const details = [
-      { label: 'Reference', value: txn.Reference || '-' },
-      { label: 'Type', value: txn.TrnType },
-      { label: 'Username', value: txn.UserName || '-' },
-      { label: 'Quantity', value: txn.Qty },
-      { label: 'Running Qty On Hand', value: txn.QtyOnHand != null ? txn.QtyOnHand : '-' },
-      { label: 'Project', value: txn.ProjectName || '-' },
-      { label: 'Warehouse', value: txn.WhseCode || 'N/A' }
-    ];
-
-    details.forEach(detail => {
-      const field = document.createElement('div');
-      field.className = 'expanded-field';
-      const label = document.createElement('div');
-      label.className = 'expanded-label';
-      label.textContent = detail.label;
-      const value = document.createElement('div');
-      value.className = 'expanded-value';
-      value.textContent = detail.value;
-      field.appendChild(label);
-      field.appendChild(value);
-      expandedGrid.appendChild(field);
-    });
-
-    expandedContent.appendChild(expandedGrid);
-    expandedCell.appendChild(expandedContent);
-    expandedRow.appendChild(expandedCell);
+    const detailRow = document.createElement('tr');
+    detailRow.className = 'expanded-row';
+    detailRow.style.display = 'none';
+    detailRow.innerHTML = `
+      <td colspan="7" style="padding:0;">
+        <div class="expanded-content">
+          <div class="expanded-grid">
+            <div class="expanded-field"><div class="expanded-label">Username</div><div>${txn.UserName || '—'}</div></div>
+            <div class="expanded-field"><div class="expanded-label">Unit Cost</div><div>${txn.UnitCost ?? '—'}</div></div>
+            <div class="expanded-field"><div class="expanded-label">Total Cost</div><div>${txn.TotalCost ?? '—'}</div></div>
+            <div class="expanded-field"><div class="expanded-label">Running Balance</div><div>${txn.QtyOnHand ?? '—'}</div></div>
+            <div class="expanded-field"><div class="expanded-label">Secondary Reference</div><div>${txn.SecondaryReference || '—'}</div></div>
+            <div class="expanded-field"><div class="expanded-label">Order Number</div><div>${txn.OrderNumber || '—'}</div></div>
+          </div>
+        </div>
+      </td>
+    `;
 
     tbody.appendChild(row);
-    tbody.appendChild(expandedRow);
+    tbody.appendChild(detailRow);
   });
 }
 
-async function fetchTransactionHistory() {
-  try {
-    const suffix = CURRENT_WAREHOUSE_ID ? `?whse=${CURRENT_WAREHOUSE_ID}` : '';
-    const response = await fetch(`/inventory/product/${PRODUCT_STOCK_LINK}/transactions${suffix}`);
-    const data = await response.json();
-    transactionState.all = (data.transactions || []).map(normalizeTransaction);
-    populateFilterSelectors(data);
-    renderTransactionRows();
-  } catch (error) {
-    console.error('Error loading transaction history:', error);
-  }
-}
-
-function sortTable(colIndex) {
-  if (transactionState.sortCol === colIndex) {
-    transactionState.sortAsc = !transactionState.sortAsc;
-  } else {
-    transactionState.sortCol = colIndex;
-    transactionState.sortAsc = true;
-  }
+function applyHistoryFilters() {
+  if (!pageState.historyLoaded) return;
   renderTransactionRows();
 }
 
-function toggleExpand(event) {
-  event.preventDefault();
-  const btn = event.currentTarget;
-  const row = btn.closest('tr');
-  const nextRow = row.nextElementSibling;
-  if (nextRow && nextRow.classList.contains('expanded-row')) {
-    btn.classList.toggle('expanded');
-    const content = nextRow.querySelector('.expanded-content');
-    if (content.classList.contains('visible')) {
-      content.classList.remove('visible');
-      nextRow.style.display = 'none';
-    } else {
-      content.classList.add('visible');
-      nextRow.style.display = '';
+function expandAllTransactions() {
+  document.querySelectorAll('#transactionTableBody .expand-btn').forEach(btn => {
+    btn.classList.add('expanded');
+    const detailRow = btn.closest('tr').nextElementSibling;
+    if (detailRow) {
+      detailRow.style.display = '';
+      detailRow.querySelector('.expanded-content').classList.add('visible');
     }
-  }
-}
-
-function setupFilterToggles() {
-  const toggleButton = document.getElementById('toggleFilterPanel');
-  const panel = document.getElementById('filterPanel');
-  toggleButton.addEventListener('click', () => {
-    const isHidden = panel.classList.toggle('hidden');
-    toggleButton.textContent = isHidden ? 'Show filters' : 'Hide filters';
   });
 }
 
-// ===== REORDERING FORM =====
-async function populateReorderingCategories() {
-  const select = document.getElementById('reorderCategory');
-  if (select.options.length > 1) return; // Already loaded
-  
-  if (!CURRENT_WAREHOUSE_ID) {
-    select.innerHTML = '<option value="">No warehouse selected</option>';
-    return;
+function collapseAllTransactions() {
+  document.querySelectorAll('#transactionTableBody .expand-btn').forEach(btn => {
+    btn.classList.remove('expanded');
+    const detailRow = btn.closest('tr').nextElementSibling;
+    if (detailRow) {
+      detailRow.style.display = 'none';
+      detailRow.querySelector('.expanded-content').classList.remove('visible');
+    }
+  });
+}
+
+async function fetchSprays() {
+  pageState.spraysLoading = true;
+  document.getElementById('spraysLoading').style.display = 'block';
+  document.getElementById('spraysError').style.display = 'none';
+
+  try {
+    const response = await fetch(`/inventory/product/${PRODUCT_STOCK_LINK}/sprays`);
+    const data = await response.json();
+    if (!response.ok) throw new Error(data.error || 'Failed to load sprays');
+
+    const sprays = data.sprays || [];
+    const tbody = document.getElementById('spraysTableBody');
+    tbody.innerHTML = '';
+
+    if (!sprays.length) {
+      document.getElementById('spraysEmpty').style.display = 'block';
+      document.getElementById('spraysTableWrap').style.display = 'none';
+    } else {
+      document.getElementById('spraysEmpty').style.display = 'none';
+      document.getElementById('spraysTableWrap').style.display = 'block';
+      sprays.forEach(spray => {
+        const row = document.createElement('tr');
+        row.innerHTML = `
+          <td>${spray.Description}</td>
+          <td>${spray.Status}</td>
+          <td>${spray.ExecutionDate || '—'}</td>
+          <td class="text-right">${spray.QtyUom}</td>
+        `;
+        tbody.appendChild(row);
+      });
+    }
+    pageState.spraysLoaded = true;
+  } catch (error) {
+    document.getElementById('spraysError').style.display = 'block';
+    document.getElementById('spraysError').textContent = error.message;
+  } finally {
+    pageState.spraysLoading = false;
+    document.getElementById('spraysLoading').style.display = 'none';
   }
-  
+}
+
+async function populateInventoryCategories() {
+  const select = document.getElementById('inventoryCategory');
+  if (pageState.categoriesLoaded) return;
+
   try {
     const response = await fetch(`/inventory/categories?whse=${CURRENT_WAREHOUSE_ID}`);
     const data = await response.json();
     const categories = data.categories || [];
-    
     select.innerHTML = '<option value="">Select a category</option>';
     categories.forEach(cat => {
       const opt = document.createElement('option');
       opt.value = cat.category_id;
       opt.textContent = cat.category_name;
+      if (INITIAL_CATEGORY_ID !== null && Number(cat.category_id) === Number(INITIAL_CATEGORY_ID)) {
+        opt.selected = true;
+      }
       select.appendChild(opt);
     });
+    pageState.categoriesLoaded = true;
   } catch (error) {
-    console.error('Error loading categories:', error);
     select.innerHTML = '<option value="">Error loading categories</option>';
   }
 }
 
-async function submitReorderingForm(event) {
+async function submitInventoryForm(event) {
   event.preventDefault();
-  const message = document.getElementById('reorderMessage');
+  const message = document.getElementById('inventoryMessage');
   message.className = 'status-message';
-  
-  const category = document.getElementById('reorderCategory').value;
-  const level = document.getElementById('reorderLevel').value;
-  const qty = document.getElementById('reorderQty').value;
-  
-  if (!category && !level && !qty) {
-    message.classList.add('error');
-    message.textContent = 'Please fill in at least one field.';
-    return;
-  }
-  
+
   const payload = {
-    categoryId: category || null,
-    reorderLevel: level ? parseFloat(level) : null,
-    reorderQty: qty ? parseFloat(qty) : null,
-    warehouseId: CURRENT_WAREHOUSE_ID
+    categoryId: document.getElementById('inventoryCategory').value || null,
+    reorderLevel: document.getElementById('inventoryReorderLevel').value || null,
+    reorderQty: document.getElementById('inventoryReorderQty').value || null,
+    warehouseId: CURRENT_WAREHOUSE_ID,
   };
-  
+
   const btn = event.target.querySelector('button[type="submit"]');
-  const orig = btn.innerHTML;
-  btn.innerHTML = 'Saving...';
+  const original = btn.textContent;
+  btn.textContent = 'Saving...';
   btn.disabled = true;
-  
+
   try {
     const response = await fetch(`/inventory/update-reordering/${PRODUCT_STOCK_LINK}`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(payload)
+      body: JSON.stringify(payload),
     });
-    
     const data = await response.json();
     if (data.success) {
       message.classList.add('success');
-      message.textContent = data.message || 'Updated successfully.';
+      message.textContent = data.message || 'Saved successfully.';
     } else {
       message.classList.add('error');
-      message.textContent = data.error || 'Failed to update.';
+      message.textContent = data.error || 'Failed to save.';
     }
   } catch (error) {
-    console.error('Error:', error);
     message.classList.add('error');
     message.textContent = 'Network error.';
   } finally {
-    btn.innerHTML = orig;
+    btn.textContent = original;
     btn.disabled = false;
   }
 }
 
-function resetForm() {
-  document.getElementById('reorderLevel').value = '{{ product.ReorderLevel }}';
-  document.getElementById('reorderQty').value = '{{ product.ReorderQty }}';
-  document.getElementById('reorderMessage').className = 'status-message';
+function resetInventoryForm() {
+  document.getElementById('inventoryReorderLevel').value = '{{ selected_warehouse.ReorderLevel }}';
+  document.getElementById('inventoryReorderQty').value = '{{ selected_warehouse.ReorderQty }}';
+  document.getElementById('inventoryMessage').className = 'status-message';
+  if (pageState.categoriesLoaded && INITIAL_CATEGORY_ID !== null) {
+    document.getElementById('inventoryCategory').value = INITIAL_CATEGORY_ID;
+  }
 }
 
-// ===== INIT =====
-document.addEventListener('DOMContentLoaded', function() {
-  if (!CURRENT_WAREHOUSE_ID) {
-    const select = document.getElementById('whseSelect');
-    if (select.options.length > 0) {
-      select.value = select.options[0].value;
-    }
-  }
-  setupFilterToggles();
-  fetchTransactionHistory();
+document.addEventListener('DOMContentLoaded', () => {
+  defaultHistoryDates();
 });
 </script>
-
 {% endblock %}
