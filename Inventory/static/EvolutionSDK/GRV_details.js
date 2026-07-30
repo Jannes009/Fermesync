@@ -213,7 +213,15 @@ function submitGRV(lines) {
                 title: "GRV submitted succesfully",
                 text: "The GRV was created in Evolution"
             }).then(() => {
-                window.location.href = "/inventory/grv";
+                if (returnTo) {
+                    if (returnTo.startsWith('/') || returnTo.startsWith(window.location.origin)) {
+                        window.location.href = returnTo;
+                    } else {
+                        window.location.href = "/inventory/grv";
+                    }
+                } else {
+                    window.location.href = "/inventory/grv";
+                }
             });
         } else {
             Swal.fire("Error", res.message || res.error || "Failed", "error");
@@ -254,7 +262,15 @@ async function sendToSupervisor(overQtys) {
                 text: "Please wait for supplier confirmation",
                 allowOutsideClick: false
             }).then(() => {
-                window.location.href = "/inventory/grv";
+                if (returnTo) {
+                    if (returnTo.startsWith('/') || returnTo.startsWith(window.location.origin)) {
+                        window.location.href = returnTo;
+                    } else {
+                        window.location.href = "/inventory/grv";
+                    }
+                } else {
+                    window.location.href = "/inventory/grv";
+                }
             });
         } else {
             Swal.fire("Error", res.message || res.error || "Failed", "error");

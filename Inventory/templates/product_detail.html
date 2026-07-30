@@ -555,10 +555,6 @@ body { background: var(--bg-gray); }
               <div class="stat-value">{{ selected_warehouse.QtyOnIBT }}</div>
             </div>
             <div class="stat-card">
-              <div class="stat-label">Qty Available</div>
-              <div class="stat-value">{{ selected_warehouse.QtyAvailable }}</div>
-            </div>
-            <div class="stat-card">
               <div class="stat-label">Reorder Level</div>
               <div class="stat-value">{{ selected_warehouse.ReorderLevel }}</div>
             </div>
@@ -596,7 +592,6 @@ body { background: var(--bg-gray); }
                 <tr>
                   <th>Warehouse</th>
                   <th class="text-right">On Hand</th>
-                  <th class="text-right">Available</th>
                   <th class="text-right">PO</th>
                   <th class="text-right">IBT</th>
                   <th>Last Stock Count</th>
@@ -608,7 +603,6 @@ body { background: var(--bg-gray); }
                 <tr{% if wh.WhseLink == warehouse_id %} style="background: var(--primary-light);"{% endif %}>
                   <td>{{ wh.WhseCode }} — {{ wh.WhseName }}</td>
                   <td class="text-right">{{ wh.QtyOnHand }}</td>
-                  <td class="text-right">{{ wh.QtyAvailable }}</td>
                   <td class="text-right">{{ wh.QtyOnPO }}</td>
                   <td class="text-right">{{ wh.QtyOnIBT }}</td>
                   <td>{{ wh.LastStockCount or '—' }}</td>
@@ -725,6 +719,33 @@ body { background: var(--bg-gray); }
           {% else %}
           <div class="empty-state">No suppliers linked to this product.</div>
           {% endif %}
+
+          <div class="section" id="outstandingOrdersSection">
+            <div class="section-header"><h3>Outstanding Orders</h3></div>
+            <div class="section-content">
+              <div id="outstandingOrdersLoading" class="loading-state" style="display: none;">Loading outstanding orders...</div>
+              <div id="outstandingOrdersError" class="status-message error" style="display: none;"></div>
+              <div class="table-container" id="outstandingOrdersTableWrap" style="display: none;">
+                <table class="table-compact" id="outstandingOrdersTable">
+                  <thead>
+                    <tr>
+                      <th></th>
+                      <th>Supplier</th>
+                      <th>Order</th>
+                      <th>Warehouse</th>
+                      <th class="text-right">Outstanding</th>
+                      <th>Unit</th>
+                      <th class="text-right">Price</th>
+                      <th class="text-right">Total</th>
+                      <th>Action</th>
+                    </tr>
+                  </thead>
+                  <tbody id="outstandingOrdersTableBody"></tbody>
+                </table>
+              </div>
+              <div id="outstandingOrdersEmpty" class="empty-state" style="display: none;">No outstanding orders for this product.</div>
+            </div>
+          </div>
         </div>
       </div>
     </div>
@@ -857,6 +878,8 @@ const pageState = {
   spraysLoaded: false,
   spraysLoading: false,
   categoriesLoaded: false,
+  outstandingLoaded: false,
+  outstandingLoading: false,
 };
 
 const transactionState = {
@@ -874,6 +897,9 @@ function switchTab(tabName, button) {
 
   if (tabName === 'history' && !pageState.historyLoaded && !pageState.historyLoading) {
     fetchTransactionHistory();
+  }
+  if (tabName === 'suppliers' && !pageState.outstandingLoaded && !pageState.outstandingLoading) {
+    fetchOutstandingOrders();
   }
   if (tabName === 'registrations' && !pageState.spraysLoaded && !pageState.spraysLoading) {
     fetchSprays();
@@ -982,6 +1008,91 @@ function refreshHistory() {
   fetchTransactionHistory();
 }
 
+async function fetchOutstandingOrders() {
+  pageState.outstandingLoading = true;
+  document.getElementById('outstandingOrdersLoading').style.display = 'block';
+  document.getElementById('outstandingOrdersError').style.display = 'none';
+  document.getElementById('outstandingOrdersTableWrap').style.display = 'none';
+  document.getElementById('outstandingOrdersEmpty').style.display = 'none';
+
+  try {
+    const response = await fetch(`/inventory/product/${PRODUCT_STOCK_LINK}/outstanding-orders`);
+    const data = await response.json();
+    if (!response.ok) throw new Error(data.error || 'Failed to load outstanding orders');
+
+    renderOutstandingOrders(data.outstanding_orders || []);
+    pageState.outstandingLoaded = true;
+  } catch (error) {
+    document.getElementById('outstandingOrdersError').style.display = 'block';
+    document.getElementById('outstandingOrdersError').textContent = error.message;
+  } finally {
+    pageState.outstandingLoading = false;
+    document.getElementById('outstandingOrdersLoading').style.display = 'none';
+  }
+}
+
+function renderOutstandingOrders(orders) {
+  const body = document.getElementById('outstandingOrdersTableBody');
+  body.innerHTML = '';
+  if (!orders.length) {
+    document.getElementById('outstandingOrdersTableWrap').style.display = 'none';
+    document.getElementById('outstandingOrdersEmpty').style.display = 'block';
+    return;
+  }
+
+  document.getElementById('outstandingOrdersTableWrap').style.display = 'block';
+  document.getElementById('outstandingOrdersEmpty').style.display = 'none';
+
+  orders.forEach(order => {
+    const row = document.createElement('tr');
+    row.innerHTML = `
+      <td class="expand-cell"><button type="button" class="expand-btn" aria-expanded="false"></button></td>
+      <td>${order.supplier_name}</td>
+      <td>${order.order_number}</td>
+      <td>${order.warehouse_name}</td>
+      <td class="text-right">${order.qty_outstanding.toFixed(2)}</td>
+      <td>${order.unit_code}</td>
+      <td class="text-right">${order.unit_price.toFixed(2)}</td>
+      <td class="text-right">${order.total_outstanding.toFixed(2)}</td>
+      <td><button type="button" class="btn-primary" data-line-id="${order.line_id}">Open GRV</button></td>
+    `;
+
+    const detailRow = document.createElement('tr');
+    detailRow.className = 'expanded-content';
+    detailRow.innerHTML = `
+      <td colspan="9">
+        <div class="expanded-grid">
+          <div class="expanded-field"><div class="expanded-label">Order Date</div><div>${order.order_date}</div></div>
+          <div class="expanded-field"><div class="expanded-label">Order Description</div><div>${order.order_desc}</div></div>
+          <div class="expanded-field"><div class="expanded-label">Quantity Processed</div><div>${order.qty_processed.toFixed(2)}</div></div>
+          <div class="expanded-field"><div class="expanded-label">Outstanding Quantity</div><div>${order.qty_outstanding.toFixed(2)} ${order.unit_code}</div></div>
+        </div>
+      </td>
+    `;
+
+    const expandBtn = row.querySelector('.expand-btn');
+    expandBtn.addEventListener('click', () => {
+      const isOpen = expandBtn.classList.toggle('expanded');
+      expandBtn.setAttribute('aria-expanded', String(isOpen));
+      detailRow.classList.toggle('visible', isOpen);
+    });
+
+    const createButton = row.querySelector('button.btn-primary');
+    createButton.addEventListener('click', () => {
+      redirectToGrv(order);
+    });
+
+    body.appendChild(row);
+    body.appendChild(detailRow);
+  });
+}
+
+function redirectToGrv(order) {
+  const returnTo = encodeURIComponent(window.location.href);
+  const grvUrl = `/inventory/grv/${encodeURIComponent(order.order_number)}?return_to=${returnTo}`;
+  window.location.href = grvUrl;
+}
+
 function clearHistoryFilters() {
   document.getElementById('filterSearch').value = '';
   ['filterWarehouse', 'filterType', 'filterProject', 'filterUser'].forEach(id => {
@@ -1074,7 +1185,7 @@ function renderTransactionRows() {
     row.innerHTML = `
       <td class="expand-cell"><button type="button" class="expand-btn"></button></td>
       <td>${formatDateForDisplay(txn.TxDate)}</td>
-      <td>${txn.WhseCode || '—'}</td>
+      <td>${txn.WhseName || '—'}</td>
       <td>${txn.TrnType || '—'}</td>
       <td class="text-right">${txn.Qty}</td>
       <td>${txn.Reference || '—'}</td>

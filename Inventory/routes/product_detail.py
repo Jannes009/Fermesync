@@ -115,7 +115,6 @@ def format_inventory_row(row):
         'QtyOnIssues': format_qty(qty_on_issues),
         'QtyOnPO': format_qty(row.get('QtyOnPO')),
         'QtyOnIBT': format_qty(row.get('QtyOnIBT')),
-        'QtyAvailable': format_qty(max(qty_on_hand - qty_on_issues, 0)),
         'ReorderLevel': format_qty(row.get('ReorderLevel')),
         'ReorderQty': format_qty(row.get('ReorderQty')),
         'CategoryId': row.get('idStockCategories'),
@@ -164,6 +163,53 @@ def load_suppliers(stock_link):
             'LastPrice': format_qty(row.get('Price')),
             'InvoiceDate': serialize_date(row.get('InvDate')),
             'Unit': row.get('cUnitCode') or '',
+        }
+        for row in rows
+    ]
+
+
+def load_outstanding_orders(stock_link):
+    conn = create_db_connection()
+    if not conn:
+        return None
+
+    try:
+        cur = conn.cursor()
+        cur.execute("""
+        SELECT
+            SupplierName,
+            OrderNum,
+            OrderDate,
+            OrderDesc,
+            iLineID AS LineId,
+            WhName AS WarehouseName,
+            fQuantity AS Quantity,
+            fQtyProcessed AS QtyProcessed,
+            QtyOutstanding,
+            UnitCode,
+            fUnitPriceExcl AS UnitPrice
+        FROM stk._uvPO_Outstanding
+        WHERE iStockCodeID = ?
+        ORDER BY OrderDate DESC, OrderNum, LineId
+        """, (stock_link,))
+        rows = [row_to_dict(cur, row) for row in cur.fetchall()]
+    finally:
+        close_db_connection(conn)
+
+    return [
+        {
+            'supplier_name': row.get('SupplierName') or 'Unknown',
+            'order_number': row.get('OrderNum') or '—',
+            'order_date': serialize_date(row.get('OrderDate')),
+            'order_desc': row.get('OrderDesc') or '—',
+            'line_id': row.get('LineId'),
+            'warehouse_name': row.get('WarehouseName') or '—',
+            'quantity': float(row.get('Quantity') or 0),
+            'qty_processed': float(row.get('QtyProcessed') or 0),
+            'qty_outstanding': float(row.get('QtyOutstanding') or 0),
+            'unit_code': row.get('UnitCode') or '—',
+            'unit_price': float(row.get('UnitPrice') or 0),
+            'total_outstanding': float(row.get('QtyOutstanding') or 0) * float(row.get('UnitPrice') or 0),
         }
         for row in rows
     ]
@@ -307,7 +353,7 @@ def load_transaction_history(stock_link, start_date, end_date):
                 TotalCost,
                 QtyOnHand,
                 WhseLink,
-                WhseCode
+                WhseName
             FROM cmn._uvStockTransactions
             WHERE StockLink = ?
               AND WhseLink IN ({wh_clause})
@@ -334,7 +380,7 @@ def load_transaction_history(stock_link, start_date, end_date):
             'TotalCost': format_qty(row.get('TotalCost')),
             'QtyOnHand': format_qty(row.get('QtyOnHand')),
             'WhseLink': row.get('WhseLink'),
-            'WhseCode': row.get('WhseCode') or '',
+            'WhseName': row.get('WhseName') or '',
         })
     return transactions
 
@@ -423,6 +469,21 @@ def product_detail(stock_link):
     )
 
 
+@inventory_bp.route('/product/<int:stock_link>/outstanding-orders')
+@login_required
+def product_outstanding_orders(stock_link):
+    if 'WHSE_QTYS' not in current_user.permissions:
+        abort(403)
+
+    orders = load_outstanding_orders(stock_link)
+    if orders is None:
+        return jsonify({'error': 'Database connection failed'}), 500
+
+    return jsonify({
+        'outstanding_orders': orders
+    })
+
+
 @inventory_bp.route('/product/<int:stock_link>/history')
 @login_required
 def product_history(stock_link):
@@ -443,7 +504,7 @@ def product_history(stock_link):
     projects = sorted({t['ProjectName'] for t in transactions if t.get('ProjectName')})
     users = sorted({t['UserName'] for t in transactions if t.get('UserName')})
     warehouse_list = sorted(
-        {(t['WhseLink'], t['WhseCode']) for t in transactions if t.get('WhseLink')},
+        {(t['WhseLink'], t['WhseName']) for t in transactions if t.get('WhseLink')},
         key=lambda wh: wh[1] or '',
     )
 

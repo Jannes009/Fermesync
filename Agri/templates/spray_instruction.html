@@ -273,6 +273,8 @@ async function renderHeader() {
     sprayData.header = header;
     doseBasis = header.dose_basis;
 
+    applyPageThemeColor(header.crop_theme_color);
+
     // Format dates
     const startDate = header.start_datetime ? new Date(header.start_datetime).toLocaleDateString() : 'N/A';
     const endDate = header.end_datetime ? new Date(header.end_datetime).toLocaleDateString() : 'N/A';
@@ -380,6 +382,27 @@ async function renderHeader() {
     `;
 
     document.getElementById("spray-header").innerHTML = html;
+}
+
+// Function to apply crop theme color to page background
+function applyPageThemeColor(colorHex) {
+    const body = document.querySelector('.with-fixed-taskbar');
+    if (!colorHex) {
+        // Reset to default: white background
+        if (body) body.style.backgroundColor = '';
+    } else {
+        // Validate hex color format and apply with transparency
+        if (/^#[0-9A-F]{6}$/i.test(colorHex)) {
+            // Convert hex to RGB with alpha for soft background effect
+            const rgb = parseInt(colorHex.slice(1), 16);
+            const r = (rgb >> 16) & 255;
+            const g = (rgb >> 8) & 255;
+            const b = rgb & 255;
+            const rgba = `rgba(${r}, ${g}, ${b}, 1)`;
+            
+            if (body) body.style.backgroundColor = rgba;
+        }
+    }
 }
 
 async function renderLines() {

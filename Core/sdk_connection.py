@@ -74,6 +74,12 @@ class EvolutionConnection:
             # For any other Evolution-related error, raise a generic connection error
             raise EvolutionConnectionError(f"Evolution connection error: {msg}")
 
+    def __exit__(self, exc_type, exc, tb):
+        try:
+            Evo.DatabaseContext.CloseConnection()
+        except Exception:
+            pass
+
 
 class EvolutionAgentNotFoundError(Exception):
     """Raised when the current user is not configured as an agent in Evolution."""
@@ -83,9 +89,3 @@ class EvolutionAgentNotFoundError(Exception):
 class EvolutionConnectionError(Exception):
     """Raised for other Evolution connection or SDK errors."""
     pass
-
-    def __exit__(self, exc_type, exc, tb):
-        try:
-            Evo.DatabaseContext.CloseConnection()
-        except Exception:
-            pass

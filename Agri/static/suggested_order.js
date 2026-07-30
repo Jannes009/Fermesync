@@ -100,6 +100,9 @@ function initSuggestedOrder(container = document) {
                 opt.dataset.supplierName = s.name;
                 opt.dataset.price = s.last_invoice_price || 0;
                 opt.dataset.unitId = s.unit_id || '';
+                // tax defaults supplied by backend
+                opt.dataset.taxRate = s.default_tax_rate || 0;
+                opt.dataset.taxType = s.default_tax_type_id || '';
                 if (row.supplier_dc_link && Number(row.supplier_dc_link) === Number(s.dc_link)) opt.selected = true;
                 supSelect.appendChild(opt);
             }
@@ -126,10 +129,14 @@ function initSuggestedOrder(container = document) {
             tr.querySelector('.supplier-cell').appendChild(supSelect);
 
             supSelect.addEventListener('change', function () {
-                // update price metadata from selected option
+                // update price and tax metadata from selected option
                 const opt = supSelect.selectedOptions && supSelect.selectedOptions[0];
                 const price = opt && opt.dataset ? Number(opt.dataset.price || 0) : 0;
+                const taxRate = opt && opt.dataset ? Number(opt.dataset.taxRate || 0) : 0;
+                const taxType = opt && opt.dataset ? (opt.dataset.taxType || '') : '';
                 tr.dataset.lastInvoicePrice = price;
+                tr.dataset.taxRate = taxRate;
+                tr.dataset.taxType = taxType;
                 renderPreview();
                 const st = (supSelect.value === '' ? 'no-supplier' : (Number(tr.dataset.purchaseUnitsToOrder) > 0 ? 'needs' : 'ok'));
                 const span = tr.querySelector('.status');
@@ -286,13 +293,23 @@ function initSuggestedOrder(container = document) {
             const price = Number(tr.dataset.lastInvoicePrice || 0);
             const desc = tr.dataset.productName || tr.querySelector('.col-product')?.textContent.trim() || '';
             const unit = tr.dataset.purchasingUom || '';
-            groups[sup].lines.push({stock_link: tr.dataset.stockLink, product: desc, qty: qty, price: price, units: unit});
+            groups[sup].lines.push({stock_link: tr.dataset.stockLink, product: desc, qty: qty, price: price, units: unit, tax_rate: Number(tr.dataset.taxRate || 0), tax_type: tr.dataset.taxType || ''});
             groups[sup].stockIds.push(tr.dataset.stockLink);
             groups[sup].totalQty += qty;
             groups[sup].totalValue += qty * price;
             const opt = sel && sel.selectedOptions && sel.selectedOptions[0];
             groups[sup].supplierName = opt ? (opt.dataset.supplierName || opt.textContent || '') : groups[sup].supplierName;
         });
+
+        // compute total tax per supplier group before rendering the summary header
+        for (const k of Object.keys(groups)) {
+            const g = groups[k];
+            g.totalTax = g.lines.reduce((sum, l) => {
+                const taxRate = Number(l.tax_rate || l.taxRate || 0);
+                const amount = Number(l.qty || 0) * Number(l.price || 0) * taxRate / 100;
+                return sum + amount;
+            }, 0);
+        }
 
         let html = '<div class="po-preview">';
         html += '<div class="po-card-header" style="border:none;padding:0;margin-bottom:0"><div class="po-card-title">Purchase Orders Preview</div></div>';
@@ -311,7 +328,7 @@ function initSuggestedOrder(container = document) {
                 const hasWarehouseSelection = !!(warehouseOptions.length && selectedWarehouse);
                 html += `<div class="po-card" data-supplier="${k}">`;
                 html += '<div class="po-card-header">';
-                html += `<div><div class="po-card-title">${supplierLabel}</div><div class="po-card-summary">${g.lines.length} products · Qty ${nf.format(g.totalQty)} · R ${nf.format(g.totalValue)}</div></div>`;
+                html += `<div><div class="po-card-title">${supplierLabel}</div><div class="po-card-summary">${g.lines.length} products · Qty ${nf.format(g.totalQty)} · R ${nf.format(g.totalValue)}${g.totalTax ? ' · Tax R ' + nf.format(g.totalTax) : ''}</div></div>`;
                 html += '<div class="po-card-actions">';
                 if (k !== 'NO_SUP' && k !== '') {
                     html += '<div class="warehouse-picker-inline">';
@@ -342,10 +359,19 @@ function initSuggestedOrder(container = document) {
                 }
                 html += `<button class="collapse-toggle" type="button">Show details</button>`;
                 html += '</div></div>';
+                // compute tax per line and totals
+                g.totalTax = 0;
+                g.lines = g.lines.map(l => {
+                    const taxRate = Number(l.tax_rate || l.taxRate || 0);
+                    const taxAmount = (Number(l.qty || 0) * Number(l.price || 0) * taxRate) / 100;
+                    g.totalTax += taxAmount;
+                    return Object.assign({}, l, { tax_amount: taxAmount });
+                });
+
                 html += '<div class="po-card-body" aria-hidden="true">';
-                html += '<table class="po-card-table"><thead><tr><th>Product</th><th>Qty</th><th>Units</th><th>Unit Price</th></tr></thead><tbody>';
+                html += '<table class="po-card-table"><thead><tr><th>Product</th><th>Qty</th><th>Units</th><th>Unit Price</th><th>Tax</th></tr></thead><tbody>';
                 for (const line of g.lines) {
-                    html += `<tr><td>${line.product}</td><td style="text-align:right">${nf.format(line.qty)}</td><td style="text-align:center">${line.units || ''}</td><td style="text-align:right">${nf.format(line.price)}</td></tr>`;
+                    html += `<tr><td>${line.product}</td><td style="text-align:right">${nf.format(line.qty)}</td><td style="text-align:center">${line.units || ''}</td><td style="text-align:right">${nf.format(line.price)}</td><td style="text-align:right">R ${nf.format(line.tax_amount || 0)}</td></tr>`;
                 }
                 html += '</tbody></table>';
                 html += '</div></div>';
@@ -397,7 +423,10 @@ function initSuggestedOrder(container = document) {
                 product_id: tr.dataset.stockLink,
                 unit_id: unitId,
                 qty: qty,
-                unit_price: Number(tr.dataset.lastInvoicePrice || 0)
+                unit_price: Number(tr.dataset.lastInvoicePrice || 0),
+                tax_rate: Number(tr.dataset.taxRate || 0),
+                tax_type: tr.dataset.taxType || '',
+                tax_amount: Number(((Number(tr.dataset.lastInvoicePrice || 0) * qty) * (Number(tr.dataset.taxRate || 0) / 100)) || 0)
             });
         });
 

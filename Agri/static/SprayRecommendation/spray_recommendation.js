@@ -182,6 +182,7 @@ async function updateProjectsForWarehouse(warehouseId) {
                 option.text = `${project.project_code}`;
                 option.setAttribute('data-ha', project.proj_attr_ha);
                 option.setAttribute('data-crop-id', project.proj_attr_crop_id);
+                option.setAttribute('data-crop-theme-color', project.crop_theme_color || '');
                 $projectSelect.append(option);
             });
             $projectSelect.prop('disabled', false).trigger('change');
@@ -220,6 +221,27 @@ function getWeekNumber(date) {
         week: weekNo,
         year: d.getUTCFullYear()
     };
+}
+
+// Function to apply crop theme color to page background
+function applyPageThemeColor(colorHex) {
+    const body = document.querySelector('.with-fixed-taskbar');
+    if (!colorHex) {
+        // Reset to default: white background
+        if (body) body.style.backgroundColor = '';
+    } else {
+        // Validate hex color format and apply with transparency
+        if (/^#[0-9A-F]{6}$/i.test(colorHex)) {
+            // Convert hex to RGB with alpha for soft background effect
+            const rgb = parseInt(colorHex.slice(1), 16);
+            const r = (rgb >> 16) & 255;
+            const g = (rgb >> 8) & 255;
+            const b = rgb & 255;
+            const rgba = `rgba(${r}, ${g}, ${b}, 0.7)`;
+            
+            if (body) body.style.backgroundColor = rgba;
+        }
+    }
 }
 
 // Function to update the spray week display when date is selected
@@ -802,16 +824,23 @@ $('#project_ids').on('change', function() {
     
     if (selectedIds.length <= 1) {
         // Single or no project: always ok
+        if (selectedIds.length === 0) {
+            // No projects selected: reset page background to default
+            applyPageThemeColor(null);
+        }
         updateProjectConfigs();
         return;
     }
 
-    // Get crop IDs for all selected projects
+    // Get crop IDs and theme color for all selected projects
     const cropIds = new Set();
+    let themeColor = null;
     selectedIds.forEach(id => {
         const option = $(`#project_ids option[value="${id}"]`);
         const cropId = option.data('crop-id');
+        const color = option.data('crop-theme-color');
         if (cropId) cropIds.add(cropId);
+        if (!themeColor && color) themeColor = color;
     });
 
     // Check if all projects have the same crop
@@ -827,6 +856,12 @@ $('#project_ids').on('change', function() {
             confirmButtonText: 'OK'
         });
         return;
+    }
+
+    // Apply theme color if available
+    if (themeColor) {
+        console.log('Applying theme color:', themeColor);
+        applyPageThemeColor(themeColor);
     }
 
     // All projects have same crop: proceed

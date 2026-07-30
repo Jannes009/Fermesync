@@ -74,6 +74,7 @@ def get_spray_header(spray_id):
         SprayHStatus,
         SprayHScouting,
         SprayHFinalised,
+		CRP.CropThemeColor,
 		CASE 
 			WHEN SUM(ISNULL(ISS.QtyOut, 0)) OVER (PARTITION BY HEA.IdSprayH) > 0 
 			THEN 1 
@@ -81,6 +82,7 @@ def get_spray_header(spray_id):
 		END AS IssuesExist
     FROM agr.SprayHeader HEA
     JOIN cmn._uvWhseMst WHSE on WHSE.WhseLink = HEA.SprayHWhseId
+	LEFT JOIN agr.Crop CRP on CRP.IdCrop = HEA.SprayHCropId
 	LEFT JOIN agr.SprayExecution EXE on EXE.IdSprExec = HEA.SprayHExecutionId
 	LEFT JOIN stk._uvIssueQuantities ISS on ISS.IssSprayExecutionId = EXE.IdSprExec
     WHERE HEA.IdSprayH = ?
@@ -125,6 +127,7 @@ def get_spray_header(spray_id):
             "mix": bool(header.SprayHMix) if header.SprayHMix is not None else None,
             "execution_id": header.SprayHExecutionId if header.SprayHExecutionId is not None else None,
             "execution_finalised": bool(header.SprExecFinalised) if header.SprExecFinalised is not None else None,
+            "crop_theme_color": header.CropThemeColor if header.CropThemeColor is not None else None,
             "status": header.SprayHStatus,
             "scouting": header.SprayHScouting if header.SprayHScouting is not None else None,
             "finalised": bool(header.SprayHFinalised) if header.SprayHFinalised is not None else None,

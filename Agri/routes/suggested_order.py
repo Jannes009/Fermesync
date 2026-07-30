@@ -275,7 +275,10 @@ def suggested_order_stock_suppliers(stock_id):
         ISNULL(L.LastInvoicePrice, ISNULL(GCST.PurchaseUnitLastGRVCost,0)) AS LastInvoicePrice,
         ISNULL(L.bDefaultSupplier, 0) AS DefaultSupplier,
         L.iUnitsOfMeasureID AS UnitId,
-        UOM.cUnitCode AS UnitCode
+        UOM.cUnitCode AS UnitCode,
+        -- tax defaults from stock link view
+        ISNULL(L.DefaultTaxTypeId, NULL) AS DefaultTaxTypeId,
+        ISNULL(L.DefaultTaxRate, 0) AS DefaultTaxRate
     FROM stk._uvStockLinks L
     LEFT JOIN cmn._uvSuppliers S ON S.DCLink = L.iDCLink
     LEFT JOIN cmn._uvUOM UOM on UOM.idUnits = iUnitsOfMeasureID
@@ -293,7 +296,9 @@ def suggested_order_stock_suppliers(stock_id):
         'last_invoice_price': float(r.LastInvoicePrice),
         'default_supplier': bool(r.DefaultSupplier), 
         'unit_id': int(r.UnitId) if hasattr(r, 'UnitId') and r.UnitId is not None else None,
-        'unit_code': r.UnitCode} 
+        'unit_code': r.UnitCode,
+        'default_tax_type_id': int(r.DefaultTaxTypeId) if hasattr(r, 'DefaultTaxTypeId') and r.DefaultTaxTypeId is not None else None,
+        'default_tax_rate': float(r.DefaultTaxRate) if hasattr(r, 'DefaultTaxRate') and r.DefaultTaxRate is not None else 0.0} 
         for r in rows
         ]
     return jsonify({'status': 'ok', 'suppliers': suppliers})
@@ -366,6 +371,8 @@ def suggested_order_create_order():
                 OD.Unit = Evo.Unit(int(line.get('unit_id')))
                 OD.UnitSellingPrice = float(line.get('unit_price'))
                 OD.Warehouse = Evo.Warehouse(int(warehouse_id))
+                OD.TaxType = Evo.TaxRate(int(line.get('tax_type'))) if line.get('tax_type') else None
+
                 OD.Project = Evo.Project(int(DEFAULT_PURCHASE_ORDER_PROJECT_ID))  # Use the default project ID
             PO.Save()
             order_number = PO.OrderNo    
@@ -377,11 +384,18 @@ def suggested_order_create_order():
                 'product_id': line.get('product_id'),
                 'unit_id': line.get('unit_id'),
                 'qty': line.get('qty'),
-                'unit_price': line.get('unit_price')
+                'unit_price': line.get('unit_price'),
+                'tax_rate': line.get('tax_rate'),
+                'tax_type': line.get('tax_type'),
+                'tax_amount': line.get('tax_amount')
             } for line in lines],
             'count': len(lines)
         }]
 
         return jsonify({'status': 'ok', 'order_number': order_number, 'created_orders': created})
+    except EvolutionAgentNotFoundError as e:
+        return jsonify({'status': 'error', 'message': str(e)}), 400
+    except EvolutionConnectionError as e:
+        return jsonify({'status': 'error', 'message': str(e)}), 500
     except Exception as e:
         return jsonify({'status': 'error', 'message': str(e)}), 500

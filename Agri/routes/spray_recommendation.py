@@ -158,10 +158,13 @@ def fetch_projects_for_warehouse():
     conn = create_db_connection()
     cursor = conn.cursor()
     cursor.execute("""
-        SELECT DISTINCT p.ProjectLink, p.ProjectCode, pa.ProjAttrCropId, pa.ProjAttrHa
+        SELECT DISTINCT p.ProjectLink, p.ProjectCode, pa.ProjAttrCropId, pa.ProjAttrHa,
+               c.CropThemeColor
         FROM cmn._uvProject p
         JOIN agr.ProjectAttributes pa
             ON pa.ProjAttrProjectId = p.ProjectLink
+        LEFT JOIN agr.Crop c
+            ON c.IdCrop = pa.ProjAttrCropId
         WHERE pa.ProjAttrWhseId = ?
           AND pa.ProjAttrIsActive = 1
         ORDER BY p.ProjectCode
@@ -174,7 +177,8 @@ def fetch_projects_for_warehouse():
             "project_id": row.ProjectLink,
             "project_code": row.ProjectCode,
             "proj_attr_crop_id": row.ProjAttrCropId,
-            "proj_attr_ha": float(row.ProjAttrHa or 0)
+            "proj_attr_ha": float(row.ProjAttrHa or 0),
+            "crop_theme_color": row.CropThemeColor
         }
         for row in rows
     ]
