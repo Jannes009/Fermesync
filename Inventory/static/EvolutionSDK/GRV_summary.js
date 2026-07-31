@@ -15,13 +15,17 @@ function loadPOTable(supplierCode) {
     tbody.innerHTML = "<tr><td colspan='5'>Loading...</td></tr>";
 
     const body = supplierCode ? { supplier_code: supplierCode } : {};
-    fetch("/inventory/get_po_numbers", {
+    request("/inventory/get_po_numbers", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(body)
     })
         .then(r => r.json())
         .then(data => {
+            if (!data.success) {
+                tbody.innerHTML = `<tr><td colspan="5">Error: ${data.error || 'Failed to load POs.'}</td></tr>`;
+                return;
+            }
             tbody.innerHTML = "";
             if (!data.po_list?.length) {
                 tbody.innerHTML = `<tr><td colspan="5">No PO’s found</td></tr>`;

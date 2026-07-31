@@ -11,9 +11,12 @@ function initIbt(container = document) {
 
     async function loadWeeks() {
         try {
-            const res = await fetch('/agri/ibt/weeks');
+            const res = await request('/agri/ibt/weeks');
             const payload = await res.json();
-            if (payload.status !== 'ok') return;
+            if (!payload.success) {
+                weekSel.innerHTML = '<option value="">Error loading weeks</option>';
+                return;
+            };
             weekSel.innerHTML = '';
             for (const w of payload.weeks) {
                 const o = document.createElement('option');
@@ -32,9 +35,9 @@ function initIbt(container = document) {
         
         contentDiv.innerHTML = '<div style="padding:2rem;text-align:center;color:#6b7280">Loading suggestions...</div>';
         try {
-            const res = await fetch(`/agri/ibt/suggested?week=${encodeURIComponent(week)}`);
+            const res = await request(`/agri/ibt/suggested?week=${encodeURIComponent(week)}`);
             const payload = await res.json();
-            if (payload.status !== 'ok') return (contentDiv.innerHTML = '<div style="padding:2rem;text-align:center;color:#c2410c">Error loading data</div>');
+            if (!payload.success) return (contentDiv.innerHTML = `<div style="padding:2rem;text-align:center;color:#c2410c">Error loading data: ${payload.message}</div>`);
             
             if (!payload.warehouses || payload.warehouses.length === 0) {
                 contentDiv.innerHTML = '<div style="padding:2rem;text-align:center;color:#6b7280">No suggestions for this week</div>';

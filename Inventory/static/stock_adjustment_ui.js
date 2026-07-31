@@ -53,9 +53,9 @@ function initStockAdjustment(container = document) {
     async function loadProducts() {
         productSel.innerHTML = '<option value="">Loading...</option>';
         try {
-            const res = await fetch('/inventory/adjust_stock/products');
+            const res = await request('/inventory/adjust_stock/products');
             const payload = await res.json();
-            if (payload.status === 'ok') {
+            if (payload.success) {
                 if (useSelect2) {
                     window.jQuery(productSel).empty();
                     ensureEmptyOption(productSel);
@@ -74,7 +74,7 @@ function initStockAdjustment(container = document) {
                 }
                 if (useSelect2) window.jQuery(productSel).trigger('change');
             } else {
-                productSel.innerHTML = '<option value="">Error loading products</option>';
+                productSel.innerHTML = `<option value="">Error loading products: ${payload.message}</option>`;
             }
         } catch (err) {
             productSel.innerHTML = '<option value="">Error</option>';
@@ -146,9 +146,9 @@ function initStockAdjustment(container = document) {
         } else whSel.innerHTML = '<option value="">Loading...</option>';
         whSel.disabled = true;
         try {
-            const res = await fetch(`/inventory/adjust_stock/warehouses?stock_link=${encodeURIComponent(stockLink)}`);
+            const res = await request(`/inventory/adjust_stock/warehouses?stock_link=${encodeURIComponent(stockLink)}`);
             const payload = await res.json();
-            if (payload.status === 'ok') {
+            if (payload.success) {
                 if (useSelect2) {
                     window.jQuery(whSel).empty();
                     ensureEmptyOption(whSel);
@@ -186,9 +186,9 @@ function initStockAdjustment(container = document) {
 
         if (qtyInfoDiv) qtyInfoDiv.innerHTML = '<div class="sd-summary-item"><span class="sd-summary-label">Qty On Hand</span><span class="sd-summary-value">Loading...</span></div><div class="sd-summary-item"><span class="sd-summary-label">Unit</span><span class="sd-summary-value">—</span></div>';
         try {
-            const res = await fetch(`/inventory/adjust_stock/qty?stock_link=${encodeURIComponent(stockLink)}&warehouse_link=${encodeURIComponent(warehouseLink)}`);
+            const res = await request(`/inventory/adjust_stock/qty?stock_link=${encodeURIComponent(stockLink)}&warehouse_link=${encodeURIComponent(warehouseLink)}`);
             const payload = await res.json();
-            if (payload.status === 'ok') {
+            if (payload.success) {
                 currentQtyOnHand = Number(payload.qty_on_hand);
                 // Update unit info from backend
                 purchasingUnitCode = payload.purchasing_unit_code || purchasingUnitCode || '';
@@ -394,7 +394,7 @@ function initStockAdjustment(container = document) {
         submitBtn.textContent = 'Submitting...';
 
         try {
-            const res = await fetch('/inventory/adjust_stock', {
+            const res = await request('/inventory/adjust_stock', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ product_link: Number(product), warehouse_link: warehouse, operation: operation, quantity: qtyInStockingUnits })
@@ -506,7 +506,7 @@ window.openStockAdjustmentModal = async function (options = {}) {
     modalBody.innerHTML = '<div style="padding: 2rem; text-align: center; color: #6b7280;">Loading stock adjustment...</div>';
 
     try {
-        const res = await fetch('/inventory/adjust_stock/popup');
+        const res = await request('/inventory/adjust_stock/popup');
         if (!res.ok) throw new Error('Unable to load content');
         const html = await res.text();
 

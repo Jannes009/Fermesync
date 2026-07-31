@@ -293,7 +293,7 @@ function continueCount(event, headerId) {
 
 async function discardCount(event, headerId) {
     event.stopPropagation(); // Prevent row click
-    fetch(`/inventory/stock-counts/discard/${headerId}`, {
+    request(`/inventory/stock-counts/discard/${headerId}`, {
         method: "POST"
     }).then(res => res.json())
     .then(data => {
@@ -324,15 +324,24 @@ async function discardCount(event, headerId) {
 
 async function loadDue() {
     try {
-        const res = await fetch("/inventory/stock-counts/due");
-        if (!res.ok) {
-            console.warn("Due endpoint not available, skipping");
+        const res = await request("/inventory/stock-counts/due");
+        const data = await res.json();
+        if (!data.success) {
+            const tbody = document.querySelector("#dueTable tbody");
+            tbody.insertAdjacentHTML("beforeend", `
+                <tr>
+                    <td colspan="7" style="text-align: center; padding: 1.5rem; color: var(--secondary-text);">
+                        <i class="fas fa-check-circle"></i> ${data.message || 'Failed to load due counts.'} 
+                    </td>
+                </tr>
+            `);
             return;
         }
-        const rows = await res.json();
 
         const tbody = document.querySelector("#dueTable tbody");
         tbody.innerHTML = "";
+
+        rows = data.schedules || [];
 
         if (rows.length === 0) {
             tbody.insertAdjacentHTML("beforeend", `
@@ -416,8 +425,13 @@ function closeScheduleModal() {
 
 async function loadScheduleOptions() {
     try {
-        const res = await fetch("/inventory/fetch_warehouses");
+        const res = await request("/inventory/fetch_warehouses");
         const data = await res.json();
+        if (!data.success) {
+            Swal.fire("Error", data.message || "Failed to load warehouses.", "error");
+            return;
+        }
+
 
         const warehouseSelect = document.getElementById("scheduleWarehouse");
         const categorySelect = document.getElementById("scheduleCategory");
@@ -446,12 +460,16 @@ async function loadScheduleOptions() {
 
         $(warehouseSelect).on('change', async () => {
             const warehouse = warehouseSelect.value;
-            await fetch("/inventory/fetch_categories", {
+            await request("/inventory/fetch_categories", {
                 method: "POST",
                 headers: { "Content-Type": "application/json" },
                 body: JSON.stringify({ whse_id: warehouse })
             }).then(response => response.json())
                .then(data => {
+                    if(!data.success) {
+                        Swal.fire("Error", data.message || "Failed to load categories.", "error");
+                        return;
+                    }
                     categorySelect.innerHTML = "<option value=''>Select category</option>";
                     // Add category options
                     data.categories.forEach(c => {
@@ -499,7 +517,7 @@ document.addEventListener("DOMContentLoaded", () => {
             }
 
             try {
-                const res = await fetch("/inventory/stock-counts/create_schedule", {
+                const res = await request("/inventory/stock-counts/create_schedule", {
                     method: "POST",
                     headers: { "Content-Type": "application/json" },
                     body: JSON.stringify({
@@ -554,8 +572,20 @@ document.addEventListener("click", (e) => {
 // Update loadHistory to render both tables
 async function loadHistory() {
     try {
-        const res = await fetch("/inventory/stock-counts/history");
-        allHistoryData = await res.json();
+        const res = await request("/inventory/stock-counts/history");
+        const data = await res.json();
+        if (!data.success) {
+            const tbody = document.querySelector("#historyTable tbody");
+            tbody.innerHTML = `
+                <tr>
+                    <td colspan="7" style="text-align: center; padding: 1.5rem; color: var(--secondary-text);">
+                        <i class="fas fa-exclamation-circle"></i> ${data.message || 'Failed to load history.'}
+                    </td>
+                </tr>
+            `;
+            return;
+        }
+        allHistoryData = data.schedules || [];
         
         // Render both incomplete and completed tables
         renderIncompleteTable(allHistoryData);
@@ -576,8 +606,12 @@ async function loadHistory() {
 // Update openModal to show variance category
 async function openModal(headerId) {
     try {
-        const res = await fetch(`/inventory/stock_count_details/${headerId}`);
+        const res = await request(`/inventory/stock_count_details/${headerId}`);
         const data = await res.json();
+        if (!data.success) {
+            Swal.fire("Error", data.message || "Failed to load count details.", "error");
+            return;
+        }
 
         const modalTitle = document.getElementById("modalTitle");
         const modalLines = document.getElementById("modalLines");
@@ -641,11 +675,17 @@ function closeModal() {
 
 async function loadFilters() {
     try {
-        const res = await fetch("/inventory/stock-counts/filters");
-        const data = await res.json();
-
         const warehouseFilter = document.getElementById("warehouseFilter");
         const shelfFilter = document.getElementById("shelfFilter");
+
+        const res = await request("/inventory/stock-counts/filters");
+        const data = await res.json();
+        if (data.success !== true) {
+            warehouseFilter.insertAdjacentHTML("beforeend", `<option value="">Error loading warehouses</option>`);
+            shelfFilter.insertAdjacentHTML("beforeend", `<option value="">Error loading shelves</option>`);
+            return;
+        }
+
 
         // Add warehouse options
         data.warehouses.forEach(w => {

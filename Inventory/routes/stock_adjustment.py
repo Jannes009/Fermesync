@@ -14,7 +14,7 @@ def adjust_stock():
     data = request.json
     # Permission check
     if "STOCK_ADJUSTMENT" not in current_user.permissions:
-        return jsonify({"success": False, "error": "Permission denied"}), 403
+        return jsonify({"success": False, "message": "Permission denied"}), 403
     product_link = data.get("product_link")
     warehouse_link = data.get("warehouse_link")
     quantity = data.get("quantity")
@@ -76,7 +76,7 @@ def adjust_stock():
             return jsonify({"success": True})
     except Exception as ex:
         print("Stock Issue Submission Error:", str(ex))
-        return jsonify({"success": False, "error": str(ex)}), 500
+        return jsonify({"success": False, "message": str(ex)}), 500
 
 
 @inventory_bp.route("/adjust_stock", methods=["GET"])
@@ -102,32 +102,37 @@ def adjust_stock_popup():
 def adjust_stock_products():
     """Return a short list of products for the dropdown (id + description + units)."""
     if "STOCK_ADJUSTMENT" not in current_user.permissions:
-        return jsonify({'status': 'error', 'message': 'Permission denied'}), 403
+        return jsonify({'success': False, 'message': 'Permission denied'}), 403
     conn = create_db_connection()
     cur = conn.cursor()
-    sql = """
-    SELECT DISTINCT
-       q.StockLink,
-       q.StockDescription,
-       u.PurchasingUnitCode,
-       u.StockingUnitCode,
-       u.ConversionFactor
-    FROM stk._uvInventoryQty q
-    LEFT JOIN cmn._uvStockUnitConversion u ON u.StockLink = q.StockLink
-    WHERE q.WhseItem = 1 AND q.ServiceItem = 0
-    ORDER BY q.StockDescription
-    """
-    cur.execute(sql)
-    rows = cur.fetchall()
-    conn.close()
-    products = [{
-        'product_link': int(r.StockLink),
-        'description': r.StockDescription,
-        'purchasing_unit_code': r.PurchasingUnitCode or '',
-        'stocking_unit_code': r.StockingUnitCode or '',
-        'conversion_factor': float(r.ConversionFactor) if r.ConversionFactor else 1.0
-    } for r in rows]
-    return jsonify({'status': 'ok', 'products': products})
+    try:
+        sql = """
+        SELECT DISTINCT
+        q.StockLink,
+        q.StockDescription,
+        u.PurchasingUnitCode,
+        u.StockingUnitCode,
+        u.ConversionFactor
+        FROM stk._uvInventoryQty q
+        LEFT JOIN cmn._uvStockUnitConversion u ON u.StockLink = q.StockLink
+        WHERE q.WhseItem = 1 AND q.ServiceItem = 0
+        ORDER BY q.StockDescription
+        """
+        cur.execute(sql)
+        rows = cur.fetchall()
+        products = [{
+            'product_link': int(r.StockLink),
+            'description': r.StockDescription,
+            'purchasing_unit_code': r.PurchasingUnitCode or '',
+            'stocking_unit_code': r.StockingUnitCode or '',
+            'conversion_factor': float(r.ConversionFactor) if r.ConversionFactor else 1.0
+        } for r in rows]
+        return jsonify({'success': True, 'products': products})
+    except Exception as e:
+        print("Error fetching products:", str(e))
+        return jsonify({'success': False, 'message': 'Error fetching products'}), 500
+    finally:
+        conn.close()
 
 
 @inventory_bp.route('/adjust_stock/warehouses', methods=['GET'])
@@ -135,26 +140,31 @@ def adjust_stock_products():
 def adjust_stock_warehouses():
     """Return warehouses that allow buying into for the selected stock item."""
     if "STOCK_ADJUSTMENT" not in current_user.permissions:
-        return jsonify({'status': 'error', 'message': 'Permission denied'}), 403
+        return jsonify({'success': False, 'message': 'Permission denied'}), 403
     stock_link = request.args.get('stock_link')
     if not stock_link:
-        return jsonify({'status': 'error', 'message': 'stock_link is required'}), 400
+        return jsonify({'success': False, 'message': 'stock_link is required'}), 400
 
     conn = create_db_connection()
     cur = conn.cursor()
-    sql = """
-    SELECT DISTINCT W.WhseLink, S.WhseDescription
-    FROM cmn._uvStockWarehouse S
-    JOIN cmn._uvWarehouses W ON W.WhseLink = S.WhseID
-    WHERE S.bAllowToBuyInto = 1
-      AND S.StockID = ?
-    ORDER BY S.WhseDescription
-    """
-    cur.execute(sql, (stock_link,))
-    rows = cur.fetchall()
-    conn.close()
-    whs = [{ 'whse_link': r.WhseLink, 'whse_description': r.WhseDescription } for r in rows]
-    return jsonify({'status': 'ok', 'warehouses': whs})
+    try:
+        sql = """
+        SELECT DISTINCT W.WhseLink, S.WhseDescription
+        FROM cmn._uvStockWarehouse S
+        JOIN cmn._uvWarehouses W ON W.WhseLink = S.WhseID
+        WHERE S.bAllowToBuyInto = 1
+        AND S.StockID = ?
+        ORDER BY S.WhseDescription
+        """
+        cur.execute(sql, (stock_link,))
+        rows = cur.fetchall()
+        whs = [{ 'whse_link': r.WhseLink, 'whse_description': r.WhseDescription } for r in rows]
+        return jsonify({'success': True, 'warehouses': whs})
+    except Exception as e:
+        print("Error fetching warehouses:", str(e))
+        return jsonify({'success': False, 'message': 'Error fetching warehouses'}), 500
+    finally:
+        conn.close()
 
 
 @inventory_bp.route('/adjust_stock/qty', methods=['GET'])
@@ -162,11 +172,11 @@ def adjust_stock_warehouses():
 def adjust_stock_qty():
     """Return qty on hand for a selected product and warehouse with unit information."""
     if "STOCK_ADJUSTMENT" not in current_user.permissions:
-        return jsonify({'status': 'error', 'message': 'Permission denied'}), 403
+        return jsonify({'success': False, 'message': 'Permission denied'}), 403
     stock_link = request.args.get('stock_link')
     warehouse_link = request.args.get('warehouse_link')
     if not stock_link or not warehouse_link:
-        return jsonify({'status': 'error', 'message': 'stock_link and warehouse_link are required'}), 400
+        return jsonify({'success': False, 'message': 'stock_link and warehouse_link are required'}), 400
 
     conn = create_db_connection()
     cur = conn.cursor()
@@ -192,15 +202,17 @@ def adjust_stock_qty():
             purchasing_unit = ''
             stocking_unit = ''
             conversion_factor = 1.0
+        return jsonify({
+            'success': True,
+            'stock_link': int(stock_link),
+            'warehouse_link': int(warehouse_link),
+            'qty_on_hand': qty_on_hand,
+            'purchasing_unit_code': purchasing_unit,
+            'stocking_unit_code': stocking_unit,
+            'conversion_factor': conversion_factor
+        })
+    except Exception as e:
+        print("Error fetching quantity:", str(e))
+        return jsonify({'success': False, 'message': 'Error fetching quantity'}), 500
     finally:
         conn.close()
-
-    return jsonify({
-        'status': 'ok',
-        'stock_link': int(stock_link),
-        'warehouse_link': int(warehouse_link),
-        'qty_on_hand': qty_on_hand,
-        'purchasing_unit_code': purchasing_unit,
-        'stocking_unit_code': stocking_unit,
-        'conversion_factor': conversion_factor
-    })

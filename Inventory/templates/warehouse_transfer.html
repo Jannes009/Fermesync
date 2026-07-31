@@ -412,9 +412,13 @@ $(document).on('select2:open', () => {
 
 // LOAD WAREHOUSES
 function loadData(){
-    fetch("/inventory/fetch_warehouses")
+    request("/inventory/fetch_warehouses")
     .then(r=>r.json())
     .then(data=>{
+        if(!data.success){
+            Swal.fire("Error", data.message || "Failed to load warehouses", "error")
+            return
+        }
         populateWarehouses(data.warehouses)
     })
 }
@@ -446,9 +450,13 @@ function populateWarehouses(warehouses){
         if(!fromWarehouse) return
         console.log("Loading products for warehouse", fromWarehouse)
 
-        fetch(`/inventory/SDK/fetch_products_in_warehouse?warehouse_id=${fromWarehouse}`)
+        request(`/inventory/SDK/fetch_products_in_warehouse?warehouse_id=${fromWarehouse}`)
         .then(r=>r.json())
         .then(data=>{
+            if(!data.success){
+                Swal.fire("Error", data.message || "Failed to load products", "error")
+                return
+            }
             products = data.products || []
 
             document.getElementById("transferLines").innerHTML = ""
@@ -579,15 +587,15 @@ async function saveTransfer(){
             return
         }
 
-        const refreshRes = await fetch(`/inventory/adjust_stock/qty?stock_link=${encodeURIComponent(overage.stockId)}&warehouse_link=${encodeURIComponent(fromWarehouse)}`)
+        const refreshRes = await request(`/inventory/adjust_stock/qty?stock_link=${encodeURIComponent(overage.stockId)}&warehouse_link=${encodeURIComponent(fromWarehouse)}`)
         const refreshJson = await refreshRes.json()
-            if (refreshJson.status === 'ok') {
+            if (refreshJson.success) {
             const newAvailableQty = Number(refreshJson.qty_on_hand) || 0
             document.querySelectorAll(`.product-select option[value="${overage.stockId}"]`).forEach(opt => {
                 // update both jQuery data cache and the DOM attribute so subsequent reads are consistent
                 $(opt).data('qty', newAvailableQty)
                 try { opt.setAttribute('data-qty', String(newAvailableQty)) } catch(e) {}
-            })
+            }) 
             if (newAvailableQty < overage.requestedQty) {
                 return Swal.fire(
                     "Not Enough Stock",
@@ -595,12 +603,15 @@ async function saveTransfer(){
                     "error"
                 )
             }
-        }
+            } else {
+                Swal.fire("Error", refreshJson.message || "Failed to refresh stock quantity", "error")
+                return
+            }
 
         return saveTransfer()
     }
 
-    fetch("/inventory/warehouse-transfer/save",{
+    request("/inventory/warehouse-transfer/save",{
         method:"POST",
         headers:{
             "Content-Type":"application/json"
@@ -631,10 +642,13 @@ async function saveTransfer(){
 // Generic prompt to open Stock Adjustment modal when qty > available
 async function promptStockAdjustment(stockLink, warehouseCode, qtyNeeded = 0) {
     try {
-        const probe = await fetch('/inventory/adjust_stock/products');
-        if (probe.status === 403) {
-            Swal.fire('Not allowed', 'You do not have permission to adjust stock.', 'error');
-            return false;
+        const probe = await request('/inventory/adjust_stock/products');
+        if (!probe.success) {
+            if (probe.status === 403) {
+                Swal.fire('Not allowed', 'You do not have permission to adjust stock.', 'error');
+                return false;
+            }
+            throw new Error(probe.message || 'Failed to fetch adjustment products');
         }
 
         const overageText = qtyNeeded > 0 ? `You need ${qtyNeeded} more units to continue.` : 'Requested quantity exceeds available.';
@@ -677,7 +691,7 @@ async function promptStockAdjustment(stockLink, warehouseCode, qtyNeeded = 0) {
             if (typeof initStockAdjustment !== 'function') {
                 await ensureModule(modulePath);
             }
-            const htmlRes = await fetch('/inventory/adjust_stock/popup');
+            const htmlRes = await request('/inventory/adjust_stock/popup');
             if (!htmlRes.ok) throw new Error('Failed to load adjustment UI');
             const html = await htmlRes.text();
 

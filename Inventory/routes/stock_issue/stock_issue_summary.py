@@ -25,30 +25,35 @@ def stock_issue_summary():
 def incomplete_issues():
     conn = create_db_connection()
     cur = conn.cursor()
+    try:
+        sql = """
+        Select IdIssue, IssNo, HEA.IssWhseId, WHSE.WhseDescription, HEA.IssTimeStamp
+        from stk.IssueHeader HEA
+        JOIN cmn._uvWarehouses WHSE on WHSE.WhseLink = HEA.IssWhseId
+        WHERE HEA.IssFinalised = 0
+        """
 
-    sql = """
-    Select IdIssue, IssNo, HEA.IssWhseId, WHSE.WhseDescription, HEA.IssTimeStamp
-    from stk.IssueHeader HEA
-    JOIN cmn._uvWarehouses WHSE on WHSE.WhseLink = HEA.IssWhseId
-    WHERE HEA.IssFinalised = 0
-    """
+        cur.execute(sql)
+        rows = cur.fetchall()
 
-    cur.execute(sql)
-    rows = cur.fetchall()
+        # build grouped structure: one issue → many lines
+        issues = [{
+            "IssueId": r.IdIssue,
+            "IssueNo": r.IssNo,
+            "IssueTimeStamp": r.IssTimeStamp,
+            "WhseId": r.IssWhseId,
+            "WhseDescription": r.WhseDescription,
+            "isReturned": False,
+            "lines": []
+        } for r in rows
+        ]
 
-    # build grouped structure: one issue → many lines
-    issues = [{
-        "IssueId": r.IdIssue,
-        "IssueNo": r.IssNo,
-        "IssueTimeStamp": r.IssTimeStamp,
-        "WhseId": r.IssWhseId,
-        "WhseDescription": r.WhseDescription,
-        "isReturned": False,
-        "lines": []
-    } for r in rows
-    ]
-
-    return jsonify({"issues": issues})
+        return jsonify({"success": True, "issues": issues})
+    except Exception as e:
+        print("incomplete_issues error:", e)
+        return jsonify({"success": False, "message": str(e)})
+    finally:
+        conn.close()
 
 
 @inventory_bp.route("/SDK/incomplete_issue_lines/<int:header_id>", methods=["GET"])
@@ -113,6 +118,7 @@ def incomplete_issue_lines(header_id):
         } for r in rows]
     except Exception as e:
         print("fetch_products_for_return error:", e)
+        return jsonify({"success": False, "message": str(e)})
     finally:
         if cursor:
             try:
@@ -126,7 +132,7 @@ def incomplete_issue_lines(header_id):
                 pass
 
     # return {"issue_lines": results}
-    return jsonify({"issue_lines": results})
+    return jsonify({"success": True, "issue_lines": results})
 
 def submit_stock_issue(issue_id, cursor):
     cursor.execute("""

@@ -2,9 +2,6 @@
 {% block content %}
 
 <link rel="stylesheet" href="{{ url_for('market.static', filename='color-template.css') }}">
-<link href="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/css/select2.min.css" rel="stylesheet" />
-<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/sweetalert2@11/dist/sweetalert2.min.css" />
-
 <style>
   * { box-sizing: border-box; }
   body { background: var(--primary-bg); color: var(--primary-text); font-size: 0.9rem; margin: 0; padding: 0; min-height: 100vh; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; }
@@ -835,9 +832,6 @@
     </div>
   </div>
 </div>
-
-<script src="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/js/select2.min.js"></script>
-<script src="https://cdn.jsdelivr.net/npm/sweetalert2@11/dist/sweetalert2.all.min.js"></script>
 <script src="{{ url_for('inventory.static', filename='stock_issue/stock_issue_list.js') }}?v={{ filemtime('inventory','stock_issue/stock_issue_list.js') }}"></script>
 <script>
 window.onStockIssueReturnSuccess = () => window.location.reload();
@@ -876,7 +870,7 @@ async function handleInstructionSubmit(event) {
     setInstructionFormSaving(true);
 
     try {
-        const response = await fetch(action, {
+        const response = await request(action, {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json',
@@ -954,7 +948,7 @@ async function finalizeExecution(executionId) {
     }
 
     try {
-        const response = await fetch(`/agri/execution/${executionId}/finalize`, {
+        const response = await request(`/agri/execution/${executionId}/finalize`, {
             method: 'POST'
         });
         const data = await response.json();
@@ -998,7 +992,7 @@ async function deleteExecution(executionId) {
     }
 
     try {
-        const response = await fetch(`/agri/execution/${executionId}/delete`, {
+        const response = await request(`/agri/execution/${executionId}/delete`, {
             method: 'POST'
         });
         const data = await response.json();

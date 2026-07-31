@@ -102,18 +102,30 @@ function handleModeChange() {
 }
 
 async function loadWarehouses() {
-    warehouses = await fetch(`/inventory/fetch_warehouses`)
+    warehouses = await request(`/inventory/fetch_warehouses`)
     .then(r => r.json())
-    .then(d => d.warehouses);
+    .then(d => {
+      if (!d.success) {
+        Swal.fire("Error", d.message || "Failed to load warehouses.", "error");
+        return [];
+      }
+      return d.warehouses || [];
+    });
     const select = document.getElementById('warehouse-select');
     select.innerHTML = '<option></option>';
     warehouses.forEach(w => select.insertAdjacentHTML('beforeend', `<option value="${w.id}">${w.name}</option>`));
 }
 
 async function loadProjects() {
-  projects = await fetch(`/inventory/fetch_projects`)
+  projects = await request(`/inventory/fetch_projects`)
     .then(r => r.json())
-    .then(d => d.prod_projects);
+    .then(d => {
+      if (!d.success) {
+        Swal.fire("Error", d.message || "Failed to load projects.", "error");
+        return [];
+      }
+      return d.prod_projects || [];
+    });
 
   const select = document.getElementById('project-select');
   select.innerHTML = '<option></option>';
@@ -122,9 +134,15 @@ async function loadProjects() {
 
 async function loadSprayExecutions() {
   try {
-    sprays = await fetch(`/agri/fetch_spray_for_issue`)
+    sprays = await request(`/agri/fetch_spray_for_issue`)
       .then(r => r.json())
-      .then(d => d.executions || []);
+      .then(d => {
+        if (!d.success) {
+          Swal.fire("Error", d.message || "Failed to load spray executions.", "error");
+          return [];
+        }
+        return d.executions || [];
+      });
 
     const select = document.getElementById('spray-select');
     select.innerHTML = '<option></option>';
@@ -152,9 +170,15 @@ async function step1Next() {
             return;
         }
         selectedProjectNames = $("#project-select").select2('data').map(d => d.text);
-        productsInWhse = await fetch(`/inventory/SDK/fetch_products_in_warehouse?warehouse_id=${selectedWarehouse}`)
-            .then(res => res.json())
-            .then(d => d.products);
+        productsInWhse = await request(`/inventory/SDK/fetch_products_in_warehouse?warehouse_id=${selectedWarehouse}`)
+            .then(d => d.json())
+            .then(d => {
+              if (!d.success) {
+                Swal.fire("Error", d.message || "Failed to fetch products in warehouse.", "error");
+                return [];
+              }
+              return d.products || [];
+            });
 
         if (!productsInWhse.length) {
             Swal.fire("No Products", "No products available in this warehouse.", "warning");
@@ -179,9 +203,15 @@ async function step1Next() {
 
         selectedWarehouseName = warehouses.find(w => w.id == selectedWarehouse)?.name || `Warehouse ${selectedWarehouse}`;
         
-        productsInWhse = await fetch(`/agri/fetch_products_for_spray_execution?execution_id=${selectedSpray}`)
+        productsInWhse = await request(`/agri/fetch_products_for_spray_execution?execution_id=${selectedSpray}`)
             .then(res => res.json())
-            .then(d => d.products);
+            .then(d => {
+              if (!d.success) {
+                Swal.fire("Error", d.message || "Failed to fetch products for spray execution.", "error");
+                return [];
+              }
+              return d.products || [];
+            });
         if (!productsInWhse || !productsInWhse.length) {
             Swal.fire("No Products", "No products available for this spray execution.", "warning");
             return;
@@ -204,8 +234,12 @@ async function step1Next() {
 
 async function populateSprayLines() {
     try {
-        const response = await fetch(`/agri/fetch_spray_products?execution_id=${selectedSpray}`);
+        const response = await request(`/agri/fetch_spray_products?execution_id=${selectedSpray}`);
         const data = await response.json();
+        if (!data.success){
+          Swal.fire("Error", data.message || "Failed to fetch spray products.", "error");
+          return;
+        }
         const sprayLines = data.spray_products || [];
         
         // Create lines from spray
@@ -322,8 +356,12 @@ async function step2Next() {
   let nettIssuedByProductId = {};
   if (issueMode === "spray") {
     try {
-      const sprayRecommendedResponse = await fetch(`/agri/fetch_spray_products?execution_id=${selectedSpray}`);
+      const sprayRecommendedResponse = await request(`/agri/fetch_spray_products?execution_id=${selectedSpray}`);
       const sprayRecommendedData = await sprayRecommendedResponse.json();
+      if (!sprayRecommendedData.success) {
+        Swal.fire("Error", sprayRecommendedData.message || "Failed to fetch spray products.", "error");
+        return;
+      }
       (sprayRecommendedData.spray_products || []).forEach(rec => {
         recommendedByProductId[rec.stock_id] = rec.total_qty;
         nettIssuedByProductId[rec.stock_id] = rec.execution_nett_issued;
@@ -369,9 +407,9 @@ async function step2Next() {
           return;
         }
 
-        const refreshRes = await fetch(`/inventory/adjust_stock/qty?stock_link=${encodeURIComponent(product.product_link)}&warehouse_link=${encodeURIComponent(selectedWarehouse)}`);
+        const refreshRes = await request(`/inventory/adjust_stock/qty?stock_link=${encodeURIComponent(product.product_link)}&warehouse_link=${encodeURIComponent(selectedWarehouse)}`);
         const refreshJson = await refreshRes.json();
-        if (refreshJson.status !== 'ok') {
+        if (!refreshJson.success) {
           await Swal.fire('Stock Refresh Failed', refreshJson.message || 'Could not refresh stock quantity after adjustment.', 'error');
           return;
         }
@@ -486,7 +524,7 @@ async function promptStockAdjustment(stockLink, warehouseLink, unit = 'stocking'
       await ensureModule(modulePath);
     }
 
-    const htmlRes = await fetch('/inventory/adjust_stock/popup');
+    const htmlRes = await request('/inventory/adjust_stock/popup');
     if (!htmlRes.ok) {
       await Swal.fire('Error', 'Unable to load stock adjustment UI.', 'error');
       return false;
@@ -586,7 +624,7 @@ async function submitIssue() {
   if (result.isDismissed) return;
   const orderFinal = result.isDenied === true;
 
-  const res = await fetch("/inventory/SDK/create_stock_issue", {
+  const res = await request("/inventory/SDK/create_stock_issue", {
   method: "POST",
   headers: { "Content-Type": "application/json" },
   body: JSON.stringify({
@@ -609,7 +647,7 @@ async function submitIssue() {
 
     const data = await res.json();
 
-    if (!res.ok || data.status !== "success") {
+    if (!res.ok || data.success !== true) {
     await Swal.fire(
         "Error",
         data.message || "Stock issue failed",

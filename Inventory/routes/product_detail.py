@@ -477,9 +477,10 @@ def product_outstanding_orders(stock_link):
 
     orders = load_outstanding_orders(stock_link)
     if orders is None:
-        return jsonify({'error': 'Database connection failed'}), 500
+        return jsonify({'success': False, 'message': 'Couldn\'t fetch outstanding orders'}), 500
 
     return jsonify({
+        'success': True,
         'outstanding_orders': orders
     })
 
@@ -498,7 +499,7 @@ def product_history(stock_link):
     end_inclusive = end_date.replace(hour=23, minute=59, second=59, microsecond=999999)
     transactions = load_transaction_history(stock_link, start_date, end_inclusive)
     if transactions is None:
-        return jsonify({'error': 'Database connection failed'}), 500
+        return jsonify({'success': False, 'message': 'Database connection failed'}), 500
 
     types = sorted({t['TrnType'] for t in transactions if t.get('TrnType')})
     projects = sorted({t['ProjectName'] for t in transactions if t.get('ProjectName')})
@@ -509,6 +510,7 @@ def product_history(stock_link):
     )
 
     return jsonify({
+        'success': True,
         'transactions': transactions,
         'types': types,
         'projects': projects,
@@ -529,7 +531,7 @@ def product_sprays(stock_link):
         abort(403)
 
     sprays = load_sprays(stock_link)
-    return jsonify({'sprays': sprays})
+    return jsonify({'success': True, 'sprays': sprays})
 
 
 @inventory_bp.route('/update-reordering/<int:stock_link>', methods=['POST'])
@@ -537,7 +539,7 @@ def product_sprays(stock_link):
 def update_reordering(stock_link):
     conn = create_db_connection()
     if not conn:
-        return jsonify({'error': 'Database connection failed'}), 500
+        return jsonify({'success': False, 'message': 'Database connection failed'}), 500
 
     try:
         data = request.get_json() or {}
@@ -562,7 +564,7 @@ def update_reordering(stock_link):
     except Exception as e:
         conn.rollback()
         print(f'Error updating reordering data: {e}')
-        return jsonify({'error': 'Failed to update inventory settings'}), 500
+        return jsonify({'success': False, 'message': 'Failed to update inventory settings'}), 500
     finally:
         close_db_connection(conn)
 
@@ -572,12 +574,12 @@ def update_reordering(stock_link):
 def get_categories():
     conn = create_db_connection()
     if not conn:
-        return jsonify({'error': 'Database connection failed'}), 500
+        return jsonify({'success': False, 'message': 'Database connection failed'}), 500
 
     try:
         warehouse_id = request.args.get('whse', type=int)
         if not warehouse_id:
-            return jsonify({'error': 'Warehouse ID is required'}), 400
+            return jsonify({'success': False, 'message': 'Warehouse ID is required'}), 400
 
         cursor = conn.cursor()
         cursor.execute("""
@@ -590,9 +592,9 @@ def get_categories():
             {'category_id': r.ItemCategoryID, 'category_name': r.cCategoryName}
             for r in rows
         ]
-        return jsonify({'status': 'ok', 'categories': categories})
+        return jsonify({'success': True, 'categories': categories})
     except Exception as e:
         print(f'Error fetching categories: {e}')
-        return jsonify({'error': 'Failed to fetch categories'}), 500
+        return jsonify({'success': False, 'message': 'Failed to fetch categories'}), 500
     finally:
         close_db_connection(conn)

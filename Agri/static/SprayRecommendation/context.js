@@ -296,8 +296,14 @@ async function updateContextDataset() {
         startDate.setMonth(startDate.getMonth() - months);
         params.set('start_date', startDate.toISOString().slice(0, 10));
     }
-    const res = await fetch(`/agri/spray-recommendation/context?${params.toString()}`);
+    const res = await request(`/agri/spray-recommendation/context?${params.toString()}`);
     const data = await res.json();
+
+    if (!data.success) {
+        document.getElementById('context-timeline').innerHTML = `<div class="context-empty">Error fetching context: ${data.message || 'Unknown error'}</div>`;
+        document.getElementById('context-stats').innerHTML = '';
+        return;
+    }
     contextState.items = data.items || [];
     contextState.lookups = data.lookups || {};
     contextState.suggestions = data.suggestions || {};

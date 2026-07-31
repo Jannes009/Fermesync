@@ -75,11 +75,15 @@ async function updateProductsByWarehouse(warehouseId, projectIds) {
         return;
     }
 
-    try {
-        const pidParam = encodeURIComponent(projectIds.join(','));
-        const response = await fetch(`/agri/fetch_products_linked_with_warehouse?warehouse_id=${warehouseId}&project_ids=${pidParam}`);
-        const data = await response.json();
 
+    const pidParam = encodeURIComponent(projectIds.join(','));
+    const response = await request(`/agri/fetch_products_linked_with_warehouse?warehouse_id=${warehouseId}&project_ids=${pidParam}`);
+    const data = await response.json();
+
+    if (!data.success) {
+        Swal.fire({ icon: 'error', title: 'Error fetching products', text: data.message || 'Failed to fetch products' });
+    } else {
+        
         if (data.products && data.products.length > 0) {
             // Build options HTML with useful data-* attributes
             let options = '<option value="">Select product</option>';
@@ -153,13 +157,6 @@ async function updateProductsByWarehouse(warehouseId, projectIds) {
             });
             Swal.fire({ icon: 'info', title: 'No products', text: message });
         }
-    } catch (error) {
-        console.error('Error fetching products:', error);
-        PRODUCT_OPTIONS = '<option value="">Error loading products</option>';
-        $('.product-select').each(function() {
-            $(this).html(PRODUCT_OPTIONS).trigger('change');
-        });
-        Swal.fire({ icon: 'error', title: 'Error', text: 'Error fetching products' });
     }
 }
 
@@ -172,10 +169,10 @@ async function updateProjectsForWarehouse(warehouseId) {
     }
 
     try {
-        const response = await fetch(`/agri/fetch_projects_for_warehouse?warehouse_id=${warehouseId}`);
+        const response = await request(`/agri/fetch_projects_for_warehouse?warehouse_id=${warehouseId}`);
         const data = await response.json();
 
-        if (data.status === 'ok' && data.projects && data.projects.length > 0) {
+        if (data.success === true && data.projects && data.projects.length > 0) {
             data.projects.forEach(project => {
                 const option = document.createElement('option');
                 option.value = project.project_id;

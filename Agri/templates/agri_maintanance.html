@@ -463,12 +463,16 @@ document.addEventListener('DOMContentLoaded', function () {
       document.getElementById('edit-person-responsible').checked = row.dataset.isResponsible === '1';
       
       // Fetch person's current farm assignments
-      fetch(`/agri/setup/person/${id}/farms`)
+      request(`/agri/setup/person/${id}/farms`)
         .then(r => r.json())
         .then(data => {
+          if (!data.success) {
+            Swal.fire('Error', 'Failed to fetch person farms: ' + (data.message || 'Unknown error'), 'error');
+            return;
+          }
           $('#edit-person-farms').val(data.farm_ids || []).trigger('change');
         })
-        .catch(err => console.error('Error fetching person farms:', err));
+        .catch(err => Swal.fire('Error', 'Error fetching person farms: ' + (err.message || 'Unknown error'), 'error'));
     }
 
     if (entity === 'spray_method') {
@@ -604,7 +608,7 @@ document.addEventListener('DOMContentLoaded', function () {
     } else {
       endpoint = `/agri/setup/${routeMap[entity] || entity}/update`;
     }
-    fetch(endpoint, {
+    request(endpoint, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(payload)
@@ -706,8 +710,7 @@ document.addEventListener('DOMContentLoaded', function () {
         closeEditModal();
       })
       .catch(err => {
-        console.error(err);
-        alert('Error saving changes');
+        Swal.fire('Error', 'Error saving changes: ' + (err.message || 'Unknown error'), 'error');
       });
   });
 

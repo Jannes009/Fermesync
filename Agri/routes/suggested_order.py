@@ -22,7 +22,7 @@ def suggested_order_popup():
 def suggested_order_data():
     week = request.args.get('week')
     if not week:
-        return jsonify({'status': 'error', 'message': 'week parameter required'}), 400
+        return jsonify({'success': False, 'message': 'week parameter required'}), 400
 
     conn = create_db_connection()
     cur = conn.cursor()
@@ -123,7 +123,7 @@ def suggested_order_data():
             'last_invoice_price': float(r.LastInvoicePrice) if hasattr(r, 'LastInvoicePrice') else 0.0
         })
 
-    return jsonify({'status': 'ok', 'week': week, 'data': results})
+    return jsonify({'success': True, 'week': week, 'data': results})
 
 
 @agri_bp.route('/suggested-order/detail/<int:stock_id>', methods=['GET'])
@@ -131,7 +131,7 @@ def suggested_order_data():
 def suggested_order_detail(stock_id):
     week = request.args.get('week')
     if not week:
-        return jsonify({'status': 'error', 'message': 'week parameter required'}), 400
+        return jsonify({'success': False, 'message': 'week parameter required'}), 400
 
     conn = create_db_connection()
     cur = conn.cursor()
@@ -199,7 +199,7 @@ def suggested_order_detail(stock_id):
         }
         for r in rows
     ]
-    return jsonify({'status': 'ok', 'week': week, 'stock_id': stock_id, 'warehouses': results})
+    return jsonify({'success': True, 'week': week, 'stock_id': stock_id, 'warehouses': results})
 
 
 @agri_bp.route('/suggested-order/detail/<int:stock_id>/warehouse/<int:whse_id>', methods=['GET'])
@@ -207,7 +207,7 @@ def suggested_order_detail(stock_id):
 def suggested_order_warehouse_detail(stock_id, whse_id):
     week = request.args.get('week')
     if not week:
-        return jsonify({'status': 'error', 'message': 'week parameter required'}), 400
+        return jsonify({'success': False, 'message': 'week parameter required'}), 400
 
     conn = create_db_connection()
     cur = conn.cursor()
@@ -259,7 +259,7 @@ def suggested_order_warehouse_detail(stock_id, whse_id):
         }
         for r in rows
     ]
-    return jsonify({'status': 'ok', 'week': week, 'stock_id': stock_id, 'whse_id': whse_id, 'sprays': results})
+    return jsonify({'success': True, 'week': week, 'stock_id': stock_id, 'whse_id': whse_id, 'sprays': results})
 
 
 @agri_bp.route('/suggested-order/stock-suppliers/<int:stock_id>', methods=['GET'])
@@ -301,7 +301,7 @@ def suggested_order_stock_suppliers(stock_id):
         'default_tax_rate': float(r.DefaultTaxRate) if hasattr(r, 'DefaultTaxRate') and r.DefaultTaxRate is not None else 0.0} 
         for r in rows
         ]
-    return jsonify({'status': 'ok', 'suppliers': suppliers})
+    return jsonify({'success': True, 'suppliers': suppliers})
 
 
 @agri_bp.route('/suggested-order/order-warehouses', methods=['POST'])
@@ -310,11 +310,11 @@ def suggested_order_warehouses():
     payload = request.get_json() or {}
     stock_ids = payload.get('stock_ids') or []
     if not isinstance(stock_ids, list) or not stock_ids:
-        return jsonify({'status': 'error', 'message': 'stock_ids array is required'}), 400
+        return jsonify({'success': False, 'message': 'stock_ids array is required'}), 400
 
     ids = [int(i) for i in stock_ids if isinstance(i, (int, str)) and str(i).strip() != '']
     if not ids:
-        return jsonify({'status': 'error', 'message': 'stock_ids must contain at least one value'}), 400
+        return jsonify({'success': False, 'message': 'stock_ids must contain at least one value'}), 400
 
     placeholders = ','.join(['?'] * len(ids))
     sql = f"""
@@ -338,7 +338,7 @@ def suggested_order_warehouses():
         'whse_description': r.WhseDescription
     } for r in rows]
 
-    return jsonify({'status': 'ok', 'warehouses': warehouses})
+    return jsonify({'success': True, 'warehouses': warehouses})
 
 
 @agri_bp.route('/suggested-order/create-order', methods=['POST'])
@@ -351,9 +351,9 @@ def suggested_order_create_order():
     print(f"Received payload for order creation: {payload}")  # Debugging line
 
     if not supplier_id:
-        return jsonify({'status': 'error', 'message': 'supplier_id is required'}), 400
+        return jsonify({'success': False, 'message': 'supplier_id is required'}), 400
     if not warehouse_id:
-        return jsonify({'status': 'error', 'message': 'warehouse_id is required'}), 400
+        return jsonify({'success': False, 'message': 'warehouse_id is required'}), 400
     
     try:
         with EvolutionConnection():
@@ -392,10 +392,10 @@ def suggested_order_create_order():
             'count': len(lines)
         }]
 
-        return jsonify({'status': 'ok', 'order_number': order_number, 'created_orders': created})
+        return jsonify({'success': True, 'order_number': order_number, 'created_orders': created})
     except EvolutionAgentNotFoundError as e:
-        return jsonify({'status': 'error', 'message': str(e)}), 400
+        return jsonify({'success': False, 'message': str(e)}), 400
     except EvolutionConnectionError as e:
-        return jsonify({'status': 'error', 'message': str(e)}), 500
+        return jsonify({'success': False, 'message': str(e)}), 500
     except Exception as e:
-        return jsonify({'status': 'error', 'message': str(e)}), 500
+        return jsonify({'success': False, 'message': str(e)}), 500

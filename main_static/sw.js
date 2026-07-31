@@ -2,7 +2,7 @@
 const IS_DEV = true;
 
 const CACHE_NAME = IS_DEV
-  ? 'fermesync-dev'          // never rely on versioning
+  ? 'fermesync-dev-v2'          // never rely on versioning
   : 'fermesync-v1';          // bump ONLY on prod deploys
 
 // ------------------
@@ -17,30 +17,31 @@ const SHELL = [
 
   // JS modules
   '/main_static/offline/db.js',
-  '/inventory/static/stock_issue/offline.js',
-  '/inventory/static/stock_issue/stock_issue_wizard.js',
-  '/inventory/static/stock_issue/stock_issue_list.js',
-  '/inventory/static/stock_adjustment.js',
 
   // Rendered pages (HTML)
-  '/inventory/dashboard',
-  '/inventory/SDK/stock_issue',
+  '/main_static/offline.html',
+  // '/login',
+  // '/inventory/',
+  // '/inventory/ibt/popup',
+  // '/inventory/suggested-order/popup',
+  // '/inventory/static/css/stock_adjustment.css',
+  // '/inventory/static/stock_adjustment_ui.js',
+  //'/inventory/SDK/stock_issue_wizard',
+  //'/inventory/SDK/stock_issue_summary',
 ];
 
 // ------------------
 // INSTALL
 // ------------------
-self.addEventListener('install', event => {
-  if (IS_DEV) {
+self.addEventListener("install", event => {
+
+    event.waitUntil(
+        caches.open(CACHE_NAME)
+            .then(cache => cache.addAll(SHELL))
+    );
+
     self.skipWaiting();
-    return;
-  }
 
-  event.waitUntil(
-    caches.open(CACHE_NAME).then(cache => cache.addAll(SHELL))
-  );
-
-  self.skipWaiting();
 });
 
 // ------------------
@@ -65,68 +66,62 @@ self.addEventListener('activate', event => {
 // ------------------
 self.addEventListener('fetch', event => {
   const req = event.request;
+  console.log("SW fetch", req.url, req.method);
 
+  // ignore non-GET requests
   if (req.method !== 'GET') return;
+  // ignore external requests
   if (!req.url.startsWith(self.location.origin)) return;
 
-  const url = new URL(req.url);
-  url.search = ''; // normalize ?v=
-
-  const pathname = url.pathname;
-
-  const isShellRequest = SHELL.includes(pathname);
-  const isApiRequest = pathname.startsWith('/inventory/');
-
-  // ❌ Let your app handle APIs
-  if (isApiRequest && !isShellRequest) {
-    return;
-  }
-
-  const isImage = pathname.match(/\.(png|jpg|jpeg|svg|webp)$/);
-
-  if (!IS_DEV && isImage) {
-    event.respondWith(
-      (async () => {
-        const cache = await caches.open('images-v1');
-        const cached = await cache.match(req);
-
-        if (cached) {
-          // Update in background
-          fetch(req).then(res => {
-            if (res.ok) cache.put(req, res.clone());
-          });
-          return cached;
-        }
-
-        const res = await fetch(req);
-        if (res.ok) cache.put(req, res.clone());
-        return res;
-      })()
-    );
-    return;
-  }
-
-
-  // DEV: always go network-first
-  if (IS_DEV) {
-    event.respondWith(fetch(req));
-    return;
-  }
-
   // PROD: cache-first for shell
-  event.respondWith(
-    (async () => {
-      const cache = await caches.open(CACHE_NAME);
-      const cached = await cache.match(url.toString());
-
-      if (cached) return cached;
-
-      const res = await fetch(req);
-      if (res && res.status === 200) {
-        cache.put(url.toString(), res.clone());
-      }
-
-      return res;
-    })()
+  event.respondWith(networkFirst(req)
   );
 });
+
+// -------------------------
+// NETWORK FIRST
+// -------------------------
+
+async function networkFirst(request) {
+
+    const cache = await caches.open(CACHE_NAME);
+
+    try {
+
+        const response = await fetch(request);
+
+        // Only cache successful responses.
+        if (response.ok) {
+            cache.put(request, response.clone());
+        }
+
+        return response;
+
+    }
+    catch {
+
+        // Offline (or network failure)
+        const cached = await cache.match(request);
+        if (cached) {
+            return cached;
+        }
+        // If the browser was trying to load an HTML page,
+        // show the offline page.
+        if (request.mode === "navigate") {
+            const offline = await cache.match("/main_static/offline.html");
+            if (offline)
+                return offline;
+        }
+        // Otherwise return a normal offline response.
+        return new Response(
+              JSON.stringify({
+                success: false,
+                message: "You are offline. Please check your internet connection and try again."
+              }),
+              {
+                status: 503,
+                headers: { "Content-Type": "application/json" }
+              }
+            );
+    }
+}

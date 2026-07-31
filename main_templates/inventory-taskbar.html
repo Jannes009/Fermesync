@@ -5,14 +5,11 @@
     <a href="/inventory/dashboard" class="logo-link">
       <img src="{{ url_for('inventory.static', filename='Image/HorizontalLogoAndText.svg') }}" alt="Fermesync Logo" class="taskbar-logo">
       <!-- Mobile-only status indicators -->
-      <!-- <div class="mobile-status-indicators">
+      <div class="mobile-status-indicators">
         <div class="connection-indicator mobile-only" id="connection-indicator-mobile">
           <span class="dot"></span>
         </div>
-        <div class="pending-indicator mobile-only" id="pending-indicator-mobile">
-          <span id="pending-count-mobile">0</span>
-        </div>
-      </div> -->
+      </div>
     </a>
   </div>
 
@@ -89,55 +86,47 @@
   </nav>
 
   <!-- Desktop Status & User Section -->
-  <div class="desktop-actions">
-    <!-- Status Indicators -->
-    <div class="status-indicators">
-      <!-- <div class="connection-indicator desktop-only" id="connection-indicator">
-        <span class="dot"></span>
-        <span class="status-text">Online</span>
-      </div>
-      
-      <div class="pending-indicator desktop-only" id="pending-indicator">
-        <div class="pending-icon">
-          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-            <path d="M12 2v4m0 12v4M4.93 4.93l2.83 2.83m8.48 8.48l2.83 2.83M2 12h4m12 0h4M4.93 19.07l2.83-2.83m8.48-8.48l2.83-2.83"/>
-          </svg>
-        </div>
-        <span id="pending-count">0</span>
-      </div> -->
-
-      <!-- Notifications Icon -->
-      <div class="notifications-icon desktop-only" 
-          id="notifications-icon"
-          title="Enable notifications">
-        
-        <div class="notifications-bell">
-          <svg width="20" height="20" viewBox="0 0 24 24" fill="none"
-              stroke="currentColor" stroke-width="2">
-            <path d="M18 8A6 6 0 006 8c0 7-3 9-3 9h18s-3-2-3-9M13.73 21a2 2 0 01-3.46 0"/>
-          </svg>
-        </div>
-
-        <!-- Badge OR enable dot -->
-        <span class="notifications-count" id="notifications-count">0</span>
-      </div>
-
+<!-- Desktop Status & User Section -->
+<div class="desktop-actions">
+  <!-- Status Indicators -->
+  <div class="status-indicators">
+    <!-- Desktop Offline Indicator -->
+    <div class="connection-indicator desktop-only" id="connection-indicator">
+      <span class="dot"></span>
+      <span class="status-text">Online</span>
     </div>
-
-    <!-- Desktop User -->
-    <div class="user-section desktop-user">
-      <div class="username" id="username">{{ current_user.username }}<span>▼</span></div>
-      <div class="dropdown">
-        {% if current_user.has_feature("MARKET") %}
-        <a href="/market/dashboard">Fermesync Market</a>
-        {% endif %}
-        {% if "MANAGE_USERS" in current_user.permissions %}
-        <a href="{{ url_for('admin.manage_users') }}">Manage Users</a>
-        {% endif %}
-        <a href="{{ url_for('logout') }}">Logout</a>
+    
+    <!-- Notifications Icon -->
+    <div class="notifications-icon desktop-only" 
+        id="notifications-icon"
+        title="Enable notifications">
+      
+      <div class="notifications-bell">
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none"
+            stroke="currentColor" stroke-width="2">
+          <path d="M18 8A6 6 0 006 8c0 7-3 9-3 9h18s-3-2-3-9M13.73 21a2 2 0 01-3.46 0"/>
+        </svg>
       </div>
+
+      <!-- Badge OR enable dot -->
+      <span class="notifications-count" id="notifications-count">0</span>
     </div>
   </div>
+
+  <!-- Desktop User -->
+  <div class="user-section desktop-user">
+    <div class="username" id="username">{{ current_user.username }}<span>▼</span></div>
+    <div class="dropdown">
+      {% if current_user.has_feature("MARKET") %}
+      <a href="/market/dashboard">Fermesync Market</a>
+      {% endif %}
+      {% if "MANAGE_USERS" in current_user.permissions %}
+      <a href="{{ url_for('admin.manage_users') }}">Manage Users</a>
+      {% endif %}
+      <a href="{{ url_for('logout') }}">Logout</a>
+    </div>
+  </div>
+</div>
 
   <!-- Mobile Hamburger -->
   <button class="mobile-menu-toggle" id="mobile-menu-toggle" aria-label="Menu">
@@ -154,10 +143,11 @@
       <div class="mobile-user-info">
         <div class="mobile-username" id="mobile-username">{{ current_user.username }}</div>
         <div class="mobile-status">
-          <!-- <div class="connection-indicator mobile-inline" id="mobile-connection-text">
+          <div class="connection-indicator mobile-inline" id="mobile-connection-text">
             <span class="dot"></span>
             <span class="status-text">Online</span>
           </div>
+          <!-- 
           <div class="pending-indicator mobile-inline" id="mobile-pending-text">
             <span class="pending-icon">⏳</span>
             <span id="pending-count-text">0</span> pending
@@ -309,24 +299,6 @@
         </a>
       </li>
       {% endif %}
-      <!-- {% if "PO_REQUISITION_CREATE" in current_user.permissions or "PO_CREATE" in current_user.permissions or "PO_EDIT" in current_user.permissions or "PO_VIEW" in current_user.permissions %}
-      <li class="mobile-nav-item">
-        <a href="/inventory/po/requisition" class="mobile-nav-link">
-          <div class="mobile-nav-content">
-            <span class="mobile-nav-icon">📷</span>
-            <span>Purchase Order</span>
-          </div>
-        </a>
-      </li>
-      {% endif %} -->
-      <!-- <li class="mobile-nav-item">
-        <a href="/inventory/barcode_scanner" class="mobile-nav-link">
-          <div class="mobile-nav-content">
-            <span class="mobile-nav-icon">📷</span>
-            <span>Barcode Scanner</span>
-          </div>
-        </a>
-      </li> -->
     </ul>
     <div class="mobile-nav-footer">
       {% if current_user.market_module %}
@@ -795,7 +767,7 @@ main {
 
 /* Connection Indicator */
 .connection-indicator {
-  display: flex;
+  display: none; /* Changed from 'flex' to 'none' */
   align-items: center;
   gap: 6px;
   padding: 6px 10px;
@@ -811,6 +783,7 @@ main {
 
 .connection-indicator.offline {
   background: #c62828;
+  display: flex; /* Show only when offline class is added */
 }
 
 .connection-indicator .dot {
@@ -881,11 +854,21 @@ main {
   height: 16px;
   border-radius: 8px;
   font-weight: bold;
-  display: flex;
+  display: none; /* Changed from 'flex' to 'none' - hidden by default */
   align-items: center;
   justify-content: center;
   padding: 0 4px;
   box-shadow: 0 2px 4px rgba(0,0,0,0.2);
+}
+
+/* Show badge only when count > 0 */
+.notifications-icon .notifications-count:not(:empty) {
+  display: flex;
+}
+
+/* Alternative: Use a class-based approach */
+.notifications-icon .notifications-count.show {
+  display: flex;
 }
 
 /* Mobile Status Indicators (on logo) */
@@ -897,15 +880,18 @@ main {
   gap: 4px;
 }
 
-.mobile-status-indicators .connection-indicator,
-.mobile-status-indicators .pending-indicator {
+.mobile-status-indicators .connection-indicator {
   padding: 4px 6px;
   font-size: 0.7rem;
   min-width: 20px;
   height: 20px;
-  display: flex;
+  display: none; /* Hide by default */
   align-items: center;
   justify-content: center;
+}
+
+.mobile-status-indicators .connection-indicator.offline {
+  display: flex; /* Show only when offline */
 }
 
 .mobile-status-indicators .status-text {
@@ -950,11 +936,16 @@ main {
   min-width: 20px;
   height: 20px;
   border-radius: 10px;
-  display: flex;
+  display: none; /* Changed from 'flex' to 'none' - hidden by default */
   align-items: center;
   justify-content: center;
   padding: 0 6px;
   font-weight: bold;
+}
+
+/* Show mobile badge only when it has content (count > 0) */
+.mobile-notifications-count:not(:empty) {
+  display: flex;
 }
 
 /* Show/Hide based on device */
@@ -962,17 +953,17 @@ main {
   display: flex;
 }
 
-.mobile-only {
-  display: none !important;
-}
-
 .mobile-inline {
-  display: flex !important;
+  display: none !important; /* Changed from 'flex !important' */
   font-size: 0.75rem;
   padding: 4px 8px;
   background: rgba(255, 255, 255, 0.1);
   border-radius: 12px;
   margin-top: 2px;
+}
+
+.mobile-inline.offline {
+  display: flex !important; /* Show only when offline */
 }
 
 /* Mobile Responsive Styles */
@@ -998,11 +989,6 @@ main {
   .taskbar-logo {
     height: 40px !important;
     width: auto;
-  }
-  
-  /* Show mobile-only indicators */
-  .mobile-only {
-    display: flex !important;
   }
   
   .desktop-only {
@@ -1222,6 +1208,7 @@ document.addEventListener("DOMContentLoaded", function () {
 });
 
 // Notifications count update
+// Notifications count update
 async function updateNotificationsCount() {
   if (!navigator.onLine) return;
   try {
@@ -1233,7 +1220,19 @@ async function updateNotificationsCount() {
     const desktopIcon = document.getElementById('notifications-icon');
     const desktopBadge = document.getElementById('notifications-count');
     if (desktopIcon && desktopBadge) {
+      // Update the text content
       desktopBadge.textContent = count;
+      
+      // Show badge only if count > 0
+      if (count > 0) {
+        desktopBadge.style.display = 'flex';
+        desktopBadge.classList.add('show');
+      } else {
+        desktopBadge.style.display = 'none';
+        desktopBadge.classList.remove('show');
+      }
+      
+      // Add active class to icon for visual feedback
       desktopIcon.classList.toggle('active', count > 0);
     }
     
@@ -1241,6 +1240,12 @@ async function updateNotificationsCount() {
     const mobileBadge = document.getElementById('mobile-notifications-count');
     if (mobileBadge) {
       mobileBadge.textContent = count;
+      // Show/hide mobile badge based on count
+      if (count > 0) {
+        mobileBadge.style.display = 'flex';
+      } else {
+        mobileBadge.style.display = 'none';
+      }
     }
   } catch (err) {
     console.error("Failed to fetch notifications count:", err);
@@ -1253,6 +1258,7 @@ document.addEventListener("DOMContentLoaded", updateNotificationsCount);
 setInterval(updateNotificationsCount, 30000);
 
 // Connection status update
+// Connection status update
 function updateConnectionStatus() {
   const isOnline = navigator.onLine;
   
@@ -1263,12 +1269,14 @@ function updateConnectionStatus() {
     if (text) {
       text.textContent = isOnline ? "Online" : "Offline";
     }
+    // Toggle offline class - this will show/hide the indicator
     desktopEl.classList.toggle("offline", !isOnline);
   }
   
   // Update mobile indicator on logo
   const mobileEl = document.getElementById("connection-indicator-mobile");
   if (mobileEl) {
+    // Toggle offline class - this will show/hide the indicator
     mobileEl.classList.toggle("offline", !isOnline);
   }
   
@@ -1279,23 +1287,24 @@ function updateConnectionStatus() {
     if (text) {
       text.textContent = isOnline ? "Online" : "Offline";
     }
+    // Toggle offline class - this will show/hide the indicator
     mobileTextEl.classList.toggle("offline", !isOnline);
   }
 }
 
 // Initial state
 document.addEventListener("DOMContentLoaded", function() {
-  // updateConnectionStatus();
+  updateConnectionStatus();
   updateNotificationsCount();
 });
 
 // React to connection changes
 window.addEventListener("online", function() {
-  // updateConnectionStatus();
+  updateConnectionStatus();
 });
 
 window.addEventListener("offline", function() {
-  // updateConnectionStatus();
+  updateConnectionStatus();
 });
 
 // Expose functions globally for other scripts

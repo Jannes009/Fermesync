@@ -13,8 +13,12 @@ document.addEventListener("DOMContentLoaded", async () => {
     const whTo = document.getElementById("wh-to");
 
     // Fetch and populate warehouses
-    const res = await fetch("/inventory/fetch_warehouses");
+    const res = await request("/inventory/fetch_warehouses");
     const data = await res.json();
+    console.log("Fetched warehouses:", data);
+    if (!data.success) {
+        return Swal.fire("Error Loading Warehouses", data.message || "Failed to fetch warehouses.", "error");
+    }
     const warehouses = data.warehouses;
     whFrom.innerHTML = '<option disabled selected>Select warehouse</option>';
 
@@ -30,8 +34,11 @@ document.addEventListener("DOMContentLoaded", async () => {
         width: '100%'
     });
 
-    const res2 = await fetch("/inventory/SDK/fetch_all_warehouses");
+    const res2 = await request("/inventory/SDK/fetch_all_warehouses");
     const data2 = await res2.json();
+    if (!data2.success) {
+        return Swal.fire("Error Loading Warehouses", data2.message || "Failed to fetch warehouses.", "error");
+    }
     const warehouses2 = data2.warehouses;
     whTo.innerHTML = '<option disabled selected>Select warehouse</option>';
 
@@ -75,24 +82,20 @@ document.addEventListener("DOMContentLoaded", async () => {
         });
 
         try {
-            const res = await fetch("/inventory/fetch_products_in_both_whses", {
+            const res = await request("/inventory/fetch_products_in_both_whses", {
                 method: "POST",
                 headers: { "Content-Type": "application/json" },
                 body: JSON.stringify({ whse_from_id: fromWh, whse_to_id: toWh })
             });
 
-            if (!res.ok) {
-                throw new Error(`Server error: ${res.status}`);
-            }
-
             const data = await res.json();
 
-            if (data.error) {
+            if (!data.success) {
                 Swal.close();
                 return Swal.fire({
                     icon: "error",
                     title: "Error Loading Products",
-                    text: data.error
+                    text: data.message
                 });
             }
 
@@ -210,9 +213,9 @@ document.addEventListener("DOMContentLoaded", async () => {
 
                 const wh = document.getElementById('wh-from')?.value;
                 if (productId && wh) {
-                    const refreshRes = await fetch(`/inventory/adjust_stock/qty?stock_link=${encodeURIComponent(productId)}&warehouse_link=${encodeURIComponent(wh)}`);
+                    const refreshRes = await request(`/inventory/adjust_stock/qty?stock_link=${encodeURIComponent(productId)}&warehouse_link=${encodeURIComponent(wh)}`);
                     const refreshJson = await refreshRes.json();
-                    if (refreshJson.status === 'ok') {
+                    if (refreshJson.success) {
                         const newAvailableQty = Math.round(Number(refreshJson.qty_on_hand) * 100) / 100;
                         const refreshedAvailableQtyForMode = selectedUnitMode === "purchasing"
                             ? newAvailableQty
@@ -227,7 +230,14 @@ document.addEventListener("DOMContentLoaded", async () => {
                                 "error"
                             );
                         }
+                    } else {
+                        return Swal.fire(
+                            "Error Refreshing Stock",
+                            refreshJson.message || "Failed to refresh stock information.",
+                            "error"
+                        );
                     }
+
                 }
             }
 
@@ -266,7 +276,7 @@ document.addEventListener("DOMContentLoaded", async () => {
             }))
         };
 
-        const res = await fetch("/inventory/submit_ibt", {
+        const res = await request("/inventory/submit_ibt", {
             method: "POST",
             headers: { "Content-Type": "application/json" },
             body: JSON.stringify(payload)
@@ -357,13 +367,16 @@ document.addEventListener('DOMContentLoaded', async () => {
         console.log("Prefilling IBT with:", prefill);
 
         // Fetch products for the selected warehouses (same as clicking Step 1 next)
-        const fetchRes = await fetch('/inventory/fetch_products_in_both_whses', {
+        const fetchRes = await request('/inventory/fetch_products_in_both_whses', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ whse_from_id: String(prefill.from_whse), whse_to_id: String(prefill.to_whse) })
         });
-        const json = await fetchRes.json();
-        products = json.products || [];
+        const data = await fetchRes.json();
+        if (!data.success) {
+            Swal.fire({ title: "Error Loading Products", text: data.message || "Failed to fetch products for the selected warehouses.", icon: "error" });
+        }
+        products = data.products || [];
 
         // Clear any existing lines and selectedProducts
         document.getElementById('ibt-lines-container').innerHTML = '';
@@ -730,9 +743,13 @@ function promptStockAdjustment(stockLink, warehouseCode, qtyNeeded = 0) {
     return new Promise(async (resolve) => {
         try {
             // Probe permission by calling the products endpoint (it returns 403 if unauthorized)
-            const probe = await fetch('/inventory/adjust_stock/products');
+            const probe = await request('/inventory/adjust_stock/products');
             if (probe.status === 403) {
                 Swal.fire('Not enough stock', 'Requested quantity exceeds available and you do not have permission to adjust stock.', 'error');
+                return resolve(false);
+            }
+            if (probe.success === false) {
+                Swal.fire('Error', probe.message || 'Failed to check stock adjustment permission.', 'error');
                 return resolve(false);
             }
 

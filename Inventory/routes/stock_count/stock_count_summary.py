@@ -81,7 +81,9 @@ def stock_counts_due():
                 "statusText": status_text
             })
 
-        return jsonify(rows)
+        return jsonify({"success": True, "schedules": rows})
+    except Exception as e:
+        return jsonify({"success": False, "message": str(e)}), 500
     finally:
         conn.close()
 
@@ -154,7 +156,9 @@ def stock_counts_history():
                 "canContinue": r.InvCountTimeFinalised is None
             })
 
-        return jsonify(rows)
+        return jsonify({"success": True, "schedules": rows})
+    except Exception as e:
+        return jsonify({"success": False, "message": str(e)}), 500
     finally:
         conn.close()
 
@@ -178,7 +182,7 @@ def stock_count_detail(header_id):
 
         h = cursor.fetchone()
         if not h:
-            return jsonify({"error": "Stock count not found"}), 404
+            return jsonify({"success": False, "message": "Stock count not found"}), 404
 
         cursor.execute("""
             SELECT
@@ -201,12 +205,15 @@ def stock_count_detail(header_id):
         } for l in cursor.fetchall()]
 
         return jsonify({
+            "success": True,
             "warehouse": h[0],
             "shelf": h[1],
             "counted_by": h[2],
-            "date": h[3].strftime("%Y-%m-%d") if h[2] else "N/A",
+            "date": h[3].strftime("%Y-%m-%d") if h[3] else "N/A",
             "lines": lines
         })
+    except Exception as e:
+        return jsonify({"success": False, "message": str(e)}), 500
     finally:
         conn.close()
 
@@ -225,9 +232,12 @@ def stock_counts_filters():
         shelves = [r[0] for r in cursor.fetchall()]
 
         return jsonify({
+            "success": True,
             "warehouses": warehouses,
             "shelves": shelves
         })
+    except Exception as e:
+        return jsonify({"success": False, "message": str(e)}), 500
     finally:
         conn.close()
 
@@ -241,7 +251,7 @@ def create_stock_count_schedule():
     frequency = data.get("frequency")
 
     if not warehouse_id or not category_id or not frequency:
-        return jsonify({"success": False, "error": "Missing required fields"}), 400
+        return jsonify({"success": False, "message": "Missing required fields"}), 400
 
     conn = create_db_connection()
     cursor = conn.cursor()
@@ -256,7 +266,7 @@ def create_stock_count_schedule():
     except (ValueError, TypeError):
         cursor.close()
         conn.close()
-        return jsonify({"success": False, "error": "Invalid warehouse or frequency"}), 400
+        return jsonify({"success": False, "message": "Invalid warehouse or frequency"}), 400
 
     # Get the most recent count date for this category
     cursor.execute("""
@@ -317,30 +327,19 @@ def create_stock_count_schedule():
             current_user.id
         ))
         conn.commit()
+        return jsonify({
+            "success": True,
+            "message": "Stock count schedule created successfully"
+        }), 201
     except Exception as e:
         conn.rollback()
         cursor.close()
         conn.close()
-        return jsonify({"success": False, "error": str(e)}), 500
+        return jsonify({"success": False, "message": str(e)}), 500
+
     finally:
         cursor.close()
         conn.close()
-
-    return jsonify({
-        "success": True,
-        "message": "Stock count schedule created successfully"
-    }), 201
-
-    # except Exception as e:
-    #     print(f"Error creating schedule: {str(e)}")
-    #     conn.rollback()
-    #     return jsonify({
-    #         "success": False,
-    #         "error": str(e)
-    #     }), 500
-    # finally:
-    #     cursor.close()
-    #     conn.close()
 
 @inventory_bp.route("stock-counts/discard/<int:header_id>", methods=["POST"])
 @login_required
@@ -358,9 +357,9 @@ def discard_stock_count(header_id):
         """, (header_id,))
         row = cursor.fetchone()
         if not row:
-            return jsonify({"success": False, "error": "Stock count session not found"}), 404
+            return jsonify({"success": False, "message": "Stock count session not found"}), 404
         if row.InvCountStatus != "DRAFT":
-            return jsonify({"success": False, "error": "Only DRAFT stock counts can be discarded"}), 400
+            return jsonify({"success": False, "message": "Only DRAFT stock counts can be discarded"}), 400
 
         # Delete header
         cursor.execute("""
@@ -374,6 +373,6 @@ def discard_stock_count(header_id):
         return jsonify({"success": True, "message": "Stock count session discarded successfully"})
     except Exception as e:
         conn.rollback()
-        return jsonify({"success": False, "error": str(e)}), 500
+        return jsonify({"success": False, "message": str(e)}), 500
     finally:
         conn.close()

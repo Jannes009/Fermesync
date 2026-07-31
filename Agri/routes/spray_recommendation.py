@@ -60,9 +60,9 @@ def get_default_qty_per_ha(stock_id):
     conn.close()
 
     if result:
-        return jsonify({"default_qty_per_ha": result.ChemStockDefaultQtyPer100L})
+        return jsonify({"success": True, "default_qty_per_ha": result.ChemStockDefaultQtyPer100L})
     else:
-        return jsonify({"default_qty_per_ha": 0})
+        return jsonify({"success": True, "default_qty_per_ha": 0})
     
 @agri_bp.route("/fetch_products_linked_with_warehouse", methods=["GET"])
 @login_required
@@ -71,12 +71,12 @@ def fetch_products_linked_with_warehouse():
     project_ids_raw = request.args.get("project_ids", "")
 
     if not whse_id:
-        return jsonify({"status": "error", "message": "Warehouse ID is required", "products": []}), 400
+        return jsonify({"success": False, "message": "Warehouse ID is required", "products": []}), 400
 
     # Require at least one project id to scope products to project crops
     project_ids = [int(x) for x in project_ids_raw.split(',') if x.strip().isdigit()]
     if not project_ids:
-        return jsonify({"status": "error", "message": "At least one project must be selected", "products": []}), 400
+        return jsonify({"success": False, "message": "At least one project must be selected", "products": []}), 400
 
     conn = create_db_connection()
     cursor = conn.cursor()
@@ -90,12 +90,12 @@ def fetch_products_linked_with_warehouse():
 
     if not crop_ids:
         conn.close()
-        return jsonify({"products": [], "message": "No crops found for selected projects"})
+        return jsonify({"success": False, "products": [], "message": "No crops found for selected projects"})
 
     # Enforce: all selected projects must have the same crop
     if len(crop_ids) > 1:
         conn.close()
-        return jsonify({"products": [], "message": "Selected projects must belong to the same crop"})
+        return jsonify({"success": False, "products": [], "message": "Selected projects must belong to the same crop"})
 
     # Fetch products available in the warehouse and linked to those crops
     # Include RegNumber, WitholdingPeriod, Function from ChemStockCrop
@@ -122,7 +122,7 @@ def fetch_products_linked_with_warehouse():
     conn.close()
 
     if not rows:
-        return jsonify({"products": [], "message": "No products found for selected warehouse and crops"})
+        return jsonify({"success": False, "products": [], "message": "No products found for selected warehouse and crops"})
 
     products_list = [
         {
@@ -145,7 +145,7 @@ def fetch_products_linked_with_warehouse():
         }
         for row in rows
     ]
-    return jsonify({"products": products_list})
+    return jsonify({"success": True, "products": products_list})
 
 
 @agri_bp.route("/fetch_projects_for_warehouse", methods=["GET"])
@@ -153,7 +153,7 @@ def fetch_products_linked_with_warehouse():
 def fetch_projects_for_warehouse():
     warehouse_id = request.args.get("warehouse_id")
     if not warehouse_id:
-        return jsonify({"status": "error", "message": "Warehouse ID is required", "projects": []}), 400
+        return jsonify({"success": False, "message": "Warehouse ID is required", "projects": []}), 400
 
     conn = create_db_connection()
     cursor = conn.cursor()
@@ -183,7 +183,7 @@ def fetch_projects_for_warehouse():
         for row in rows
     ]
 
-    return jsonify({"status": "ok", "projects": projects})
+    return jsonify({"success": True, "projects": projects})
 
 
 @agri_bp.route("/spray-recommendation/context", methods=["GET"])
@@ -195,14 +195,14 @@ def spray_recommendation_context():
     warehouse_id = request.args.get("warehouse_id", type=int)
 
     if warehouse_id is None:
-        return jsonify({"status": "error", "message": "Warehouse ID is required"}), 400
+        return jsonify({"success": False, "message": "Warehouse ID is required"}), 400
     
     start_date = request.args.get('start_date')
     if start_date:
         try:
             start_date = datetime.strptime(start_date, '%Y-%m-%d').date()
         except ValueError:
-            return jsonify({"status": "error", "message": "Invalid start_date format"}), 400
+            return jsonify({"success": False, "message": "Invalid start_date format"}), 400
     else:
         months = request.args.get('months', default=6, type=int)
         if months and months > 0:
@@ -333,7 +333,7 @@ def spray_recommendation_context():
     for date_key in sorted(items_by_date.keys(), reverse=True):
         items.append({ 'date': date_key, 'entries': items_by_date[date_key] })
 
-    return jsonify({ 'items': items, 'lookups': lookups })
+    return jsonify({ 'success': True, 'items': items, 'lookups': lookups })
 
 
 
@@ -666,7 +666,7 @@ def get_spray_recommendations():
 
     whse_ids = tuple(current_user.warehouses or [])
     if not whse_ids:
-        return jsonify([])
+        return jsonify({"success": False, "message": "No warehouses available", "items": []}), 400
 
     placeholders = ','.join('?' for _ in whse_ids)
     query = f"""
@@ -731,7 +731,7 @@ def get_spray_recommendations():
         })
 
     conn.close()
-    return jsonify(result)
+    return jsonify({"success": True, "items": result})
 
 @agri_bp.route("/spray-recommendation/method-water/<int:method_id>", methods=["GET"])
 @login_required
@@ -783,7 +783,7 @@ def get_responsible_persons():
     
     persons = [{"id": row[0], "name": row[1]} for row in cur.fetchall()]
     conn.close()
-    return jsonify(persons)
+    return jsonify({"success": True, "persons": persons})
 
 
 @agri_bp.route("/execution/create", methods=["POST"])

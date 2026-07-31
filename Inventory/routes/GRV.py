@@ -27,81 +27,81 @@ def grv_details(po_number):
 
 
 
-@inventory_bp.route("/SDK/fetch_outstanding_po_suppliers")
-def fetch_outstanding_po_suppliers():
-    # supplier endpoint removed — supplier dropdown no longer used
-    return jsonify({"suppliers": []})
-
-
 @inventory_bp.route("/get_po_numbers", methods=["POST"])
 def get_po_numbers():
     data = request.get_json(silent=True) or {}
     supplier_code = data.get("supplier_code")
 
-    conn = create_db_connection()
-    cursor = conn.cursor()
+    try:
+        conn = create_db_connection()
+        cursor = conn.cursor()
 
-    # If a supplier_code is provided, filter by it; otherwise return POs across all warehouses
-    if supplier_code:
-        query = f"""
-        SELECT DISTINCT DcLink, SupplierName, OrderNum, OrderDate, OrderDesc, OrdTotIncl
-        FROM [stk]._uvPO_Outstanding
-        WHERE DcLink = ? AND WhseLink IN ({','.join(['?'] * len(current_user.warehouses))})
-        """
-        params = [supplier_code] + current_user.warehouses
-    else:
-        query = f"""
-        SELECT DISTINCT DcLink, SupplierName, OrderNum, OrderDate, OrderDesc, OrdTotIncl
-        FROM [stk]._uvPO_Outstanding
-        WHERE WhseLink IN ({','.join(['?'] * len(current_user.warehouses))})
-        """
-        params = list(current_user.warehouses)
+        # If a supplier_code is provided, filter by it; otherwise return POs across all warehouses
+        if supplier_code:
+            query = f"""
+            SELECT DISTINCT DcLink, SupplierName, OrderNum, OrderDate, OrderDesc, OrdTotIncl
+            FROM [stk]._uvPO_Outstanding
+            WHERE DcLink = ? AND WhseLink IN ({','.join(['?'] * len(current_user.warehouses))})
+            """
+            params = [supplier_code] + current_user.warehouses
+        else:
+            query = f"""
+            SELECT DISTINCT DcLink, SupplierName, OrderNum, OrderDate, OrderDesc, OrdTotIncl
+            FROM [stk]._uvPO_Outstanding
+            WHERE WhseLink IN ({','.join(['?'] * len(current_user.warehouses))})
+            """
+            params = list(current_user.warehouses)
 
-    cursor.execute(query, params)
-    rows = cursor.fetchall()
-    conn.close()
+        cursor.execute(query, params)
+        rows = cursor.fetchall()
+        conn.close()
 
-    po_list = [
-        {
-            "supplier_code": row[0],
-            "supplier_name": row[1],
-            "order_num": row[2],
-            "order_date": row[3],
-            "order_desc": row[4],
-            "order_total": row[5]
-        }
-        for row in rows
-    ]
+        po_list = [
+            {
+                "supplier_code": row[0],
+                "supplier_name": row[1],
+                "order_num": row[2],
+                "order_date": row[3],
+                "order_desc": row[4],
+                "order_total": row[5]
+            }
+            for row in rows
+        ]
 
-    return jsonify({"po_list": po_list})
+        return jsonify({"success": True, "po_list": po_list})
+    except Exception as e:
+        return jsonify({"success": False, "error": str(e)}), 500
 
 @inventory_bp.route("/SDK/fetch_po_lines/<po_number>")
 def fetch_po_lines(po_number):
-    conn = create_db_connection()
-    cursor = conn.cursor()
+    try:
+        conn = create_db_connection()
+        cursor = conn.cursor()
 
-    query = f"""
-        SELECT iLineID, iStockCodeID, StockDesc, WHName, QtyOutstanding, fUnitPriceExcl, UnitCode
-        FROM [stk]._uvPO_Outstanding
-        WHERE OrderNum = ? and WhseLink IN ({','.join(['?'] * len(current_user.warehouses))})
-    """
-    cursor.execute(query, [po_number] + current_user.warehouses)
-    rows = cursor.fetchall()
-    conn.close()
+        query = f"""
+            SELECT iLineID, iStockCodeID, StockDesc, WHName, QtyOutstanding, fUnitPriceExcl, UnitCode
+            FROM [stk]._uvPO_Outstanding
+            WHERE OrderNum = ? and WhseLink IN ({','.join(['?'] * len(current_user.warehouses))})
+        """
+        cursor.execute(query, [po_number] + current_user.warehouses)
+        rows = cursor.fetchall()
+        conn.close()
 
-    po_lines = [
-        {
-            "LineId": row[0],
-            "StockId": row[1],
-            "StockDesc": row[2],
-            "WHName": row[3],
-            "QtyOutstanding": float(row[4]),
-            "Price": float(row[5]),
-            "UOM": row[6]
-        }
-        for row in rows
-    ]
-    return jsonify({"po_lines": po_lines})
+        po_lines = [
+            {
+                "LineId": row[0],
+                "StockId": row[1],
+                "StockDesc": row[2],
+                "WHName": row[3],
+                "QtyOutstanding": float(row[4]),
+                "Price": float(row[5]),
+                "UOM": row[6]
+            }
+            for row in rows
+        ]
+        return jsonify({"po_lines": po_lines})
+    except Exception as e:
+        return jsonify({"success": False, "error": str(e)}), 500
 
 
 from win32com.client import Dispatch

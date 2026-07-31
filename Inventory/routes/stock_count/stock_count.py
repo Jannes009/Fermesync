@@ -29,44 +29,51 @@ def create_stock_count():
 
     conn = create_db_connection()
     cursor = conn.cursor()
-    cat_name = category_link_to_name(cat_id, cursor)
-    whse_code = warehouse_link_to_code(whse_id, cursor)
-    
-    # Header = session
-    cursor.execute("""
-        INSERT INTO [stk].InventoryCountHeaders (
-            InvCountWhseId,
-            InvCountWhseCode,
-            InvCountCatId,
-            InvCountCatName,
-            InvCountUserId,
-            InvCountUserName,
-            InvCountStatus,
-            InvCountTimeCreated
-        )
-        OUTPUT INSERTED.InvCountHeaderId
-        VALUES (?, ?, ?, ?, ?, ?, 'DRAFT', GETDATE())
-    """, (whse_id, whse_code, cat_id, cat_name, current_user.id, current_user.username))
+    try:
 
-    header_id = cursor.fetchone()[0]
+        cat_name = category_link_to_name(cat_id, cursor)
+        whse_code = warehouse_link_to_code(whse_id, cursor)
+        
+        # Header = session
+        cursor.execute("""
+            INSERT INTO [stk].InventoryCountHeaders (
+                InvCountWhseId,
+                InvCountWhseCode,
+                InvCountCatId,
+                InvCountCatName,
+                InvCountUserId,
+                InvCountUserName,
+                InvCountStatus,
+                InvCountTimeCreated
+            )
+            OUTPUT INSERTED.InvCountHeaderId
+            VALUES (?, ?, ?, ?, ?, ?, 'DRAFT', GETDATE())
+        """, (whse_id, whse_code, cat_id, cat_name, current_user.id, current_user.username))
 
-    # Snapshot system quantities ONCE
-    cursor.execute("""
-        INSERT INTO [stk].InventoryCountLines (
-            InvCountLineHeaderId,
-            InvCountLineStockId,
-            InvCountLineQtyOnHand
-        )
-        SELECT ?, StockLink, QtyOnHand
-        FROM [stk]._uvInventoryQty
-        WHERE WhseLink = ?
-          AND idStockCategories = ?
-    """, (header_id, whse_id, cat_id))
+        header_id = cursor.fetchone()[0]
 
-    conn.commit()
-    conn.close()
+        # Snapshot system quantities ONCE
+        cursor.execute("""
+            INSERT INTO [stk].InventoryCountLines (
+                InvCountLineHeaderId,
+                InvCountLineStockId,
+                InvCountLineQtyOnHand
+            )
+            SELECT ?, StockLink, QtyOnHand
+            FROM [stk]._uvInventoryQty
+            WHERE WhseLink = ?
+            AND idStockCategories = ?
+        """, (header_id, whse_id, cat_id))
 
-    return jsonify({"session_id": header_id})
+        conn.commit()
+
+        return jsonify({"success": True, "session_id": header_id})
+    except Exception as e:
+        conn.rollback()
+        conn.close()
+        return jsonify({"success": False, "message": str(e)}), 500
+    finally:
+        conn.close()
 
 
 @inventory_bp.route("/fetch_categories", methods=["POST"])
@@ -74,26 +81,29 @@ def fetch_categories():
     whse_id = request.json.get("whse_id")
     conn = create_db_connection()
     cursor = conn.cursor()
-    print(whse_id)
+    try:
 
-    cursor.execute("""
-    Select Distinct ItemCategoryID, cCategoryName
-    from [stk].[_uvWarehouseCategories]
-    where WhseID = ?
-    """, (whse_id,))
+        cursor.execute("""
+        Select Distinct ItemCategoryID, cCategoryName
+        from [stk].[_uvWarehouseCategories]
+        where WhseID = ?
+        """, (whse_id,))
 
-    rows = cursor.fetchall()
+        rows = cursor.fetchall()
 
-    conn.close()
+        conn.close()
 
-    categories_list = [
-        {
-            "category_id": row.ItemCategoryID,
-            "category_name": row.cCategoryName,
-        }
-        for row in rows
-    ]
-    return jsonify({"categories": categories_list})
+        categories_list = [
+            {
+                "category_id": row.ItemCategoryID,
+                "category_name": row.cCategoryName,
+            }
+            for row in rows
+        ]
+        return jsonify({"success": True, "categories": categories_list})
+    except Exception as e:
+        conn.close()
+        return jsonify({"success": False, "message": str(e)}), 500
 
 @inventory_bp.route("/stock-counts/<int:header_id>")
 @login_required
@@ -125,29 +135,34 @@ def fetch_session_products(header_id):
     conn = create_db_connection()
     cursor = conn.cursor()
 
-    cursor.execute("""
-        SELECT DISTINCT
-            InvCountLineStockId,
-			QTY.StockDescription, QTY.StockingUnitCode,
-            InvCountLineQtyOnHand,
-            InvCountLineQtyCounted
-        FROM [stk].InventoryCountLines LIN
-		JOIN stk._uvInventoryQty QTY on QTY.StockLink = LIN.InvCountLineStockId
-        WHERE InvCountLineHeaderId = ?
-    """, (header_id,))
+    try:
+        cursor.execute("""
+            SELECT DISTINCT
+                InvCountLineStockId,
+                QTY.StockDescription, QTY.StockingUnitCode,
+                InvCountLineQtyOnHand,
+                InvCountLineQtyCounted
+            FROM [stk].InventoryCountLines LIN
+            JOIN stk._uvInventoryQty QTY on QTY.StockLink = LIN.InvCountLineStockId
+            WHERE InvCountLineHeaderId = ?
+        """, (header_id,))
 
-    rows = cursor.fetchall()
-    conn.close()
+        rows = cursor.fetchall()
+        conn.close()
 
-    return jsonify({
-        "products": [{
-            "product_id": r.InvCountLineStockId,
-            "product_desc": r.StockDescription,
-            "stocking_unit": r.StockingUnitCode,
-            "system_qty": float(r.InvCountLineQtyOnHand),
-            "counted_qty": r.InvCountLineQtyCounted
-        } for r in rows]
-    })
+        return jsonify({
+            "success": True,
+            "products": [{
+                "product_id": r.InvCountLineStockId,
+                "product_desc": r.StockDescription,
+                "stocking_unit": r.StockingUnitCode,
+                "system_qty": float(r.InvCountLineQtyOnHand),
+                "counted_qty": r.InvCountLineQtyCounted
+            } for r in rows]
+        })
+    except Exception as e:
+        conn.close()
+        return jsonify({"success": False, "message": str(e)}), 500
 
 @inventory_bp.route("/stock-counts/<int:header_id>/lines", methods=["POST"])
 @login_required
@@ -157,23 +172,28 @@ def save_count_lines(header_id):
 
     conn = create_db_connection()
     cursor = conn.cursor()
+    try:
 
-    for l in lines:
-        cursor.execute("""
-            UPDATE [stk].InventoryCountLines
-            SET InvCountLineQtyCounted = ?
-            WHERE InvCountLineHeaderId = ?
-              AND InvCountLineStockId = ?
-        """, (
-            l["counted_qty"],
-            header_id,
-            l["product_id"]
-        ))
+        for l in lines:
+            cursor.execute("""
+                UPDATE [stk].InventoryCountLines
+                SET InvCountLineQtyCounted = ?
+                WHERE InvCountLineHeaderId = ?
+                AND InvCountLineStockId = ?
+            """, (
+                l["counted_qty"],
+                header_id,
+                l["product_id"]
+            ))
 
-    conn.commit()
-    conn.close()
+        conn.commit()
+        conn.close()
 
-    return jsonify({"success": True})
+        return jsonify({"success": True})
+    except Exception as e:
+        conn.rollback()
+        conn.close()
+        return jsonify({"success": False, "message": str(e)}), 500
 
 @inventory_bp.route("/stock-counts/<int:header_id>/finalise", methods=["POST"])
 @login_required
@@ -263,7 +283,7 @@ def finalise_stock_count(header_id):
     except Exception as ex:
         print(str(ex))
         conn.rollback()
-        return jsonify({"success": False, "error": str(ex)}), 500
+        return jsonify({"success": False, "message": str(ex)}), 500
 
     finally:
         cursor.close()

@@ -91,6 +91,9 @@ def create_app():
         logout_user()
         return redirect(url_for('index'))
 
+    @app.route("/install")
+    def install():
+        return render_template('install.html')
 
     @app.route("/dashboard")
     @login_required

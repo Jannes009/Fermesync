@@ -1,84 +1,280 @@
 <!DOCTYPE html>
-<html>
+<html lang="en">
 <head>
-<meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Install App</title>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Install App</title>
+   <link rel="manifest" href="/main_static/manifest.json?{{ filemtime('main_static', 'manifest.json') }}"> 
+  <style>
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
 
-<style>
-body{
-font-family:Arial;
-text-align:center;
-padding:40px;
-}
+    body {
+      min-height: 100vh;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+      background: #f4f6f8;
+      color: #1a1a1a;
+      padding: 24px;
+      line-height: 1.5;
+    }
 
-.box{
-max-width:500px;
-margin:auto;
-padding:20px;
-border-radius:10px;
-background:#f5f5f5;
-}
-</style>
+    .card {
+      background: #ffffff;
+      border-radius: 16px;
+      box-shadow: 0 4px 24px rgba(0, 0, 0, 0.06);
+      padding: 48px 40px;
+      max-width: 440px;
+      width: 100%;
+      text-align: center;
+    }
+
+    .icon {
+      width: 72px;
+      height: 72px;
+      margin: 0 auto 24px;
+      color: #2563eb;
+    }
+
+    h1 {
+      font-size: 1.5rem;
+      font-weight: 600;
+      margin-bottom: 10px;
+      color: #111827;
+    }
+
+    .subtitle {
+      font-size: 1rem;
+      color: #6b7280;
+      margin-bottom: 32px;
+    }
+
+    .btn {
+      appearance: none;
+      border: none;
+      border-radius: 10px;
+      padding: 14px 28px;
+      font-size: 1rem;
+      font-weight: 500;
+      cursor: pointer;
+      transition: background 0.15s ease, transform 0.1s ease;
+      min-width: 160px;
+    }
+
+    .btn:active {
+      transform: scale(0.98);
+    }
+
+    .btn-primary {
+      background: #2563eb;
+      color: #ffffff;
+    }
+
+    .btn-primary:hover {
+      background: #1d4ed8;
+    }
+
+    .btn-primary:disabled {
+      background: #93c5fd;
+      cursor: not-allowed;
+    }
+
+    /* iOS instructions */
+    .ios-steps {
+      text-align: left;
+      background: #f9fafb;
+      border-radius: 12px;
+      padding: 20px;
+      margin-top: 8px;
+    }
+
+    .ios-steps ol {
+      padding-left: 20px;
+      color: #374151;
+    }
+
+    .ios-steps li {
+      margin-bottom: 12px;
+      font-size: 0.95rem;
+    }
+
+    .ios-steps li:last-child {
+      margin-bottom: 0;
+    }
+
+    .share-icon {
+      display: inline-block;
+      vertical-align: middle;
+      width: 18px;
+      height: 18px;
+      margin: 0 2px;
+    }
+
+    .status {
+      display: none;
+      margin-top: 20px;
+      padding: 12px 16px;
+      border-radius: 10px;
+      font-size: 0.95rem;
+    }
+
+    .status.success {
+      display: block;
+      background: #ecfdf5;
+      color: #065f46;
+    }
+
+    .status.info {
+      display: block;
+      background: #eff6ff;
+      color: #1e40af;
+    }
+
+    .hidden {
+      display: none !important;
+    }
+
+    @media (max-width: 480px) {
+      .card {
+        padding: 36px 24px;
+      }
+
+      h1 {
+        font-size: 1.35rem;
+      }
+    }
+  </style>
 </head>
-
 <body>
+  <div class="card">
+    <!-- App icon (simple download / install style) -->
+    <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round">
+      <path d="M12 3v12"/>
+      <path d="m8 11 4 4 4-4"/>
+      <path d="M4 19h16"/>
+    </svg>
 
-<div class="box">
+    <h1 id="title">Install Fermesync</h1>
+    <p class="subtitle" id="subtitle">
+      Add it to your home screen for quick access and a better experience.
+    </p>
 
-<h2>Install App</h2>
+    <!-- Chromium / Android / Windows button -->
+    <div id="chromium-section">
+      <button class="btn btn-primary" id="install-btn" disabled>
+        Install App
+      </button>
+      <div class="status info" id="waiting-msg">
+        Checking if installation is available…
+      </div>
+    </div>
 
-<div id="android" style="display:none">
+    <!-- iOS instructions -->
+    <div id="ios-section" class="hidden">
+      <div class="ios-steps">
+        <ol>
+          <li>
+            Tap the <strong>Share</strong> button
+            <svg class="share-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <path d="M4 12v8a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-8"/>
+              <polyline points="16 6 12 2 8 6"/>
+              <line x1="12" y1="2" x2="12" y2="15"/>
+            </svg>
+            at the bottom of Safari.
+          </li>
+          <li>Scroll down and tap <strong>Add to Home Screen</strong>.</li>
+          <li>Tap <strong>Add</strong> in the top right corner.</li>
+        </ol>
+      </div>
+    </div>
 
-<p>Tap the button below to install the app.</p>
+    <!-- Already installed -->
+    <div id="installed-section" class="hidden">
+      <div class="status success">
+        This app is already installed on your device.
+      </div>
+    </div>
+  </div>
+  <script>
+                if ('serviceWorker' in navigator) { 
+                console.log("Registering SW");
+                navigator.serviceWorker.register('/sw.js', { scope: '/' }) 
+                .catch(err => console.error("SW failed", err)); 
+            } 
+    const installBtn = document.getElementById('install-btn');
+    const chromiumSection = document.getElementById('chromium-section');
+    const iosSection = document.getElementById('ios-section');
+    const installedSection = document.getElementById('installed-section');
+    const waitingMsg = document.getElementById('waiting-msg');
+    const title = document.getElementById('title');
+    const subtitle = document.getElementById('subtitle');
 
-<button id="installBtn">Install App</button>
+    let deferredPrompt = null;
 
-</div>
+    // Detect if running as installed PWA
+    const isStandalone = window.matchMedia('(display-mode: standalone)').matches
+                      || window.navigator.standalone === true;
 
-<div id="iphone" style="display:none">
+    // Detect iOS / iPadOS
+    const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent)
+               || (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
 
-<p>To install the app on iPhone:</p>
+    if (isStandalone) {
+      // Already installed
+      chromiumSection.classList.add('hidden');
+      iosSection.classList.add('hidden');
+      installedSection.classList.remove('hidden');
+      title.textContent = 'App installed';
+      subtitle.textContent = 'You are already using the installed version.';
+    } else if (isIOS) {
+      // Show iOS instructions
+      chromiumSection.classList.add('hidden');
+      iosSection.classList.remove('hidden');
+      title.textContent = 'Add to Home Screen';
+      subtitle.textContent = 'Follow these steps to install the app on your iPhone or iPad.';
+    } else {
+      // Chromium path (Android, Windows, desktop Chrome/Edge)
+      window.addEventListener('beforeinstallprompt', (e) => {
+        e.preventDefault();
+        deferredPrompt = e;
+        installBtn.disabled = false;
+        waitingMsg.classList.add('hidden');
+      });
 
-<p>1️⃣ Tap the <b>Share</b> button</p>
+      // Optional: hide button if the event never fires (criteria not met)
+      setTimeout(() => {
+        if (!deferredPrompt && !installBtn.disabled === false) {
+          waitingMsg.textContent = 'Installation is not available in this browser right now.';
+        }
+      }, 3000);
 
-<p>2️⃣ Scroll down</p>
+      installBtn.addEventListener('click', async () => {
+        if (!deferredPrompt) return;
 
-<p>3️⃣ Tap <b>Add to Home Screen</b></p>
+        deferredPrompt.prompt();
+        const { outcome } = await deferredPrompt.userChoice;
 
-</div>
+        if (outcome === 'accepted') {
+          installBtn.textContent = 'Installed';
+          installBtn.disabled = true;
+        }
 
-</div>
+        deferredPrompt = null;
+      });
 
-<script>
-
-let deferredPrompt;
-
-window.addEventListener('beforeinstallprompt', (e) => {
-    e.preventDefault();
-    deferredPrompt = e;
-
-    document.getElementById("android").style.display = "block";
-});
-
-document.getElementById("installBtn")?.addEventListener("click", async () => {
-
-    if(!deferredPrompt) return;
-
-    deferredPrompt.prompt();
-
-    const result = await deferredPrompt.userChoice;
-
-    deferredPrompt = null;
-});
-
-
-const ua = navigator.userAgent.toLowerCase();
-
-if (ua.includes("iphone") || ua.includes("ipad")) {
-    document.getElementById("iphone").style.display = "block";
-}
-
-</script>
-
+      // Listen for successful install
+      window.addEventListener('appinstalled', () => {
+        chromiumSection.classList.add('hidden');
+        installedSection.classList.remove('hidden');
+        title.textContent = 'App installed';
+        subtitle.textContent = 'Thank you for installing the app.';
+      });
+    }
+  </script>
 </body>
 </html>

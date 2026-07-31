@@ -14,65 +14,74 @@ def IBT_issue():
     return render_template('EvolutionSDK/IBT_issue.html')
 
 @inventory_bp.route("/SDK/fetch_all_warehouses") 
-def fetch_all_warehouses(): 
-    conn = create_db_connection() 
-    cursor = conn.cursor() 
-    query = f""" 
-    Select WhseLink, WhseCode, WhseDescription
-    from cmn.[_uvWarehouses] 
-    """ 
-    cursor.execute(query) 
-    warehouses = [ 
-        {"id": row[0], "code": row[1], "name": row[2]} 
-        for row in cursor.fetchall() ] 
-    conn.close() 
-    return jsonify({"warehouses": warehouses})
+@login_required
+def fetch_all_warehouses():
+    try:
+        conn = create_db_connection() 
+        cursor = conn.cursor() 
+        query = f""" 
+        Select WhseLink, WhseCode, WhseDescription
+        from cmn.[_uvWarehouses] 
+        """ 
+        cursor.execute(query) 
+        warehouses = [ 
+            {"id": row[0], "code": row[1], "name": row[2]} 
+            for row in cursor.fetchall() ] 
+        conn.close() 
+        return jsonify({"success": True, "warehouses": warehouses})
+    except Exception as e:
+        print("Error fetching warehouses:", str(e))
+        return jsonify({"success": False, "message": str(e)}), 500
 
 
 @inventory_bp.route("/fetch_products_in_both_whses", methods=["POST"])
 def fetch_products_in_both_whses():
     whse_from_id = request.json.get("whse_from_id")
     whse_to_id = request.json.get("whse_to_id")
+    try:
 
-    conn = create_db_connection()
-    cursor = conn.cursor()
+        conn = create_db_connection()
+        cursor = conn.cursor()
 
-    cursor.execute("""
-    SELECT FROMQTY.StockLink FromStockLink,
-           FROMQTY.StockDescription,
-           FROMQTY.QtyOnHand / CONV.ConversionFactor PurchaseQtyOnHand,
-           FROMQTY.PurchaseUnitId,
-           FROMQTY.PurchaseUnitCode,
-           CONV.iUOMStockingUnitID,
-           CONV.StockingUnitCode,
-           CONV.ConversionFactor
-    FROM [stk]._uvInventoryQty FROMQTY
-    JOIN [cmn].[_uvStockUnitConversion] CONV on CONV.StockLink = FROMQTY.StockLink
-    WHERE EXISTS(
-        SELECT StockLink ToStockLink
-        FROM [stk]._uvInventoryQty TOQTY
-        WHERE TOQTY.WhseLink = ? AND TOQTY.StockLink = FROMQTY.StockLink
-    )
-    AND FROMQTY.QtyOnHand > 0 AND FROMQTY.WhseLink = ? AND FROMQTY.ItemActive = 1
-    """, (whse_to_id, whse_from_id,))
+        cursor.execute("""
+        SELECT FROMQTY.StockLink FromStockLink,
+            FROMQTY.StockDescription,
+            FROMQTY.QtyOnHand / CONV.ConversionFactor PurchaseQtyOnHand,
+            FROMQTY.PurchaseUnitId,
+            FROMQTY.PurchaseUnitCode,
+            CONV.iUOMStockingUnitID,
+            CONV.StockingUnitCode,
+            CONV.ConversionFactor
+        FROM [stk]._uvInventoryQty FROMQTY
+        JOIN [cmn].[_uvStockUnitConversion] CONV on CONV.StockLink = FROMQTY.StockLink
+        WHERE EXISTS(
+            SELECT StockLink ToStockLink
+            FROM [stk]._uvInventoryQty TOQTY
+            WHERE TOQTY.WhseLink = ? AND TOQTY.StockLink = FROMQTY.StockLink
+        )
+        AND FROMQTY.QtyOnHand > 0 AND FROMQTY.WhseLink = ? AND FROMQTY.ItemActive = 1
+        """, (whse_to_id, whse_from_id,))
 
-    rows = cursor.fetchall()
-    conn.close()
+        rows = cursor.fetchall()
+        conn.close()
 
-    products_list = [
-        {
-            "product_id": row.FromStockLink,
-            "product_desc": row.StockDescription,
-            "qty_in_whse": row.PurchaseQtyOnHand,
-            "purchasing_unit_id": row.PurchaseUnitId,
-            "purchasing_unit_code": row.PurchaseUnitCode,
-            "stocking_unit_id": row.iUOMStockingUnitID,
-            "stocking_unit_code": row.StockingUnitCode,
-            "conversion_factor": row.ConversionFactor
-        }
-        for row in rows
-    ]
-    return jsonify({"products": products_list})
+        products_list = [
+            {
+                "product_id": row.FromStockLink,
+                "product_desc": row.StockDescription,
+                "qty_in_whse": row.PurchaseQtyOnHand,
+                "purchasing_unit_id": row.PurchaseUnitId,
+                "purchasing_unit_code": row.PurchaseUnitCode,
+                "stocking_unit_id": row.iUOMStockingUnitID,
+                "stocking_unit_code": row.StockingUnitCode,
+                "conversion_factor": row.ConversionFactor
+            }
+            for row in rows
+        ]
+        return jsonify({"success": True, "products": products_list})
+    except Exception as e:
+        print("Error fetching products in both warehouses:", str(e))
+        return jsonify({"success": False, "message": str(e)}), 500
 
 import sys
 from flask import request, jsonify
@@ -143,74 +152,82 @@ def IBT_receive():
 
 @inventory_bp.route("/fetch_issued_ibts", methods=["GET"])
 def fetch_issued_ibts():
-    conn = create_db_connection()
-    cursor = conn.cursor()
+    try:
+        conn = create_db_connection()
+        cursor = conn.cursor()
 
-    warehouses = current_user.warehouses
-    if len(warehouses) == 0:
-        return jsonify({"ibts": []})
-    placeholders = ",".join(["?"] * len(warehouses))
-    cursor.execute(f"""
-    Select Distinct IDWhseIBT, cIBTNumber, cIBTDescription, FromWhseName, ToWhseName
-    from [stk].[_uvIBTSummary]
-    Where StatusID = 1 AND ToWhseLink IN ({placeholders})
-    """, warehouses)
-    ibts = [
-        {
-            "ibt_id": row.IDWhseIBT,
-            "ibt_number": row.cIBTNumber,
-            "description": row.cIBTDescription,
-            "warehouse_from": row.FromWhseName,
-            "warehouse_to": row.ToWhseName
-        }
-        for row in cursor.fetchall()
-    ]
+        warehouses = current_user.warehouses
+        if len(warehouses) == 0:
+            return jsonify({"ibts": []})
+        placeholders = ",".join(["?"] * len(warehouses))
+        cursor.execute(f"""
+        Select Distinct IDWhseIBT, cIBTNumber, cIBTDescription, FromWhseName, ToWhseName
+        from [stk].[_uvIBTSummary]
+        Where StatusID = 1 AND ToWhseLink IN ({placeholders})
+        """, warehouses)
+        ibts = [
+            {
+                "ibt_id": row.IDWhseIBT,
+                "ibt_number": row.cIBTNumber,
+                "description": row.cIBTDescription,
+                "warehouse_from": row.FromWhseName,
+                "warehouse_to": row.ToWhseName
+            }
+            for row in cursor.fetchall()
+        ]
 
-    conn.close()
+        conn.close()
 
-    return jsonify({"ibts": ibts})
+        return jsonify({"success": True, "ibts": ibts})
+    except Exception as e:
+        print("Error fetching issued IBTs:", str(e))
+        return jsonify({"success": False, "message": str(e)}), 500
 
 @inventory_bp.route("/display_ibt", methods=["GET"])
 def display_ibt():
     ibt_id = request.args.get("ibt_id")
+    try:
 
-    conn = create_db_connection()
-    cursor = conn.cursor()
+        conn = create_db_connection()
+        cursor = conn.cursor()
 
-    cursor.execute("""
-    Select 
-    IDWhseIBT, cIBTNumber, cIBTDescription, FromWhseName, ToWhseName
-    ,IDWhseIBTLines
-    ,IBT.StockLink, StockDesc ,cDescription, cReference, fQtyIssued,
-    CONV.StockingUnitCode, CONV.PurchasingUnitCode, CONV.ConversionFactor
-    from [stk].[_uvIBTSummary] IBT
-	JOIN [cmn].[_uvStockUnitConversion] CONV on CONV.StockLink = IBT.StockLink
-    Where StatusID = 1 and IDWhseIBT = ?
-    """, (ibt_id,))
+        cursor.execute("""
+        Select 
+        IDWhseIBT, cIBTNumber, cIBTDescription, FromWhseName, ToWhseName
+        ,IDWhseIBTLines
+        ,IBT.StockLink, StockDesc ,cDescription, cReference, fQtyIssued,
+        CONV.StockingUnitCode, CONV.PurchasingUnitCode, CONV.ConversionFactor
+        from [stk].[_uvIBTSummary] IBT
+        JOIN [cmn].[_uvStockUnitConversion] CONV on CONV.StockLink = IBT.StockLink
+        Where StatusID = 1 and IDWhseIBT = ?
+        """, (ibt_id,))
 
-    rows = cursor.fetchall()
-    conn.close()
+        rows = cursor.fetchall()
+        conn.close()
 
-    ibt_details = [
-        {
-            "ibt_id": row.IDWhseIBT,
-            "ibt_number": row.cIBTNumber,
-            "description": row.cIBTDescription,
-            "warehouse_from": row.FromWhseName,
-            "warehouse_to": row.ToWhseName,
-            "ibt_line_id": row.IDWhseIBTLines,
-            "product_id": row.StockLink,
-            "product_desc": row.StockDesc,
-            "line_description": row.cDescription,
-            "line_reference": row.cReference,
-            "qty_issued": row.fQtyIssued,
-            "stocking_unit_code": row.StockingUnitCode,
-            "purchasing_unit_code": row.PurchasingUnitCode,
-            "conversion_factor": row.ConversionFactor
-        }
-        for row in rows
-    ]
-    return jsonify({"ibt_details": ibt_details})
+        ibt_details = [
+            {
+                "ibt_id": row.IDWhseIBT,
+                "ibt_number": row.cIBTNumber,
+                "description": row.cIBTDescription,
+                "warehouse_from": row.FromWhseName,
+                "warehouse_to": row.ToWhseName,
+                "ibt_line_id": row.IDWhseIBTLines,
+                "product_id": row.StockLink,
+                "product_desc": row.StockDesc,
+                "line_description": row.cDescription,
+                "line_reference": row.cReference,
+                "qty_issued": row.fQtyIssued,
+                "stocking_unit_code": row.StockingUnitCode,
+                "purchasing_unit_code": row.PurchasingUnitCode,
+                "conversion_factor": row.ConversionFactor
+            }
+            for row in rows
+        ]
+        return jsonify({"success": True, "ibt_details": ibt_details})
+    except Exception as e:
+        print("Error displaying IBT:", str(e))
+        return jsonify({"success": False, "message": str(e)}), 500
 
 @inventory_bp.route("/submit_ibt_receive", methods=["POST"])
 def submit_ibt_receive():

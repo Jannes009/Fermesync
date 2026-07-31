@@ -185,8 +185,7 @@
     permissions: {{ current_user.permissions | tojson }}
   };
 </script>
-<script type="module"
-  src="{{ url_for('inventory.static',
+<script src="{{ url_for('inventory.static',
     filename='stock_issue/stock_issue_list.js') }}?v={{ filemtime('inventory','stock_issue/stock_issue_list.js') }}">
 </script>
 

@@ -813,20 +813,21 @@ document.addEventListener('DOMContentLoaded', () => {
 async function loadRecommendations() {
     const body = document.getElementById('recTableBody');
     try {
-        const response = await fetch('/agri/spray-recommendations');
-        if (!response.ok) {
-            throw new Error(`Server returned ${response.status}`);
-        }
+        const response = await request('/agri/spray-recommendations');
         const data = await response.json();
+        if (!data.success) {
+            throw new Error(data.message || 'Failed to load recommendations');
+        }
+        console.log('Loaded recommendations:', data);
 
-        recommendations.splice(0, recommendations.length, ...data);
-        populateFilters(data);
+        recommendations.splice(0, recommendations.length, ...data.items);
+        populateFilters(data.items);
         renderRecommendationsTable();
         updateSelectionModeUI();
     } catch (err) {
         console.error('Error loading recommendations:', err);
         if (body) {
-            body.innerHTML = '<tr><td class="no-data" colspan="10">Error loading recommendations</td></tr>';
+            body.innerHTML = `<tr><td class="no-data" colspan="10">Error loading recommendations: ${err.message}</td></tr>`;
         }
     }
 }
@@ -1139,15 +1140,15 @@ function closeExecutionModal() {
 
 async function loadResponsiblePersonsForExecutionModal() {
     try {
-        const response = await fetch(
+        const response = await request(
             `/agri/execution/responsible-persons?spray_ids=${selectedRecommendationIds.join(',')}`
         );
 
-        if (!response.ok) {
-            throw new Error(`Server returned ${response.status}`);
+        const data = await response.json();
+        if (!data.success) {
+            throw new Error(data.message || 'Failed to load responsible persons');
         }
-
-        const persons = await response.json();
+        const persons = data.persons;
 
         const select = document.getElementById('execResponsible');
 
@@ -1181,7 +1182,7 @@ async function submitExecutionCreation() {
     }
 
     try {
-        const response = await fetch('/agri/execution/create', {
+        const response = await request('/agri/execution/create', {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json'

@@ -981,9 +981,9 @@ async function fetchTransactionHistory() {
   if (endDate) params.set('end_date', endDate);
 
   try {
-    const response = await fetch(`/inventory/product/${PRODUCT_STOCK_LINK}/history?${params.toString()}`);
+    const response = await request(`/inventory/product/${PRODUCT_STOCK_LINK}/history?${params.toString()}`);
     const data = await response.json();
-    if (!response.ok) throw new Error(data.error || 'Failed to load history');
+    if (!data.success) throw new Error(data.message || 'Failed to load history');
 
     transactionState.all = data.transactions || [];
     populateHistoryFilterOptions(data);
@@ -1016,9 +1016,9 @@ async function fetchOutstandingOrders() {
   document.getElementById('outstandingOrdersEmpty').style.display = 'none';
 
   try {
-    const response = await fetch(`/inventory/product/${PRODUCT_STOCK_LINK}/outstanding-orders`);
+    const response = await request(`/inventory/product/${PRODUCT_STOCK_LINK}/outstanding-orders`);
     const data = await response.json();
-    if (!response.ok) throw new Error(data.error || 'Failed to load outstanding orders');
+    if (!data.success) throw new Error(data.message || 'Failed to load outstanding orders');
 
     renderOutstandingOrders(data.outstanding_orders || []);
     pageState.outstandingLoaded = true;
@@ -1249,9 +1249,11 @@ async function fetchSprays() {
   document.getElementById('spraysError').style.display = 'none';
 
   try {
-    const response = await fetch(`/inventory/product/${PRODUCT_STOCK_LINK}/sprays`);
+    const response = await request(`/inventory/product/${PRODUCT_STOCK_LINK}/sprays`);
     const data = await response.json();
-    if (!response.ok) throw new Error(data.error || 'Failed to load sprays');
+    if (!data.success) {
+      throw new Error(data.message || 'Failed to load sprays');
+    }
 
     const sprays = data.sprays || [];
     const tbody = document.getElementById('spraysTableBody');
@@ -1289,8 +1291,11 @@ async function populateInventoryCategories() {
   if (pageState.categoriesLoaded) return;
 
   try {
-    const response = await fetch(`/inventory/categories?whse=${CURRENT_WAREHOUSE_ID}`);
+    const response = await request(`/inventory/categories?whse=${CURRENT_WAREHOUSE_ID}`);
     const data = await response.json();
+    if (!data.success) {
+      throw new Error(data.message || 'Failed to load categories');
+    }
     const categories = data.categories || [];
     select.innerHTML = '<option value="">Select a category</option>';
     categories.forEach(cat => {
@@ -1304,7 +1309,7 @@ async function populateInventoryCategories() {
     });
     pageState.categoriesLoaded = true;
   } catch (error) {
-    select.innerHTML = '<option value="">Error loading categories</option>';
+    select.innerHTML = `<option value="">Error loading categories: ${error.message}</option>`;
   }
 }
 
@@ -1326,7 +1331,7 @@ async function submitInventoryForm(event) {
   btn.disabled = true;
 
   try {
-    const response = await fetch(`/inventory/update-reordering/${PRODUCT_STOCK_LINK}`, {
+    const response = await request(`/inventory/update-reordering/${PRODUCT_STOCK_LINK}`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(payload),
@@ -1337,7 +1342,7 @@ async function submitInventoryForm(event) {
       message.textContent = data.message || 'Saved successfully.';
     } else {
       message.classList.add('error');
-      message.textContent = data.error || 'Failed to save.';
+      message.textContent = data.message || 'Failed to save.';
     }
   } catch (error) {
     message.classList.add('error');

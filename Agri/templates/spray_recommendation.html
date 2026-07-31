@@ -1116,7 +1116,7 @@ document.getElementById('spray-form').addEventListener('submit', function (e) {
 
     console.log('Submitting:', payload);
 
-    fetch('/agri/spray-recommendation/submit', {
+    request('/agri/spray-recommendation/submit', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(payload)

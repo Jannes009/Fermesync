@@ -267,7 +267,13 @@ document.addEventListener("DOMContentLoaded", async () => {
 
 async function renderHeader() {
     const header = await fetchHeader(sprayId);
-    const method = header.method_id ? await fetchMethod(header.method_id) : null;
+    console.log("Fetched header:", header);
+    if (!header.success) {
+        document.getElementById("spray-header").innerHTML = `<div class='no-data'>Error loading spray header: ${header.message || 'Unknown error'}</div>`;
+        return;
+    }
+
+    const method = await fetchMethod(header.method_id);
 
     sprayData = sprayData || {};
     sprayData.header = header;
@@ -411,8 +417,14 @@ async function renderLines() {
     if (editModes.lines && sprayData.lines) {
         lines = sprayData.lines;
     } else {
-        lines = await fetchLines(sprayId);
-        sprayData.lines = lines;
+        linesData = await fetchLines(sprayId);
+        if (!linesData.success) {
+            document.getElementById("spray-lines").innerHTML = `<div class='no-data'>Error loading spray lines: ${linesData.message || 'Unknown error'}</div>`;
+            return;
+        }
+        sprayData.lines = linesData.lines;
+        lines = sprayData.lines;
+        console.log("Fetched lines:", linesData);
     }
 
     if (!lines || lines.length === 0) {
@@ -643,7 +655,7 @@ async function saveLinesEdit() {
         }))
     };
 
-    const response = await fetch(`/agri/spray/${sprayId}/edit_spray_lines`, {
+    const response = await request(`/agri/spray/${sprayId}/edit_spray_lines`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(payload)
@@ -749,33 +761,48 @@ async function renderMix(forceFetch = false) {
 }
 
 async function fetchHeader(sprayId) {
-    return fetch(`/agri/spray/${sprayId}/spray_header`)
+    return request(`/agri/spray/${sprayId}/spray_header`)
     .then(res => res.json())
     .then(data => data);
 }
 
 async function fetchLines(sprayId) {
-    return fetch(`/agri/spray/${sprayId}/spray_lines`)
+    return request(`/agri/spray/${sprayId}/spray_lines`)
     .then(res => res.json())
     .then(data => data);
 }
 
 async function fetchMethod(methodId) {
-    return fetch('/agri/spray/methods')
+    return request('/agri/spray/methods')
     .then(res => res.json())
-    .then(data => data.find(m => m.id === methodId));
+    .then(data => {
+        if (!data.success) {
+            throw new Error(data.message || 'Failed to fetch methods');
+        }
+        return data.methods.find(m => m.id === methodId);
+    });
 }
 
 async function fetchMixLines(sprayId) {
-    return fetch(`/agri/spray/${sprayId}/spray_mix_lines`)
+    return request(`/agri/spray/${sprayId}/spray_mix_lines`)
     .then(res => res.json())
-    .then(data => data);
+    .then(data => {
+        if (!data.success) {
+            throw new Error(data.message || 'Failed to fetch mix lines');
+        }
+        return data.lines;
+    });
 }
 
 async function fetchProductsOptions(sprayId) {
-    return fetch(`/agri/spray/${sprayId}/fetch_products`)
+    return request(`/agri/spray/${sprayId}/fetch_products`)
     .then(res => res.json())
-    .then(data => data);
+    .then(data => {
+        if (!data.success) {
+            throw new Error(data.message || 'Failed to fetch products');
+        }
+        return data.products;
+    });
 }
 
 // Edit Mode Functions
@@ -818,7 +845,7 @@ function saveHeaderEdit() {
         scouting: scouting
     };
 
-    fetch(`/agri/spray/${sprayId}/edit_spray_header`, {
+    request(`/agri/spray/${sprayId}/edit_spray_header`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(payload)
@@ -874,7 +901,7 @@ async function cancelRecommendation() {
         return;
     }
 
-    fetch(`/agri/spray/${sprayId}/cancel`, {
+    request(`/agri/spray/${sprayId}/cancel`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' }
     })

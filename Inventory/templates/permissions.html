@@ -457,8 +457,12 @@
         if (!userId) return;
 
         // Fetch user settings
-        fetch(`/admin/get_user_settings/${userId}`)
+        request(`/admin/get_user_settings/${userId}`)
             .then(r => r.json())
+            .then(payload => {
+                if (!payload.success) throw new Error(payload.message || 'Failed to load user settings');
+                return payload;
+            })
             .then(({ permissions, warehouses, not_prefs, project_groups }) => {
 
                 permissions.forEach(id => {
@@ -481,7 +485,11 @@
                     if (cb) cb.checked = true;
                 });
             })
-            .catch(err => console.error('Error loading user settings:', err));
+            .catch(err => Swal.fire({
+                icon: 'error',
+                title: 'Error',
+                text: err.message || 'An error occurred while loading user settings.'
+            }   ));
     });
 
     // Auto-dismiss alerts after 5 seconds

@@ -29,7 +29,7 @@ def create_stock_issue():
         abort(403)  # Forbidden
     data = request.json
     if not data:
-        return jsonify({"status": "error", "message": "No data provided"}), 400
+        return jsonify({"success": False, "message": "No data provided"}), 400
 
     
     order_final = data.get("order_final", False)
@@ -39,20 +39,20 @@ def create_stock_issue():
     
 
     if issue_mode not in ["project", "spray"]:
-        return jsonify({"status": "error", "message": "Invalid issue mode"}), 400
+        return jsonify({"success": False, "message": "Invalid issue mode"}), 400
     elif issue_mode == "project":
         projects = data.get("projects")
         if not projects or not isinstance(projects, list) or len(projects) == 0:
-            return jsonify({"status": "error", "message": "Projects list required for project mode"}), 400
+            return jsonify({"success": False, "message": "Projects list required for project mode"}), 400
         warehouse_id = data.get("warehouse")
         if not warehouse_id or not lines_payload:
-            return jsonify({"status": "error", "message": "Missing required data"}), 400
+            return jsonify({"success": False, "message": "Missing required data"}), 400
 
         return generate_stock_issue_for_projects(projects, warehouse_id, lines_payload, order_final)
     elif issue_mode == "spray":
         spray_id = data.get("spray_id")    
         if not spray_id:
-            return jsonify({"status": "error", "message": "Spray ID required for spray mode"}), 400
+            return jsonify({"success": False, "message": "Spray ID required for spray mode"}), 400
         return generate_stock_issue_for_spray(spray_id, lines_payload, order_final)
 
 
@@ -187,7 +187,7 @@ def generate_stock_issue_for_projects(project_ids, warehouse_id, lines_payload, 
         cursor.commit()
 
         return jsonify({
-            "status": "success",
+            "success": True,
             "message": "Stock issue created.",
             "issue_id": stock_issue_id,
             "issue_no": issue_no,
@@ -203,7 +203,7 @@ def generate_stock_issue_for_projects(project_ids, warehouse_id, lines_payload, 
     except Exception as ex:
         conn.rollback()
         return jsonify({
-            "status": "error",
+            "success": False,
             "message": str(ex)
         }), 400
     finally:
@@ -376,7 +376,7 @@ def generate_stock_issue_for_spray(execution_id, lines_payload, order_final):
         issue_lines = cursor.fetchall()
 
         return jsonify({
-            "status": "success",
+            "success": True,
             "message": "Stock issue created.",
             "issue_id": stock_issue_id,
             "issue_no": issue_no,
@@ -391,7 +391,7 @@ def generate_stock_issue_for_spray(execution_id, lines_payload, order_final):
     except Exception as ex:
         conn.rollback()
         return jsonify({
-            "status": "error",
+            "success": False,
             "message": str(ex)
         }), 400
     finally:
@@ -411,7 +411,7 @@ def fetch_products_in_warehouse():
 
     whse_id = request.args.get("warehouse_id")
     if not whse_id:
-        return jsonify({"status": "error", "message": "Warehouse ID is required"}), 400
+        return jsonify({"success": False, "message": "Warehouse ID is required"}), 400
 
     conn = create_db_connection()
     cursor = conn.cursor()
@@ -440,5 +440,5 @@ def fetch_products_in_warehouse():
         }
         for row in rows
     ]
-    return jsonify({"products": products_list})
+    return jsonify({"success": True, "products": products_list})
 

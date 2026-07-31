@@ -1,0 +1,146 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Offline</title>
+  <style>
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+
+    body {
+      min-height: 100vh;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+      background: #f4f6f8;
+      color: #1a1a1a;
+      padding: 24px;
+      line-height: 1.5;
+    }
+
+    .card {
+      background: #ffffff;
+      border-radius: 16px;
+      box-shadow: 0 4px 24px rgba(0, 0, 0, 0.06);
+      padding: 48px 40px;
+      max-width: 420px;
+      width: 100%;
+      text-align: center;
+    }
+
+    .icon {
+      width: 72px;
+      height: 72px;
+      margin: 0 auto 28px;
+      color: #6b7280;
+    }
+
+    h1 {
+      font-size: 1.5rem;
+      font-weight: 600;
+      margin-bottom: 12px;
+      color: #111827;
+    }
+
+    p {
+      font-size: 1rem;
+      color: #6b7280;
+      margin-bottom: 32px;
+    }
+
+    .buttons {
+      display: flex;
+      gap: 12px;
+      justify-content: center;
+      flex-wrap: wrap;
+    }
+
+    button {
+      appearance: none;
+      border: none;
+      border-radius: 10px;
+      padding: 12px 24px;
+      font-size: 0.95rem;
+      font-weight: 500;
+      cursor: pointer;
+      transition: background 0.15s ease, transform 0.1s ease;
+      min-width: 120px;
+    }
+
+    button:active {
+      transform: scale(0.98);
+    }
+
+    .btn-retry {
+      background: #2563eb;
+      color: #ffffff;
+    }
+
+    .btn-retry:hover {
+      background: #1d4ed8;
+    }
+
+    .btn-back {
+      background: #e5e7eb;
+      color: #374151;
+    }
+
+    .btn-back:hover {
+      background: #d1d5db;
+    }
+
+    @media (max-width: 480px) {
+      .card {
+        padding: 36px 24px;
+      }
+
+      h1 {
+        font-size: 1.35rem;
+      }
+
+      .buttons {
+        flex-direction: column;
+      }
+
+      button {
+        width: 100%;
+      }
+    }
+  </style>
+</head>
+<body>
+  <div class="card">
+    <!-- Simple offline icon (cloud with slash) -->
+    <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round">
+      <path d="M17.5 19H9a7 7 0 1 1 6.71-9h1.79a4.5 4.5 0 1 1 0 9Z"/>
+      <line x1="2" y1="2" x2="22" y2="22"/>
+    </svg>
+
+    <h1>You're offline</h1>
+    <p>
+      It looks like your device has no internet connection,<br>
+      or the server is temporarily unavailable.
+    </p>
+
+    <div class="buttons">
+      <button class="btn-retry" onclick="location.reload()">Retry</button>
+      <button class="btn-back" onclick="history.back()">Go Back</button>
+    </div>
+  </div>
+
+  <script>
+    // Auto-reload when the connection comes back
+    if (navigator.onLine) {
+      location.reload();
+    }
+    window.addEventListener('online', () => {
+      location.reload();
+    });
+  </script>
+</body>
+</html>

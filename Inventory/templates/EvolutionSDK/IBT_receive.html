@@ -164,9 +164,13 @@ async function loadIbtList() {
     container.innerHTML = '<div class="loading">Loading IBTs...</div>';
 
     try {
-        const res = await fetch("/inventory/fetch_issued_ibts");
-        const { ibts } = await res.json();
-        displayIbtList(ibts);
+        const res = await request("/inventory/fetch_issued_ibts");
+        const data = await res.json();
+        if (!data.success) {
+            container.innerHTML = `<div class="empty-state"><h3>Error</h3><p>${data.message || 'Failed to load IBTs.'}</p></div>`;
+            return;
+        }
+        displayIbtList(data.ibts);
     } catch (err) {
         container.innerHTML = `<div class="empty-state"><h3>Error</h3><p>Failed to load IBTs.</p></div>`;
     }
@@ -209,9 +213,13 @@ async function loadIbtList() {
         container.innerHTML = '<div class="loading">Loading...</div>';
 
         try {
-            const res = await fetch(`/inventory/display_ibt?ibt_id=${encodeURIComponent(ibt_id)}`);
-            const { ibt_details } = await res.json();
-            displayIbtDetail(ibt_details);
+            const res = await request(`/inventory/display_ibt?ibt_id=${encodeURIComponent(ibt_id)}`);
+            const data = await res.json();
+            if (!data.success) {
+                container.innerHTML = `<div class="empty-state"><h3>Error</h3><p>${data.message || 'Failed to load details.'}</p></div>`;
+                return;
+            }
+            displayIbtDetail(data.ibt_details);
             setupUnitToggle();
             history.replaceState(null, "", `?ibt_id=${encodeURIComponent(ibt_id)}`);
         } catch (err) {
@@ -477,7 +485,7 @@ async function loadIbtList() {
 
         // Proceed with submission
         try {
-            const res = await fetch("/inventory/submit_ibt_receive", {
+            const res = await request("/inventory/submit_ibt_receive", {
                 method: "POST",
                 headers: { "Content-Type": "application/json" },
                 body: JSON.stringify(payload)

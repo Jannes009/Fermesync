@@ -21,24 +21,27 @@ def fetch_spray_instructions():
         abort(403)
     conn = create_db_connection()
     cur = conn.cursor()
+    try:
+        cur.execute("""
+            SELECT IdSprayH, SprayHDate
+            FROM agr.SprayHeader
+            ORDER BY SprayHDate DESC
+        """)
+        spray_headers = cur.fetchall()
 
-    cur.execute("""
-        SELECT IdSprayH, SprayHDate
-        FROM agr.SprayHeader
-        ORDER BY SprayHDate DESC
-    """)
-    spray_headers = cur.fetchall()
-    conn.close()
-
-    sprays_list = [
-        {
-            "id": header.IdSprayH,
-            "name": f"Spray {header.IdSprayH} - {header.SprayHDate}"
-        }
-        for header in spray_headers
-    ]
-    
-    return jsonify({"sprays": sprays_list})
+        sprays_list = [
+            {
+                "id": header.IdSprayH,
+                "name": f"Spray {header.IdSprayH} - {header.SprayHDate}"
+            }
+            for header in spray_headers
+        ]
+        
+        return jsonify({"success": True, "sprays": sprays_list})
+    except Exception as e:
+        return jsonify({"success": False, "message": str(e)}), 500
+    finally:
+        conn.close()
 
 
 @agri_bp.route("/spray/<int:spray_id>/spray_header", methods=["GET"])
@@ -50,89 +53,94 @@ def get_spray_header(spray_id):
     conn = create_db_connection()
     cur = conn.cursor()
 
-    # HEADER
-    cur.execute("""
-    SELECT 
-        HEA.SprayHNo,
-        HEA.SprayHDescription,
-        HEA.SprayHDate,
-        HEA.SprayHWeek,
-        HEA.SprayHWhseId,
-        WHSE.Code,
-        WHSE.Name,
-        HEA.SprayHWeather,
-        HEA.SprayLineDoseBasis,
-        HEA.SprayHMethodId,
-        HEA.SprayHStartDateTime,
-        SprayHEndDateTime,
-        SprayHExecutionId,
-		EXE.SprExecFinalised,
-        SprayHWaterPerTank,
-        SprayHTotalWater,
-        SprayHTotalHa,
-        SprayHMix,
-        SprayHStatus,
-        SprayHScouting,
-        SprayHFinalised,
-		CRP.CropThemeColor,
-		CASE 
-			WHEN SUM(ISNULL(ISS.QtyOut, 0)) OVER (PARTITION BY HEA.IdSprayH) > 0 
-			THEN 1 
-			ELSE 0 
-		END AS IssuesExist
-    FROM agr.SprayHeader HEA
-    JOIN cmn._uvWhseMst WHSE on WHSE.WhseLink = HEA.SprayHWhseId
-	LEFT JOIN agr.Crop CRP on CRP.IdCrop = HEA.SprayHCropId
-	LEFT JOIN agr.SprayExecution EXE on EXE.IdSprExec = HEA.SprayHExecutionId
-	LEFT JOIN stk._uvIssueQuantities ISS on ISS.IssSprayExecutionId = EXE.IdSprExec
-    WHERE HEA.IdSprayH = ?
-    """, spray_id)
+    try:
+        # HEADER
+        cur.execute("""
+        SELECT 
+            HEA.SprayHNo,
+            HEA.SprayHDescription,
+            HEA.SprayHDate,
+            HEA.SprayHWeek,
+            HEA.SprayHWhseId,
+            WHSE.Code,
+            WHSE.Name,
+            HEA.SprayHWeather,
+            HEA.SprayLineDoseBasis,
+            HEA.SprayHMethodId,
+            HEA.SprayHStartDateTime,
+            SprayHEndDateTime,
+            SprayHExecutionId,
+            EXE.SprExecFinalised,
+            SprayHWaterPerTank,
+            SprayHTotalWater,
+            SprayHTotalHa,
+            SprayHMix,
+            SprayHStatus,
+            SprayHScouting,
+            SprayHFinalised,
+            CRP.CropThemeColor,
+            CASE 
+                WHEN SUM(ISNULL(ISS.QtyOut, 0)) OVER (PARTITION BY HEA.IdSprayH) > 0 
+                THEN 1 
+                ELSE 0 
+            END AS IssuesExist
+        FROM agr.SprayHeader HEA
+        JOIN cmn._uvWhseMst WHSE on WHSE.WhseLink = HEA.SprayHWhseId
+        LEFT JOIN agr.Crop CRP on CRP.IdCrop = HEA.SprayHCropId
+        LEFT JOIN agr.SprayExecution EXE on EXE.IdSprExec = HEA.SprayHExecutionId
+        LEFT JOIN stk._uvIssueQuantities ISS on ISS.IssSprayExecutionId = EXE.IdSprExec
+        WHERE HEA.IdSprayH = ?
+        """, spray_id)
 
-    header = cur.fetchone()
+        header = cur.fetchone()
 
-    # fetch linked project codes and total hectares plus per-project breakdown
-    cur.execute("""
-        SELECT p.ProjectCode, ISNULL(sp.SprayPHa, 0) AS SprayPHa, ISNULL(sp.SprayPWaterPerHa, 0) AS SprayPWaterPerHa, ISNULL(SprayPTotalWater, 0) AS SprayPTotalWater
-        FROM agr.SprayProjects sp
-        JOIN cmn._uvProject p ON p.ProjectLink = sp.SprayPProjectId
-        WHERE sp.SprayPSprayId = ?
-    """, spray_id)
-    proj_rows = cur.fetchall()
-    project_list = [
-        {"project_code": row.ProjectCode, "ha": float(row.SprayPHa or 0), "water_per_ha": float(row.SprayPWaterPerHa or 0), "total_water": float(row.SprayPTotalWater or 0)}
-        for row in proj_rows
-    ]
-    print(project_list)
-    conn.close()
+        # fetch linked project codes and total hectares plus per-project breakdown
+        cur.execute("""
+            SELECT p.ProjectCode, ISNULL(sp.SprayPHa, 0) AS SprayPHa, ISNULL(sp.SprayPWaterPerHa, 0) AS SprayPWaterPerHa, ISNULL(SprayPTotalWater, 0) AS SprayPTotalWater
+            FROM agr.SprayProjects sp
+            JOIN cmn._uvProject p ON p.ProjectLink = sp.SprayPProjectId
+            WHERE sp.SprayPSprayId = ?
+        """, spray_id)
+        proj_rows = cur.fetchall()
+        project_list = [
+            {"project_code": row.ProjectCode, "ha": float(row.SprayPHa or 0), "water_per_ha": float(row.SprayPWaterPerHa or 0), "total_water": float(row.SprayPTotalWater or 0)}
+            for row in proj_rows
+        ]
+        print(project_list)
+        conn.close()
 
-    return jsonify({
-            "spray_date": str(header.SprayHDate),
-            "spray_week": header.SprayHWeek,
-            "projects": project_list,
-            "total_ha": header.SprayHTotalHa,
-            "dose_basis": header.SprayLineDoseBasis,
-            "weather": header.SprayHWeather,
-            "method_id": header.SprayHMethodId,
-            "spray_no": header.SprayHNo,
-            "spray_description": header.SprayHDescription,
-            "warehouse": {
-                "id": header.SprayHWhseId,
-                "code": header.Code,
-                "name": header.Name
-            },
-            "water_per_tank": float(header.SprayHWaterPerTank) if header.SprayHWaterPerTank is not None else None,
-            "total_water": float(header.SprayHTotalWater) if header.SprayHTotalWater is not None else None,
-            "start_datetime": str(header.SprayHStartDateTime) if header.SprayHStartDateTime is not None else None,
-            "end_datetime": str(header.SprayHEndDateTime) if header.SprayHEndDateTime is not None else None,
-            "mix": bool(header.SprayHMix) if header.SprayHMix is not None else None,
-            "execution_id": header.SprayHExecutionId if header.SprayHExecutionId is not None else None,
-            "execution_finalised": bool(header.SprExecFinalised) if header.SprExecFinalised is not None else None,
-            "crop_theme_color": header.CropThemeColor if header.CropThemeColor is not None else None,
-            "status": header.SprayHStatus,
-            "scouting": header.SprayHScouting if header.SprayHScouting is not None else None,
-            "finalised": bool(header.SprayHFinalised) if header.SprayHFinalised is not None else None,
-            "issues_exist": bool(header.IssuesExist) if header.IssuesExist is not None else None
-    })
+        return jsonify({
+                "success": True,
+                "spray_date": str(header.SprayHDate),
+                "spray_week": header.SprayHWeek,
+                "projects": project_list,
+                "total_ha": header.SprayHTotalHa,
+                "dose_basis": header.SprayLineDoseBasis,
+                "weather": header.SprayHWeather,
+                "method_id": header.SprayHMethodId,
+                "spray_no": header.SprayHNo,
+                "spray_description": header.SprayHDescription,
+                "warehouse": {
+                    "id": header.SprayHWhseId,
+                    "code": header.Code,
+                    "name": header.Name
+                },
+                "water_per_tank": float(header.SprayHWaterPerTank) if header.SprayHWaterPerTank is not None else None,
+                "total_water": float(header.SprayHTotalWater) if header.SprayHTotalWater is not None else None,
+                "start_datetime": str(header.SprayHStartDateTime) if header.SprayHStartDateTime is not None else None,
+                "end_datetime": str(header.SprayHEndDateTime) if header.SprayHEndDateTime is not None else None,
+                "mix": bool(header.SprayHMix) if header.SprayHMix is not None else None,
+                "execution_id": header.SprayHExecutionId if header.SprayHExecutionId is not None else None,
+                "execution_finalised": bool(header.SprExecFinalised) if header.SprExecFinalised is not None else None,
+                "crop_theme_color": header.CropThemeColor if header.CropThemeColor is not None else None,
+                "status": header.SprayHStatus,
+                "scouting": header.SprayHScouting if header.SprayHScouting is not None else None,
+                "finalised": bool(header.SprayHFinalised) if header.SprayHFinalised is not None else None,
+                "issues_exist": bool(header.IssuesExist) if header.IssuesExist is not None else None
+        })
+    except Exception as e:
+        conn.close()
+        return jsonify({"success": False, "message": str(e)}), 500
 
 @agri_bp.route("/spray/<int:spray_id>/spray_lines", methods=["GET"])
 @login_required
@@ -141,37 +149,40 @@ def get_spray_lines(spray_id):
         abort(403)
     conn = create_db_connection()
     cur = conn.cursor()
-    cur.execute("""
-        SELECT SprayLineDoseBasis FROM agr.SprayHeader WHERE IdSprayH = ?
-    """, spray_id)
-    row = cur.fetchone()
-    dose_basis = row.SprayLineDoseBasis
-    lines = []
-    cur.execute("""
-        SELECT LIN.IdSprayLine, LIN.SprayLineStkId, EVOSTK.StockDescription, ACT.ChemActIngredient, LIN.SprayLineQtyPerHa, LIN.SprayLineQtyPer100L, SprayLineTotalQty, LIN.SprayLineUoMId, UOM.cUnitCode
-        FROM [agr].SprayLines LIN
-        JOIN [agr].SprayHeader HEA ON HEA.IdSprayH = LIN.SprayLineHeaderId
-        JOIN [cmn].[_uvStockItems] EVOSTK ON EVOSTK.StockLink = LIN.SprayLineStkId
-        LEFT JOIN [cmn]._uvUOM UOM ON UOM.idUnits = LIN.SprayLineUoMId
-		JOIN agr.ChemStock STK on STK.ChemStockLink = LIN.SprayLineStkId
-		LEFT JOIN agr.ChemActiveIngredient ACT on ACT.IdChemAct = STK.ChemStockActiveIngrId
-        WHERE LIN.SprayLineHeaderId = ?
-    """, spray_id)
-    lines = [
-        {"line_id": row.IdSprayLine,
-            "stock_id": row.SprayLineStkId,
-            "stock_description": row.StockDescription,
-            "active_ingredient": row.ChemActIngredient,
-            "dose_basis": dose_basis,
-            "qty_per_100l": float(row.SprayLineQtyPer100L) if row.SprayLineQtyPer100L is not None else None,
-            "qty_per_ha": float(row.SprayLineQtyPerHa) if row.SprayLineQtyPerHa is not None else None,
-            "total_qty": float(row.SprayLineTotalQty) if row.SprayLineTotalQty is not None else None,
-            "uom_id": row.SprayLineUoMId,
-            "uom": row.cUnitCode
-        }
-        for row in cur.fetchall()
-    ]
-    return jsonify(lines)
+    try:
+        cur.execute("""
+            SELECT SprayLineDoseBasis FROM agr.SprayHeader WHERE IdSprayH = ?
+        """, spray_id)
+        row = cur.fetchone()
+        dose_basis = row.SprayLineDoseBasis
+        lines = []
+        cur.execute("""
+            SELECT LIN.IdSprayLine, LIN.SprayLineStkId, EVOSTK.StockDescription, ACT.ChemActIngredient, LIN.SprayLineQtyPerHa, LIN.SprayLineQtyPer100L, SprayLineTotalQty, LIN.SprayLineUoMId, UOM.cUnitCode
+            FROM [agr].SprayLines LIN
+            JOIN [agr].SprayHeader HEA ON HEA.IdSprayH = LIN.SprayLineHeaderId
+            JOIN [cmn].[_uvStockItems] EVOSTK ON EVOSTK.StockLink = LIN.SprayLineStkId
+            LEFT JOIN [cmn]._uvUOM UOM ON UOM.idUnits = LIN.SprayLineUoMId
+            JOIN agr.ChemStock STK on STK.ChemStockLink = LIN.SprayLineStkId
+            LEFT JOIN agr.ChemActiveIngredient ACT on ACT.IdChemAct = STK.ChemStockActiveIngrId
+            WHERE LIN.SprayLineHeaderId = ?
+        """, spray_id)
+        lines = [
+            {"line_id": row.IdSprayLine,
+                "stock_id": row.SprayLineStkId,
+                "stock_description": row.StockDescription,
+                "active_ingredient": row.ChemActIngredient,
+                "dose_basis": dose_basis,
+                "qty_per_100l": float(row.SprayLineQtyPer100L) if row.SprayLineQtyPer100L is not None else None,
+                "qty_per_ha": float(row.SprayLineQtyPerHa) if row.SprayLineQtyPerHa is not None else None,
+                "total_qty": float(row.SprayLineTotalQty) if row.SprayLineTotalQty is not None else None,
+                "uom_id": row.SprayLineUoMId,
+                "uom": row.cUnitCode
+            }
+            for row in cur.fetchall()
+        ]
+        return jsonify({"success": True, "lines": lines})
+    except Exception as e:
+        return jsonify({"success": False, "message": str(e)}), 500
 
 
 
@@ -445,7 +456,7 @@ def get_spray_mix_lines(spray_id):
     ]
 
     conn.close()
-    return lines
+    return jsonify({"success": True, "lines": lines})
 
 
 @agri_bp.route("/spray/methods", methods=["GET"])
@@ -476,7 +487,7 @@ def get_spray_methods():
             "water_per_ha": float(method.SprayMethodWaterPerHa),
             "tank_size": float(method.SprayMethodTankSize)
         })
-    return jsonify(methods_list)
+    return jsonify({"success": True, "methods": methods_list})
 
 @agri_bp.route("/spray/<int:spray_id>/fetch_products", methods=["GET"])
 @login_required
@@ -502,110 +513,4 @@ def fetch_products_for_spray_whse(spray_id):
         "stocking_uom_code": row.StockingUnitCode
     } for row in cur.fetchall()]
     conn.close()
-    return jsonify(products)
-
-# @agri_bp.route("/spray/<int:spray_id>/issue_stock", methods=["GET"])
-# @login_required
-# def issue_stock_for_spray(spray_id):
-
-#     conn = create_db_connection()
-#     cursor = conn.cursor()
-
-#     try:
-#         # compute total hectares from projects
-#         cursor.execute("""
-#             SELECT SUM(sp.SprayPHa)
-#             FROM agr.SprayProjects sp
-#             WHERE sp.SprayPSprayId = ?
-#         """, spray_id)
-#         total_ha = cursor.fetchone()[0] or 0
-
-#         cursor.execute("""
-#         SELECT 
-#             LIN.SprayLineStkId,
-#             LIN.SprayLineQtyPerHa,
-#             LIN.SprayLineQtyPer100L,
-#             ISNULL(QTY.QtyOnHand, 0) QtyAvailable,
-#             HEA.SprayHWhseId
-#         FROM agr.SprayLines LIN
-#         JOIN agr.SprayHeader HEA ON HEA.IdSprayH = LIN.SprayLineHeaderId
-#         LEFT JOIN stk._uvInventoryQty QTY 
-#             ON QTY.StockLink = LIN.SprayLineStkId 
-#             AND QTY.WhseLink = HEA.SprayHWhseId
-#         WHERE LIN.SprayLineHeaderId = ?
-#         """, spray_id)
-
-#         raw_lines = cursor.fetchall()
-
-#         if not raw_lines:
-#             return jsonify({
-#                 "success": False,
-#                 "message": "No stock lines found for this spray recommendation."
-#             }), 400
-
-#         shortages = []
-#         lines = []
-#         for line in raw_lines:
-#             per_ha = line.SprayLineQtyPerHa
-#             per_100l = line.SprayLineQtyPer100L if hasattr(line, 'SprayLineQtyPer100L') else None
-#             if per_ha is not None and per_ha != 0:
-#                 qty_to_be = per_ha * total_ha
-#             elif per_100l is not None and total_ha > 0:
-#                 # approximate per ha from total water if spray method provided? fallback to 0
-#                 qty_to_be = 0
-#             else:
-#                 qty_to_be = 0
-#             lines.append({
-#                 "product_link": line.SprayLineStkId,
-#                 "qty": float(qty_to_be)
-#             })
-#             if qty_to_be > line.QtyAvailable:
-#                 shortages.append({
-#                     "product_link": line.SprayLineStkId,
-#                     "required": float(qty_to_be),
-#                     "available": float(line.QtyAvailable)
-#                 })
-
-#         if shortages:
-#             return jsonify({
-#                 "success": False,
-#                 "message": "Not enough stock available for one or more products.",
-#                 "shortages": shortages
-#             }), 400
-
-#         # -----------------------------
-#         # SUCCESS
-#         # -----------------------------
-#         # collect warehouse and project info
-#         cursor.execute("""
-#             SELECT SprayHWhseId FROM agr.SprayHeader WHERE IdSprayH = ?
-#         """, spray_id)
-#         warehouse = cursor.fetchone()[0]
-
-#         cursor.execute("""
-#             SELECT STRING_AGG(ProjectCode, ', ')
-#             FROM agr.SprayProjects sp
-#             JOIN cmn._uvProject p ON p.ProjectLink = sp.SprayPProjectId
-#             WHERE sp.SprayPSprayId = ?
-#         """, spray_id)
-#         projects_str = cursor.fetchone()[0] or ""
-
-#         cursor.execute("""
-#             SELECT SprayPProjectId FROM agr.SprayProjects WHERE SprayPSprayId = ?
-#         """, spray_id)
-#         project_ids = [r.SprayPProjectId for r in cursor.fetchall()]
-
-#         return jsonify({
-#             "success": True,
-#             "warehouse": warehouse,
-#             "projects": project_ids,
-#             "project": project_ids[0] if project_ids else None,
-#             "lines": lines
-#         })
-
-
-#     except Exception as ex:
-#         return jsonify({
-#             "success": False,
-#             "message": str(ex)
-#         }), 400
+    return jsonify({"success": True, "products": products})

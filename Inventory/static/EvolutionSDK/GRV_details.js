@@ -32,8 +32,12 @@ function getUOMDisplay(uom) {
 
 // ---------------- PO LINES ----------------
 async function loadPOLines(poNumber) {
-    const res = await fetch(`/inventory/SDK/fetch_po_lines/${poNumber}`);
+    const res = await request(`/inventory/SDK/fetch_po_lines/${poNumber}`);
     const data = await res.json();
+    if (!data.success) {
+        Swal.fire("Error", data.error || "Failed to load PO lines.", "error");
+        return;
+    }
 
     const container = document.getElementById("po-lines");
     container.innerHTML = "";
@@ -192,7 +196,7 @@ function submitGRV(lines) {
     button.disabled = true;
     button.textContent = "Creating...";
 
-    fetch("/inventory/submit_grv", {
+    request("/inventory/submit_grv", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
@@ -241,7 +245,7 @@ async function sendToSupervisor(overQtys) {
     button.disabled = true;
     button.textContent = "Sending to Supervisor...";
 
-    fetch("/inventory/incorrect_po", {
+    request("/inventory/incorrect_po", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({

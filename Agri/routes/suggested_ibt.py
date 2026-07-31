@@ -26,7 +26,7 @@ def ibt_weeks():
         week_no = ((date - year_start).days // 7) + 1
         week_str = f"{date.year}-{str(week_no).zfill(2)}"
         weeks.append(week_str)
-    return jsonify({'status': 'ok', 'weeks': weeks})
+    return jsonify({'success': True, 'weeks': weeks})
 
 
 @agri_bp.route('/ibt/suggested', methods=['GET'])
@@ -38,7 +38,7 @@ def ibt_suggested():
     """
     week = request.args.get('week')
     if not week:
-        return jsonify({'status': 'error', 'message': 'week parameter required'}), 400
+        return jsonify({'success': False, 'message': 'week parameter required'}), 400
 
     conn = create_db_connection()
     cur = conn.cursor()
@@ -120,7 +120,7 @@ def ibt_suggested():
         })
 
     return jsonify({
-        'status': 'ok',
+        'success': True,
         'week': week,
         'warehouses': list(grouped.values())
     })
@@ -135,10 +135,10 @@ def ibt_transfer():
     lines = payload.get('lines') or []
 
     if not from_whse or not to_whse:
-        return jsonify({'status': 'error', 'message': 'from_whse and to_whse are required'}), 400
+        return jsonify({'success': False, 'message': 'from_whse and to_whse are required'}), 400
     if not isinstance(lines, list) or not lines:
-        return jsonify({'status': 'error', 'message': 'lines array required'}), 400
+        return jsonify({'success': False, 'message': 'lines array required'}), 400
 
     # NOTE: This route currently acknowledges the transfer request and returns success.
     # Integrate with Evolution SDK or internal transfer mechanisms as needed.
-    return jsonify({'status': 'ok', 'count': len(lines)})
+    return jsonify({'success': True, 'count': len(lines)})

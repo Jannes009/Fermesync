@@ -14,16 +14,14 @@ async function loadIncompleteIssues() {
   list.innerHTML = "<i>Loading...</i>";
 
   try {
-
-
-      const serverIssues = await fetch("/inventory/SDK/incomplete_issues")
+      const serverIssues = await request("/inventory/SDK/incomplete_issues")
+        .then(res => res.json())
         .then(res => {
-            if (!res.ok) {
-                throw new Error(`Failed to fetch issues: ${res.status}`);
+            if (!res.success) {
+                list.innerHTML = "<i>Failed to load issues.</i>";
             }
-            return res.json();
-        })
-        .then(data => data.issues || []);
+            return res.issues || [];
+        });
 
     renderIssues(serverIssues);
   } catch (err) {
@@ -67,13 +65,13 @@ function renderIssues(issues) {
 async function fetchIssueLines(issueId) {
   try {
 
-    let lines = await fetch(`/inventory/SDK/incomplete_issue_lines/${issueId}`)
+    let lines = await request(`/inventory/SDK/incomplete_issue_lines/${issueId}`)
       .then(async res => {
-        if (!res.ok) {
-          const text = await res.text();
-          throw new Error(`Failed to fetch issue lines: ${res.status} ${text}`);
-        }
         const data = await res.json();
+        if (!data.success) {
+            Swal.fire("Error", data.message || "Failed to fetch issue lines.", "error");
+            return [];
+        }
         console.log("Raw lines data from server:", data);
         return data.issue_lines || [];
       });
@@ -302,18 +300,18 @@ async function startReturnWizard(issueId) {
             }
         });
         
-        const submit = await fetch("/inventory/process_return", {
+        const submit = await request("/inventory/process_return", {
             method: "POST",
             headers: { "Content-Type": "application/json" },
             body: JSON.stringify(payload)
         });
+        const submitRes = await submit.json();
 
-        if (!submit.ok) {
-            const text = await submit.text();
-            throw new Error(`Server responded with ${submit.status}: ${text || "No details"}`);
+        if (!submitRes.success) {
+            Swal.fire("Error", submitRes.message || "Return failed with no message from server.", "error");
+            return;
         }
 
-        const submitRes = await submit.json();
 
         if (loadingVisible) {
             Swal.close();

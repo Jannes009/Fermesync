@@ -22,10 +22,35 @@
           <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
 
         <script> 
+            console.log(navigator)
             if ('serviceWorker' in navigator) { 
+                console.log("Registering SW");
                 navigator.serviceWorker.register('/sw.js', { scope: '/' }) 
                 .catch(err => console.error("SW failed", err)); 
             } 
+            async function request(url, options = {}) {
+                try {
+                    return await fetch(url, options);
+                } catch (err) {
+                    console.log(navigator.onLine);
+                    
+                    if (!navigator.onLine) {
+                        // Create a custom response object with an error
+                        return new Response(
+                            JSON.stringify({ 
+                                success: false, 
+                                message: 'You are offline. Please check your internet connection and try again.' 
+                            }),
+                            { 
+                                status: 503, 
+                                headers: { 'Content-Type': 'application/json' } 
+                            }
+                        );
+                    }
+                    
+                    throw err;
+                }
+            }
         </script> 
 
         <script src="https://cdn.onesignal.com/sdks/web/v16/OneSignalSDK.page.js" defer></script>

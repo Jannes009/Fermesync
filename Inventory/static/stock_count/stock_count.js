@@ -249,11 +249,17 @@ async function loadWarehouses() {
     select.innerHTML = "<option>Loading warehouses...</option>";
 
     try {
-        const res = await fetch("/inventory/fetch_warehouses");
-        const { warehouses = [] } = await res.json();
+        const res = await request("/inventory/fetch_warehouses");
+        const data = await res.json();
+
+        if (!data.success) {
+            select.innerHTML = "<option>Error loading</option>";
+            Swal.fire("Error", data.error || "Failed to load warehouses", "error");
+            return;
+        }
 
         select.innerHTML = "<option value=''>Select warehouse</option>";
-        warehouses.forEach(wh => {
+        data.warehouses.forEach(wh => {
             select.innerHTML += `<option value="${wh.id}">${wh.name}</option>`;
         });
 
@@ -288,12 +294,20 @@ async function onWarehouseChanged() {
     }
 
     try {
-        const res = await fetch("/inventory/fetch_categories", {
+        const res = await request("/inventory/fetch_categories", {
             method: "POST",
             headers: { "Content-Type": "application/json" },
             body: JSON.stringify({ whse_id: selectedWarehouse })
         });
-        const { categories: cats = [] } = await res.json();
+        const data = await res.json();
+
+        if (!data.success) {
+            catSelect.innerHTML = "<option>Error loading</option>";
+            Swal.fire("Error", data.error || "Failed to load categories", "error");
+            return;
+        }
+
+        const { categories: cats = [] } = data;
 
         catSelect.innerHTML = "<option value=''>Select category</option>";
         cats.forEach(c => {
@@ -320,7 +334,7 @@ async function onWarehouseChanged() {
 }
 
 async function loadProductsForSession(sessionId) {
-    const res = await fetch(`/inventory/stock-counts/${sessionId}/products`);
+    const res = await request(`/inventory/stock-counts/${sessionId}/products`);
     const data = await res.json();
     products = data.products || [];
     displayProducts();
@@ -334,7 +348,7 @@ function updateStep1NextButton() {
 
 /* ====== Start Counting ====== */
 async function onStartCounting() {
-  const res = await fetch("/inventory/create_stock_count", {
+  const res = await request("/inventory/create_stock_count", {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({
@@ -343,16 +357,20 @@ async function onStartCounting() {
     })
   });
 
-  const { session_id } = await res.json();
-  sessionId = session_id;
+  const data = await res.json();
+  if (!data.success) {
+    Swal.fire("Error", data.message || "Failed to create stock count session", "error");
+    return;
+  }
+  sessionId = data.session_id;
 
   history.pushState(
     { sessionId },
     "",
-    `/inventory/stock-counts/${session_id}`
+    `/inventory/stock-counts/${sessionId}`
   );
 
-  await loadProductsForSession(session_id);
+  await loadProductsForSession(sessionId);
   showStep(2);
 }
 
@@ -405,10 +423,15 @@ function displayProducts() {
             }
         });
 
-        await fetch(`/inventory/stock-counts/${sessionId}/lines`, {
+        await request(`/inventory/stock-counts/${sessionId}/lines`, {
             method: "POST",
             headers: { "Content-Type": "application/json" },
             body: JSON.stringify({ lines })
+        }).then(r => r.json())
+          .then(data => {
+            if (!data.success) {
+                Swal.fire("Error", data.message || "Failed to save draft", "error");
+            }
         });
     }
 
@@ -515,10 +538,15 @@ function displayRecounts() {
 
         if (!lines.length) return;
 
-        await fetch(`/inventory/stock-counts/${sessionId}/lines`, {
+        await request(`/inventory/stock-counts/${sessionId}/lines`, {
             method: "POST",
             headers: { "Content-Type": "application/json" },
             body: JSON.stringify({ lines })
+        }).then(r => r.json())
+          .then(data => {
+            if (!data.success) {
+                Swal.fire("Error", data.message || "Failed to save recount draft", "error");
+            }
         });
     }
 
@@ -593,7 +621,7 @@ async function onFinalizeClicked() {
   btn.textContent = "Finalising...";
 
   try {
-    const res = await fetch(`/inventory/stock-counts/${sessionId}/finalise`, {
+    const res = await request(`/inventory/stock-counts/${sessionId}/finalise`, {
       method: "POST"
     });
 
@@ -603,7 +631,7 @@ async function onFinalizeClicked() {
       Swal.fire("Success!", data.message || "Stock count completed", "success")
         .then(() => window.location.href = "/inventory/stock-counts");
     } else {
-      throw new Error(data.error || "Server error");
+      Swal.fire("Failed", data.message || "Finalization failed", "error");
     }
   } catch (err) {
     Swal.fire("Failed", err.message || "Submission failed", "error");
@@ -618,7 +646,7 @@ async function submitFinalCount() {
     btn.textContent = "Submitting...";
 
     try {
-        const res = await fetch(`/inventory/stock-counts/${sessionId}/finalise`, {
+        const res = await request(`/inventory/stock-counts/${sessionId}/finalise`, {
             method: "POST"
         });
 
@@ -630,7 +658,7 @@ async function submitFinalCount() {
                     location.href = "/inventory/stock-counts";
                 });
         } else {
-            throw new Error(data.error || "Server error");
+            Swal.fire("Failed", data.message || "Finalization failed", "error");
         }
     } catch (err) {
         Swal.fire("Failed", err.message || "Submission failed", "error");
