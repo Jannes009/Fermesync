@@ -3,7 +3,7 @@
   <!-- Logo -->
   <div class="logo-container">
     <a href="/inventory/dashboard" class="logo-link">
-      <img src="{{ url_for('inventory.static', filename='Image/HorizontalLogoAndText.svg') }}" alt="Fermesync Logo" class="taskbar-logo">
+      <img src="{{ url_for('static', filename='icons/HorizontalLogoAndText.svg') }}" alt="Fermesync Logo" class="taskbar-logo">
       <!-- Mobile-only status indicators -->
       <div class="mobile-status-indicators">
         <div class="connection-indicator mobile-only" id="connection-indicator-mobile">
@@ -311,7 +311,7 @@
 
 <style>
 /* Base */
-@import url('/inventory/static/color-template.css');
+@import url('/main_static/color-template.css');
 
 /* Reset default margins */
 body, html {
@@ -902,7 +902,7 @@ main {
 .mobile-notifications-link {
   display: block;
   text-decoration: none;
-  color: inherit;
+  color: var(--taskbar-text);
 }
 
 .mobile-notifications {

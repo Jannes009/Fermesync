@@ -13,7 +13,7 @@ const SHELL = [
   '/main_static/manifest.json',
   '/main_static/icons/icon-192.png',
   '/main_static/icons/icon-512.png',
-  '/inventory/static/color-template.css',
+  '/main_static/color-template.css',
 
   // JS modules
   '/main_static/offline/db.js',
@@ -66,7 +66,6 @@ self.addEventListener('activate', event => {
 // ------------------
 self.addEventListener('fetch', event => {
   const req = event.request;
-  console.log("SW fetch", req.url, req.method);
 
   // ignore non-GET requests
   if (req.method !== 'GET') return;

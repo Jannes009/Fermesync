@@ -146,7 +146,7 @@ async function generatePDF() {
     // Load logo
     let logoDataUrl = null;
     try {
-        logoDataUrl = await loadSVGAsImage("/static/Image/LogoAndText.svg");
+        logoDataUrl = await loadSVGAsImage("{{ url_for('static', filename='icons/LogoAndText.svg') }}");
     } catch (err) {
         console.warn("Logo loading failed:", err);
         logoDataUrl = null;

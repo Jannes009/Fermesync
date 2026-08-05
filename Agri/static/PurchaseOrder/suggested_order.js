@@ -52,10 +52,9 @@ function initSuggestedOrder(container = document) {
         loadingRow.innerHTML = `<td colspan="8" style="text-align:center; padding:1.25rem; color:#6b7280;">Loading suggested order data...</td>`;
         tbody.appendChild(loadingRow);
 
-        const res = await request(`/agri/suggested-order/data?week=${encodeURIComponent(week)}`);
+        const res = await fetch(`/agri/suggested-order/data?week=${encodeURIComponent(week)}`);
         const payload = await res.json();
-        console.log(payload);
-        if (!payload.success) {
+        if (payload.status !== 'ok') {
             // remove loading row and show message
             loadingRow.remove();
             return alert(payload.message || 'Error');
@@ -86,9 +85,9 @@ function initSuggestedOrder(container = document) {
             // fetch suppliers for this stock only
             let stockSuppliers = [];
             try {
-                const ssres = await request(`/agri/suggested-order/stock-suppliers/${encodeURIComponent(row.stock_link)}`);
+                const ssres = await fetch(`/agri/suggested-order/stock-suppliers/${encodeURIComponent(row.stock_link)}`);
                 const sspayload = await ssres.json();
-                if (sspayload.success) stockSuppliers = sspayload.suppliers || [];
+                if (sspayload.status === 'ok') stockSuppliers = sspayload.suppliers || [];
             } catch (e) {
                 stockSuppliers = [];
             }
@@ -101,9 +100,6 @@ function initSuggestedOrder(container = document) {
                 opt.dataset.supplierName = s.name;
                 opt.dataset.price = s.last_invoice_price || 0;
                 opt.dataset.unitId = s.unit_id || '';
-                // tax defaults supplied by backend
-                opt.dataset.taxRate = s.default_tax_rate || 0;
-                opt.dataset.taxType = s.default_tax_type_id || '';
                 if (row.supplier_dc_link && Number(row.supplier_dc_link) === Number(s.dc_link)) opt.selected = true;
                 supSelect.appendChild(opt);
             }
@@ -130,14 +126,10 @@ function initSuggestedOrder(container = document) {
             tr.querySelector('.supplier-cell').appendChild(supSelect);
 
             supSelect.addEventListener('change', function () {
-                // update price and tax metadata from selected option
+                // update price metadata from selected option
                 const opt = supSelect.selectedOptions && supSelect.selectedOptions[0];
                 const price = opt && opt.dataset ? Number(opt.dataset.price || 0) : 0;
-                const taxRate = opt && opt.dataset ? Number(opt.dataset.taxRate || 0) : 0;
-                const taxType = opt && opt.dataset ? (opt.dataset.taxType || '') : '';
                 tr.dataset.lastInvoicePrice = price;
-                tr.dataset.taxRate = taxRate;
-                tr.dataset.taxType = taxType;
                 renderPreview();
                 const st = (supSelect.value === '' ? 'no-supplier' : (Number(tr.dataset.purchaseUnitsToOrder) > 0 ? 'needs' : 'ok'));
                 const span = tr.querySelector('.status');
@@ -166,10 +158,10 @@ function initSuggestedOrder(container = document) {
                     btn.textContent = '-';
                     btn.setAttribute('aria-expanded', 'true');
                     openDetail = detailTr;
-                    const dres = await request(`/agri/suggested-order/detail/${id}?week=${encodeURIComponent(week)}`);
+                    const dres = await fetch(`/agri/suggested-order/detail/${id}?week=${encodeURIComponent(week)}`);
                     const dpayload = await dres.json();
-                    if (!dpayload.success) {
-                        detailContent.innerHTML = 'Error loading details' + (dpayload.message ? `: ${dpayload.message}` : '');
+                    if (dpayload.status !== 'ok') {
+                        detailContent.innerHTML = 'Error loading details';
                         return;
                     }
                     let html = '<table class="detail-table"><thead><tr><th></th><th>Warehouse</th><th>Stock Description</th><th class="col-num">Qty On Hand</th><th class="col-num">Qty On PO</th><th class="col-num">Qty to Order</th><th class="col-num">Qty On IBT</th></tr></thead><tbody>';
@@ -200,10 +192,10 @@ function initSuggestedOrder(container = document) {
                                 return;
                             }
 
-                            const sres = await request(`/agri/suggested-order/detail/${encodeURIComponent(stockLink)}/warehouse/${encodeURIComponent(whseId)}?week=${encodeURIComponent(week)}`);
+                            const sres = await fetch(`/agri/suggested-order/detail/${encodeURIComponent(stockLink)}/warehouse/${encodeURIComponent(whseId)}?week=${encodeURIComponent(week)}`);
                             const spayload = await sres.json();
-                            if (!spayload.success) {
-                                alert('Error loading spray details' + (spayload.message ? `: ${spayload.message}` : ''));
+                            if (spayload.status !== 'ok') {
+                                alert('Error loading spray details');
                                 return;
                             }
 
@@ -255,14 +247,14 @@ function initSuggestedOrder(container = document) {
         if (warehouseOptionsCache[key]) return warehouseOptionsCache[key];
         if (warehouseOptionsLoading[key]) return warehouseOptionsLoading[key];
 
-        warehouseOptionsLoading[key] = request('/agri/suggested-order/order-warehouses', {
+        warehouseOptionsLoading[key] = fetch('/agri/suggested-order/order-warehouses', {
             method: 'POST',
             headers: {'Content-Type': 'application/json'},
             body: JSON.stringify({stock_ids: stockIds})
         })
             .then(res => res.ok ? res.json() : Promise.reject(new Error('Unable to load warehouses')))
             .then(payload => {
-                if (payload.success) {
+                if (payload.status === 'ok') {
                     warehouseOptionsCache[key] = payload.warehouses || [];
                     return warehouseOptionsCache[key];
                 }
@@ -294,23 +286,13 @@ function initSuggestedOrder(container = document) {
             const price = Number(tr.dataset.lastInvoicePrice || 0);
             const desc = tr.dataset.productName || tr.querySelector('.col-product')?.textContent.trim() || '';
             const unit = tr.dataset.purchasingUom || '';
-            groups[sup].lines.push({stock_link: tr.dataset.stockLink, product: desc, qty: qty, price: price, units: unit, tax_rate: Number(tr.dataset.taxRate || 0), tax_type: tr.dataset.taxType || ''});
+            groups[sup].lines.push({stock_link: tr.dataset.stockLink, product: desc, qty: qty, price: price, units: unit});
             groups[sup].stockIds.push(tr.dataset.stockLink);
             groups[sup].totalQty += qty;
             groups[sup].totalValue += qty * price;
             const opt = sel && sel.selectedOptions && sel.selectedOptions[0];
             groups[sup].supplierName = opt ? (opt.dataset.supplierName || opt.textContent || '') : groups[sup].supplierName;
         });
-
-        // compute total tax per supplier group before rendering the summary header
-        for (const k of Object.keys(groups)) {
-            const g = groups[k];
-            g.totalTax = g.lines.reduce((sum, l) => {
-                const taxRate = Number(l.tax_rate || l.taxRate || 0);
-                const amount = Number(l.qty || 0) * Number(l.price || 0) * taxRate / 100;
-                return sum + amount;
-            }, 0);
-        }
 
         let html = '<div class="po-preview">';
         html += '<div class="po-card-header" style="border:none;padding:0;margin-bottom:0"><div class="po-card-title">Purchase Orders Preview</div></div>';
@@ -329,7 +311,7 @@ function initSuggestedOrder(container = document) {
                 const hasWarehouseSelection = !!(warehouseOptions.length && selectedWarehouse);
                 html += `<div class="po-card" data-supplier="${k}">`;
                 html += '<div class="po-card-header">';
-                html += `<div><div class="po-card-title">${supplierLabel}</div><div class="po-card-summary">${g.lines.length} products · Qty ${nf.format(g.totalQty)} · R ${nf.format(g.totalValue)}${g.totalTax ? ' · Tax R ' + nf.format(g.totalTax) : ''}</div></div>`;
+                html += `<div><div class="po-card-title">${supplierLabel}</div><div class="po-card-summary">${g.lines.length} products · Qty ${nf.format(g.totalQty)} · R ${nf.format(g.totalValue)}</div></div>`;
                 html += '<div class="po-card-actions">';
                 if (k !== 'NO_SUP' && k !== '') {
                     html += '<div class="warehouse-picker-inline">';
@@ -360,19 +342,10 @@ function initSuggestedOrder(container = document) {
                 }
                 html += `<button class="collapse-toggle" type="button">Show details</button>`;
                 html += '</div></div>';
-                // compute tax per line and totals
-                g.totalTax = 0;
-                g.lines = g.lines.map(l => {
-                    const taxRate = Number(l.tax_rate || l.taxRate || 0);
-                    const taxAmount = (Number(l.qty || 0) * Number(l.price || 0) * taxRate) / 100;
-                    g.totalTax += taxAmount;
-                    return Object.assign({}, l, { tax_amount: taxAmount });
-                });
-
                 html += '<div class="po-card-body" aria-hidden="true">';
-                html += '<table class="po-card-table"><thead><tr><th>Product</th><th>Qty</th><th>Units</th><th>Unit Price</th><th>Tax</th></tr></thead><tbody>';
+                html += '<table class="po-card-table"><thead><tr><th>Product</th><th>Qty</th><th>Units</th><th>Unit Price</th></tr></thead><tbody>';
                 for (const line of g.lines) {
-                    html += `<tr><td>${line.product}</td><td style="text-align:right">${nf.format(line.qty)}</td><td style="text-align:center">${line.units || ''}</td><td style="text-align:right">${nf.format(line.price)}</td><td style="text-align:right">R ${nf.format(line.tax_amount || 0)}</td></tr>`;
+                    html += `<tr><td>${line.product}</td><td style="text-align:right">${nf.format(line.qty)}</td><td style="text-align:center">${line.units || ''}</td><td style="text-align:right">${nf.format(line.price)}</td></tr>`;
                 }
                 html += '</tbody></table>';
                 html += '</div></div>';
@@ -424,10 +397,7 @@ function initSuggestedOrder(container = document) {
                 product_id: tr.dataset.stockLink,
                 unit_id: unitId,
                 qty: qty,
-                unit_price: Number(tr.dataset.lastInvoicePrice || 0),
-                tax_rate: Number(tr.dataset.taxRate || 0),
-                tax_type: tr.dataset.taxType || '',
-                tax_amount: Number(((Number(tr.dataset.lastInvoicePrice || 0) * qty) * (Number(tr.dataset.taxRate || 0) / 100)) || 0)
+                unit_price: Number(tr.dataset.lastInvoicePrice || 0)
             });
         });
 
@@ -443,12 +413,12 @@ function initSuggestedOrder(container = document) {
         }
 
         try {
-            const res = await request('/agri/suggested-order/create-order', {
+            const res = await fetch('/agri/suggested-order/create-order', {
                 method: 'POST', headers: {'Content-Type': 'application/json'},
                 body: JSON.stringify({supplier_id: supplierId, warehouse_id: warehouseId, lines: lines})
             });
             const payload = await res.json();
-            if (payload.success) {
+            if (payload.status === 'ok') {
                 supplierOrderStatus[supplierId] = {status: 'created', orderNumber: payload.order_number || '', message: ''};
             } else {
                 supplierOrderStatus[supplierId] = {status: 'error', orderNumber: '', message: payload.message || 'Error creating order'};

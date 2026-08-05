@@ -4,7 +4,6 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Reports</title>
-    <link rel="stylesheet" href="{{ url_for('market.static', filename='color-template.css') }}">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css">
     <link href="https://cdnjs.cloudflare.com/ajax/libs/select2/4.0.13/css/select2.min.css" rel="stylesheet" />
     <style>
@@ -645,7 +644,7 @@
     </div>
     <div id="pdfContent">
         <div id="logoContainer">
-            <img id="pdfLogo" src="/static/Image/LogoIcon.svg" alt="Logo" style="max-width: 150px; display: none;">
+            <img id="pdfLogo" src="{{ url_for('static', filename='icons/LogoIcon.svg') }}" alt="Logo" style="max-width: 150px; display: none;">
             <div id="logoText" style="font-size: 24px; font-weight: bold; color: var(--primary-text); display: none;">Company Logo</div>
             <div id="logoError" style="display: none; color: var(--primary-text); font-style: italic;">Logo unavailable</div>
         </div>

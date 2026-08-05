@@ -1,4 +1,4 @@
-from flask import render_template, request, jsonify, abort
+﻿from flask import render_template, request, jsonify, abort
 from flask_login import login_required, current_user
 from Core.auth import create_db_connection
 from . import agri_bp
@@ -22,7 +22,7 @@ def suggested_order_popup():
 def suggested_order_data():
     week = request.args.get('week')
     if not week:
-        return jsonify({'success': False, 'message': 'week parameter required'}), 400
+        return jsonify({'status': 'error', 'message': 'week parameter required'}), 400
 
     conn = create_db_connection()
     cur = conn.cursor()
@@ -123,7 +123,7 @@ def suggested_order_data():
             'last_invoice_price': float(r.LastInvoicePrice) if hasattr(r, 'LastInvoicePrice') else 0.0
         })
 
-    return jsonify({'success': True, 'week': week, 'data': results})
+    return jsonify({'status': 'ok', 'week': week, 'data': results})
 
 
 @agri_bp.route('/suggested-order/detail/<int:stock_id>', methods=['GET'])
@@ -131,7 +131,7 @@ def suggested_order_data():
 def suggested_order_detail(stock_id):
     week = request.args.get('week')
     if not week:
-        return jsonify({'success': False, 'message': 'week parameter required'}), 400
+        return jsonify({'status': 'error', 'message': 'week parameter required'}), 400
 
     conn = create_db_connection()
     cur = conn.cursor()
@@ -199,7 +199,7 @@ def suggested_order_detail(stock_id):
         }
         for r in rows
     ]
-    return jsonify({'success': True, 'week': week, 'stock_id': stock_id, 'warehouses': results})
+    return jsonify({'status': 'ok', 'week': week, 'stock_id': stock_id, 'warehouses': results})
 
 
 @agri_bp.route('/suggested-order/detail/<int:stock_id>/warehouse/<int:whse_id>', methods=['GET'])
@@ -207,7 +207,7 @@ def suggested_order_detail(stock_id):
 def suggested_order_warehouse_detail(stock_id, whse_id):
     week = request.args.get('week')
     if not week:
-        return jsonify({'success': False, 'message': 'week parameter required'}), 400
+        return jsonify({'status': 'error', 'message': 'week parameter required'}), 400
 
     conn = create_db_connection()
     cur = conn.cursor()
@@ -259,7 +259,7 @@ def suggested_order_warehouse_detail(stock_id, whse_id):
         }
         for r in rows
     ]
-    return jsonify({'success': True, 'week': week, 'stock_id': stock_id, 'whse_id': whse_id, 'sprays': results})
+    return jsonify({'status': 'ok', 'week': week, 'stock_id': stock_id, 'whse_id': whse_id, 'sprays': results})
 
 
 @agri_bp.route('/suggested-order/stock-suppliers/<int:stock_id>', methods=['GET'])
@@ -275,10 +275,7 @@ def suggested_order_stock_suppliers(stock_id):
         ISNULL(L.LastInvoicePrice, ISNULL(GCST.PurchaseUnitLastGRVCost,0)) AS LastInvoicePrice,
         ISNULL(L.bDefaultSupplier, 0) AS DefaultSupplier,
         L.iUnitsOfMeasureID AS UnitId,
-        UOM.cUnitCode AS UnitCode,
-        -- tax defaults from stock link view
-        ISNULL(L.DefaultTaxTypeId, NULL) AS DefaultTaxTypeId,
-        ISNULL(L.DefaultTaxRate, 0) AS DefaultTaxRate
+        UOM.cUnitCode AS UnitCode
     FROM stk._uvStockLinks L
     LEFT JOIN cmn._uvSuppliers S ON S.DCLink = L.iDCLink
     LEFT JOIN cmn._uvUOM UOM on UOM.idUnits = iUnitsOfMeasureID
@@ -296,12 +293,10 @@ def suggested_order_stock_suppliers(stock_id):
         'last_invoice_price': float(r.LastInvoicePrice),
         'default_supplier': bool(r.DefaultSupplier), 
         'unit_id': int(r.UnitId) if hasattr(r, 'UnitId') and r.UnitId is not None else None,
-        'unit_code': r.UnitCode,
-        'default_tax_type_id': int(r.DefaultTaxTypeId) if hasattr(r, 'DefaultTaxTypeId') and r.DefaultTaxTypeId is not None else None,
-        'default_tax_rate': float(r.DefaultTaxRate) if hasattr(r, 'DefaultTaxRate') and r.DefaultTaxRate is not None else 0.0} 
+        'unit_code': r.UnitCode} 
         for r in rows
         ]
-    return jsonify({'success': True, 'suppliers': suppliers})
+    return jsonify({'status': 'ok', 'suppliers': suppliers})
 
 
 @agri_bp.route('/suggested-order/order-warehouses', methods=['POST'])
@@ -310,11 +305,11 @@ def suggested_order_warehouses():
     payload = request.get_json() or {}
     stock_ids = payload.get('stock_ids') or []
     if not isinstance(stock_ids, list) or not stock_ids:
-        return jsonify({'success': False, 'message': 'stock_ids array is required'}), 400
+        return jsonify({'status': 'error', 'message': 'stock_ids array is required'}), 400
 
     ids = [int(i) for i in stock_ids if isinstance(i, (int, str)) and str(i).strip() != '']
     if not ids:
-        return jsonify({'success': False, 'message': 'stock_ids must contain at least one value'}), 400
+        return jsonify({'status': 'error', 'message': 'stock_ids must contain at least one value'}), 400
 
     placeholders = ','.join(['?'] * len(ids))
     sql = f"""
@@ -338,7 +333,7 @@ def suggested_order_warehouses():
         'whse_description': r.WhseDescription
     } for r in rows]
 
-    return jsonify({'success': True, 'warehouses': warehouses})
+    return jsonify({'status': 'ok', 'warehouses': warehouses})
 
 
 @agri_bp.route('/suggested-order/create-order', methods=['POST'])
@@ -351,9 +346,9 @@ def suggested_order_create_order():
     print(f"Received payload for order creation: {payload}")  # Debugging line
 
     if not supplier_id:
-        return jsonify({'success': False, 'message': 'supplier_id is required'}), 400
+        return jsonify({'status': 'error', 'message': 'supplier_id is required'}), 400
     if not warehouse_id:
-        return jsonify({'success': False, 'message': 'warehouse_id is required'}), 400
+        return jsonify({'status': 'error', 'message': 'warehouse_id is required'}), 400
     
     try:
         with EvolutionConnection():
@@ -371,8 +366,6 @@ def suggested_order_create_order():
                 OD.Unit = Evo.Unit(int(line.get('unit_id')))
                 OD.UnitSellingPrice = float(line.get('unit_price'))
                 OD.Warehouse = Evo.Warehouse(int(warehouse_id))
-                OD.TaxType = Evo.TaxRate(int(line.get('tax_type'))) if line.get('tax_type') else None
-
                 OD.Project = Evo.Project(int(DEFAULT_PURCHASE_ORDER_PROJECT_ID))  # Use the default project ID
             PO.Save()
             order_number = PO.OrderNo    
@@ -384,18 +377,11 @@ def suggested_order_create_order():
                 'product_id': line.get('product_id'),
                 'unit_id': line.get('unit_id'),
                 'qty': line.get('qty'),
-                'unit_price': line.get('unit_price'),
-                'tax_rate': line.get('tax_rate'),
-                'tax_type': line.get('tax_type'),
-                'tax_amount': line.get('tax_amount')
+                'unit_price': line.get('unit_price')
             } for line in lines],
             'count': len(lines)
         }]
 
-        return jsonify({'success': True, 'order_number': order_number, 'created_orders': created})
-    except EvolutionAgentNotFoundError as e:
-        return jsonify({'success': False, 'message': str(e)}), 400
-    except EvolutionConnectionError as e:
-        return jsonify({'success': False, 'message': str(e)}), 500
+        return jsonify({'status': 'ok', 'order_number': order_number, 'created_orders': created})
     except Exception as e:
-        return jsonify({'success': False, 'message': str(e)}), 500
+        return jsonify({'status': 'error', 'message': str(e)}), 500

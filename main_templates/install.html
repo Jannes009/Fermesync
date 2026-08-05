@@ -4,7 +4,10 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Install App</title>
-   <link rel="manifest" href="/main_static/manifest.json?{{ filemtime('main_static', 'manifest.json') }}"> 
+  <link rel="manifest" href="/main_static/manifest.json?{{ filemtime('main_static', 'manifest.json') }}">
+  <meta name="theme-color" content="#f4f6f9">
+  <link rel="apple-touch-icon" href="/icons/icon-192.png">
+  <meta name="apple-mobile-web-app-capable" content="yes">
   <style>
     * {
       margin: 0;
@@ -34,9 +37,17 @@
       text-align: center;
     }
 
+    .logo {
+      display: block;
+      max-width: 200px;
+      width: 100%;
+      height: auto;
+      margin: 0 auto 28px;
+    }
+
     .icon {
-      width: 72px;
-      height: 72px;
+      width: 64px;
+      height: 64px;
       margin: 0 auto 24px;
       color: #2563eb;
     }
@@ -144,6 +155,11 @@
         padding: 36px 24px;
       }
 
+      .logo {
+        max-width: 160px;
+        margin-bottom: 24px;
+      }
+
       h1 {
         font-size: 1.35rem;
       }
@@ -152,17 +168,24 @@
 </head>
 <body>
   <div class="card">
-    <!-- App icon (simple download / install style) -->
-    <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round">
-      <path d="M12 3v12"/>
-      <path d="m8 11 4 4 4-4"/>
-      <path d="M4 19h16"/>
-    </svg>
+    <!-- Brand logo -->
+    <img src="{{ url_for('static', filename='icons/LogoAndText.svg') }}"
+         alt="Fermesync Logo"
+         class="logo">
+
+
 
     <h1 id="title">Install Fermesync</h1>
     <p class="subtitle" id="subtitle">
       Add it to your home screen for quick access and a better experience.
     </p>
+
+        <!-- Install icon -->
+    <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round">
+      <path d="M12 3v12"/>
+      <path d="m8 11 4 4 4-4"/>
+      <path d="M4 19h16"/>
+    </svg>
 
     <!-- Chromium / Android / Windows button -->
     <div id="chromium-section">
@@ -200,12 +223,14 @@
       </div>
     </div>
   </div>
+
   <script>
-                if ('serviceWorker' in navigator) { 
-                console.log("Registering SW");
-                navigator.serviceWorker.register('/sw.js', { scope: '/' }) 
-                .catch(err => console.error("SW failed", err)); 
-            } 
+    if ('serviceWorker' in navigator) {
+      console.log("Registering SW");
+      navigator.serviceWorker.register('/sw.js', { scope: '/' })
+        .catch(err => console.error("SW failed", err));
+    }
+
     const installBtn = document.getElementById('install-btn');
     const chromiumSection = document.getElementById('chromium-section');
     const iosSection = document.getElementById('ios-section');
@@ -246,9 +271,9 @@
         waitingMsg.classList.add('hidden');
       });
 
-      // Optional: hide button if the event never fires (criteria not met)
+      // Fallback message if the event never fires
       setTimeout(() => {
-        if (!deferredPrompt && !installBtn.disabled === false) {
+        if (!deferredPrompt) {
           waitingMsg.textContent = 'Installation is not available in this browser right now.';
         }
       }, 3000);

@@ -33,10 +33,18 @@
       text-align: center;
     }
 
-    .icon {
-      width: 72px;
-      height: 72px;
+    .logo {
+      display: block;
+      max-width: 200px;
+      width: 100%;
+      height: auto;
       margin: 0 auto 28px;
+    }
+
+    .icon {
+      width: 64px;
+      height: 64px;
+      margin: 0 auto 24px;
       color: #6b7280;
     }
 
@@ -99,6 +107,11 @@
         padding: 36px 24px;
       }
 
+      .logo {
+        max-width: 160px;
+        margin-bottom: 24px;
+      }
+
       h1 {
         font-size: 1.35rem;
       }
@@ -115,7 +128,12 @@
 </head>
 <body>
   <div class="card">
-    <!-- Simple offline icon (cloud with slash) -->
+    <!-- Brand logo -->
+    <img src="{{ url_for('static', filename='icons/LogoAndText.svg') }}"
+         alt="Fermesync Logo"
+         class="logo">
+
+    <!-- Offline status icon -->
     <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round">
       <path d="M17.5 19H9a7 7 0 1 1 6.71-9h1.79a4.5 4.5 0 1 1 0 9Z"/>
       <line x1="2" y1="2" x2="22" y2="22"/>
@@ -132,15 +150,5 @@
       <button class="btn-back" onclick="history.back()">Go Back</button>
     </div>
   </div>
-
-  <script>
-    // Auto-reload when the connection comes back
-    if (navigator.onLine) {
-      location.reload();
-    }
-    window.addEventListener('online', () => {
-      location.reload();
-    });
-  </script>
 </body>
 </html>

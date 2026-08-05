@@ -139,8 +139,7 @@ def get_delivery_note_lines():
 def submit_invoice():
     # try:
     data = request.json
-    print(data)
-
+  
     # Extract data from request
     InvoiceDate = data.get('InvoiceDate')
     InvoiceNo = data.get('InvoiceNo')
@@ -153,19 +152,17 @@ def submit_invoice():
     InvoiceOtherCostsIncl = data.get('InvoiceOtherCostsIncl')
     SalesLines = data.get('tickedLines')
     TaxRate = data.get('TaxRate')
-    print(InvoiceDate, InvoiceNo, InvoiceDelNoteNo, InvoiceQty, InvoiceGross, InvoiceTotalDeducted, InvoiceMarketCommIncl, InvoiceAgentCommIncl, InvoiceOtherCostsIncl, SalesLines, TaxRate)
+ 
     # Insert into database
     conn = create_db_connection()
     cursor = conn.cursor()
 
     DelNoteId = del_note_number_to_del_id(InvoiceDelNoteNo, cursor)
-    print(DelNoteId)
-
     query = """
     Select [DeliClientId] From [mkt].[ZZDeliveryNoteHeader]
     Where [DelNoteNo] = ?
     """
-    cursor.execute(query, (InvoiceDelNoteNo, )),
+    cursor.execute(query, (InvoiceDelNoteNo, ))
     clientId = cursor.fetchone()
 
     query = """
@@ -256,7 +253,6 @@ def check_invoice_no():
     
     cursor.execute("SELECT COUNT(*) FROM [mkt].ZZInvoiceHeader WHERE InvoiceNo = ?", (invoice_number,))
     exists = cursor.fetchone()[0] > 0
-    print(invoice_number, exists)
 
     conn.close()
     return jsonify({'exists': exists})
@@ -327,7 +323,6 @@ def api_purchase_orders():
     rows = cursor.fetchall()
     columns = [desc[0] for desc in cursor.description]
     purchase_orders = [dict(zip(columns, row)) for row in rows]
-    print(purchase_orders)
     close_db_connection(cursor, conn)
     return jsonify(purchase_orders)
 
@@ -335,7 +330,7 @@ def api_purchase_orders():
 def api_invoices_for_delivery_note(del_note_no):
     conn = create_db_connection()
     cursor = conn.cursor()
-    print(del_note_no)
+
     cursor.execute("""
         SELECT InvoiceIndex, InvoiceNo, InvoiceDate, InvoiceGross, InvoiceNett, Status
         FROM [mkt]._uvInvoiceSOStatus
@@ -345,7 +340,7 @@ def api_invoices_for_delivery_note(del_note_no):
     rows = cursor.fetchall()
     columns = [desc[0] for desc in cursor.description]
     invoices = [dict(zip(columns, row)) for row in rows]
-    print(invoices)
+
     close_db_connection(cursor, conn)
     return jsonify(invoices)
 
@@ -540,7 +535,7 @@ def submit_produnit_change():
 
     conn = create_db_connection()
     cursor = conn.cursor()
-    print(del_note_no, old_prod_unit_id, new_prod_unit_id)
+    
     try:
         # Update [mkt].lines for this delivery note that match the old production unit
         cursor.execute(
