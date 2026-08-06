@@ -65,24 +65,43 @@ def create_db_connection():
 # -------------------------
 # Authenticate user
 # -------------------------
-def authenticate_user(username, password):
-    """Validate username/password against common Users table."""
+def get_user_by_username(username):
     conn = create_db_connection()
     cursor = conn.cursor()
     try:
         cursor.execute("SELECT id, username, PasswordHash FROM users.Users WHERE username = ?", (username,))
         row = cursor.fetchone()
-        if row and check_password_hash(row[2], password):
+        if row:
             user = UserLogin(id=row[0], username=row[1])
+            user.password_hash = row[2]
             user.warehouses = get_user_warehouses(user.id)
             user.projects = get_user_projects(user.id)
             user.permissions = get_user_permissions(user.id)
             user.features = get_user_features(user.id)
             return user
-        print(row)
         return None
     finally:
         close_db_connection(conn, cursor)
+
+
+def set_user_password(user_id, password):
+    conn = create_db_connection()
+    cursor = conn.cursor()
+    try:
+        password_hash = generate_password_hash(password)
+        cursor.execute("UPDATE users.Users SET PasswordHash = ? WHERE id = ?", (password_hash, user_id))
+        conn.commit()
+        return password_hash
+    finally:
+        close_db_connection(conn, cursor)
+
+
+def authenticate_user(username, password):
+    """Validate username/password against common Users table."""
+    user = get_user_by_username(username)
+    if user and user.password_hash and check_password_hash(user.password_hash, password):
+        return user
+    return None
 
 
 # -------------------------

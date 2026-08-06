@@ -460,6 +460,7 @@
         request(`/admin/get_user_settings/${userId}`)
             .then(r => r.json())
             .then(payload => {
+                console.log('User settings payload:', payload);
                 if (!payload.success) throw new Error(payload.message || 'Failed to load user settings');
                 return payload;
             })

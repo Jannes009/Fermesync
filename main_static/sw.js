@@ -2,7 +2,7 @@
 const IS_DEV = true;
 
 const CACHE_NAME = IS_DEV
-  ? 'fermesync-dev-v2'          // never rely on versioning
+  ? 'fermesync-dev-v1'          // never rely on versioning
   : 'fermesync-v1';          // bump ONLY on prod deploys
 
 // ------------------
@@ -20,7 +20,6 @@ const SHELL = [
 
   // Rendered pages (HTML)
   '/main_static/offline.html',
-  // '/login',
   // '/inventory/',
   // '/inventory/ibt/popup',
   // '/inventory/suggested-order/popup',

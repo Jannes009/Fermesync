@@ -43,6 +43,7 @@ def get_user_settings(user_id):
         proj_groups = [row[0] for row in cursor.fetchall()]
 
         return jsonify({
+            "success": True,
             "permissions": perms,
             "warehouses": whs,
             "not_prefs": not_prefs,

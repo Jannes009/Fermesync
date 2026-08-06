@@ -9,7 +9,7 @@ class BaseConfig:
     SESSION_COOKIE_HTTPONLY = True
     SESSION_COOKIE_SAMESITE = "Lax"
     SESSION_COOKIE_SECURE = False
-    PERMANENT_SESSION_LIFETIME = timedelta(days=30)
+    PERMANENT_SESSION_LIFETIME = timedelta(days=1)
 
 class DevelopmentConfig(BaseConfig):
     DEBUG = True

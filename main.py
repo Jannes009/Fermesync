@@ -1,10 +1,10 @@
-from flask import Flask, render_template, request, redirect, session, url_for, make_response, send_from_directory
+from flask import Flask, render_template, request, redirect, session, url_for, make_response, send_from_directory, jsonify
 from flask_login import login_user, logout_user, current_user, login_required
-from Core.auth import login_manager, authenticate_user
+from Core.auth import login_manager, authenticate_user, get_user_by_username, set_user_password
 import os
 from Core.config import DevelopmentConfig, ProductionConfig, TestingConfig
 import subprocess
-from Instance.local_settings import FLASK_ENV
+from Instance.local_settings import FLASK_ENV, ONESIGNAL_APP_ID
 
 # -----------------------------
 # Flask App
@@ -62,6 +62,12 @@ def create_app():
             "vapid_public_key": app.config.get("VAPID_PUBLIC_KEY")
         }
 
+    @app.context_processor
+    def inject_onesignal():
+        return {
+            "onesignal_app_id": ONESIGNAL_APP_ID
+        }
+
     @app.route("/")
     def index():
         if current_user.is_authenticated:
@@ -74,16 +80,62 @@ def create_app():
             return redirect(url_for('dashboard'))
         error_msg = None
         if request.method == "POST":
-            username = request.form.get('username')
-            password = request.form.get('password')
+            username = request.form.get('username', '').strip()
+            password = request.form.get('password', '')
+            confirm_password = request.form.get('confirm_password', '')
+
+            if not username:
+                error_msg = "Username is required"
+                return render_template('index.html', error=error_msg)
+
+            user = get_user_by_username(username)
+            if not user:
+                error_msg = "Invalid username"
+                return render_template('index.html', error=error_msg)
+
+            if not user.password_hash:
+                if not password:
+                    error_msg = "Please create a password for first-time login"
+                    return render_template('index.html', error=error_msg, first_time=True, username=username)
+                if not confirm_password:
+                    error_msg = "Please confirm your password"
+                    return render_template('index.html', error=error_msg, first_time=True, username=username)
+                if password != confirm_password:
+                    error_msg = "Passwords do not match"
+                    return render_template('index.html', error=error_msg, first_time=True, username=username)
+
+                set_user_password(user.id, password)
+                user = authenticate_user(username, password)
+                if user:
+                    login_user(user, remember=True)
+                    session.permanent = True
+                    return redirect(url_for('dashboard'))
+                error_msg = "Unable to create password. Please try again."
+                return render_template('index.html', error=error_msg, first_time=True, username=username)
+
+            if not password:
+                error_msg = "Password is required"
+                return render_template('index.html', error=error_msg, username=username)
+
             user = authenticate_user(username, password)
             if user:
                 login_user(user, remember=True)
                 session.permanent = True
                 return redirect(url_for('dashboard'))
-            else:
-                error_msg = "Invalid username or password"
+
+            error_msg = "Invalid username or password"
         return render_template('index.html', error=error_msg)
+
+    @app.route('/login/check_username', methods=['POST'])
+    def check_username():
+        data = request.get_json() or {}
+        username = (data.get('username') or '').strip()
+        if not username:
+            return jsonify(success=False, message='Username is required'), 400
+        user = get_user_by_username(username)
+        if not user:
+            return jsonify(success=False, message='Username not found'), 404
+        return jsonify(success=True, has_password=bool(user.password_hash))
 
     @app.route("/logout")
     @login_required
@@ -101,6 +153,7 @@ def create_app():
 
         has_market = current_user.has_feature("MARKET")
         has_inventory = current_user.has_feature("INVENTORY")
+        print(f"User {current_user.username} has_market: {has_market}, has_inventory: {has_inventory}")  # Debugging lin
 
         if has_market and has_inventory:
             return render_template('dashboard.html')
@@ -112,7 +165,7 @@ def create_app():
             return redirect(url_for('inventory.dashboard'))
 
         else:
-            return redirect(url_for('account.view_account'))
+            return render_template('incomplete_account.html')
 
         
     # Serve manifest.json at root
