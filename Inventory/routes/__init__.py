@@ -11,11 +11,7 @@ inventory_bp = Blueprint(
 
 # Your existing imports
 from . import GRV
-from .OrderEntry import edit_po
-from .OrderEntry import PurchaseOrder
-from .OrderEntry import PO_summary
-from .OrderEntry import PO_requisition
-from .OrderEntry import pdf_generator
+from .import purchase_order
 from . import IBT
 from .stock_count import stock_count
 from .stock_count import stock_count_summary

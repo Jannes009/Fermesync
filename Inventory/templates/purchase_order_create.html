@@ -1,0 +1,384 @@
+{% extends "inventory_base.html" %}
+{% block content %}
+<main class="po-page">
+    <section class="page-header">
+        <div>
+            <h1>Create Purchase Order</h1>
+        </div>
+    </section>
+
+    <section class="form-card">
+        <div class="field-grid">
+            <label class="field-group">
+                <span>Supplier</span>
+                    <div class="searchable-field" id="supplier-field">
+                        <select id="supplier-select" class="searchable-select" style="width:100%"><option></option></select>
+                    </div>
+            </label>
+            <label class="field-group">
+                <span>Warehouse</span>
+                <div class="searchable-field" id="warehouse-field">
+                    <select id="warehouse-select" class="searchable-select" style="width:100%"><option></option></select>
+                </div>
+            </label>
+            <label class="field-group full-width">
+                <span>Description</span>
+                <textarea id="description" rows="2" placeholder="Optional order description"></textarea>
+            </label>
+        </div>
+    </section>
+
+    <section class="form-card">
+        <div class="line-header">
+            <h2>Order lines</h2>
+        </div>
+        <div class="table-responsive">
+            <table class="lines-table">
+                <thead>
+                    <tr>
+                        <th>Item</th>
+                        <th>Unit</th>
+                        <th>Qty</th>
+                        <th>Price</th>
+                        <th>Tax</th>
+                        <th>Total</th>
+                        <th></th>
+                    </tr>
+                </thead>
+                <tbody id="lines-body"></tbody>
+            </table>
+        </div>
+        <div class="line-actions-row">
+            <button type="button" id="add-line-btn" class="secondary-btn">Add line</button>
+        </div>
+        <div class="summary-row">
+            <div>
+                <span class="summary-label">Line count</span>
+                <strong id="line-count">0</strong>
+            </div>
+            <div>
+                <span class="summary-label">Order tax</span>
+                <strong id="order-tax">R 0.00</strong>
+            </div>
+            <div>
+                <span class="summary-label">Order total</span>
+                <strong id="order-total">R 0.00</strong>
+            </div>
+        </div>
+    </section>
+
+    <section class="form-card actions-card">
+        <button type="button" id="save-btn" class="primary-btn">Save Purchase Order</button>
+    </section>
+</main>
+<style>
+:root {
+    --bg: #f4f7fb;
+    --card-bg: #ffffff;
+    --border: #d9e2ef;
+    --text: #172b4d;
+    --muted: #657793;
+    --accent: #2f8bfd;
+    --success: #1f8a3d;
+    --danger: #e03e3e;
+}
+
+* { box-sizing: border-box; }
+
+body {
+    margin: 0;
+    font-family: Inter, system-ui, sans-serif;
+    background: var(--bg);
+    color: var(--text);
+}
+
+.po-page {
+    max-width: 1080px;
+    margin: 0 auto;
+    padding: 1.25rem;
+}
+
+.page-header { margin-bottom: 1rem; }
+.page-header h1 {
+    margin: 0;
+    font-size: clamp(1.6rem, 2.25vw, 2.25rem);
+}
+
+.form-card {
+    background: var(--card-bg);
+    border: 1px solid var(--border);
+    border-radius: 18px;
+    padding: 1.25rem;
+    box-shadow: 0 20px 50px rgba(38, 49, 78, 0.05);
+    margin-bottom: 1.25rem;
+}
+
+.field-grid {
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 1rem;
+}
+
+.field-group {
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+    font-size: 0.95rem;
+}
+.field-group.full-width { grid-column: 1 / -1; }
+.field-group span { font-weight: 600; }
+
+.field-group input,
+.field-group textarea,
+.lines-table input,
+.lines-table select {
+    width: 100%;
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    padding: 0.85rem 1rem;
+    font-size: 1rem;
+    color: var(--text);
+    background: #fff;
+    outline: none;
+}
+
+.field-group textarea:focus,
+.lines-table input:focus,
+.lines-table select:focus {
+    border-color: rgba(47, 143, 253, 0.4);
+    box-shadow: 0 0 0 4px rgba(47, 143, 253, 0.08);
+}
+
+/* ===== LINES TABLE ===== */
+.table-responsive {
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+}
+
+.lines-table {
+    width: 100%;
+    border-collapse: collapse;
+    min-width: 720px;          /* forces scroll only when really needed */
+}
+
+.lines-table th {
+    text-align: left;
+    padding: 0.75rem 0.85rem;
+    font-size: 0.85rem;
+    color: var(--muted);
+    font-weight: 600;
+    border-bottom: 1px solid var(--border);
+    white-space: nowrap;
+}
+
+.lines-table td {
+    padding: 0.75rem 0.85rem;
+    vertical-align: middle;
+    border-bottom: 1px solid #f0f4f9;
+}
+
+.line-tax { font-weight: 600; color: #2563eb; }
+.line-total { font-weight: 700; }
+
+.delete-line-btn {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 2.4rem;
+    height: 2.4rem;
+    border-radius: 999px;
+    border: 1px solid rgba(224, 62, 62, 0.2);
+    background: rgba(224, 62, 62, 0.08);
+    color: var(--danger);
+    font-size: 1.25rem;
+    cursor: pointer;
+}
+.delete-line-btn:hover {
+    background: rgba(224, 62, 62, 0.16);
+}
+
+/* Summary + buttons (unchanged) */
+.summary-row {
+    display: flex;
+    justify-content: space-between;
+    gap: 1rem;
+    align-items: center;
+    padding-top: 1rem;
+    color: var(--muted);
+    flex-wrap: wrap;
+}
+.summary-row > div {
+    min-width: 120px;
+}
+
+.line-header h2 { margin: 0; font-size: 1.2rem; }
+
+.line-actions-row {
+    margin-top: 1rem;
+    display: flex;
+    justify-content: flex-start;
+}
+
+.primary-btn, .secondary-btn {
+    border: none;
+    border-radius: 999px;
+    font-weight: 700;
+    padding: 0.95rem 1.25rem;
+    cursor: pointer;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+}
+.primary-btn {
+    background: var(--accent);
+    color: #fff;
+}
+.secondary-btn {
+    background: #eef5ff;
+    color: var(--accent);
+}
+
+.actions-card {
+    display: flex;
+    flex-direction: column;
+    gap: 1rem;
+}
+
+/* ========== MOBILE CARD LAYOUT ========== */
+@media (max-width: 720px) {
+    .po-page { padding: 1rem; }
+
+    .field-grid {
+        grid-template-columns: 1fr;
+    }
+
+    .lines-table {
+        min-width: 0;               /* allow it to shrink */
+    }
+
+    .lines-table thead {
+        display: none;              /* hide column headers */
+    }
+
+    .lines-table,
+    .lines-table tbody {
+        display: block;
+        width: 100%;
+    }
+
+    .lines-table tr.line-row {
+        display: grid;
+        grid-template-columns: repeat(3, minmax(0, 1fr));
+        gap: 0.75rem 1rem;
+        background: #fff;
+        border: 1px solid var(--border);
+        border-radius: 16px;
+        padding: 1.1rem;
+        margin-bottom: 1rem;
+        box-shadow: 0 8px 24px rgba(38, 49, 78, 0.06);
+    }
+
+    .lines-table td {
+        padding: 0;
+        border: none;
+        display: flex;
+        flex-direction: column;
+        gap: 0.35rem;
+    }
+
+    /* Labels */
+    .lines-table td::before {
+        content: attr(data-label);
+        font-size: 0.78rem;
+        font-weight: 600;
+        color: var(--muted);
+        text-transform: uppercase;
+        letter-spacing: 0.03em;
+    }
+
+    /* Product row spans all columns */
+    .col-item {
+        grid-column: 1 / -1;
+    }
+
+    /* Unit / Qty / Price share the second row */
+    .col-unit,
+    .col-qty,
+    .col-price {
+        grid-column: span 1;
+    }
+
+    /* Tax / Total / Delete share the third row */
+    .col-tax,
+    .col-total,
+    .col-actions {
+        grid-column: span 1;
+        align-items: flex-start;
+    }
+
+    .col-actions {
+        align-items: flex-end;
+        margin-top: 0.25rem;
+    }
+    .col-actions::before {
+        display: none;              /* no label for the button */
+    }
+    .delete-line-btn {
+        width: 100%;
+        height: 2.8rem;
+        border-radius: 12px;
+        font-size: 1.1rem;
+    }
+
+    .line-actions-row {
+        margin-top: 1rem;
+        display: flex;
+        justify-content: flex-start;
+    }
+
+    /* Make inputs a bit more touch-friendly */
+    .lines-table input,
+    .lines-table .select2-container {
+        font-size: 16px;            /* prevents iOS zoom */
+    }
+
+    .summary-row {
+        flex-direction: row;
+        justify-content: space-between;
+        align-items: center;
+        gap: 1rem;
+        flex-wrap: wrap;
+    }
+    .summary-row > div {
+        flex: 1 1 120px;
+        min-width: 120px;
+    }
+
+    .line-header {
+        flex-direction: column;
+        align-items: stretch;
+    }
+
+    .primary-btn,
+    .secondary-btn {
+        width: 100%;
+    }
+}
+
+/* Extra-narrow phones – keep everything readable */
+@media (max-width: 380px) {
+    .lines-table tr.line-row {
+        grid-template-columns: 1fr;
+    }
+    .col-qty,
+    .col-price,
+    .col-tax,
+    .col-total {
+        grid-column: 1 / -1;
+    }
+}
+    </style>
+
+    <script src="{{ url_for('inventory.static', filename='purchase_order.js') }}"></script>
+    <script src="{{ url_for('inventory.static', filename='purchase_order_prefill.js') }}"></script>
+{% endblock %}

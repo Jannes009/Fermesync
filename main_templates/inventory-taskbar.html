@@ -78,9 +78,9 @@
       {% if "AGR_MAIN" in current_user.permissions %}
       <li><a href="/agri/setup" class="taskbar-link">Agri Maintanance</a></li>
       {% endif %}
-      <!-- {% if "PO_REQUISITION_CREATE" in current_user.permissions or "PO_CREATE" in current_user.permissions or "PO_EDIT" in current_user.permissions or "PO_VIEW" in current_user.permissions %}
-      <li><a href="/inventory/po/requisition" class="taskbar-link">Purchase Order</a></li>
-      {% endif %} -->
+      {% if "PO_CREATE" in current_user.permissions %}
+      <li><a href="/inventory/create_purchase_order" class="taskbar-link">Purchase Order</a></li>
+      {% endif %}
       <!-- <li><a href="/inventory/barcode_scanner" class="taskbar-link">Barcode Scanner</a></li> -->
     </ul>
   </nav>
@@ -275,6 +275,16 @@
           <div class="mobile-nav-content">
             <span class="mobile-nav-icon">📦</span>
             <span>GRV</span>
+          </div>
+        </a>
+      </li>
+      {% endif %}
+      {% if "PO_CREATE" in current_user.permissions %}
+      <li class="mobile-nav-item">
+        <a href="/inventory/create_purchase_order" class="mobile-nav-link">
+          <div class="mobile-nav-content">
+            <span class="mobile-nav-icon">🧾</span>
+            <span>Purchase Order</span>
           </div>
         </a>
       </li>

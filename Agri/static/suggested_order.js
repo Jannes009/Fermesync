@@ -41,7 +41,7 @@ function initSuggestedOrder(container = document) {
         select.selectedIndex = index;
     }
 
-    async function loadData() {
+    async function loadRecommendationData() {
         const week = weekInput.value.trim();
         if (!week) return alert('Please enter week (YYYY-WW)');
 
@@ -52,9 +52,9 @@ function initSuggestedOrder(container = document) {
         loadingRow.innerHTML = `<td colspan="8" style="text-align:center; padding:1.25rem; color:#6b7280;">Loading suggested order data...</td>`;
         tbody.appendChild(loadingRow);
 
-        const res = await fetch(`/agri/suggested-order/data?week=${encodeURIComponent(week)}`);
+        const res = await request(`/agri/suggested-order/data?week=${encodeURIComponent(week)}`);
         const payload = await res.json();
-        if (payload.status !== 'ok') {
+        if (!payload.success) {
             // remove loading row and show message
             loadingRow.remove();
             return alert(payload.message || 'Error');
@@ -85,9 +85,9 @@ function initSuggestedOrder(container = document) {
             // fetch suppliers for this stock only
             let stockSuppliers = [];
             try {
-                const ssres = await fetch(`/agri/suggested-order/stock-suppliers/${encodeURIComponent(row.stock_link)}`);
+                const ssres = await request(`/agri/suggested-order/stock-suppliers/${encodeURIComponent(row.stock_link)}`);
                 const sspayload = await ssres.json();
-                if (sspayload.status === 'ok') stockSuppliers = sspayload.suppliers || [];
+                if (sspayload.success) stockSuppliers = sspayload.suppliers || [];
             } catch (e) {
                 stockSuppliers = [];
             }
@@ -158,10 +158,10 @@ function initSuggestedOrder(container = document) {
                     btn.textContent = '-';
                     btn.setAttribute('aria-expanded', 'true');
                     openDetail = detailTr;
-                    const dres = await fetch(`/agri/suggested-order/detail/${id}?week=${encodeURIComponent(week)}`);
+                    const dres = await request(`/agri/suggested-order/detail/${id}?week=${encodeURIComponent(week)}`);
                     const dpayload = await dres.json();
-                    if (dpayload.status !== 'ok') {
-                        detailContent.innerHTML = 'Error loading details';
+                    if (!dpayload.success) {
+                        detailContent.innerHTML = 'Error loading details' + (dpayload.message ? ': ' + dpayload.message : '');
                         return;
                     }
                     let html = '<table class="detail-table"><thead><tr><th></th><th>Warehouse</th><th>Stock Description</th><th class="col-num">Qty On Hand</th><th class="col-num">Qty On PO</th><th class="col-num">Qty to Order</th><th class="col-num">Qty On IBT</th></tr></thead><tbody>';
@@ -192,9 +192,9 @@ function initSuggestedOrder(container = document) {
                                 return;
                             }
 
-                            const sres = await fetch(`/agri/suggested-order/detail/${encodeURIComponent(stockLink)}/warehouse/${encodeURIComponent(whseId)}?week=${encodeURIComponent(week)}`);
+                            const sres = await request(`/agri/suggested-order/detail/${encodeURIComponent(stockLink)}/warehouse/${encodeURIComponent(whseId)}?week=${encodeURIComponent(week)}`);
                             const spayload = await sres.json();
-                            if (spayload.status !== 'ok') {
+                            if (!spayload.success) {
                                 alert('Error loading spray details');
                                 return;
                             }
@@ -247,14 +247,14 @@ function initSuggestedOrder(container = document) {
         if (warehouseOptionsCache[key]) return warehouseOptionsCache[key];
         if (warehouseOptionsLoading[key]) return warehouseOptionsLoading[key];
 
-        warehouseOptionsLoading[key] = fetch('/agri/suggested-order/order-warehouses', {
-            method: 'POST',
+        warehouseOptionsLoading[key] = request('/agri/suggested-order/order-warehouses', {
+            method: 'GET',
             headers: {'Content-Type': 'application/json'},
             body: JSON.stringify({stock_ids: stockIds})
         })
             .then(res => res.ok ? res.json() : Promise.reject(new Error('Unable to load warehouses')))
             .then(payload => {
-                if (payload.status === 'ok') {
+                if (payload.success) {
                     warehouseOptionsCache[key] = payload.warehouses || [];
                     return warehouseOptionsCache[key];
                 }
@@ -411,18 +411,11 @@ function initSuggestedOrder(container = document) {
             alert('Please select a warehouse for this order before creating it.');
             return;
         }
+        const prefill = { supplier_id: supplierId, warehouse_id: warehouseId || '', lines };
 
         try {
-            const res = await fetch('/agri/suggested-order/create-order', {
-                method: 'POST', headers: {'Content-Type': 'application/json'},
-                body: JSON.stringify({supplier_id: supplierId, warehouse_id: warehouseId, lines: lines})
-            });
-            const payload = await res.json();
-            if (payload.status === 'ok') {
-                supplierOrderStatus[supplierId] = {status: 'created', orderNumber: payload.order_number || '', message: ''};
-            } else {
-                supplierOrderStatus[supplierId] = {status: 'error', orderNumber: '', message: payload.message || 'Error creating order'};
-            }
+            const url = '/inventory/create_purchase_order?prefill=' + encodeURIComponent(JSON.stringify(prefill));
+            window.location.href = url;
         } catch (err) {
             supplierOrderStatus[supplierId] = {status: 'error', orderNumber: '', message: err.message || 'Network error'};
         }
@@ -431,9 +424,9 @@ function initSuggestedOrder(container = document) {
 
     document.getElementById('filter_needs_only')?.addEventListener('change', renderPreview);
 
-    weekInput.addEventListener('change', loadData);
+    weekInput.addEventListener('change', loadRecommendationData);
     populateWeekSelect(0, 5);
-    loadData();
+    loadRecommendationData();
 }
 
 window.openSuggestedOrderModal = async function () {

@@ -261,8 +261,8 @@
 <!-- ===================== -->
 <!-- JS -->
 <!-- ===================== -->
-<script src="{{ url_for('agri.static', filename='PurchaseOrder/suggested_order.js') }}?{{ filemtime('inventory', 'PurchaseOrder/suggested_order.js') }}"></script>
-<script src="{{ url_for('agri.static', filename='suggested_ibt.js') }}?{{ filemtime('inventory', 'suggested_ibt.js') }}"></script>
+<script src="{{ url_for('agri.static', filename='suggested_order.js') }}?{{ filemtime('agri', 'suggested_order.js') }}"></script>
+<script src="{{ url_for('agri.static', filename='suggested_ibt.js') }}?{{ filemtime('agri', 'suggested_ibt.js') }}"></script>
 <script>
 function getSelectedWarehouseId() { 
   const el = document.getElementById('warehouseSelect');
