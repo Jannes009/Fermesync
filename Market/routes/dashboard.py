@@ -1,7 +1,7 @@
 ﻿from flask import jsonify, current_app, request
 from datetime import datetime, timedelta
 from Core.auth import create_db_connection, close_db_connection
-
+from flask_login import login_required, current_user
 
 from Market.routes import market_bp
 

@@ -47,7 +47,6 @@ def get_import_results():
 
     # Process data into [mkt].list of dictionaries
     results = [dict(zip(column_names, row)) for row in rows]
-    print(results)
     # Close connections
     cursor.close()
     conn.close()
@@ -58,10 +57,8 @@ def get_import_results():
 @market_bp.route('/import/get_dockets', methods=['GET'])
 def get_dockets():
     consignment_id = request.args.get('consignment_id')
-    print(f"Received consignment_id: {consignment_id}")
     conn = create_db_connection()
     cursor = conn.cursor()
-    print(consignment_id)
     cursor.execute("""
         SELECT DocketNumber, QtySold, Price, SalesValue, DateSold
         FROM [mkt].ZZMarketDataTrn
@@ -178,7 +175,6 @@ def get_consignment_details(consignment_id):
     from [mkt].DelNoteLineLookup
     Where DelNoteNo = ?
     """
-    print(consignment_id, query)
     try:
         conn = create_db_connection()
         cursor = conn.cursor()
@@ -235,7 +231,6 @@ def get_consignment_details(consignment_id):
 @market_bp.route("/import/get_consignment_details", methods=["GET"])
 def fetch_consignment_details():
     consignment_id = request.args.get("consignment_id")
-    print(f"Fetching details for consignment_id: {consignment_id}")
 
     if not consignment_id:
         return jsonify({"error": "Consignment ID is required"}), 400
@@ -292,7 +287,6 @@ def discard_consignment(consignment_id=None):
     try:
         conn = create_db_connection()
         cursor = conn.cursor()
-        print(consignment_id)
         cursor.execute("""
             UPDATE [mkt].ZZMarketDataTrn
             SET Deleted = 1

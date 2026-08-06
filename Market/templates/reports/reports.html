@@ -960,12 +960,25 @@
                 });
         }
         async function loadReportDropdownOptions() {
-            const data = await fetch("/market/static/report_templates.json");
-            if (!data.ok) throw new Error("Failed to load JSON data");
-            reportSelect.innerHTML = "";
+            const reportSelect = document.getElementById("reportSelect");
+            if (!reportSelect) {
+                throw new Error("Report select dropdown not found");
+            }
 
-            const templatesData = await data.json();
-            window.templatesData = templatesData;
+            let templatesData = {};
+            try {
+                const response = await fetch("/market/static/report_templates.json");
+                if (response.ok) {
+                    templatesData = await response.json();
+                } else {
+                    console.warn("Report templates JSON not found, using empty template set.", response.status);
+                }
+            } catch (err) {
+                console.warn("Failed to load report_templates.json", err);
+            }
+
+            reportSelect.innerHTML = "";
+            window.templatesData = templatesData || {};
 
             const placeholder = document.createElement("option");
             placeholder.value = "";
@@ -974,17 +987,17 @@
             placeholder.textContent = "Select Report";
             reportSelect.appendChild(placeholder);
 
-            Object.keys(templatesData).forEach(key => {
-                const report = templatesData[key];
+            Object.keys(window.templatesData).forEach(key => {
+                const report = window.templatesData[key];
                 const option = document.createElement("option");
                 option.value = key;
                 option.textContent = report.name || key;
                 reportSelect.appendChild(option);
             });
 
-            // Add this block to auto-select the first option
-            if (reportSelect.options.length > 0) {
-                reportSelect.selectedIndex = 0;
+            // Auto-select the first option only if there are real templates
+            if (reportSelect.options.length > 1) {
+                reportSelect.selectedIndex = 1;
             }
         }
 
@@ -998,8 +1011,15 @@
                 // Load dropdown options first
                 await loadReportDropdownOptions();
                 
-                const response = await fetch("/market/static/delivery_note_data.json");
-                if (!response.ok) throw new Error("Failed to load JSON data");
+                const startDate = document.getElementById("startDate").value;
+                const endDate = document.getElementById("endDate").value;
+
+                let response = await fetch("/market/static/delivery_note_data.json");
+                if (!response.ok) {
+                    debugLog("Static delivery_note_data.json not found, fetching report data from API...");
+                    response = await fetch(`/market/api/fetch-delivery-note-report?startDate=${encodeURIComponent(startDate)}&endDate=${encodeURIComponent(endDate)}`);
+                }
+                if (!response.ok) throw new Error("Failed to load report data");
                 const responseData = await response.json();
                 window.originalData = responseData.data || responseData;
                 window.reportParameters = responseData.parameters || { startDate: document.getElementById("startDate").value, endDate: document.getElementById("endDate").value, dateCreated: new Date().toISOString().split('T')[0] };
@@ -1042,11 +1062,16 @@
                 });
 
             } catch (err) {
-                document.getElementById("loadingOverlay").innerHTML = `
-                    <div class="loading-content">
-                        <div class="alert alert-danger">Failed to load report data. Please try again later.</div>
-                    </div>
-                `;
+                hideLoadingOverlay();
+                await Swal.fire({
+                    icon: 'error',
+                    title: 'Report load failed',
+                    text: err.message || 'Failed to load report data. Please try again later.',
+                    confirmButtonText: 'Close',
+                    showCloseButton: true,
+                    allowOutsideClick: true,
+                    allowEscapeKey: true
+                });
                 debugLog("Error in DOMContentLoaded:", err);
             }
         });

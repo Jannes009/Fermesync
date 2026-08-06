@@ -257,59 +257,9 @@ def check_invoice_no():
     conn.close()
     return jsonify({'exists': exists})
 
-@market_bp.route('/sales-order/<int:sales_order_id>')
-def sales_order_detail_page(sales_order_id):
-    return render_template('Invoice page/sales_order_detail.html')
-
-@market_bp.route('/api/sales-order/<int:sales_order_id>')
-def api_sales_order_detail(sales_order_id):
-    conn = create_db_connection()
-    cursor = conn.cursor()
-
-    # Fetch sales order header from [mkt]._uvInvoiceSOStatus
-    cursor.execute("""
-        SELECT InvoiceIndex, InvoiceDate, InvoiceDelNoteNo, InvoiceNo, AgentName, InvoiceTaxRate, InvoiceGross, InvoiceTotalDeducted, InvoiceAgentCommIncl, InvoiceMarketCommIncl, InvoiceOtherCostsIncl, InvoiceNett, InvoiceQty, InvoiceEvoSONumber, Status
-        FROM [mkt]._uvInvoiceSOStatus
-        WHERE InvoiceIndex = ?
-    """, (sales_order_id,))
-    header_row = cursor.fetchone()
-    if not header_row:
-        close_db_connection(cursor, conn)
-        return jsonify({"error": "Sales order not found"}), 404
-
-    header_columns = [desc[0] for desc in cursor.description]
-    sales_order_header = dict(zip(header_columns, header_row))
-
-    # Fetch sales order lines (keep as is)
-    cursor.execute("SELECT * FROM [mkt]._uvMarketInvoiceLines WHERE InvoiceIndex = ?", (sales_order_id,))
-    line_rows = cursor.fetchall()
-    line_columns = [desc[0] for desc in cursor.description]
-    sales_order_lines = [dict(zip(line_columns, row)) for row in line_rows]
-
-    close_db_connection(cursor, conn)
-    return jsonify({"sales_order_header": sales_order_header, "sales_order_lines": sales_order_lines})
-
 @market_bp.route('/sales-orders')
 def sales_order_summary_page():
     return render_template('Invoice page/sales_order_summary.html')
-
-@market_bp.route('/api/sales-orders')
-def api_sales_orders():
-    conn = create_db_connection()
-    cursor = conn.cursor()
-    # Fetch all sales order headers from [mkt]._uvInvoiceSOStatus, now including InvoiceNo and InvoiceQty
-    cursor.execute("""
-        SELECT InvoiceIndex, InvoiceDate, InvoiceDelNoteNo, InvoiceNo, AgentName, InvoiceTaxRate, InvoiceGross, 
-        InvoiceGross, InvoiceTotalDeducted, InvoiceAgentCommIncl, InvoiceMarketCommIncl, InvoiceOtherCostsIncl, 
-        InvoiceNett, InvoiceQty, InvoiceEvoSONumber, Status
-        FROM [mkt]._uvInvoiceSOStatus
-        ORDER BY InvoiceDate DESC, InvoiceIndex DESC
-    """)
-    rows = cursor.fetchall()
-    columns = [desc[0] for desc in cursor.description]
-    sales_orders = [dict(zip(columns, row)) for row in rows]
-    close_db_connection(cursor, conn)
-    return jsonify(sales_orders)
 
 @market_bp.route('/purchase-orders')
 def purchase_order_summary_page():

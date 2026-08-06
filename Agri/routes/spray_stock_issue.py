@@ -17,7 +17,7 @@ def fetch_spray_for_issue():
     """)
     rows = cursor.fetchall()
     conn.close()
-    return jsonify({"executions": [
+    return jsonify({"success": True, "executions": [
         {"execution_id": row.IdSprExec, "date": row.SprExecDate, "responsible_person": row.PersonName, "warehouse_id": row.SprayHWhseId}
         for row in rows
     ]})
@@ -63,10 +63,10 @@ def fetch_spray_products():
                 "uom_id": row.UoMId,
                 "execution_nett_issued": row.ExecutionNettIssued
             })
-        return jsonify({"spray_products": products_list})
+        return jsonify({"success": True, "spray_products": products_list})
     except Exception as e:
         print("Error fetching spray products:", e)
-        return jsonify({"status": "error", "message": "Failed to fetch spray products"}), 500
+        return jsonify({"success": False, "message": "Failed to fetch spray products"}), 500
 
 @agri_bp.route("/fetch_products_for_spray_execution", methods=["GET"])
 @login_required
@@ -74,7 +74,7 @@ def fetch_products_for_spray():
     """Returns only products that are on the spray instruction"""
     execution_id = request.args.get("execution_id")
     if not execution_id:
-        return jsonify({"status": "error", "message": "Execution ID is required"}), 400
+        return jsonify({"success": False, "message": "Execution ID is required"}), 400
 
     conn = create_db_connection()
     cursor = conn.cursor()
@@ -100,5 +100,5 @@ def fetch_products_for_spray():
         }
         for row in rows
     ]
-    return jsonify({"products": products_list})
+    return jsonify({"success": True, "products": products_list})
 

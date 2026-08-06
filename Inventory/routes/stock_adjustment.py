@@ -115,7 +115,7 @@ def adjust_stock_products():
         u.ConversionFactor
         FROM stk._uvInventoryQty q
         LEFT JOIN cmn._uvStockUnitConversion u ON u.StockLink = q.StockLink
-        WHERE q.WhseItem = 1 AND q.ServiceItem = 0
+        WHERE q.WhseItem = 1
         ORDER BY q.StockDescription
         """
         cur.execute(sql)

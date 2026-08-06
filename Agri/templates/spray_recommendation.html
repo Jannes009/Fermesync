@@ -124,9 +124,61 @@
         align-items: center;
     }
 
+    .product-select-field,
+    .rate-field,
+    .total-field,
+    .per-tank-field,
+    .actions-field {
+        min-width: 0;
+    }
+
+    .product-card .icon-btn {
+        min-width: 42px;
+        min-height: 42px;
+        padding: 10px 12px;
+        font-size: 18px;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+    }
+
     @media (max-width: 950px) {
         .product-grid {
-            grid-template-columns: 1fr;
+            grid-template-columns: minmax(0, 1fr) minmax(0, 1fr) auto;
+            grid-template-areas:
+                "product product buttons"
+                "rate total per-tank";
+            gap: 10px;
+            align-items: stretch;
+        }
+
+        .product-grid > .product-select-field {
+            grid-area: product;
+        }
+
+        .product-grid > .rate-field {
+            grid-area: rate;
+        }
+
+        .product-grid > .total-field {
+            grid-area: total;
+        }
+
+        .product-grid > .per-tank-field {
+            grid-area: per-tank;
+        }
+
+        .product-grid > .actions-field {
+            grid-area: buttons;
+            display: flex;
+            align-items: center;
+            justify-content: flex-end;
+        }
+
+        .product-grid > .actions-field button {
+            width: 44px;
+            height: 44px;
+            padding: 0;
         }
     }
 
@@ -199,128 +251,78 @@
 
     /* ====== SELECT2 CUSTOM STYLES ====== */
 
-    /* Normal Select2 elements - full width */
-    .select2-container {
-        width: 100% !important;
-    }
+/* ====== SELECT2 – prevent page widening + allow wrapping ====== */
 
-    /* Product grid specific styles */
-    .product-grid .select2-container {
-        width: 100% !important;
-        max-width: 100%;
-    }
+.select2-container {
+    width: 100% !important;
+}
 
-    /* Fix the product select container to not overflow */
-    .product-grid .select2-container--default .select2-selection--single {
-        height: 38px;
-        border: 1px solid var(--line);
-        border-radius: 8px;
-        padding: 0 4px;
-    }
+/* Closed select (the visible box) */
+.product-grid .select2-container--default .select2-selection--single {
+    height: 38px;
+    border: 1px solid var(--line);
+    border-radius: 8px;
+}
+.product-grid .select2-container--default .select2-selection--single .select2-selection__rendered {
+    line-height: 38px;
+    padding-right: 30px;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
 
-    .product-grid .select2-container--default .select2-selection--single .select2-selection__rendered {
-        line-height: 38px;
-        padding-right: 30px;
-        white-space: nowrap;
-        overflow: hidden;
-        text-overflow: ellipsis;
-        font-size: 14px;
-    }
+/* ---- THE IMPORTANT PART: dropdown ---- */
+.product-dropdown.select2-dropdown {
+    /* never wider than the screen */
+    max-width: min(560px, 92vw) !important;
+    width: auto !important;
+    box-sizing: border-box;
+}
 
-    .product-grid .select2-container--default .select2-selection--single .select2-selection__arrow {
-        height: 36px;
-        right: 4px;
-    }
+/* Allow the option text to wrap */
+.product-dropdown .select2-results__option {
+    white-space: normal !important;       /* ← this is the key */
+    word-break: break-word;
+    overflow-wrap: anywhere;
+    line-height: 1.35;
+    padding: 9px 12px;
+}
 
-    /* Dropdown styling - limit width to widest option with max-width */
-    .product-dropdown {
-        min-width: 200px !important;
-        max-width: 600px !important;
-        width: auto !important;
-    }
+/* Results list itself */
+.product-dropdown .select2-results__options {
+    max-height: 300px;
+    overflow-y: auto;
+}
 
-    .product-dropdown .select2-results__options {
-        max-height: 300px;
-        overflow-y: auto;
-    }
-
-    .product-dropdown .select2-results__option {
-        white-space: nowrap;
-        overflow: hidden;
-        text-overflow: ellipsis;
-        padding: 8px 12px;
-        max-width: 580px;
-    }
-
-    /* For very long options, show ellipsis */
-    .product-dropdown .select2-results__option .select2-results__option--highlighted {
-        background-color: var(--accent-soft);
-    }
-
-    /* Ensure dropdown appears above other elements */
-    .product-grid.select2-container--open .select2-dropdown {
-        z-index: 1050;
-    }
-
-    /* Adjust the dropdown to match the selected item's text */
-    .product-grid.select2-container--default .select2-dropdown .select2-search--dropdown {
-        padding: 4px;
-    }
-
-    .product-grid.select2-container--default .select2-dropdown .select2-search--dropdown .select2-search__field {
-        padding: 8px 12px;
-        border: 1px solid var(--line);
-        border-radius: 6px;
-    }
-
-    /* Override to prevent full-width dropdown */
-    .product-grid.select2-container--open .product-grid.select2-dropdown--below,
-    .product-grid.select2-container--open .product-grid.select2-dropdown--above {
-        width: auto !important;
-        min-width: 200px !important;
-        max-width: 600px !important;
-    }
-
-    /* Fix for the button area in product grid */
-    .product-grid {
-        display: grid;
-        grid-template-columns: 1fr 120px 120px 120px minmax(90px, auto);
-        gap: 10px;
-        align-items: start;
-    }
-
-    @media (max-width: 950px) {
-        .product-grid {
-            grid-template-columns: 1fr;
-        }
-    }
-
+/* Keep the search box looking good */
+.product-dropdown .select2-search--dropdown .select2-search__field {
+    padding: 8px 12px;
+    border: 1px solid var(--line);
+    border-radius: 6px;
+}
     /* Make the select container fill its grid cell properly */
     .product-grid > div:first-child {
         min-width: 0;
         overflow: hidden;
     }
 
-    /* Ensure the button cell can expand without pushing past the card */
-    .product-grid > div:last-child {
-        min-width: 0;
-        display: flex;
-        justify-content: flex-end;
-        gap: 8px;
-    }
-
-    .icon-btn {
+    .product-card .icon-btn {
         background: transparent;
         border: 1px solid transparent;
-        padding: 6px 8px;
+        padding: 10px 12px;
         border-radius: 8px;
         cursor: pointer;
-        font-size: 14px;
+        font-size: 18px;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        min-width: 42px;
+        min-height: 42px;
     }
-    .icon-btn:hover {
+    .product-card .icon-btn:hover {
         background: #f3f4f6;
     }
-    .icon-btn.delete {
+    .product-card .icon-btn.delete {
         color: var(--danger);
     }
 

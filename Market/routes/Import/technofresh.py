@@ -25,6 +25,7 @@ def Technofresh(current_user, start_date, end_date):
 
         technofresh_username = service["username"]
         technofresh_password = service["password"]
+        print(f"Technofresh credentials for user '{current_user.username}': {technofresh_username}, {technofresh_password}")
 
         yield from status("Logging into Technofresh CRM...")
         try:

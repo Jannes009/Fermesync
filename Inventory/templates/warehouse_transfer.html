@@ -399,8 +399,9 @@ document.addEventListener("DOMContentLoaded", function(){
         width: '100%'
     })
 
-    // attach change AFTER select2
-    $('#fromWarehouse').on('change', loadProductsForWarehouse)
+    // attach change AFTER select2 — only fetch products once both warehouses selected
+    $('#fromWarehouse').on('change', fetchProductsForBoth)
+    $('#toWarehouse').on('change', fetchProductsForBoth)
 
     loadData()
 })
@@ -442,36 +443,45 @@ function populateWarehouses(warehouses){
     $('#toWarehouse').trigger('change.select2')
 }
 
-    // LOAD PRODUCTS FOR SELECTED WAREHOUSE
-    function loadProductsForWarehouse(){
+    // LOAD PRODUCTS FOR BOTH SELECTED WAREHOUSES
+    function fetchProductsForBoth(){
+        const fromWarehouse = $('#fromWarehouse').val()
+        const toWarehouse = $('#toWarehouse').val()
 
-        let fromWarehouse = $('#fromWarehouse').val()
+        if (!fromWarehouse || !toWarehouse) {
+            // clear existing lines when warehouses are incomplete
+            products = []
+            document.getElementById("transferLines").innerHTML = ""
+            return
+        }
 
-        if(!fromWarehouse) return
-        console.log("Loading products for warehouse", fromWarehouse)
-
-        request(`/inventory/SDK/fetch_products_in_warehouse?warehouse_id=${fromWarehouse}`)
-        .then(r=>r.json())
-        .then(data=>{
-            if(!data.success){
-                Swal.fire("Error", data.message || "Failed to load products", "error")
+        // POST payload expects whse_from_id and whse_to_id
+        request('/inventory/fetch_products_in_both_whses', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ whse_from_id: fromWarehouse, whse_to_id: toWarehouse })
+        })
+        .then(r => r.json())
+        .then(data => {
+            if (!data.success) {
+                Swal.fire('Error', data.message || 'Failed to load products', 'error')
                 return
             }
             products = data.products || []
-
             document.getElementById("transferLines").innerHTML = ""
-
-            if(products.length > 0){
-                addLine()
-            }
+            if (products.length > 0) addLine()
+        })
+        .catch(err => {
+            console.error('Failed to fetch products for both warehouses', err)
+            Swal.fire('Error', 'Failed to load products', 'error')
         })
     }
 
 // CREATE PRODUCT OPTIONS
 function buildProductOptions(){
     return products.map(p =>
-        `<option value="${p.product_link}" data-uom="${p.stocking_uom_code}" data-qty="${p.qty_in_whse}">
-            ${p.product_code} - ${p.product_desc} (${parseFloat(p.qty_in_whse).toFixed(2)} ${p.stocking_uom_code} available)
+        `<option value="${p.product_id}" data-uom="${p.stocking_unit_code}" data-qty="${p.qty_in_whse}">
+            ${p.product_desc} (${parseFloat(p.qty_in_whse).toFixed(2)} ${p.stocking_unit_code} available)
         </option>`
     ).join("")
 }

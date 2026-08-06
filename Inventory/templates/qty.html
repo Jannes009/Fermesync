@@ -204,7 +204,7 @@
             <input type="text" id="stockSearch" placeholder="Search Active Ingredient or description..." onkeyup="filterStockTable()" />
         </div>
         </div>
-        <div class="table-container">
+        <div class="table-container table-container--sticky">
           <table class="stock-table">
             <thead>
               <tr>
@@ -1196,6 +1196,21 @@ document.addEventListener('DOMContentLoaded', function () {
   overflow-x: auto;
   border-radius: 8px;
   border: 1px solid var(--input-border, #d1d5db);
+}
+
+/* Sticky table header for vertical scrolling */
+.table-container--sticky {
+  max-height: 60vh;
+  overflow: auto;
+  position: relative;
+}
+
+.table-container--sticky thead th {
+  position: sticky;
+  top: 0;
+  background: linear-gradient(135deg, var(--form-bg, #f9fafb));
+  z-index: 3;
+  box-shadow: 0 2px 4px rgba(0,0,0,0.05);
 }
 
 .stock-table {

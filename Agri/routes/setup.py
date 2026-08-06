@@ -54,21 +54,22 @@ def setup():
     varieties = cur.fetchall()
 
     # Projects
-    cur.execute("""
+    cur.execute(f"""
         SELECT ProjectLink, ProjectCode, ProjectName
         FROM [cmn]._uvProject
+        WHERE MainProjectLink IN ({','.join(['?'] * len(current_user.projects))}) 
         ORDER BY ProjectCode
-    """)
+    """, current_user.projects)
     projects = cur.fetchall()
 
     # Warehouses
-    cur.execute("""
+    cur.execute(f"""
         SELECT WhseLink, WhseDescription
         FROM [cmn]._uvWarehouses WHSE
 		JOIN [agr].[WarehouseAttributes] ATTR on ATTR.WhAttrWhseId = WHSE.WhseLink
-        where ATTR.WhAttrWhseType = 'Chemical'
+        where ATTR.WhAttrWhseType = 'Chemical' and WhseLink IN ({','.join(['?'] * len(current_user.warehouses))})
         ORDER BY WhseDescription
-    """)
+    """, current_user.warehouses)
     warehouses = cur.fetchall()
 
     # Spray Methods
@@ -86,7 +87,7 @@ def setup():
     spray_methods = cur.fetchall()
 
     # Spray Projects
-    cur.execute("""
+    cur.execute(f"""
     SELECT
         pa.IdProjAttr,
         pa.ProjAttrProjectId,
@@ -110,8 +111,9 @@ def setup():
     LEFT JOIN [cmn]._uvWarehouses WHSE on WHSE.WhseLink = PA.ProjAttrWhseId
     JOIN agr.Crop CRP on CRP.IdCrop = PA.ProjAttrCropId
     JOIN agr.Variety VA on VA.IdVariety = PA.ProjAttrVarietyId
+    Where PRJ.MainProjectLink IN ({','.join(['?'] * len(current_user.projects))})
     Order BY PRJ.ProjectName
-    """)
+    """, current_user.projects)
     spray_projects = cur.fetchall()
 
     conn.close()

@@ -6,7 +6,9 @@
   .page-content { display: flex; flex-direction: column; flex: 1; }
   .wrap { width: 100%; margin: 0 auto; padding: 1rem; max-width: 1200px; }
   .card { background: var(--container-bg); border-radius: 8px; box-shadow: 0 1px 6px rgba(44,62,80,0.08); padding: 1.5rem; margin-bottom: 1rem; }
-  header h1 { margin: 0; font-size: 1.4rem; color: var(--primary-text); }
+  .page-header { display: flex; justify-content: space-between; align-items: center; gap: 1rem; flex-wrap: wrap; margin-bottom: 1rem; }
+  .page-header h1 { margin: 0; font-size: 1.4rem; color: var(--primary-text); }
+  .page-header a.btn-primary { margin-left: auto; }
   .form-group { margin-bottom: 0; }
   .form-group label { font-weight: 600; color: var(--secondary-text); display: block; margin-bottom: 6px; font-size: 0.9rem; }
   .form-group select, .form-group input { width: 100%; padding: 12px 14px; border: 1px solid var(--input-border); border-radius: 8px; background: var(--form-bg); font-size: 1rem; }
@@ -278,6 +280,98 @@
     display: none;
   }
 
+  .mobile-card {
+    background: var(--container-bg);
+    border: 1px solid var(--input-border);
+    border-radius: 16px;
+    padding: 18px;
+    margin-bottom: 14px;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.08);
+    transition: box-shadow 0.2s ease, transform 0.2s ease;
+    cursor: pointer;
+  }
+
+  .mobile-card:hover {
+    transform: translateY(-1px);
+    box-shadow: 0 4px 12px rgba(0,0,0,0.12);
+  }
+
+  .mobile-card.disabled-row {
+    opacity: 0.65;
+    cursor: default;
+  }
+
+  .mobile-card-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    gap: 0.75rem;
+    flex-wrap: wrap;
+    margin-bottom: 14px;
+  }
+
+  .mobile-card-title {
+    font-size: 1rem;
+    font-weight: 700;
+    color: var(--primary-text);
+    margin-bottom: 4px;
+  }
+
+  .mobile-card-meta {
+    color: var(--secondary-text);
+    font-size: 0.95rem;
+  }
+
+  .mobile-card-status {
+    white-space: nowrap;
+    padding: 7px 12px;
+    border-radius: 999px;
+    background: rgba(0, 123, 255, 0.12);
+    color: var(--primary-text);
+    font-size: 0.85rem;
+    font-weight: 600;
+    text-transform: capitalize;
+  }
+
+  .mobile-card-row {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    gap: 0.75rem;
+    flex-wrap: wrap;
+    margin-bottom: 10px;
+    color: var(--secondary-text);
+    font-size: 0.92rem;
+  }
+
+  .mobile-card-row strong {
+    color: var(--primary-text);
+    font-weight: 600;
+  }
+
+  .mobile-card-checkbox {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.5rem;
+    margin-top: 12px;
+    font-size: 0.95rem;
+    color: var(--primary-text);
+  }
+
+  .mobile-card-checkbox input {
+    width: 18px;
+    height: 18px;
+  }
+
+  .mobile-no-data {
+    padding: 16px 14px;
+    margin-top: 12px;
+    border-radius: 12px;
+    background: var(--form-bg);
+    color: var(--secondary-text);
+    text-align: center;
+  }
+
   .rec-card {
     background: var(--container-bg);
     border: 1px solid var(--input-border);
@@ -389,8 +483,9 @@
   @media (max-width: 768px) {
     .wrap { padding: 0.5rem; }
     .card { padding: 1rem; margin-bottom: 0.5rem; }
-    header { flex-direction: column; align-items: flex-start; gap: 1rem; }
-    header h1 { font-size: 1.2rem; }
+    .page-header { flex-direction: column; align-items: flex-start; gap: 1rem; }
+    .page-header h1 { font-size: 1.2rem; }
+    .page-header a.btn-primary { width: 100%; text-align: center; margin-left: 0; }
     .form-group select, .form-group input { padding: 10px 12px; font-size: 16px; }
     .btn-group { flex-direction: column; gap: 0.5rem; }
     .btn-group button { width: 100%; padding: 12px; }
@@ -411,7 +506,7 @@
     .card { padding: 0.75rem; }
     .rec-card { padding: 10px; }
     .rec-details { font-size: 0.85rem; }
-    header a.btn-primary { width: 100%; text-align: center; }
+    .page-header a.btn-primary { width: 100%; text-align: center; }
   }
 
   /* Tree Structure */
@@ -673,7 +768,7 @@
 <div class="page-content">
   <div class="wrap">
     <div class="card">
-      <header style="display:flex; justify-content:space-between; align-items:center; margin-bottom:1.5rem;">
+      <header class="page-header">
         <h1>Spray Recommendations</h1>
         {% if 'SPRAY_REC_CREATE' in current_user.permissions %}
         <a href="/agri/spray-recommendation/create" class="btn-primary" style="text-decoration:none; margin:0; white-space: nowrap;">+ New Recommendation</a>
@@ -730,8 +825,6 @@
                 <th data-sort="start_date">Start</th>
                 <th data-sort="end_date">End</th>
                 <th data-sort="block_no">Block</th>
-                <th data-sort="farm_name">Farm</th>
-                <th data-sort="warehouse_name">Warehouse</th>
               </tr>
             </thead>
             <tbody id="recTableBody">
@@ -741,6 +834,7 @@
             </tbody>
           </table>
         </div>
+        <div id="mobileCards" class="mobile-cards" aria-live="polite"></div>
       </div>
 
     </div>
@@ -935,6 +1029,10 @@ function renderRecommendationsTable() {
     const filtered = applyFilters();
     if (filtered.length === 0) {
         body.innerHTML = '<tr><td class="no-data" colspan="10">No spray recommendations found.</td></tr>';
+        const mobileCards = document.getElementById('mobileCards');
+        if (mobileCards) {
+            mobileCards.innerHTML = '<div class="mobile-no-data">No spray recommendations found.</div>';
+        }
         return;
     }
 
@@ -964,13 +1062,56 @@ function renderRecommendationsTable() {
                 <td>${formatDateTime(rec.start_date)}</td>
                 <td>${formatDateTime(rec.end_date)}</td>
                 <td>${escapeHtml(rec.block_no)}</td>
-                <td>${escapeHtml(rec.farm_name)}</td>
-                <td>${escapeHtml(rec.warehouse_name)}</td>
             </tr>
         `;
     }).join('');
 
+    const mobileCards = document.getElementById('mobileCards');
+    if (mobileCards) {
+        mobileCards.innerHTML = sorted.map(rec => {
+            const selectable = !rec.execution_id;
+            const isSelected = selectedRecommendationIds.includes(rec.id);
+            const rowClass = selectionMode && !selectable ? 'disabled-row' : isSelected ? 'selected-row' : '';
+            const checkboxHtml = selectionMode ? `
+                <label class="mobile-card-checkbox">
+                    <input type="checkbox"
+                        data-rec-id="${rec.id}"
+                        data-whse-id="${rec.warehouse_id}"
+                        data-whse-name="${escapeHtml(rec.warehouse_name)}"
+                        ${selectable ? '' : 'disabled'}
+                        ${isSelected ? 'checked' : ''}
+                        onclick="event.stopPropagation(); toggleRecommendationSelection(this);"
+                    />
+                    Select
+                </label>
+            ` : '';
+            return `
+                <article class="mobile-card ${rowClass}" onclick="handleMobileCardClick(event, ${rec.id})">
+                    <div class="mobile-card-header">
+                        <div>
+                            <div class="mobile-card-title">${escapeHtml(rec.spray_no)}</div>
+                            <div class="mobile-card-meta">${escapeHtml(rec.description)}</div>
+                        </div>
+                        <div class="mobile-card-status">${escapeHtml(rec.status)}</div>
+                    </div>
+                    <div class="mobile-card-row"><strong>Week:</strong> ${escapeHtml(rec.week)}</div>
+                    <div class="mobile-card-row"><strong>Start:</strong> ${formatDateTime(rec.start_date)}</div>
+                    <div class="mobile-card-row"><strong>End:</strong> ${formatDateTime(rec.end_date)}</div>
+                    <div class="mobile-card-row"><strong>Block:</strong> ${escapeHtml(rec.block_no)}</div>
+                    ${checkboxHtml}
+                </article>
+            `;
+        }).join('');
+    }
+
     updateSortHeaders();
+}
+
+function handleMobileCardClick(event, recId) {
+    if (selectionMode) {
+        return;
+    }
+    goToSpray(recId);
 }
 
 function toggleRecommendationSelection(checkbox) {

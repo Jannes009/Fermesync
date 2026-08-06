@@ -127,99 +127,90 @@
             background: var(--form-bg);
         }
 
-        .product-row {
-            display: grid;
-            grid-template-columns: 1fr;
-            gap: 8px;
-            padding: 10px;
-            background: var(--form-bg);
-            border: 1px solid var(--input-border);
-            border-radius: 8px;
-        }
+   .product-row {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 10px;
+  align-items: center;
+  padding: 10px;
+  background: var(--form-bg);
+  border: 1px solid var(--input-border);
+  border-radius: 8px;
+  max-width: 100%;
+  min-width: 0;
+}
 
-        /* second row container */
-        .product-row-bottom {
-            display: grid;
-            grid-template-columns: auto 1fr auto 36px;
-            gap: 8px;
-            align-items: center;
-        }
+.product-select-wrapper {
+  min-width: 0;
+  max-width: 100%;
+}
 
-        /* Desktop layout */
-        @media (min-width: 768px) {
-            .product-row {
-                grid-template-columns: 2fr 100px 70px 1.5fr 36px;
-                align-items: center;
-            }
+.product-row-bottom {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-shrink: 0;
+}
 
-            .product-row-bottom {
-                display: contents;
-            }
-        }
-        .product-row:hover {
-            border-color: var(--button-bg);
-            box-shadow: 0 2px 6px rgba(0,0,0,0.08);
-        }
+.product-row-bottom .qty-input {
+  width: 90px;
+  flex-shrink: 0;
+}
 
-        .product-row.focused {
-            background: var(--button-bg);
-            color: var(--button-text);
-            border-color: var(--button-bg);
-            box-shadow: 0 2px 8px rgba(0,0,0,0.15);
-        }
+.product-row-bottom .uom-label {
+  min-width: 50px;
+  flex-shrink: 0;
+}
 
-        .product-select-wrapper {
-            width: 100%;
-        }
+.product-row-bottom .issue-remove-btn {
+  flex-shrink: 0;
+}
 
-        .line-project-wrapper {
-            width: 100%;
-            display: block;
-        }
+.product-row-bottom .qty-needed-label {
+  max-width: 110px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
 
-        .line-project-wrapper.hidden {
-            display: none;
-        }
+/* Mobile: stack */
+@media (max-width: 768px) {
+  .product-row {
+    grid-template-columns: minmax(0, 1fr);
+  }
 
-        .line-project-select {
-            width: 100% !important;
-            padding: 8px 10px !important;
-            font-size: 0.9rem !important;
-            border-radius: 5px !important;
-            border: 1px solid var(--input-border) !important;
-            background: white !important;
-        }
+  .product-row-bottom {
+    flex-wrap: wrap;
+  }
 
-        .product-select {
-            width: 100% !important;
-            padding: 8px 10px !important;
-            font-size: 0.9rem !important;
-            border-radius: 5px !important;
-        }
+  .product-row-bottom .qty-input {
+    flex: 1 1 120px;
+    max-width: 160px;
+  }
+}
 
-        .select2-container {
-            width: 100% !important;
-        }
+/* Select2 stays inside its cell */
+.product-select-wrapper .select2-container {
+  width: 100% !important;
+  max-width: 100% !important;
+}
 
-        .select2-container--default .select2-selection--single {
-            height: 36px !important;
-            border: 1px solid var(--input-border) !important;
-            border-radius: 5px !important;
-            background: white !important;
-            padding: 0 !important;
-        }
+.select2-container--default .select2-selection--single .select2-selection__rendered {
+  white-space: nowrap !important;
+  overflow: hidden !important;
+  text-overflow: ellipsis !important;
+  max-width: 100% !important;
+  display: block !important;
+}
 
-        .select2-container--default .select2-selection--single .select2-selection__rendered {
-            line-height: 36px !important;
-            padding-left: 10px !important;
-            color: var(--primary-text) !important;
-            font-size: 0.9rem !important;
-        }
-
-        .select2-container--default .select2-selection--single .select2-selection__arrow {
-            height: 36px !important;
-            right: 6px !important;
-        }
+.select2-dropdown {
+  max-width: min(560px, 95vw) !important;
+  box-sizing: border-box;
+}
+.select2-results__option {
+  white-space: normal !important;
+  word-break: break-word;
+}
 
         .qty-input {
             height: 40px;
@@ -684,7 +675,7 @@
     permissions: {{ current_user.permissions | tojson }}
   };
 </script>
-<script type="module"
+<script
   src="{{ url_for('inventory.static',
     filename='stock_issue/stock_issue_wizard.js') }}?v={{ filemtime('inventory','stock_issue/stock_issue_wizard.js') }}">
 </script>

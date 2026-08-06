@@ -57,9 +57,9 @@ document.addEventListener("DOMContentLoaded", async () => {
   await loadSprayExecutions();
   handleModeChange(); // Set initial visibility based on default mode
 
-  $("#warehouse-select").select2({ placeholder: "Select warehouse", allowClear: true, width: '100%' });
-  $("#project-select").select2({ placeholder: "Select projects", allowClear: true, width: '100%' });
-  $("#spray-select").select2({ placeholder: "Select spray execution", allowClear: true, width: '100%' });
+  $("#warehouse-select").select2({ placeholder: "Select warehouse", allowClear: true, width: '100%', dropdownParent: document.body });
+  $("#project-select").select2({ placeholder: "Select projects", allowClear: true, width: '100%', dropdownParent: document.body });
+  $("#spray-select").select2({ placeholder: "Select spray execution", allowClear: true, width: '100%', dropdownParent: document.body });
 
   // Event listeners
   document.querySelectorAll('input[name="issue-mode"]').forEach(radio => {
@@ -141,9 +141,9 @@ async function loadSprayExecutions() {
           Swal.fire("Error", d.message || "Failed to load spray executions.", "error");
           return [];
         }
+        console.log(d)
         return d.executions || [];
       });
-
     const select = document.getElementById('spray-select');
     select.innerHTML = '<option></option>';
     sprays.forEach(s => select.insertAdjacentHTML('beforeend', `<option value="${s.execution_id}" data-warehouse="${s.warehouse_id}">${s.date} - ${s.responsible_person}</option>`));
@@ -221,15 +221,16 @@ async function step1Next() {
     document.getElementById("ibt-lines").innerHTML = "";
     console.log("Products in warehouse:", productsInWhse);
     
-    // If spray mode, auto-populate lines from spray
+    document.getElementById("step-1").classList.add("hidden");
+    document.getElementById("step-2").classList.remove("hidden");
+
+        // If spray mode, auto-populate lines from spray
     if (issueMode === "spray") {
         await populateSprayLines();
     } else {
         addLine(); // For project mode, start with one empty line
     }
 
-    document.getElementById("step-1").classList.add("hidden");
-    document.getElementById("step-2").classList.remove("hidden");
 }
 
 async function populateSprayLines() {
@@ -319,29 +320,34 @@ function populateProductSelect(selectId, lineDiv) {
     const select = document.getElementById(selectId);
 
     productsInWhse.forEach(p => {
-        const opt = new Option(`${p.product_desc} (${parseFloat(p.qty_in_whse).toFixed(2)} ${p.stocking_uom_code} available)`, p.product_link, false, false);
-        const uom = p.stocking_uom_code || "EA";
-        $(opt).data("unit", uom);
+        const opt = new Option(
+            `${p.product_desc} (${parseFloat(p.qty_in_whse).toFixed(2)} ${p.stocking_uom_code} available)`,
+            p.product_link,
+            false,
+            false
+        );
+        $(opt).data("unit", p.stocking_uom_code || "EA");
         $(opt).data("qty", p.qty_in_whse);
         select.appendChild(opt);
     });
 
-    $(`#${selectId}`).select2({
+    const $sel = $(`#${selectId}`);
+    $sel.select2({
         placeholder: "Search and select a product...",
         allowClear: true,
         width: "100%",
         dropdownParent: document.body
     });
 
-    // When a product is chosen → update the stocking unit
-    $(`#${selectId}`).on("select2:select", function (e) {
+    // Force width after init (guards against hidden-parent measurement)
+    $sel.next(".select2-container").css("width", "100%");
+
+    $sel.on("select2:select", function () {
         const selected = $(this).find(":selected").data();
-        const uom = selected.unit || "EA";
-        lineDiv.querySelector(".stock-unit").textContent = uom;
+        lineDiv.querySelector(".stock-unit").textContent = selected.unit || "EA";
     });
 
-    // When a product is cleared
-    $(`#${selectId}`).on("select2:clear", function () {
+    $sel.on("select2:clear", function () {
         lineDiv.querySelector(".stock-unit").textContent = "—";
     });
 }

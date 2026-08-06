@@ -99,7 +99,7 @@ def fetch_po_lines(po_number):
             }
             for row in rows
         ]
-        return jsonify({"po_lines": po_lines})
+        return jsonify({"success": True, "po_lines": po_lines})
     except Exception as e:
         return jsonify({"success": False, "error": str(e)}), 500
 

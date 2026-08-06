@@ -264,7 +264,7 @@ async function loadIbtList() {
                     <div class="quantity-inputs">
                         <div class="quantity-group">
                             <label id="received-label-${i}">Received (${line.stocking_unit_code || ''})</label>
-                            <input type="number" class="quantity-input qty-received" data-line="${i}" min="0" step="0.01" value="0" oninput="updateQty(${i})">
+                            <input type="number" class="quantity-input qty-received" data-line="${i}" min="0" step="0.01" placeholder="0" oninput="updateQty(${i})">
                         </div>
                         <div class="quantity-status">
                             <span id="variance-label-${i}">Variance: 0 ${line.stocking_unit_code || ''}</span>

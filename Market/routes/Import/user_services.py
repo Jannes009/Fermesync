@@ -5,7 +5,6 @@ def get_services_for_user(user_id):
     try:
         conn = create_db_connection()
         cursor = conn.cursor()
-        print(f"[get_services_for_user] Connected to DB")
     except Exception as e:
         print(f"[get_services_for_user] DB connection failed: {e}")
         return []
@@ -17,8 +16,6 @@ def get_services_for_user(user_id):
             WHERE UserId = ?
         """, (user_id,))
         rows = cursor.fetchall()
-
-        print({"service_type": [r[1]for r in rows]})
 
         return [{"id": r[0], "service_type": r[1], "username": r[2]}for r in rows]
 
@@ -33,12 +30,10 @@ def get_services_for_user(user_id):
 
 
 def get_service_details(user_id, service_type):
-    print(f"[get_service_details] Fetching service '{service_type}' for user {user_id}")
 
     try:
         conn = create_db_connection()
         cursor = conn.cursor()
-        print("[get_service_details] Connected to DB")
     except Exception as e:
         print(f"[get_service_details] DB connection failed: {e}")
         return None
@@ -62,12 +57,9 @@ def get_service_details(user_id, service_type):
         # Try decrypt
         try:
             password = decrypt_password(encrypted_password)
-            print(f"[get_service_details] Password decrypted successfully")
         except Exception as e:
             print(f"[get_service_details] Failed to decrypt password: {e}")
             return None
-
-        print(f"[get_service_details] Service fetched: {service_type} ({username})")
 
         return {
             "service_type": service_type,
@@ -81,5 +73,4 @@ def get_service_details(user_id, service_type):
 
     finally:
         close_db_connection(conn, cursor)
-        print("[get_service_details] Connection closed")
 

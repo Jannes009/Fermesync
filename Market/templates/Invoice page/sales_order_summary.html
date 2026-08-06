@@ -140,24 +140,6 @@
                     
                 </div>
             </div>
-            <div id="loading" class="loading">Loading sales orders...</div>
-            <div id="error-message" class="error" style="display:none;"></div>
-            <div class="overflow-auto">
-                <table class="summary-table w-full rounded shadow" id="sales-order-table">
-                    <thead>
-                        <tr>
-                            <th>Sales Order No</th>
-                            <th>Date</th>
-                            <th>Agent</th>
-                            <th>Delivery Note</th>
-                            <th>Qty</th>
-                            <th>Nett Amount</th>
-                            <th>Status</th>
-                        </tr>
-                    </thead>
-                    <tbody id="sales-order-table-body"></tbody>
-                </table>
-            </div>
         </div>
     </div>
 </div>
@@ -183,95 +165,9 @@
                 swal.fire('Error', err.message || 'Failed to refresh invoices.', 'error');
             });
     }
-function statusBadge(status) {
-    let s = (status || '').toLowerCase();
-    if (s === 'processed') return '<span class="badge badge-processed">Processed</span>';
-    if (s === 'cancelled') return '<span class="badge badge-cancelled">Cancelled</span>';
-    return '<span class="badge badge-unprocessed">Unprocessed</span>';
-}
 
-function formatAmount(val) {
-    return 'R ' + ((parseFloat(val) || 0).toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2}));
-}
 
-function applyRowStriping() {
-    const rows = Array.from(document.querySelectorAll('#sales-order-table-body tr'))
-        .filter(row => row.style.display !== 'none');
-    rows.forEach((row, idx) => {
-        row.classList.toggle('striped', idx % 2 === 1);
-    });
-}
 
-function renderTable(salesOrders) {
-    let rows = salesOrders.map(order => {
-        const status = (order.status || 'Unprocessed').toLowerCase();
-        return `
-            <tr class="clickable-row" data-sales-order-id="${order.InvoiceIndex}" data-status="${status}">
-                <td>${order.InvoiceNo}</td>
-                <td>${order.InvoiceDate || ''}</td>
-                <td>${order.AgentName}</td>
-                <td><a href="/market/delivery-note/${order.InvoiceDelNoteNo}" class="text-blue-600 hover:underline" onclick="event.stopPropagation();">${order.InvoiceDelNoteNo}</a></td>
-                <td>${order.InvoiceQty || ''}</td>
-                <td>${formatAmount(order.InvoiceNett)}</td>
-                <td>${statusBadge(order.status)}</td>
-            </tr>
-        `;
-    }).join('');
-    document.getElementById('sales-order-table-body').innerHTML = rows;
-    // Add click handler for rows
-    document.querySelectorAll('.clickable-row').forEach(row => {
-        row.addEventListener('click', function(e) {
-            if (e.target.tagName.toLowerCase() === 'a') return;
-            const salesOrderId = this.getAttribute('data-sales-order-id');
-            if (salesOrderId) {
-                window.location.href = `/market/sales-order/${salesOrderId}`;
-            }
-        });
-    });
-    applyRowStriping();
-}
-
-async function loadSalesOrders() {
-    try {
-        const response = await fetch('/market/api/sales-orders');
-        if (!response.ok) throw new Error('Failed to load sales orders');
-        const data = await response.json();
-        document.getElementById('loading').style.display = 'none';
-        if (!data.length) {
-            document.getElementById('error-message').style.display = '';
-            document.getElementById('error-message').textContent = 'No sales orders found.';
-            return;
-        }
-        renderTable(data);
-        filterTable(); // Apply initial filter
-    } catch (err) {
-        document.getElementById('loading').style.display = 'none';
-        document.getElementById('error-message').style.display = '';
-        document.getElementById('error-message').textContent = err.message || 'Failed to load sales orders.';
-    }
-}
-
-function filterTable() {
-    const showAll = document.getElementById('toggle-completed').checked;
-    const rows = document.querySelectorAll('#sales-order-table-body tr');
-    const toggleLabel = document.getElementById('toggle-label');
-
-    rows.forEach(row => {
-        const status = row.dataset.status;
-        if (showAll || (status !== 'processed' && status !== 'cancelled')) {
-            row.style.display = '';
-        } else {
-            row.style.display = 'none';
-        }
-    });
-    toggleLabel.textContent = showAll ? 'Showing All Orders' : 'Hide Completed';
-    applyRowStriping(); // <-- This ensures stripes are always correct after filtering
-}
-
-window.addEventListener('DOMContentLoaded', () => {
-    loadSalesOrders();
-    document.getElementById('toggle-completed').addEventListener('change', filterTable);
-});
 </script>
 </body>
 </html> 

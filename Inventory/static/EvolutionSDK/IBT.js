@@ -449,8 +449,8 @@ function syncSelectOptionsState() {
                 $(this).prop("disabled", false);
                 return;
             }
-            const isSelectedElsewhere = selectedProducts.has(String(optionValue)) && String(optionValue) !== String(currentValue);
-            $(this).prop("disabled", isSelectedElsewhere);
+            // Do not disable options when selected elsewhere; allow duplicates
+            $(this).prop("disabled", false);
         });
         $(select).trigger("change.select2");
     });
@@ -588,19 +588,7 @@ function formatProductOption (state) {
         : $element.data("stocking_unit_code") || "";
     const displayText = `${productDesc} (In: ${displayQty.toFixed(2)} ${unitCode})`;
 
-    const $elementDom = $(state.element);
-    if ($elementDom.prop("disabled")) {
-        return $(
-            `<span style="
-                color:#999 !important;
-                opacity:0.6;
-                text-decoration: line-through;
-            ">
-                ${displayText} (already used)
-            </span>`
-        );
-    }
-
+    // Always show the product display text; do not render as disabled/greyed-out
     return displayText;
 }
 
@@ -627,9 +615,7 @@ function populateSelect(selectId, lineDiv) {
         $(opt).data("stocking_unit_code", p.stocking_unit_code || "");
         $(opt).data("conversion_factor", Number(p.conversion_factor) || 1);
 
-        if (selectedProducts.has(String(p.product_id))) {
-            opt.disabled = true;
-        }
+        // Allow selecting the same product on multiple lines; do not disable options.
 
         select.appendChild(opt);
     });
@@ -655,37 +641,21 @@ function populateSelect(selectId, lineDiv) {
 
         const duplicateElsewhere = selectedProducts.has(val);
         if (duplicateElsewhere && previousSelection !== val) {
-            const duplicateLine = Array.from(document.querySelectorAll('.ibt-line')).find((candidate) => candidate !== lineDiv && candidate.dataset.selectedProductId === val);
-            if (duplicateLine) {
-                const result = await Swal.fire({
-                    title: "Duplicate Product",
-                    text: "This product is already selected on another line. Merge the quantities into the existing line or cancel?",
-                    icon: "warning",
-                    showCancelButton: true,
-                    confirmButtonText: "Merge",
-                    cancelButtonText: "Cancel"
+            // Non-blocking warning: another line already uses this product.
+            try {
+                const toast = Swal.mixin({
+                    toast: true,
+                    position: 'top-end',
+                    showConfirmButton: false,
+                    timer: 2500,
+                    timerProgressBar: true
                 });
-
-                if (!result.isConfirmed) {
-                    $(this).val(previousSelection || null).trigger("change.select2");
-                    if (previousSelection) {
-                        selectedProducts.add(previousSelection);
-                    }
-                    syncSelectOptionsState();
-                    return;
-                }
-
-                const incomingQty = Number(lineDiv.querySelector('.qty-input').value) || 0;
-                const targetQtyInput = duplicateLine.querySelector('.qty-input');
-                const targetMode = duplicateLine.dataset.unitMode || 'purchasing';
-                const currentMode = lineDiv.dataset.unitMode || 'purchasing';
-                const convertedQty = convertQtyBetweenUnits(incomingQty, conversionFactor, currentMode, targetMode);
-                targetQtyInput.value = roundTo2((Number(targetQtyInput.value) || 0) + convertedQty);
-                updateStockQtyDisplay(duplicateLine);
-
-                lineDiv.remove();
-                syncSelectOptionsState();
-                return;
+                toast.fire({
+                    icon: 'warning',
+                    title: 'Product already used on another line — continuing'
+                });
+            } catch (e) {
+                // ignore
             }
         }
 

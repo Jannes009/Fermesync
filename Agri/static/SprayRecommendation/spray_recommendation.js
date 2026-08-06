@@ -171,6 +171,7 @@ async function updateProjectsForWarehouse(warehouseId) {
     try {
         const response = await request(`/agri/fetch_projects_for_warehouse?warehouse_id=${warehouseId}`);
         const data = await response.json();
+        console.log(data)
 
         if (data.success === true && data.projects && data.projects.length > 0) {
             data.projects.forEach(project => {
@@ -417,7 +418,8 @@ function addLine() {
 
     row.innerHTML = `
         <div class="product-grid">
-            <div>
+            <div class="product-select-field">
+            <label class="product-select-label">Product</label>
                 <select class="product-select">
                     ${PRODUCT_OPTIONS || '<option value="">Select product</option>'}
                 </select>
@@ -426,22 +428,22 @@ function addLine() {
                 <input type="hidden" class="line-function" value="">
             </div>
 
-            <div>
+            <div class="rate-field">
                 <label class="rate-label">Rate /100L</label>
-                <input class="qty-input" type="number" step="0.01">
+                <input class="qty-input" type="number" step="0.01" placeholder="Qty">
             </div>
 
-            <div>
+            <div class="total-field">
                 <label>Total Qty</label>
                 <div class="readonly-box total-qty">-</div>
             </div>
 
-            <div>
+            <div class="per-tank-field">
                 <label>Per Tank</label>
                 <div class="readonly-box per-tank">-</div>
             </div>
 
-            <div style="display: flex; gap: 8px;">
+            <div class="actions-field" style="display: flex; gap: 8px;">
                 <button type="button" class="edit-defaults-btn icon-btn" title="Edit defaults">
                     ⚙️
                 </button>
@@ -917,11 +919,4 @@ document.getElementById('edit-defaults-modal').addEventListener('click', functio
     if (e.target === this) {
         closeEditDefaultsModal();
     }
-});
-
-// ensure context updates when warehouse/projects change
-$('#warehouse_id').on('change', function() {
-    const warehouseId = $(this).val();
-    updateProjectsForWarehouse(warehouseId);
-    recalcEverything();
 });

@@ -55,12 +55,6 @@ def create_app():
 
         # ⚠️ Must return a dictionary
         return dict(filemtime=filemtime)
-    
-    @app.context_processor
-    def inject_vapid_key():
-        return {
-            "vapid_public_key": app.config.get("VAPID_PUBLIC_KEY")
-        }
 
     @app.context_processor
     def inject_onesignal():
