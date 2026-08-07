@@ -93,7 +93,6 @@ function initSuggestedOrder(container = document) {
             }
 
             for (const s of stockSuppliers) {
-                console.log(s)
                 const opt = document.createElement('option');
                 opt.value = s.dc_link;
                 opt.textContent = `${s.name} — ${s.last_invoice_price ? 'R' + nf.format(s.last_invoice_price) + ' / ' + (s.unit_code || '') : 'No price'}`;
@@ -109,7 +108,6 @@ function initSuggestedOrder(container = document) {
             tr.dataset.purchaseUnitsToOrder = row.purchase_units_to_order || 0;
             tr.dataset.purchasingUom = row.purchasing_uom || '';
             tr.dataset.purchaseUnitId = row.purchase_unit_id || '';
-            console.log(row.purchase_unit_id)
             tr.dataset.productName = row.stock_description || '';
 
             tr.innerHTML = `
@@ -244,25 +242,25 @@ function initSuggestedOrder(container = document) {
 
     async function ensureWarehouseOptions(stockIds) {
         const key = getWarehouseCacheKey(stockIds);
-        if (warehouseOptionsCache[key]) return warehouseOptionsCache[key];
+        if (Object.prototype.hasOwnProperty.call(warehouseOptionsCache, key)) return warehouseOptionsCache[key];
         if (warehouseOptionsLoading[key]) return warehouseOptionsLoading[key];
 
+        console.log('Loading warehouses for stock IDs:', stockIds);
         warehouseOptionsLoading[key] = request('/agri/suggested-order/order-warehouses', {
-            method: 'GET',
+            method: 'POST',
             headers: {'Content-Type': 'application/json'},
             body: JSON.stringify({stock_ids: stockIds})
         })
             .then(res => res.ok ? res.json() : Promise.reject(new Error('Unable to load warehouses')))
             .then(payload => {
                 if (payload.success) {
+                    console.log('Warehouses loaded for stock IDs:', stockIds, payload.warehouses);
                     warehouseOptionsCache[key] = payload.warehouses || [];
                     return warehouseOptionsCache[key];
                 }
-                warehouseOptionsCache[key] = [];
                 return [];
             })
             .catch(() => {
-                warehouseOptionsCache[key] = [];
                 return [];
             })
             .finally(() => { delete warehouseOptionsLoading[key]; });
@@ -392,7 +390,6 @@ function initSuggestedOrder(container = document) {
             const sup = sel ? (sel.value || '') : '';
             if (String(sup) !== String(supplierId)) return;
             const unitId = tr.dataset.purchaseUnitId || '';
-            console.log(tr.dataset)
             lines.push({
                 product_id: tr.dataset.stockLink,
                 unit_id: unitId,

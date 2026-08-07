@@ -6,7 +6,6 @@ from Core.auth import create_db_connection, close_db_connection
 from flask_login import login_required, current_user
 from Inventory.routes.db_conversions import warehouse_code_to_link, project_code_to_link, stock_link_to_code
 from datetime import datetime
-from Inventory.routes.notifications import emit_event
 from .stock_issue_summary import submit_stock_issue
 
 @inventory_bp.route("/SDK/stock_issue_wizard", methods=["GET"])
@@ -160,12 +159,6 @@ def generate_stock_issue_for_projects(project_ids, warehouse_id, lines_payload, 
                 SET IssInvoiceNo = ?
                 WHERE IdIssue = ?
             """, (order_number, stock_issue_id))
-
-            emit_event(
-                event_code="STOCK_ISSUE",
-                entity_id=stock_issue_id,
-                entity_desc=order_number,
-            )
 
         conn.commit()
 
@@ -350,12 +343,6 @@ def generate_stock_issue_for_spray(execution_id, lines_payload, order_final):
                 SET IssInvoiceNo = ?
                 WHERE IdIssue = ?
             """, (order_number, stock_issue_id))
-
-            emit_event(
-                event_code="STOCK_ISSUE",
-                entity_id=stock_issue_id,
-                entity_desc=order_number,
-            )
 
         issue_no = get_next_document_number(cursor, "ISS")
 

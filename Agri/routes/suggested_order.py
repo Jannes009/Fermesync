@@ -294,11 +294,15 @@ def suggested_order_stock_suppliers(stock_id):
     return jsonify({'success': True, 'suppliers': suppliers})
 
 
-@agri_bp.route('/suggested-order/order-warehouses', methods=['GET'])
+@agri_bp.route('/suggested-order/order-warehouses', methods=['GET', 'POST'])
 @login_required
 def suggested_order_warehouses():
-    payload = request.get_json() or {}
-    stock_ids = payload.get('stock_ids') or []
+    payload = request.get_json(silent=True) or {}
+    if request.method == 'GET' and not payload:
+        stock_ids = request.args.getlist('stock_ids')
+    else:
+        stock_ids = payload.get('stock_ids') or []
+    print(payload)
     if not isinstance(stock_ids, list) or not stock_ids:
         return jsonify({'success': False, 'message': 'stock_ids array is required'}), 400
 
@@ -327,6 +331,6 @@ def suggested_order_warehouses():
         'whse_id': int(r.WhseID),
         'whse_description': r.WhseDescription
     } for r in rows]
-
+    print(warehouses)
     return jsonify({'success': True, 'warehouses': warehouses})
 

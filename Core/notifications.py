@@ -1,15 +1,17 @@
 
 from flask_login import login_required, current_user
-from flask import jsonify, request, render_template, abort
+from flask import jsonify, request, render_template, abort, Blueprint
 from Core.auth import create_db_connection, close_db_connection
-from Inventory.routes import inventory_bp
 from Core.auth import create_db_connection, close_db_connection
 import os, requests
 from Instance.local_settings import ONESIGNAL_APP_ID, ONESIGNAL_REST_API_KEY, BASE_URL
+from jinja2 import Template
+
+notifications_bp = Blueprint('notifications', __name__)
 
 
 # Return notifications count for current user
-@inventory_bp.route("/notifications/count")
+@notifications_bp.route("/notifications/count")
 @login_required
 def notifications_count():
     conn = create_db_connection() 
@@ -24,7 +26,7 @@ def notifications_count():
     return jsonify({"count": count})
 
 # Notifications page
-@inventory_bp.route("/notifications")
+@notifications_bp.route("/notifications")
 @login_required
 def notifications_page():
     conn = create_db_connection() 
@@ -49,7 +51,7 @@ def notifications_page():
     return render_template("notifications.html", notifications=notifications)
 
 
-@inventory_bp.route("/link_user_and_subscription", methods=["POST"])
+@notifications_bp.route("/link_user_and_subscription", methods=["POST"])
 def link_user_and_subscription():
     data = request.get_json()
     user_id = data.get("user_id")  # note: matches your JS key
@@ -81,10 +83,6 @@ def link_user_and_subscription():
         print("Error linking OneSignal ID:", e)
         return jsonify({"success": False, "error": str(e)}), 500
 
-
-ONESIGNAL_APP_ID = ONESIGNAL_APP_ID
-BASE_URL = BASE_URL
-from jinja2 import Template
 
 def send_notification(
     *,
@@ -153,7 +151,7 @@ def send_immediate_push(user_id: int, title: str, message: str, relative_url: st
         "ios_priority": 10
     }
 
-    requests.post(
+    response = requests.post(
         "https://onesignal.com/api/v1/notifications",
         json=payload,
         headers={
@@ -162,6 +160,12 @@ def send_immediate_push(user_id: int, title: str, message: str, relative_url: st
         },
         timeout=5
     )
+
+    response.raise_for_status()
+
+    result = response.json()
+    onesignal_notification_id = result.get("id")
+    return onesignal_notification_id
 
 def send_batched_push(user_id: int):
     conn = create_db_connection() 
@@ -205,12 +209,12 @@ def send_batched_push(user_id: int):
         "include_subscription_ids": subs,
         "headings": {"en": f"{unread_count} new notifications"},
         "contents": {"en": summary},
-        "url": f"{BASE_URL}/inventory/notifications",
+        "url": f"{BASE_URL}/notifications",
         "priority": 10,
         "ios_priority": 10
     }
 
-    requests.post(
+    response = requests.post(
         "https://onesignal.com/api/v1/notifications",
         json=payload,
         headers={
@@ -219,6 +223,12 @@ def send_batched_push(user_id: int):
         },
         timeout=5
     )
+
+    response.raise_for_status()
+
+    result = response.json()
+    onesignal_notification_id = result.get("id")
+    return onesignal_notification_id
 
 def emit_event(
     *,
@@ -293,3 +303,12 @@ def emit_event(
             relative_url=relative_url,
             push_mode="batched" if push_enabled else "none"
         )
+
+@notifications_bp.route("/notifications/onesignal/webhooks/notification-displayed", methods=["POST"])
+def onesignal_webhook_notification_displayed():
+    data = request.get_json(silent=True)
+
+    print("OneSignal webhook received:")
+    print(data)
+
+    return jsonify({"success": True}), 200

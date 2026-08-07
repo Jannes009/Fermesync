@@ -33,11 +33,13 @@ def create_app():
     from Inventory.routes import inventory_bp
     from Core.view_account import account_bp
     from Agri.routes import agri_bp
+    from Core.notifications import notifications_bp
 
     app.register_blueprint(market_bp, url_prefix='/market')
     app.register_blueprint(inventory_bp, url_prefix='/inventory')
     app.register_blueprint(agri_bp, url_prefix='/agri')
     app.register_blueprint(admin_bp)
+    app.register_blueprint(notifications_bp)
     app.register_blueprint(account_bp)
 
     # -----------------------------

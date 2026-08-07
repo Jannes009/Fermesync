@@ -5,7 +5,6 @@ from Core.auth import create_db_connection, close_db_connection
 from Inventory.routes import inventory_bp
 from Core.sdk_connection import EvolutionConnection, EvolutionAgentNotFoundError, EvolutionConnectionError
 import Pastel.Evolution as Evo
-from Inventory.routes.notifications import emit_event, send_notification
 from datetime import datetime
 from System import DateTime
 
@@ -165,12 +164,6 @@ def submit_grv():
         conn.commit()
         conn.close()
 
-        print("Emitting event")
-        emit_event(
-            event_code="GRV_CREATE",
-            entity_id=grv_number,
-            entity_desc="Goods Received Voucher"
-        )
         return jsonify({
             "success": True,
             "message": "GRV submitted successfully"

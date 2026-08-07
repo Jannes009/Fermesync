@@ -1,44 +1,106 @@
 {% extends 'inventory_base.html' %}
 {% block content %}
 <style>
-.page-wrap{ padding:1.5rem; max-width:1300px; margin:0 auto; }
-
-.main-card{
-    background:var(--container-bg);
-    border-radius:16px;
-    box-shadow:0 8px 30px rgba(20,30,50,0.06);
-    padding:1.75rem;
-    position: relative;
+:root {
+    --accent-color: #2d6cdf;
 }
 
-/* Header Layout */
-.header-grid{
-    display:grid;
-    grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+.page-wrap{ padding:1.5rem 2rem 3rem; max-width:1400px; margin:0 auto; }
+
+.page-title-card{
+    display:flex;
+    justify-content:space-between;
+    align-items:flex-start;
     gap:1rem;
+    margin-bottom:1.1rem;
+    padding:0 0 1rem;
+    border-bottom:1px solid #e5e7eb;
 }
 
-.header-item{
-    background:white;
-    padding:1rem;
-    border-radius:12px;
-    box-shadow:0 2px 8px rgba(0,0,0,0.05);
+.page-title-card h2{
+    margin:0 0 0.35rem;
+    font-size:1.45rem;
+    color:#111827;
+    line-height:1.2;
 }
 
-.header-item h4{
-    margin:0 0 5px 0;
+.page-title-card .title-meta{
+    color:#6b7280;
+    font-size:0.98rem;
+    line-height:1.5;
+}
+
+.title-number{
+    display:inline-flex;
+    align-items:center;
+    margin-left:0.35rem;
+    padding:0.2rem 0.7rem;
+    background:rgba(45, 108, 223, 0.1);
+    color:var(--accent-color);
+    border:1px solid rgba(45, 108, 223, 0.14);
+    border-radius:999px;
+    font-size:0.95rem;
+    font-weight:700;
+}
+
+.status-badge{
+    display:inline-flex;
+    align-items:center;
+    padding:0.45rem 0.85rem;
+    border-radius:999px;
     font-size:0.85rem;
-    color:var(--secondary-text);
+    font-weight:700;
     text-transform:uppercase;
+    letter-spacing:0.04em;
+    white-space:nowrap;
+    background:#f3f4f6;
+    color:#374151;
 }
 
-.header-item p{
-    margin:0;
-    font-weight:600;
-    font-size:1rem;
+.status-badge.status-finalised,
+.status-badge.status-complete,
+.status-badge.status-completed{
+    background:#ecfdf3;
+    color:#15803d;
 }
 
-/* Controls */
+.status-badge.status-in-progress,
+.status-badge.status-progress,
+.status-badge.status-active{
+    background:#eff6ff;
+    color:#1d4ed8;
+}
+
+.status-badge.status-cancelled,
+.status-badge.status-cancelled-recommendation{
+    background:#fef2f2;
+    color:#b91c1c;
+}
+
+.meta-strip{
+    display:flex;
+    flex-wrap:wrap;
+    gap:0.75rem 1.25rem;
+    margin-top:0.75rem;
+    color:#374151;
+    font-size:0.95rem;
+}
+
+.meta-pill{
+    display:flex;
+    flex-direction:column;
+    gap:0.2rem;
+    min-width:140px;
+}
+
+.meta-pill strong{
+    font-size:0.72rem;
+    font-weight:700;
+    text-transform:uppercase;
+    letter-spacing:0.06em;
+    color:#6b7280;
+}
+
 .controls{
     display:flex;
     flex-wrap:wrap;
@@ -48,34 +110,24 @@
     align-items:flex-end;
 }
 
-/* Section Cards */
 .section-card{
-    background:white;
-    border-radius:8px;
-    border:1px solid #e8e8e8;
-    margin-bottom:1.5rem;
+    background:#fff;
+    border:1px solid #e5e7eb;
+    border-radius:12px;
+    margin-bottom:1rem;
     overflow:hidden;
 }
 
 .section-header{
-    background:#f8f9fa;
-    padding:0.75rem 1rem;
+    padding:0.85rem 1rem;
     font-weight:600;
-    border-bottom:1px solid #e8e8e8;
-    border-left:4px solid #2d6cdf;
+    border-bottom:1px solid #e5e7eb;
+    border-left:4px solid var(--accent-color);
     display:flex;
     justify-content:space-between;
     align-items:center;
-    color:#333;
-}
-
-.mix-body{
-    padding:1rem;
-}
-
-table{
-    width:100%;
-    border-collapse:collapse;
+    color:#111827;
+    background:#fafafa;
 }
 
 .section-body{ 
@@ -83,31 +135,187 @@ table{
     overflow-x:auto;
 }
 
+.table-wrap{
+    overflow-x:auto;
+}
+
+table{
+    width:100%;
+    border-collapse:collapse;
+}
+
 th{
     text-align:left;
-    font-size:0.8rem;
+    font-size:0.75rem;
     text-transform:uppercase;
-    color:var(--secondary-text);
-    padding:8px;
-    border-bottom:1px solid #eee;
+    color:#6b7280;
+    padding:0.7rem 0.6rem;
+    border-bottom:1px solid #e5e7eb;
+    background:#fcfcfd;
 }
 
 td{
-    padding:8px;
-    border-bottom:1px solid #f2f2f2;
+    padding:0.7rem 0.6rem;
+    border-bottom:1px solid #f3f4f6;
+    vertical-align:top;
 }
 
 tr:hover{
-    background:#f9fbff;
+    background:#f9fafb;
 }
 
 .no-data{
     text-align:center;
     padding:2rem;
-    color:var(--secondary-text);
+    color:#6b7280;
 }
 
-/* Edit Mode Styles */
+.info-list{
+    display:grid;
+    grid-template-columns:repeat(auto-fit, minmax(220px, 1fr));
+    gap:0.75rem 1rem;
+    margin:0;
+}
+
+.info-row{
+    display:flex;
+    flex-direction:column;
+    gap:0.25rem;
+    padding:0.75rem 0.85rem;
+    background:#f9fafb;
+    border:1px solid #eef2f7;
+    border-radius:10px;
+}
+
+.info-row strong{
+    font-size:0.72rem;
+    text-transform:uppercase;
+    letter-spacing:0.05em;
+    color:#6b7280;
+}
+
+.info-value{
+    font-weight:600;
+    color:#111827;
+    white-space:pre-wrap;
+    overflow-wrap:anywhere;
+    line-height:1.5;
+}
+
+.summary-grid{
+    display:grid;
+    grid-template-columns:repeat(auto-fit, minmax(180px, 1fr));
+    gap:0.75rem;
+    margin-bottom:0.9rem;
+    padding:0.85rem;
+    background:#f9fafb;
+    border:1px solid #eef2f7;
+    border-radius:10px;
+}
+
+.summary-item{
+    display:flex;
+    flex-direction:column;
+    gap:0.2rem;
+}
+
+.summary-item strong{
+    font-size:0.72rem;
+    text-transform:uppercase;
+    letter-spacing:0.05em;
+    color:#6b7280;
+}
+
+.summary-item span{
+    font-weight:600;
+    color:#111827;
+}
+
+.form-grid{
+    display:grid;
+    grid-template-columns:repeat(auto-fit, minmax(220px, 1fr));
+    gap:1rem;
+}
+
+.form-grid .form-group{
+    margin-bottom:0;
+}
+
+.form-group{
+    margin-bottom:1rem;
+}
+
+.form-group label{
+    display:block;
+    font-weight:600;
+    margin-bottom:0.4rem;
+    font-size:0.9rem;
+    color:#6b7280;
+}
+
+.edit-actions{
+    display:flex;
+    gap:0.5rem;
+    margin-top:1rem;
+    flex-wrap:wrap;
+}
+
+.scouting-text{
+    white-space:pre-wrap;
+    overflow-wrap:anywhere;
+    line-height:1.6;
+}
+
+.mix-plan-list{
+    display:flex;
+    flex-direction:column;
+    gap:0.75rem;
+}
+
+.mix-plan-item{
+    border:1px solid #e5e7eb;
+    border-radius:10px;
+    padding:0.85rem 1rem;
+    background:#fcfcfd;
+}
+
+.mix-plan-header{
+    display:flex;
+    justify-content:space-between;
+    align-items:center;
+    gap:0.75rem;
+    margin-bottom:0.6rem;
+    font-weight:700;
+    color:#111827;
+}
+
+.mix-plan-meta{
+    color:#6b7280;
+    font-size:0.9rem;
+}
+
+.mix-plan-rows{
+    display:flex;
+    flex-direction:column;
+    gap:0.45rem;
+}
+
+.mix-plan-row{
+    display:flex;
+    justify-content:space-between;
+    align-items:center;
+    gap:0.7rem;
+    padding:0.55rem 0.65rem;
+    border-radius:8px;
+    background:#fff;
+    border:1px solid #f3f4f6;
+}
+
+.mix-plan-row strong{
+    color:#111827;
+    font-weight:700;
+}
+
 .edit-btn, .save-btn, .cancel-btn, .add-btn, .remove-btn{
     padding:0.5rem 1rem;
     border:none;
@@ -128,44 +336,49 @@ tr:hover{
 }
 
 .save-btn{
-    background:#28a745;
+    background:#2563eb;
     color:white;
 }
 
 .save-btn:hover{
-    background:#218838;
+    background:#1d4ed8;
 }
 
 .cancel-btn{
-    background:#6c757d;
+    background:#6b7280;
     color:white;
 }
 
 .cancel-btn:hover{
-    background:#5a6268;
+    background:#4b5563;
 }
 
 .add-btn{
-    background:#17a2b8;
+    background:#0f766e;
     color:white;
 }
 
 .add-btn:hover{
-    background:#138496;
+    background:#115e59;
 }
 
-input[type="text"], input[type="date"], input[type="number"], select{
-    padding:0.5rem;
-    border:1px solid #ddd;
-    border-radius:4px;
+input[type="text"], input[type="date"], input[type="number"], select, textarea{
+    padding:0.55rem 0.65rem;
+    border:1px solid #d1d5db;
+    border-radius:6px;
     font-size:0.95rem;
     font-family:inherit;
 }
 
-input[type="text"]:focus, input[type="date"]:focus, input[type="number"]:focus, select:focus{
+textarea{
+    min-height:90px;
+    resize:vertical;
+}
+
+input[type="text"]:focus, input[type="date"]:focus, input[type="number"]:focus, select:focus, textarea:focus{
     outline:none;
     border-color:#2d6cdf;
-    box-shadow:0 0 0 3px rgba(45, 108, 223, 0.1);
+    box-shadow:0 0 0 3px rgba(45, 108, 223, 0.12);
 }
 
 .product-select-container .select2-selection--single {
@@ -184,44 +397,19 @@ input[type="text"]:focus, input[type="date"]:focus, input[type="number"]:focus, 
     max-width: 700px !important;
 }
 
-.form-group{
-    margin-bottom:1rem;
-}
-
-.form-group label{
-    display:block;
-    font-weight:600;
-    margin-bottom:0.4rem;
-    font-size:0.9rem;
-    color:var(--secondary-text);
-}
-
-.edit-actions{
-    display:flex;
-    gap:0.5rem;
-    margin-top:1rem;
-}
-
 .section-header.edit-mode{
-    background:#e8f4f8;
+    background:#f3f7ff;
 }
 
 </style>
 
 <div class="page-wrap">
-  <div class="main-card">
+  <div class="page-title-card" id="page-title"></div>
 
-    <h2 style="margin-bottom:1.5rem;">Spray Recommendation</h2>
-
-    <!-- HEADER -->
-    <div id="spray-header"></div>
-
-    <div id="spray-lines"></div>
-
-    <!-- MIX TABLE -->
-    <div id="mix-container"></div>
-
-  </div>
+  <div id="spray-header"></div>
+  <div id="spray-projects"></div>
+  <div id="spray-lines"></div>
+  <div id="spray-mixes"></div>
 </div>
 
 <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
@@ -234,6 +422,7 @@ const canEdit = {{ 'true' if 'SPRAY_REC_EDIT' in current_user.permissions else '
 const canCreate = {{ 'true' if 'SPRAY_REC_CREATE' in current_user.permissions else 'false' }};
 let sprayData = null;
 let sprayType = null;
+let doseBasis = null;
 
 function escapeHtml(value) {
     if (value === null || value === undefined) return '';
@@ -255,7 +444,6 @@ let editModes = {
 document.addEventListener("DOMContentLoaded", async () => {
     await renderHeader();
     await renderLines();
-    await renderMix();
     const methodSelect = document.getElementById("method-select");
 });
 
@@ -276,72 +464,105 @@ async function renderHeader() {
 
     applyPageThemeColor(header.crop_theme_color);
 
-    // Format dates
-    const startDate = header.start_datetime ? new Date(header.start_datetime).toLocaleDateString() : 'N/A';
-    const endDate = header.end_datetime ? new Date(header.end_datetime).toLocaleDateString() : 'N/A';
+    const startDate = formatDateTime(header.start_datetime);
+    const endDate = formatDateTime(header.end_datetime);
+    const statusText = header.status || 'N/A';
+    const statusClass = String(statusText || '').toLowerCase().replace(/\s+/g, '-');
+    const statusBadgeClass = statusClass === 'finalised' || statusClass === 'complete' || statusClass === 'completed'
+        ? 'status-finalised'
+        : statusClass === 'in-progress' || statusClass === 'progress' || statusClass === 'active'
+            ? 'status-in-progress'
+            : statusClass === 'cancelled' || statusClass === 'cancelled-recommendation'
+                ? 'status-cancelled'
+                : 'status-default';
 
-    // Build projects table only if mix is true
+    const pageTitle = `
+        <div>
+            <h2>Spray Instruction <span class="title-number">#${escapeHtml(header.spray_no || 'N/A')}</span></h2>
+            <div class="title-meta">${escapeHtml(header.spray_description || 'No description')}</div>
+            <div class="meta-strip">
+                <div class="meta-pill"><strong>Recommended</strong><span>${escapeHtml(header.spray_date || 'N/A')}</span></div>
+                <div class="meta-pill"><strong>Warehouse</strong><span>${escapeHtml(header.warehouse ? header.warehouse.name : 'N/A')}</span></div>
+                <div class="meta-pill"><strong>Week</strong><span>${escapeHtml(header.spray_week || 'N/A')}</span></div>
+                <div class="meta-pill"><strong>Start</strong><span>${escapeHtml(startDate)}</span></div>
+                <div class="meta-pill"><strong>End</strong><span>${escapeHtml(endDate)}</span></div>
+            </div>
+        </div>
+        <div class="status-badge ${statusBadgeClass}">${escapeHtml(statusText)}</div>
+    `;
+    document.getElementById("page-title").innerHTML = pageTitle;
+
     let projectsSection = '';
     if (header.mix && header.projects && header.projects.length > 0) {
         const projectRows = header.projects.map(p => {
-            let row = `<tr><td>${p.project_code}</td><td>${p.ha.toFixed(2)}</td>`;
+            let row = `<tr><td>${escapeHtml(p.project_code || '')}</td><td>${Number(p.ha || 0).toFixed(2)}</td>`;
             if (doseBasis === 'PER_100L') {
-                row += `<td>${p.water_per_ha ? p.water_per_ha.toFixed(2) + ' L' : 'N/A'}</td><td>${p.total_water ? p.total_water.toFixed(2) + ' L' : 'N/A'}</td>`;
+                row += `<td>${p.water_per_ha != null ? p.water_per_ha.toFixed(2) + ' L' : 'N/A'}</td><td>${p.total_water != null ? p.total_water.toFixed(2) + ' L' : 'N/A'}</td>`;
             }
             row += '</tr>';
             return row;
         }).join('');
 
         const waterHeaders = doseBasis === 'PER_100L' ? '<th>Water / Ha</th><th>Total Water</th>' : '';
-        const methodDisplay = method ? `<div style="margin-bottom:1rem; padding-bottom:1rem; border-bottom:1px solid #eee;"><strong>Method:</strong> ${method.method_name} | <strong>Water per Tank:</strong> ${header.water_per_tank ? header.water_per_tank.toFixed(2) + ' L' : 'N/A'}</div>` : '';
-        const headerWaterInfo = `<div style="margin-bottom:1rem; padding-bottom:1rem; border-bottom:1px solid #eee;"><strong>Water / Ha:</strong> ${header.water_per_ha ? header.water_per_ha.toFixed(2) + ' L' : 'N/A'} | <strong>Total Water:</strong> ${header.total_water ? header.total_water.toFixed(2) + ' L' : 'N/A'}</div>`;
+        const methodDisplay = method ? `<div style="margin-bottom:1rem; padding-bottom:1rem; border-bottom:1px solid #eee;"><strong>Method:</strong> ${escapeHtml(method.method_name || '')} | <strong>Water per Tank:</strong> ${header.water_per_tank != null ? header.water_per_tank.toFixed(2) + ' L' : 'N/A'}</div>` : '';
+        const headerWaterInfo = `<div style="margin-bottom:1rem; padding-bottom:1rem; border-bottom:1px solid #eee;"><strong>Water / Ha:</strong> ${header.water_per_ha != null ? header.water_per_ha.toFixed(2) + ' L' : 'N/A'} | <strong>Total Water:</strong> ${header.total_water != null ? header.total_water.toFixed(2) + ' L' : 'N/A'}</div>`;
 
         projectsSection = `
-            <div class="section-card" style="margin-top:1rem;">
+            <div class="section-card">
                 <div class="section-header">
                     <span>Projects</span>
                     <span>${header.projects.length} project(s)</span>
                 </div>
                 <div class="section-body">
-                    ${methodDisplay}
-                    ${headerWaterInfo}
-                    <table style="margin-bottom:0;">
-                        <thead>
-                            <tr><th>Project</th><th>Hectares</th>${waterHeaders}</tr>
-                        </thead>
-                        <tbody>
-                            ${projectRows}
-                        </tbody>
-                    </table>
+                    <div class="summary-grid">
+                        <div class="summary-item"><strong>Spray Method</strong><span>${escapeHtml(method ? method.method_name : 'N/A')}</span></div>
+                        <div class="summary-item"><strong>Water / Ha</strong><span>${header.water_per_ha != null ? header.water_per_ha.toFixed(2) + ' L' : 'N/A'}</span></div>
+                        <div class="summary-item"><strong>Total Water</strong><span>${header.total_water != null ? header.total_water.toFixed(2) + ' L' : 'N/A'}</span></div>
+                        <div class="summary-item"><strong>Water / Tank</strong><span>${header.water_per_tank != null ? header.water_per_tank.toFixed(2) + ' L' : 'N/A'}</span></div>
+                    </div>
+                    <div class="table-wrap">
+                        <table style="margin-bottom:0;">
+                            <thead>
+                                <tr><th>Project</th><th>Hectares</th>${waterHeaders}</tr>
+                            </thead>
+                            <tbody>
+                                ${projectRows}
+                            </tbody>
+                        </table>
+                    </div>
                 </div>
             </div>
         `;
     }
 
     const headerEditBody = editModes.header ? `
-            <div class="form-group">
-                <label>Description</label>
-                <input type="text" id="edit-description" value="${header.spray_description || ''}" class="form-control">
-            </div>
-            <div class="form-group">
-                <label>Recommended Date</label>
-                <input type="date" id="edit-date" value="${header.spray_date ? header.spray_date.split('T')[0] : ''}" onchange="updateWeekNo()">
-            </div>
-            <div class="form-group">
-                <label>Week No</label>
-                <input type="text" id="edit-week" value="${header.spray_week || ''}" readonly>
-            </div>
-            <div class="form-group">
-                <label>Scouting</label>
-                <input type="text" id="edit-scouting" value="${header.scouting || ''}" maxlength="100" class="form-control">
+            <div class="form-grid">
+                <div class="form-group">
+                    <label>Description</label>
+                    <input type="text" id="edit-description" value="${header.spray_description || ''}" class="form-control">
+                </div>
+                <div class="form-group">
+                    <label>Recommended Date</label>
+                    <input type="date" id="edit-date" value="${header.spray_date ? header.spray_date.split('T')[0] : ''}" onchange="updateWeekNo()">
+                </div>
+                <div class="form-group">
+                    <label>Week No</label>
+                    <input type="text" id="edit-week" value="${header.spray_week || ''}" readonly>
+                </div>
+                <div class="form-group">
+                    <label>Scouting</label>
+                    <textarea id="edit-scouting" maxlength="100" class="form-control">${header.scouting || ''}</textarea>
+                </div>
             </div>
             <div class="edit-actions">
                 <button class="save-btn" onclick="saveHeaderEdit()">Save</button>
                 <button class="cancel-btn" onclick="cancelHeaderEdit()">Cancel</button>
             </div>
         ` : `
-            <div class="form-group">
-                <p>Click edit to modify Description, Recommended Date, Week No, and Scouting.</p>
+            <div class="info-list">
+                <div class="info-row"><strong>Description</strong><div class="info-value">${escapeHtml(header.spray_description || 'No description')}</div></div>
+                <div class="info-row"><strong>Weather</strong><div class="info-value">${escapeHtml(header.weather || 'N/A')}</div></div>
+                <div class="info-row"><strong>Scouting</strong><div class="info-value scouting-text">${escapeHtml(header.scouting || 'No scouting notes')}</div></div>
             </div>
         `;
 
@@ -357,51 +578,42 @@ async function renderHeader() {
     }
 
     let html = `
-        <div class="header-grid">
-            <div class="header-item"><h4>Description</h4><p>${header.spray_description || 'No description'}</p></div>
-            <div class="header-item"><h4>Recommended Date</h4><p>${header.spray_date || 'N/A'}</p></div>
-            <div class="header-item"><h4>Week No</h4><p>${header.spray_week || 'N/A'}</p></div>
-            <div class="header-item"><h4>Status</h4><p>${header.status || 'N/A'}</p></div>
-            <div class="header-item"><h4>Warehouse</h4><p>${header.warehouse ? header.warehouse.name : 'N/A'}</p></div>
-            <div class="header-item"><h4>Spray Nr</h4><p>${header.spray_no || 'N/A'}</p></div>
-            <div class="header-item"><h4>Start Date</h4><p>${startDate}</p></div>
-            <div class="header-item"><h4>End Date</h4><p>${endDate}</p></div>
-            <div class="header-item"><h4>Weather</h4><p>${header.weather || 'N/A'}</p></div>
-            <div class="header-item"><h4>Scouting</h4><p>${header.scouting || 'N/A'}</p></div>
-            <div>${actionButtons.join(' ')}</div>
-        </div>
-        <div class="section-card" style="margin-top:1rem;">
-                <div class="section-header" id="header-section-header">
+        <div class="section-card">
+            <div class="section-header" id="header-section-header">
                 <span>Basic Details</span>
-                                ${canEdit ? `<button class="edit-btn" onclick="toggleEditMode('header')">${editModes.header ? 'Cancel' : 'Edit'}</button>` : ''}
+                ${canEdit ? `<button class="edit-btn" onclick="toggleEditMode('header')">${editModes.header ? 'Cancel' : 'Edit'}</button>` : ''}
             </div>
             <div class="section-body" id="header-section-content">
                 ${headerEditBody}
             </div>
         </div>
-        ${projectsSection}
+        ${actionButtons.length ? `<div class="edit-actions" style="margin-top:0.25rem;">${actionButtons.join(' ')}</div>` : ''}
     `;
 
     document.getElementById("spray-header").innerHTML = html;
+    document.getElementById("spray-projects").innerHTML = projectsSection;
+}
+
+function formatDateTime(value) {
+    if (!value) return 'N/A';
+    const date = new Date(value);
+    if (Number.isNaN(date.getTime())) return 'N/A';
+    return date.toLocaleString([], {
+        dateStyle: 'medium',
+        timeStyle: 'short'
+    });
 }
 
 // Function to apply crop theme color to page background
 function applyPageThemeColor(colorHex) {
     const body = document.querySelector('.with-fixed-taskbar');
     if (!colorHex) {
-        // Reset to default: white background
+        document.documentElement.style.setProperty('--accent-color', '#2d6cdf');
         if (body) body.style.backgroundColor = '';
     } else {
-        // Validate hex color format and apply with transparency
         if (/^#[0-9A-F]{6}$/i.test(colorHex)) {
-            // Convert hex to RGB with alpha for soft background effect
-            const rgb = parseInt(colorHex.slice(1), 16);
-            const r = (rgb >> 16) & 255;
-            const g = (rgb >> 8) & 255;
-            const b = rgb & 255;
-            const rgba = `rgba(${r}, ${g}, ${b}, 1)`;
-            
-            if (body) body.style.backgroundColor = rgba;
+            document.documentElement.style.setProperty('--accent-color', colorHex);
+            if (body) body.style.backgroundColor = '';
         }
     }
 }
@@ -438,22 +650,23 @@ async function renderLines() {
     let html = `
         <div class="section-card">
             <div class="section-header ${editModeClass}">
-                <span>Spray Lines</span>
+                <span>Spray Products</span>
                 <div>
                     ${editModes.lines ? `<button class="save-btn" onclick="saveLinesEdit()">Save</button><button class="cancel-btn" onclick="cancelLinesEdit()">Cancel</button><button class="add-btn" onclick="addLine()">Add Line</button>` : (sprayData.header.issues_exist || !canEdit ? '' : `<button class="edit-btn" onclick="toggleEditMode('lines')">Edit</button>`) }
                 </div>
             </div>
             <div class="section-body">
-                <table>
-                    <thead>
-                        <tr>
-                            ${productHeader}
-                            <th>${qtyColumnText}</th>
-                            <th>Total Qty</th>
-                            ${editModes.lines ? '<th></th>' : ''}
-                        </tr>
-                    </thead>
-                    <tbody id="lines-tbody">
+                <div class="table-wrap">
+                    <table>
+                        <thead>
+                            <tr>
+                                ${productHeader}
+                                <th>${qtyColumnText}</th>
+                                <th>Total Qty</th>
+                                ${editModes.lines ? '<th></th>' : ''}
+                            </tr>
+                        </thead>
+                        <tbody id="lines-tbody">
     `;
 
     lines.forEach((line, idx) => {
@@ -496,8 +709,9 @@ async function renderLines() {
     });
 
     html += `
-                    </tbody>
-                </table>
+                        </tbody>
+                    </table>
+                </div>
             </div>
         </div>
     `;
@@ -506,6 +720,7 @@ async function renderLines() {
     if (editModes.lines) {
         initLineSelects();
     }
+    await renderMix();
 }
 
 function initLineSelects() {
@@ -695,9 +910,16 @@ async function renderMix(forceFetch = false) {
         sprayData.mixLines = lines;
     }
 
+    const mixContainer = document.getElementById("spray-mixes");
+    if (!mixContainer) return;
+
     if (!lines || lines.length === 0) {
-        document.getElementById("mix-container").innerHTML = 
-            "<div class='no-data'>No spray lines found.</div>";
+        mixContainer.innerHTML = `
+            <div class="section-card">
+                <div class="section-header"><span>Mix Plan</span></div>
+                <div class="section-body"><div class='no-data'>No spray lines found.</div></div>
+            </div>
+        `;
         return;
     }
 
@@ -709,50 +931,49 @@ async function renderMix(forceFetch = false) {
         mixGroups[line.mix_number].push(line);
     });
 
-    let html = "";
+    let html = `
+        <div class="section-card">
+            <div class="section-header">
+                <span>Mix Plan</span>
+                <span>${Object.keys(mixGroups).length} mix${Object.keys(mixGroups).length === 1 ? '' : 'es'}</span>
+            </div>
+            <div class="section-body">
+                <div class="mix-plan-list">
+    `;
 
     Object.keys(mixGroups).sort((a,b)=>a-b).forEach(mixNo => {
         const mixLines = mixGroups[mixNo];
-        const firstLine = mixLines[0];
+        const firstLine = mixLines[0] || {};
 
         const waterDisplay = typeof firstLine.water === 'number' && !isNaN(firstLine.water) ? `${firstLine.water.toFixed(2)} L Water` : '-';
         const mixHaDisplay = typeof firstLine.mix_ha === 'number' && !isNaN(firstLine.mix_ha) ? `${firstLine.mix_ha.toFixed(2)} Ha` : '-';
-        html += `
-            <div class="section-card">
-                <div class="section-header">
-                    <span>Mix ${mixNo}</span>
-                    <span>${waterDisplay} | ${mixHaDisplay}</span>
-                </div>
-                <div class="section-body">
-                    <table>
-                        <thead>
-                            <tr>
-                                <th>Stock Description</th>
-                                <th>Qty</th>
-                            </tr>
-                        </thead>
-                        <tbody>
-        `;
-
-        mixLines.forEach(line => {
+        const productItems = mixLines.map(line => {
             const qtyDisplay = typeof line.qty === 'number' && !isNaN(line.qty) ? line.qty.toFixed(2) : '-';
-            html += `
-                <tr>
-                    <td>${line.stock_description || '-'}</td>
-                    <td><b>${qtyDisplay} ${line.uom || ''}</b></td>
-                </tr>
+            return `
+                <div class="mix-plan-row">
+                    <span>${escapeHtml(line.stock_description || '-')}</span>
+                    <strong>${qtyDisplay} ${line.uom || ''}</strong>
+                </div>
             `;
-        });
+        }).join('');
 
         html += `
-                        </tbody>
-                    </table>
+            <div class="mix-plan-item">
+                <div class="mix-plan-header">
+                    <span>Mix ${mixNo}</span>
+                    <span class="mix-plan-meta">${waterDisplay} • ${mixHaDisplay}</span>
                 </div>
+                <div class="mix-plan-rows">${productItems}</div>
             </div>
         `;
     });
     
-    document.getElementById("mix-container").innerHTML = html;
+    html += `
+                </div>
+            </div>
+        </div>
+    `;
+    mixContainer.innerHTML = html;
 }
 
 async function fetchHeader(sprayId) {

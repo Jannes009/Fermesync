@@ -6,7 +6,6 @@ from Core.auth import create_db_connection, close_db_connection
 from flask_login import login_required, current_user
 from Inventory.routes.db_conversions import warehouse_code_to_link, project_code_to_link, stock_link_to_code
 from datetime import datetime
-from Inventory.routes.notifications import emit_event
 
 from Core.sdk_connection import EvolutionConnection, EvolutionAgentNotFoundError, EvolutionConnectionError
 import Pastel.Evolution as Evo
@@ -302,12 +301,6 @@ def process_return():
             """, (order_number, issue_id))
 
         conn.commit()
-
-        emit_event(
-            event_code="STOCK_ISSUE",
-            entity_id=issue_id,
-            entity_desc=order_number or 'NOT SENT TO EVO',
-        )
 
         return jsonify({
             "success": True,
