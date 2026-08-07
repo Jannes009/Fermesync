@@ -404,17 +404,18 @@ def get_products_api():
 
 @market_bp.route('/api/production_units')
 def get_producttion_units_api():
+    
+    conn = create_db_connection()
+    cursor = conn.cursor()
+
     try:
-        conn = create_db_connection()
-        cursor = conn.cursor()
-        
         # Get products using the existing function
         products = get_production_unit_codes(cursor)
         
         # Convert to list of dictionaries
         production_unit_list = [{
-            'UnitId': p[0],
-            'UnitName': p[1]
+            'UnitId': p['ProjectLink'],
+            'UnitName': p['display_name']
         } for p in products]
         
         return jsonify(production_unit_list)

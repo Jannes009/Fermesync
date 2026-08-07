@@ -1,11 +1,9 @@
-<!DOCTYPE html>
-<html lang="en">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Maintanance</title>
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css">
-    <style>
+{% extends "market_base.html" %}
+
+{% block title %}Maintanance{% endblock %}
+
+{% block head %}
+<style>
         body {
             background: var(--primary-bg);
             padding: 0;
@@ -247,10 +245,10 @@
             overflow-x: auto;
         }
     </style>
-</head>
-<body>
-    {% include 'taskbar.html' %}
-    <div class="main-content with-fixed-taskbar">
+{% endblock %}
+
+{% block content %}
+<div class="main-content">
         <div class="container-wide">
             <div class="row">
                 <!-- Sidebar -->
@@ -328,9 +326,11 @@
             </div>
         </div>
     </div>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/js/all.min.js"></script>
-    <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
-    <script>
+{% endblock %}
+
+{% block scripts %}
+<script src="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/js/all.min.js"></script>
+<script>
         // Custom tab functionality
         function initTabs() {
             const tabLinks = document.querySelectorAll('.nav-link');
@@ -532,5 +532,4 @@
             loadProductionUnits();
         });
     </script>
-</body>
-</html>
+{% endblock %}

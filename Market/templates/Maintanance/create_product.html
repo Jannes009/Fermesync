@@ -1,15 +1,14 @@
-<!DOCTYPE html>
-<html lang="en">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Create Product</title>
-    <link rel="stylesheet" href="{{ url_for('market.static', filename='Maintanance/product.css') }}">
-    <link rel="stylesheet" href="{{ url_for('market.static', filename='Maintanance/modal.css') }}">
-</head>
-<body>
-    {% include 'taskbar.html' %}
-    <div class="container  with-fixed-taskbar">
+{% extends "market_base.html" %}
+
+{% block title %}Create Product{% endblock %}
+
+{% block head %}
+<link rel="stylesheet" href="{{ url_for('market.static', filename='Maintanance/product.css') }}">
+<link rel="stylesheet" href="{{ url_for('market.static', filename='Maintanance/modal.css') }}">
+{% endblock %}
+
+{% block content %}
+<div class="container">
         <h1>Create Product</h1>
         <form action="/market/maintanance/create-product" method="POST" id="createProductForm">
 
@@ -87,7 +86,9 @@
     </div>
 
     {% include "Maintanance/modal.html" %}
-    <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
-    <script src="{{ url_for('market.static', filename='Maintanance/product.js') }}?{{ filemtime('market', 'Maintanance/product.js') }}"></script>
-</body>
-</html>
+{% endblock %}
+
+{% block scripts %}
+<script src="{{ url_for('market.static', filename='Maintanance/product.js') }}?{{ filemtime('market', 'Maintanance/product.js') }}"></script>
+{% endblock %}
+

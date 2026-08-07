@@ -1,12 +1,9 @@
-<!DOCTYPE html>
-<html lang="en">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Sales Order Summary</title>
-    <script src="https://cdn.tailwindcss.com"></script>
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css">
-    <style>
+{% extends "market_base.html" %}
+
+{% block title %}Sales Order Summary{% endblock %}
+
+{% block head %}
+<style>
         body { 
             background: var(--primary-bg); 
             font-size: 0.95rem; 
@@ -115,10 +112,10 @@
             color: var(--logo-color);
         }
     </style>
-</head>
-<body>
-{% include 'taskbar.html' %}
-<div class="main-content py-8 with-fixed-taskbar">
+{% endblock %}
+
+{% block content %}
+<div class="main-content py-8">
     <div class="container-wide mx-auto px-4" style="max-width: 1200px;">
         <div class="sales-order-table-card">
             <div class="flex justify-between items-center mb-6">
@@ -143,7 +140,6 @@
         </div>
     </div>
 </div>
-    <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
 <script>
     function RefreshInvoices() {
         fetch('/market/api/refresh-invoices', { method: 'POST' })
@@ -169,5 +165,5 @@
 
 
 </script>
-</body>
-</html> 
+{% endblock %}
+ 

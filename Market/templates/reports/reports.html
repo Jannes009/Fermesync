@@ -1,12 +1,10 @@
-<!DOCTYPE html>
-<html lang="en">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Reports</title>
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css">
-    <link href="https://cdnjs.cloudflare.com/ajax/libs/select2/4.0.13/css/select2.min.css" rel="stylesheet" />
-    <style>
+{% extends "market_base.html" %}
+
+{% block title %}Reports{% endblock %}
+
+{% block head %}
+<link href="https://cdnjs.cloudflare.com/ajax/libs/select2/4.0.13/css/select2.min.css" rel="stylesheet" />
+<style>
         body {
             background: var(--primary-bg);
             padding: 0;
@@ -584,10 +582,10 @@
 
 
     </style>
-</head>
-<body>
-    {% include 'taskbar.html' %}
-    <div class="loading-overlay hidden" id="loadingOverlay">
+{% endblock %}
+
+{% block content %}
+<div class="loading-overlay hidden" id="loadingOverlay">
         <div class="loading-content">
             <div class="spinner"></div>
             <div>Loading report data, please wait...</div>
@@ -654,9 +652,12 @@
         <div id="reportTable" style="font-family: Arial, sans-serif; font-size: 12px;"></div>
     </div>
     <div id="svgContainer" style="display: none;"></div>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
-    <script>
+{% endblock %}
+
+{% block scripts %}
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
+<script>
         // Enable debug logging
         window.debugMode = true;
         function debugLog(...args) {
@@ -1076,12 +1077,9 @@
             }
         });
     </script>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/js/all.min.js"></script>
-    <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/js/all.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/select2/4.0.13/js/select2.min.js"></script>
-    <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
-    <script src="{{ url_for('market.static', filename='reports/template-report-loader.js') }}?{{ filemtime('market', 'reports/template-report-loader.js') }}"></script>
-    <script src="{{ url_for('market.static', filename='reports/pdfGenerator.js') }}?{{ filemtime('market', 'reports/pdfGenerator.js') }}"></script>
-    <script src="{{ url_for('market.static', filename='reports/create-template.js') }}?{{ filemtime('market', 'reports/create-template.js') }}"></script>
-</body>
-</html>
+<script src="{{ url_for('market.static', filename='reports/template-report-loader.js') }}?{{ filemtime('market', 'reports/template-report-loader.js') }}"></script>
+<script src="{{ url_for('market.static', filename='reports/pdfGenerator.js') }}?{{ filemtime('market', 'reports/pdfGenerator.js') }}"></script>
+<script src="{{ url_for('market.static', filename='reports/create-template.js') }}?{{ filemtime('market', 'reports/create-template.js') }}"></script>
+{% endblock %}

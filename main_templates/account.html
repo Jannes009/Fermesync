@@ -1,11 +1,5 @@
-<!DOCTYPE html>
-<html lang="en">
-<head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Account Settings</title>
-  <link rel="stylesheet" href="{{ url_for('static', filename='color-template.css') }}">
-  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css">
+{% extends 'market_base.html' %}
+{% block head %}
   <style>
     /* General */
     body { background: var(--primary-bg); margin: 0; font-size: 0.95rem; color: var(--primary-text); min-height: 100vh; }
@@ -126,9 +120,8 @@
       .col-md-3, .col-md-9 { flex: 0 0 100%; min-width: 100%; }
     }
   </style>
-</head>
-<body>
-  {% include 'taskbar.html' %}
+{% endblock %}
+  {% block content %}
 
   <div class="main-content with-fixed-taskbar">
     <div class="container-wide">
@@ -223,7 +216,9 @@
       </div>
     </div>
   </div>
+{% endblock %}
 
+  {% block scripts %}
   <script src="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/js/all.min.js"></script>
   <script>
     document.addEventListener('DOMContentLoaded', function () {
@@ -251,7 +246,6 @@
       });
     });
   </script>
-  <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
 
 <script>
 document.addEventListener("DOMContentLoaded", () => {
@@ -307,6 +301,4 @@ document.addEventListener("DOMContentLoaded", () => {
     });
   });
 </script>
-
-</body>
-</html>
+{% endblock %}

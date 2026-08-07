@@ -1,14 +1,13 @@
-<!DOCTYPE html>
-<html lang="en">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Submission Success</title>
-    <link rel="stylesheet" href="{{ url_for('market.static', filename='Submission Success/submission_success.css') }}">
-</head>
-<body>
-    {% include 'taskbar.html' %}
-    <div class="container with-fixed-taskbar">
+{% extends "market_base.html" %}
+
+{% block title %}Submission Success{% endblock %}
+
+{% block head %}
+<link rel="stylesheet" href="{{ url_for('market.static', filename='Submission Success/submission_success.css') }}">
+{% endblock %}
+
+{% block content %}
+<div class="container">
         <h1>Entry Submitted Successfully!</h1>
         <div class="options">
             <!-- View Entry button now links to the edit_entry page -->
@@ -20,6 +19,5 @@
             </button>
         </div>
     </div>
-</body>
-</html>
+{% endblock %}
 

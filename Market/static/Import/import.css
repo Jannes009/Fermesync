@@ -35,18 +35,22 @@ body {
     margin-bottom: 30px;
 }
 
-/* Heading Styles */
-h2 {
+/* Heading Styles (scoped to container to override global/base styles) */
+.container h2,
+.results-container h2 {
     font-size: 1.8rem;
     margin-bottom: 15px;
     text-align: center;
     color: var(--primary-text);
+    font-weight: 700;
 }
 
-h4 {
+.container h4,
+.results-container h4 {
     font-size: 1.4rem;
     margin-bottom: 12px;
     color: var(--secondary-text);
+    font-weight: 600;
 }
 
 /* Form Styles */
@@ -67,11 +71,15 @@ label {
     color: var(--primary-text);
 }
 
-input[type="file"],
-input[type="date"],
-select,
-.form-control,
-.form-select {
+/* Form inputs and selects (scoped) */
+.container input[type="file"],
+.container input[type="date"],
+.container select,
+.container .form-control,
+.container .form-select,
+.results-container select,
+.results-container .form-control,
+.results-container .form-select {
     width: 100%;
     padding: 10px;
     border: 1px solid var(--input-border);

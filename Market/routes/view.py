@@ -1,6 +1,5 @@
 ﻿from flask import render_template, request, jsonify
 from Core.auth import create_db_connection, close_db_connection
-from Market.routes.db_functions import get_agent_codes, get_stock_id, get_products, del_note_number_to_del_id
 
 from Market.routes import market_bp
 

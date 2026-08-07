@@ -1,13 +1,9 @@
-<!DOCTYPE html>
-<html lang="en">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Bill Of Material</title>
-    <script src="https://cdn.tailwindcss.com"></script>
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css">
-    <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
-    <style>
+{% extends "market_base.html" %}
+
+{% block title %}Bill Of Material{% endblock %}
+
+{% block head %}
+<style>
         body { 
             background: var(--primary-bg); 
             padding: 0; 
@@ -117,10 +113,10 @@
             to { transform: rotate(360deg); }
         }
     </style>
-</head>
-<body>
-    {% include 'taskbar.html' %}
-    <div class="main-content container-wide with-fixed-taskbar">
+{% endblock %}
+
+{% block content %}
+<div class="main-content container-wide">
         
         <div class="bom-table-container">
             <h2 class="bom-title">Bill Of Material</h2>
@@ -159,6 +155,9 @@
             </table>
         </div>
     </div>
-    <script src="{{ url_for('market.static', filename='Bill Of Lading/bill_of_material.js') }}?{{ filemtime('market', 'Bill Of Lading/bill_of_material.js') }}"></script>
-</body>
-</html> 
+{% endblock %}
+
+{% block scripts %}
+<script src="{{ url_for('market.static', filename='Bill Of Lading/bill_of_material.js') }}?{{ filemtime('market', 'Bill Of Lading/bill_of_material.js') }}"></script>
+{% endblock %}
+ 

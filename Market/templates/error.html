@@ -1,11 +1,9 @@
-<!-- templates/error.html -->
-<!DOCTYPE html>
-<html lang="en">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Error - Something Went Wrong</title>
-    <style>
+{% extends "market_base.html" %}
+
+{% block title %}Error - Something Went Wrong{% endblock %}
+
+{% block head %}
+<style>
         /* Reset default margins */
         body, html {
             margin: 0;
@@ -89,11 +87,10 @@
             }
         }
     </style>
-</head>
-<body>
-    {% include 'taskbar.html' %} <!-- Include the taskbar -->
+{% endblock %}
 
-    <div class="error-container">
+{% block content %}
+<div class="error-container">
         <h1>Oops! Something went wrong.</h1>
         <p>We encountered an error while processing your request. Please try again later or contact support.</p>
         <div class="error-details">
@@ -102,5 +99,5 @@
         <br>
         <button class="error-btn" onclick="window.location.href='/'">Go to Home</button> <!-- A button to guide the user back -->
     </div>
-</body>
-</html>
+{% endblock %}
+
