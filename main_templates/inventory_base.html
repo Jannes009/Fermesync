@@ -71,7 +71,7 @@
 
                 if (subscription?.id && subscription.optedIn) {
 
-                    await fetch('/inventory/link_user_and_subscription', {
+                    await fetch('/link_user_and_subscription', {
                         method: 'POST',
                         headers: { 'Content-Type': 'application/json' },
                         body: JSON.stringify({

@@ -18,6 +18,12 @@
     <ul>
       {% set ibt_dispatch = "IBT_DISPATCH" in current_user.permissions %}
       {% set ibt_receive = "IBT_RECEIVE" in current_user.permissions %}
+      {% if "PO_CREATE" in current_user.permissions %}
+      <li><a href="/inventory/create_purchase_order" class="taskbar-link">Purchase Order</a></li>
+      {% endif %}
+      {% if "GRV_CREATE" in current_user.permissions %}
+      <li><a href="/inventory/grv" class="taskbar-link">GRV</a></li>
+      {% endif %}
       {% if ibt_dispatch or ibt_receive %}
       <li class="dropdown-parent">
         {% if ibt_dispatch and ibt_receive %}
@@ -36,13 +42,7 @@
       </li>
       {% endif %}
       {% if "WHSE_TRANSFER" in current_user.permissions %}
-      <li><a href="/inventory/warehouse-transfer" class="taskbar-link">Whse Transfer</a></li>
-      {% endif %}
-      {% if "WHSE_QTYS" in current_user.permissions %}
-      <li><a href="/inventory/qty" class="taskbar-link">Warehouse Qty's</a></li>
-      {% endif %}
-      {% if "GRV_CREATE" in current_user.permissions %}
-      <li><a href="/inventory/grv" class="taskbar-link">GRV</a></li>
+      <li><a href="/inventory/warehouse-transfer" class="taskbar-link">Warehouse Transfer</a></li>
       {% endif %}
       {% if "STOCK_COUNT" in current_user.permissions %}
       <li><a href="/inventory/stock-counts" class="taskbar-link">Stock Count</a></li>
@@ -75,11 +75,8 @@
         {% endif %}
       </li>
       {% endif %}
-      {% if "AGR_MAIN" in current_user.permissions %}
-      <li><a href="/agri/setup" class="taskbar-link">Agri Maintanance</a></li>
-      {% endif %}
-      {% if "PO_CREATE" in current_user.permissions %}
-      <li><a href="/inventory/create_purchase_order" class="taskbar-link">Purchase Order</a></li>
+      {% if "WHSE_QTYS" in current_user.permissions %}
+      <li><a href="/inventory/qty" class="taskbar-link">Stock Qty's</a></li>
       {% endif %}
       <!-- <li><a href="/inventory/barcode_scanner" class="taskbar-link">Barcode Scanner</a></li> -->
     </ul>
@@ -122,6 +119,9 @@
       {% endif %}
       {% if "MANAGE_USERS" in current_user.permissions %}
       <a href="{{ url_for('admin.manage_users') }}">Manage Users</a>
+      {% endif %}
+      {% if "AGR_MAIN" in current_user.permissions %}
+      <a href="/agri/setup">Agri Maintanance</a>
       {% endif %}
       <a href="{{ url_for('logout') }}">Logout</a>
     </div>
@@ -170,12 +170,32 @@
     <ul class="mobile-nav-list">
       {% set ibt_dispatch = "IBT_DISPATCH" in current_user.permissions %}
       {% set ibt_receive = "IBT_RECEIVE" in current_user.permissions %}
+      {% if "PO_CREATE" in current_user.permissions %}
+      <li class="mobile-nav-item">
+        <a href="/inventory/create_purchase_order" class="mobile-nav-link">
+          <div class="mobile-nav-content">
+            <span class="mobile-nav-icon">🧾</span>
+            <span>Purchase Order</span>
+          </div>
+        </a>
+      </li>
+      {% endif %}
+      {% if "GRV_CREATE" in current_user.permissions %}
+      <li class="mobile-nav-item">
+        <a href="/inventory/grv" class="mobile-nav-link">
+          <div class="mobile-nav-content">
+            <span class="mobile-nav-icon">📥</span>
+            <span>GRV</span>
+          </div>
+        </a>
+      </li>
+      {% endif %}
       {% if ibt_dispatch or ibt_receive %}
       <li class="mobile-nav-item">
         {% if ibt_dispatch and ibt_receive %}
         <a href="#" class="mobile-nav-link">
           <div class="mobile-nav-content">
-            <span class="mobile-nav-icon">↔️</span>
+            <span class="mobile-nav-icon">🔁</span>
             <span>Inter-branch Transfer</span>
           </div>
           <span class="mobile-nav-chevron">›</span>
@@ -187,104 +207,26 @@
         {% elif ibt_dispatch %}
         <a href="/inventory/SDK/IBT_issue" class="mobile-nav-link">
           <div class="mobile-nav-content">
-            <span class="mobile-nav-icon">↔️</span>
+            <span class="mobile-nav-icon">🔁</span>
             <span>Inter-branch Transfer</span>
           </div>
         </a>
         {% else %}
         <a href="/inventory/SDK/IBT_receive" class="mobile-nav-link">
           <div class="mobile-nav-content">
-            <span class="mobile-nav-icon">↔️</span>
+            <span class="mobile-nav-icon">🔁</span>
             <span>Inter-branch Transfer</span>
           </div>
         </a>
         {% endif %}
       </li>
       {% endif %}
-      {% if "WHSE_QTYS" in current_user.permissions %}
-      <li class="mobile-nav-item">
-        <a href="/inventory/qty" class="mobile-nav-link">
-          <div class="mobile-nav-content">
-            <span class="mobile-nav-icon">📦</span>
-            <span>Warehouse Qty's</span>
-          </div>
-        </a>
-      </li>
-      {% endif %}
       {% if "WHSE_TRANSFER" in current_user.permissions %}
       <li class="mobile-nav-item">
         <a href="/inventory/warehouse-transfer" class="mobile-nav-link">
           <div class="mobile-nav-content">
-            <span class="mobile-nav-icon">🏬</span>
-            <span>Whse Transfer</span>
-          </div>
-        </a>
-      </li>
-      {% endif %}
-      {% if spray_exec or spray_rec or spray_rec_create %}
-      <li class="mobile-nav-item">
-        {% if spray_exec and spray_rec %}
-        <a href="#" class="mobile-nav-link">
-          <div class="mobile-nav-content">
-            <span class="mobile-nav-icon">🧪</span>
-            <span>Spray</span>
-          </div>
-          <span class="mobile-nav-chevron">›</span>
-        </a>
-        <ul class="mobile-submenu">
-          <li><a href="/agri/spray-executions-summary" class="mobile-submenu-link">Executions</a></li>
-          <li><a href="/agri/spray-recommendations-summary" class="mobile-submenu-link">Recommendations</a></li>
-        </ul>
-        {% elif spray_exec %}
-        <a href="/agri/spray-executions-summary" class="mobile-nav-link">
-          <div class="mobile-nav-content">
-            <span class="mobile-nav-icon">🧾</span>
-            <span>Spray Executions</span>
-          </div>
-        </a>
-        {% elif spray_rec %}
-        <a href="/agri/spray-recommendations-summary" class="mobile-nav-link">
-          <div class="mobile-nav-content">
-            <span class="mobile-nav-icon">🧪</span>
-            <span>Spray Recommendations</span>
-          </div>
-        </a>
-        {% elif spray_rec_create %}
-        <a href="/agri/spray-recommendation/create" class="mobile-nav-link">
-          <div class="mobile-nav-content">
-            <span class="mobile-nav-icon">🧪</span>
-            <span>New Recommendation</span>
-          </div>
-        </a>
-        {% endif %}
-      </li>
-      {% endif %}
-      {% if "AGR_MAIN" in current_user.permissions %}
-      <li class="mobile-nav-item">
-        <a href="/agri/setup" class="mobile-nav-link">
-          <div class="mobile-nav-content">
-            <span class="mobile-nav-icon">⚙️</span>
-            <span>Agri Maintanance</span>
-          </div>
-        </a>
-      </li>
-      {% endif %}
-      {% if "GRV_CREATE" in current_user.permissions %}
-      <li class="mobile-nav-item">
-        <a href="/inventory/grv" class="mobile-nav-link">
-          <div class="mobile-nav-content">
             <span class="mobile-nav-icon">📦</span>
-            <span>GRV</span>
-          </div>
-        </a>
-      </li>
-      {% endif %}
-      {% if "PO_CREATE" in current_user.permissions %}
-      <li class="mobile-nav-item">
-        <a href="/inventory/create_purchase_order" class="mobile-nav-link">
-          <div class="mobile-nav-content">
-            <span class="mobile-nav-icon">🧾</span>
-            <span>Purchase Order</span>
+            <span>Warehouse Transfer</span>
           </div>
         </a>
       </li>
@@ -309,6 +251,54 @@
         </a>
       </li>
       {% endif %}
+      {% if spray_exec or spray_rec or spray_rec_create %}
+      <li class="mobile-nav-item">
+        {% if spray_exec and spray_rec %}
+        <a href="#" class="mobile-nav-link">
+          <div class="mobile-nav-content">
+            <span class="mobile-nav-icon">🌿</span>
+            <span>Spray</span>
+          </div>
+          <span class="mobile-nav-chevron">›</span>
+        </a>
+        <ul class="mobile-submenu">
+          <li><a href="/agri/spray-executions-summary" class="mobile-submenu-link">Executions</a></li>
+          <li><a href="/agri/spray-recommendations-summary" class="mobile-submenu-link">Recommendations</a></li>
+        </ul>
+        {% elif spray_exec %}
+        <a href="/agri/spray-executions-summary" class="mobile-nav-link">
+          <div class="mobile-nav-content">
+            <span class="mobile-nav-icon">🌿</span>
+            <span>Spray Executions</span>
+          </div>
+        </a>
+        {% elif spray_rec %}
+        <a href="/agri/spray-recommendations-summary" class="mobile-nav-link">
+          <div class="mobile-nav-content">
+            <span class="mobile-nav-icon">🌿</span>
+            <span>Spray Recommendations</span>
+          </div>
+        </a>
+        {% elif spray_rec_create %}
+        <a href="/agri/spray-recommendation/create" class="mobile-nav-link">
+          <div class="mobile-nav-content">
+            <span class="mobile-nav-icon">🌿</span>
+            <span>New Recommendation</span>
+          </div>
+        </a>
+        {% endif %}
+      </li>
+      {% endif %}
+      {% if "WHSE_QTYS" in current_user.permissions %}
+      <li class="mobile-nav-item">
+        <a href="/inventory/qty" class="mobile-nav-link">
+          <div class="mobile-nav-content">
+            <span class="mobile-nav-icon">📊</span>
+            <span>Stock Qty's</span>
+          </div>
+        </a>
+      </li>
+      {% endif %}
     </ul>
     <div class="mobile-nav-footer">
       {% if current_user.market_module %}
@@ -321,7 +311,6 @@
 
 <style>
 /* Base */
-@import url('/main_static/color-template.css');
 
 /* Reset default margins */
 body, html {
@@ -1218,7 +1207,7 @@ document.addEventListener("DOMContentLoaded", function () {
 async function updateNotificationsCount() {
   if (!navigator.onLine) return;
   try {
-    const response = await fetch('/inventory/notifications/count');
+    const response = await fetch('/notifications/count');
     const data = await response.json();
     const count = data.count || 0;
     

@@ -10,7 +10,7 @@
     <nav class="desktop-nav">
         <ul>
             <li class="dropdown-parent" style="position:relative;">
-                <a href="/market/create_entry" class="taskbar-link" id="delivery-note-link">Delivery Note <span style="font-size:0.8em;">&#9662;</span></a>
+                <a href="/market/create_entry" class="taskbar-link" id="delivery-note-link">Delivery Note <span style="font-size:0.8em;">▼</span></a>
                 <ul class="dropdown-menu">
                     <li><a href="/market/create_entry" class="dropdown-item">Create</a></li>
                     <li><a href="/market/view_entries" class="dropdown-item">View</a></li>
@@ -18,7 +18,7 @@
             </li>
             <li><a href="/market/import/main" class="taskbar-link" id="import-link">Import</a></li>
             <li class="dropdown-parent" style="position:relative;">
-                <a href="/market/sales-orders" class="taskbar-link" id="sales-orders-link">Order Entry<span style="font-size:0.8em;">&#9662;</span></a>
+                <a href="/market/sales-orders" class="taskbar-link" id="sales-orders-link">Order Entry <span style="font-size:0.8em;">▼</span></a>
                 <ul class="dropdown-menu">
                     <li><a href="/market/sales-orders" class="dropdown-item">Sales Orders</a></li>
                     <li><a href="/market/purchase-orders" class="dropdown-item">Purchase Orders</a></li>
@@ -32,7 +32,7 @@
     
     <!-- Desktop User Section -->
     <div class="user-section desktop-user">
-        <div class="username" id="username">{{ current_user.username }} <span>&#9662;</span></div>
+        <div class="username" id="username">{{ current_user.username }} <span>▼</span></div>
         <div class="dropdown">
             {% if current_user.has_feature("INVENTORY") %}
                 <a href="/inventory/dashboard">Fermesync Inventory</a>

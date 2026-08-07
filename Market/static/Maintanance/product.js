@@ -71,7 +71,7 @@ document.addEventListener('DOMContentLoaded', function () {
             });
     
             form.reset(); // Optionally reset the form
-            window.location.href = '/create_entry'; // Redirect after
+            window.location.href = '/market/create_entry'; // Redirect after
     
         } catch (error) {
             Swal.close(); // Make sure to close "creating..." if still open

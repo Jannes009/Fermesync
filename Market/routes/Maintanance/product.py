@@ -123,7 +123,6 @@ def create_product():
     try:
 
         cursor.execute(query, values)
-        conn.commit()
         cursor.execute("EXEC [mkt].[SIGCreateEvoStockItem]")
         conn.commit()
     except IntegrityError as e:
@@ -134,11 +133,13 @@ def create_product():
             }), 409  # 409 Conflict
         return jsonify({"error": str(e)}), 500
     except Exception as e:
+        print(e)
         return jsonify({"error": str(e)}), 500
 
     # Retrieve updated product options
     try:
         product_options = get_products(cursor)
+        print(product_options)
     finally:
         cursor.close()
         conn.close()
@@ -146,7 +147,7 @@ def create_product():
     # Return success message and updated product options
     return jsonify({
         "success": "Product created successfully",
-        "productOptions": [{"value": row[0], "text": row[1]} for row in product_options]
+        "productOptions": [{"value": row['StockLink'], "text": row['display_name']} for row in product_options]
     }), 200
 
 
