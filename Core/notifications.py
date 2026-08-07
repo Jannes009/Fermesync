@@ -312,3 +312,21 @@ def onesignal_webhook_notification_displayed():
     print(data)
 
     return jsonify({"success": True}), 200
+
+@notifications_bp.route("/notifications/onesignal/webhooks/notification-opened", methods=["POST"])
+def onesignal_webhook_notification_opened():
+    data = request.get_json(silent=True)
+
+    print("OneSignal webhook received:")
+    print(data)
+
+    return jsonify({"success": True}), 200
+
+@notifications_bp.route("/notifications/onesignal/webhooks/notification-dismissed", methods=["POST"])
+def onesignal_webhook_notification_dismissed():
+    data = request.get_json(silent=True)
+
+    print("OneSignal webhook received:")
+    print(data)
+
+    return jsonify({"success": True}), 200
