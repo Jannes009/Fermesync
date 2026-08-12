@@ -86,6 +86,7 @@ def purchase_order_stock_item_units(stock_id):
     sql = """
     Select idUnits, cUnitCode,
     COALESCE(LastInvoicePrice, CST.PurchaseUnitLastGRVCost, 0) AS Cost,
+	LINK.InvDate,
     CASE WHEN STKUOM.PurchaseUnitId = UOM.idUnits THEN 1 ELSE 0 END AS DefaultUnit
     from [cmn].[_uvStockUnits] STKUOM
     JOIN [cmn].[_uvStockItems] STK on STK.StockLink = STKUOM.StockLink
@@ -100,10 +101,11 @@ def purchase_order_stock_item_units(stock_id):
 
     units = [
         {
-            'unit_id': int(r[0]),
-            'unit_code': r[1],
-            'cost': float(r[2]) if r[2] is not None else None,
-            'default_unit': bool(r[3])
+            'unit_id': int(r.idUnits),
+            'unit_code': r.cUnitCode,
+            'cost': float(r.Cost),
+            'inv_date': r.InvDate.isoformat() if r.InvDate else None,
+            'default_unit': bool(r.DefaultUnit)
         }
         for r in rows
     ]

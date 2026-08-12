@@ -5,15 +5,9 @@
 {% block head %}
 <link href="https://cdnjs.cloudflare.com/ajax/libs/select2/4.0.13/css/select2.min.css" rel="stylesheet" />
 <style>
-        body {
-            background: var(--primary-bg);
-            padding: 0;
-            margin: 0;
-            font-size: 0.95rem;
-            min-height: 100vh;
-            color: var(--primary-text);
-        }
         .report-container {
+            background: var(--primary-bg);
+            color: var(--primary-text);
             max-width: 1800px;
             margin: 0 auto;
             padding: 0 1.2rem;
@@ -579,7 +573,51 @@
 .create-report-button i {
     font-size: 1rem;
 }
+/* ===== Hierarchical levels ===== */
+.report-table tr.level-0 {
+    font-weight: 700;
+    background: var(--table-row-hover);
+    border-left: 4px solid var(--button-bg);
+}
 
+.report-table tr.level-1 {
+    font-weight: 600;
+    background: color-mix(in srgb, var(--table-row-uneven) 70%, var(--table-row-hover));
+    border-left: 4px solid color-mix(in srgb, var(--button-bg) 70%, transparent);
+}
+
+.report-table tr.level-2 {
+    font-weight: 500;
+    background: var(--table-row-uneven);
+    border-left: 4px solid color-mix(in srgb, var(--button-bg) 40%, transparent);
+}
+
+.report-table tr.level-3 {
+    font-weight: 400;
+    font-style: italic;
+    background: color-mix(in srgb, var(--table-row-uneven) 90%, white);
+    border-left: 4px solid color-mix(in srgb, var(--button-bg) 25%, transparent);
+}
+
+.report-table tr.level-4,
+.report-table tr.level-5 {
+    font-weight: 400;
+    color: var(--muted, #657793);
+    background: color-mix(in srgb, var(--table-row-uneven) 95%, white);
+    border-left: 4px solid transparent;
+}
+
+/* Stronger left padding so the hierarchy is obvious */
+.report-table tr.level-1 td:first-child { padding-left: 1.8rem; }
+.report-table tr.level-2 td:first-child { padding-left: 3.2rem; }
+.report-table tr.level-3 td:first-child { padding-left: 4.6rem; }
+.report-table tr.level-4 td:first-child { padding-left: 6.0rem; }
+.report-table tr.level-5 td:first-child { padding-left: 7.4rem; }
+
+/* Keep the hover nice */
+.report-table tr.hover:hover td {
+    background: var(--table-row-hover) !important;
+}
 
     </style>
 {% endblock %}

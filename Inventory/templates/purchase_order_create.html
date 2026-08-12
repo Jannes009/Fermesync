@@ -9,22 +9,22 @@
 
     <section class="form-card">
         <div class="field-grid">
-            <label class="field-group">
+            <div class="field-group">
                 <span>Supplier</span>
                     <div class="searchable-field" id="supplier-field">
                         <select id="supplier-select" class="searchable-select" style="width:100%"><option></option></select>
                     </div>
-            </label>
-            <label class="field-group">
+                </div>
+            <div class="field-group">
                 <span>Warehouse</span>
                 <div class="searchable-field" id="warehouse-field">
                     <select id="warehouse-select" class="searchable-select" style="width:100%"><option></option></select>
                 </div>
-            </label>
-            <label class="field-group full-width">
+            </div>
+            <div class="field-group full-width">
                 <span>Description</span>
                 <textarea id="description" rows="2" placeholder="Optional order description"></textarea>
-            </label>
+            </div>
         </div>
     </section>
 
@@ -230,12 +230,12 @@ body {
     justify-content: center;
 }
 .primary-btn {
-    background: var(--accent);
-    color: #fff;
+    background: var(--button-bg);
+    color: var(--button-text);
 }
 .secondary-btn {
-    background: #eef5ff;
-    color: var(--accent);
+    background: var(--button-text);
+    color: var(--button-bg);
 }
 
 .actions-card {

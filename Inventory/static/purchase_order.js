@@ -139,7 +139,7 @@ const productItems = () => products.map(product => ({
 
 const unitItems = units => units.map(unit => ({
     id: unit.unit_id,
-    text: `${unit.unit_code} — ${formatCurrency(unit.cost)}`,
+    text: `${unit.unit_code} — ${formatCurrency(unit.cost)}${unit.inv_date ? ` (${new Date(unit.inv_date).toLocaleDateString()})` : ''}`,
     data: unit
 }));
 

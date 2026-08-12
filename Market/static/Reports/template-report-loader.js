@@ -185,6 +185,9 @@ function buildRowsRecursive(tbody, groupedData, levels, fields, rowIdCounter, pa
     for (const [key, subData] of Object.entries(groupedData)) {
         const tr = document.createElement("tr");
         tr.dataset.rowId = `row-${rowIdCounter.value++}`;
+        tr.classList.add(`level-${depth}`);          // ← new
+        tr.dataset.depth = depth;                    // ← optional but useful
+
         if (parentRow) {
             tr.classList.add("hidden");
             tr.dataset.parentId = parentRow.dataset.rowId;
@@ -192,19 +195,21 @@ function buildRowsRecursive(tbody, groupedData, levels, fields, rowIdCounter, pa
 
         // Compute totals or field values
         const totals = computeFieldTotals(isLastLevel ? subData : flattenGroupedData(subData), fields);
-        // Match quantities report indentation style
-        const indent = depth === 0 ? "" : "↳ ".repeat(depth >= 3 ? 3 : depth) + (depth >= 3 ? "&nbsp;&nbsp;&nbsp;" : "");
-        tr.innerHTML = `
-        <td>${indent}${key}</td>
-        ${fields.map(f => `<td>${formatValue(totals[f.field], f.valueType)}</td>`).join("")}
-    `;
-    
 
-        // Toggle click handler
+        // Cleaner indentation (you can keep or remove the ↳)
+        const indent = depth === 0 ? "" : "↳ ".repeat(Math.min(depth, 4));
+
+        tr.innerHTML = `
+            <td>${indent}${key}</td>
+            ${fields.map(f => `<td>${formatValue(totals[f.field], f.valueType)}</td>`).join("")}
+        `;
+
+        // Toggle click handler only for non-leaf rows
         if (!isLastLevel) {
-            tr.classList.add("hover");
+            tr.classList.add("hover", "expandable");
             tr.addEventListener("click", () => toggleChildren(tr.dataset.rowId));
         }
+
         tbody.appendChild(tr);
 
         if (!isLastLevel) {
