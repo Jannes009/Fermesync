@@ -33,6 +33,7 @@ def create_stock_issue():
     
     order_final = data.get("order_final", False)
     lines_payload = data.get("lines", [])
+    issue_date = data.get("created_at") or data.get("issue_date")
     
     issue_mode = data.get("issue_mode", "project")  # "project" or "spray"
     
@@ -47,12 +48,12 @@ def create_stock_issue():
         if not warehouse_id or not lines_payload:
             return jsonify({"success": False, "message": "Missing required data"}), 400
 
-        return generate_stock_issue_for_projects(projects, warehouse_id, lines_payload, order_final)
+        return generate_stock_issue_for_projects(projects, warehouse_id, lines_payload, order_final, issue_date)
     elif issue_mode == "spray":
         spray_id = data.get("spray_id")    
         if not spray_id:
             return jsonify({"success": False, "message": "Spray ID required for spray mode"}), 400
-        return generate_stock_issue_for_spray(spray_id, lines_payload, order_final)
+        return generate_stock_issue_for_spray(spray_id, lines_payload, order_final, issue_date)
 
 
 def get_next_document_number(cursor, document_type):
@@ -67,7 +68,7 @@ def get_next_document_number(cursor, document_type):
     return getattr(row, 'DocumentNumber', row[0])
 
 
-def generate_stock_issue_for_projects(project_ids, warehouse_id, lines_payload, order_final):
+def generate_stock_issue_for_projects(project_ids, warehouse_id, lines_payload, order_final, issue_date=None):
     conn = create_db_connection()
     cursor = conn.cursor()
 
@@ -77,11 +78,11 @@ def generate_stock_issue_for_projects(project_ids, warehouse_id, lines_payload, 
         # =========================
         cursor.execute("""
             INSERT INTO [stk].IssueHeader (
-                IssWhseId, IssByUserId, IssTimeStamp
+                IssWhseId, IssByUserId, IssTimeStamp, IssDate
             )
             OUTPUT INSERTED.IdIssue
-            VALUES (?, ?, GETDATE())
-        """, (warehouse_id, current_user.id))
+            VALUES (?, ?, GETDATE(), ?)
+        """, (warehouse_id, current_user.id, issue_date))
 
         stock_issue_id = cursor.fetchone()[0]
 
@@ -212,7 +213,7 @@ def generate_stock_issue_for_projects(project_ids, warehouse_id, lines_payload, 
                 pass
 
 
-def generate_stock_issue_for_spray(execution_id, lines_payload, order_final):
+def generate_stock_issue_for_spray(execution_id, lines_payload, order_final, issue_date=None):
     conn = create_db_connection()
     cursor = conn.cursor()
 
@@ -245,14 +246,16 @@ def generate_stock_issue_for_spray(execution_id, lines_payload, order_final):
                 IssWhseId,
                 IssByUserId,
                 IssTimeStamp,
-                IssSprayExecutionId
+                IssSprayExecutionId,
+                IssDate
             )
             OUTPUT INSERTED.IdIssue
-            VALUES (?, ?, GETDATE(), ?)
+            VALUES (?, ?, GETDATE(), ?, ?)
         """, (
             warehouse_id,
             current_user.id,
-            execution_id
+            execution_id,
+            issue_date
         ))
 
         stock_issue_id = cursor.fetchone()[0]

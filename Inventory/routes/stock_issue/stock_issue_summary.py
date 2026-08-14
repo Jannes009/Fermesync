@@ -6,6 +6,7 @@ from Core.auth import create_db_connection, close_db_connection
 from flask_login import login_required, current_user
 from Inventory.routes.db_conversions import warehouse_code_to_link, project_code_to_link, stock_link_to_code
 from datetime import datetime
+from System import DateTime as NetDateTime
 
 from Core.sdk_connection import EvolutionConnection, EvolutionAgentNotFoundError, EvolutionConnectionError
 import Pastel.Evolution as Evo
@@ -135,20 +136,52 @@ def incomplete_issue_lines(header_id):
 
 def submit_stock_issue(issue_id, cursor):
     cursor.execute("""
-        SELECT IssWhseId
+        SELECT IssWhseId, IssDate
         FROM stk.IssueHeader
         WHERE IdIssue = ?
     """, (issue_id,))
     issue = cursor.fetchone()
     warehouse_id = issue.IssWhseId if issue else None
+    issue_date = None
+    if issue:
+        # IssDate may be returned as a datetime or string depending on driver
+        try:
+            issue_date = issue.IssDate
+        except Exception:
+            try:
+                issue_date = issue[1]
+            except Exception:
+                issue_date = None
 
     description = f"Stock Issue from warehouse {warehouse_id}"
+    print(issue_date)
 
     try:
         with EvolutionConnection():
             SO = Evo.SalesOrder()
             SO.Customer = Evo.Customer("ZZZ001")
             SO.Description = description
+            issue_date = issue.IssDate if issue else None
+
+            if issue_date is None:
+                issue_date = datetime.now()
+            elif isinstance(issue_date, str):
+                issue_date = datetime.fromisoformat(issue_date)
+
+            # Explicitly create a .NET System.DateTime
+            net_issue_date = NetDateTime(
+                issue_date.year,
+                issue_date.month,
+                issue_date.day,
+                issue_date.hour,
+                issue_date.minute,
+                issue_date.second
+            )
+
+            print("Python date:", issue_date, type(issue_date))
+            print("NET date:", net_issue_date, net_issue_date.GetType())
+
+            SO.InvoiceDate = net_issue_date
 
             cursor.execute("""              
             Select IssLineStockLink, IssLinProjProjectId, SUM(IssLinProjWeight) as TotalWeight, IssLineQtyFinalised

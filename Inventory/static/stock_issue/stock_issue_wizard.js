@@ -10,6 +10,7 @@ let sprays = [];
 let lines = [];
 let lineIndex = 0;
 let warehouses = [];
+let selectedIssueDate = null;
 
 function getUrlParams() {
   const params = {};
@@ -41,14 +42,10 @@ async function initializeFromUrl() {
   }
   console.log(params.step)
 
-  if (params.step === '2' || params.step === '3') {
-    await step1Next();
-    if (params.step === '3') {
-      // Immediately show step 3 summary after validating step 2 lines
-      document.getElementById('step-2').classList.add('hidden');
-      document.getElementById('step-3').classList.remove('hidden');
-    }
-  }
+  // Do NOT auto-advance to step 2 when prefilled via URL.
+  // Prefill selections only and wait for the user to enter Issue Date and press Next.
+  // (This ensures IssDate is always provided by the user on step 1.)
+  return;
 }
 
 document.addEventListener("DOMContentLoaded", async () => {
@@ -56,6 +53,18 @@ document.addEventListener("DOMContentLoaded", async () => {
   await loadProjects();
   await loadSprayExecutions();
   handleModeChange(); // Set initial visibility based on default mode
+
+  // Default issue date to today if not already set
+  try {
+    const dateEl = document.getElementById('issue-date');
+    if (dateEl && !dateEl.value) {
+      const today = new Date();
+      const yyyy = today.getFullYear();
+      const mm = String(today.getMonth() + 1).padStart(2, '0');
+      const dd = String(today.getDate()).padStart(2, '0');
+      dateEl.value = `${yyyy}-${mm}-${dd}`;
+    }
+  } catch (e) { /* silent */ }
 
   $("#warehouse-select").select2({ placeholder: "Select warehouse", allowClear: true, width: '100%', dropdownParent: document.body });
   $("#project-select").select2({ placeholder: "Select projects", allowClear: true, width: '100%', dropdownParent: document.body });
@@ -154,6 +163,15 @@ async function loadSprayExecutions() {
 }
 
 async function step1Next() {
+    // Ensure issue date is provided
+    const dateEl = document.getElementById('issue-date');
+    if (dateEl && dateEl.value) {
+      // store as ISO-ish string (midnight local => toISOString keeps timezone)
+      selectedIssueDate = new Date(dateEl.value);
+    } else {
+      // default to today
+      selectedIssueDate = new Date();
+    }
     if (issueMode === "project") {
         selectedWarehouse = Number($("#warehouse-select").val());
         
@@ -639,7 +657,7 @@ async function submitIssue() {
       projects: issueMode === "project" ? selectedProject : null,
       spray_id: issueMode === "spray" ? selectedSpray : null,
       order_final: orderFinal,
-      created_at: new Date().toISOString(),
+      created_at: (selectedIssueDate ? new Date(selectedIssueDate).toISOString() : new Date().toISOString()),
       lines: lines.map(l => ({
         product_link: l.product_link,
         product_code: l.product_code,
