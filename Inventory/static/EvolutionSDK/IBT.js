@@ -187,7 +187,11 @@ document.addEventListener("DOMContentLoaded", async () => {
                 return Swal.fire("Invalid Quantity", "Quantity must be greater than 0.", "warning");
             }
 
-            const productData = $(select).find(":selected").data();
+            const productData = ($(select).select2("data") || [])[0] || {};
+
+            if (!productData.id) {
+                return Swal.fire("Product Error", "Could not read selected product data.", "error");
+            }
             const availableQty = Math.round(Number(productData.qty) * 100) / 100;
             const uom_code = productData.purchasing_unit_code || "";
             const uom_id = productData.purchasing_unit_id || null;
@@ -255,6 +259,7 @@ document.addEventListener("DOMContentLoaded", async () => {
                 selected_unit_mode: selectedUnitMode,
                 display_unit_code: selectedUnitMode === "purchasing" ? uom_code : stocking_uom_code
             });
+            console.log(uom_code, stocking_uom_code);
         }
 
         console.log("✔ Valid lines:", ibtLines);
@@ -593,118 +598,118 @@ function formatProductOption (state) {
 }
 
 function populateSelect(selectId, lineDiv) {
-    const select = document.getElementById(selectId);
+    const $sel = $(`#${selectId}`);
 
-    products.forEach(p => {
-        const displayQty = Number(p.qty_in_whse) || 0;
-        const displayUnitCode = currentUnitMode === "purchasing" ? (p.purchasing_unit_code || "") : (p.stocking_unit_code || "");
-        const displayQtyForMode = currentUnitMode === "purchasing"
-            ? roundTo2(displayQty)
-            : roundTo2(displayQty * Number(p.conversion_factor || 1));
-        const opt = new Option(`${p.product_desc} (In: ${displayQtyForMode.toFixed(2)} ${displayUnitCode})`, p.product_id, false, false);
-        opt.dataset.productDesc = p.product_desc || "";
-        opt.dataset.purchasingUnitCode = p.purchasing_unit_code || "";
-        opt.dataset.purchasingUnitId = p.purchasing_unit_id || "";
-        opt.dataset.qty = Number(displayQty.toFixed(2));
-        opt.dataset.stockingUnitCode = p.stocking_unit_code || "";
-        opt.dataset.conversionFactor = Number(p.conversion_factor) || 1;
-        $(opt).data("product_desc", p.product_desc || "");
-        $(opt).data("purchasing_unit_code", p.purchasing_unit_code || "");
-        $(opt).data("purchasing_unit_id", p.purchasing_unit_id || null);
-        $(opt).data("qty", Number(displayQty.toFixed(2)));
-        $(opt).data("stocking_unit_code", p.stocking_unit_code || "");
-        $(opt).data("conversion_factor", Number(p.conversion_factor) || 1);
+    // Build rich data objects (exactly like PO)
+    const options = products.map(p => {
+        const qty = Number(p.qty_in_whse) || 0;
+        const conversionFactor = Number(p.conversion_factor) || 1;
+        const displayQty = currentUnitMode === "purchasing"
+            ? roundTo2(qty)
+            : roundTo2(qty * conversionFactor);
+        const unitCode = currentUnitMode === "purchasing"
+            ? (p.purchasing_unit_code || "")
+            : (p.stocking_unit_code || "");
 
-        // Allow selecting the same product on multiple lines; do not disable options.
+        const text = `${p.product_desc} (In: ${displayQty.toFixed(2)} ${unitCode})`;
 
-        select.appendChild(opt);
+        return {
+            id: String(p.product_id),
+            text: text,
+            // keep everything you need on the object
+            product_desc: p.product_desc || "",
+            qty: qty,
+            purchasing_unit_code: p.purchasing_unit_code || "",
+            purchasing_unit_id: p.purchasing_unit_id || null,
+            stocking_unit_code: p.stocking_unit_code || "",
+            stocking_unit_id: p.stocking_unit_id || null,
+            conversion_factor: conversionFactor
+        };
     });
 
-    $(`#${selectId}`).select2({
+    // Destroy previous instance if any
+    if ($sel.hasClass("select2-hidden-accessible")) {
+        try { $sel.select2("destroy"); } catch (e) {}
+    }
+
+    $sel.empty().select2({
+        data: options,
         placeholder: "Search and select a product...",
-        allowClear: true,
+        allowClear: false,
         width: "100%",
-        dropdownParent: document.body,
-        templateResult: formatProductOption,
-        templateSelection: formatProductOption
+        dropdownParent: $(document.body),
+        escapeMarkup: m => m,
+        templateResult: state => state.id ? state.text : state.text,
+        templateSelection: state => state.id ? state.text : state.text
     });
 
-    $(`#${selectId}`).on("select2:select", async function () {
-        const selected = $(this).find(":selected").data();
-        const val = this.value;
+    $sel.on("select2:open", function () {
+    const $container = $sel.next(".select2-container");
+    const controlWidth = $container.outerWidth();   // width when closed
+    const $dropdown = $(".select2-container--open .select2-dropdown");
+
+    $dropdown.css({
+        width: controlWidth + "px",
+        "min-width": controlWidth + "px",           // never narrower than closed
+        "max-width": "calc(100vw - 24px)",          // never wider than screen
+        "box-sizing": "border-box"
+    });
+});
+
+    $sel.off("select2:select").on("select2:select", function (e) {
+        const data = e.params.data;             // ← rich object, not .data()
+        const val = data.id;
         const previousSelection = lineDiv.dataset.selectedProductId || "";
-        const conversionFactor = Number(selected.conversion_factor) || 1;
+        const conversionFactor = Number(data.conversion_factor) || 1;
 
         if (previousSelection && previousSelection !== val) {
             selectedProducts.delete(previousSelection);
         }
 
-        const duplicateElsewhere = selectedProducts.has(val);
-        if (duplicateElsewhere && previousSelection !== val) {
-            // Non-blocking warning: another line already uses this product.
-            try {
-                const toast = Swal.mixin({
-                    toast: true,
-                    position: 'top-end',
-                    showConfirmButton: false,
-                    timer: 2500,
-                    timerProgressBar: true
-                });
-                toast.fire({
-                    icon: 'warning',
-                    title: 'Product already used on another line — continuing'
-                });
-            } catch (e) {
-                // ignore
-            }
+        if (selectedProducts.has(val) && previousSelection !== val) {
+            // optional toast...
         }
 
-        if (val) {
-            selectedProducts.add(val);
-        }
+        if (val) selectedProducts.add(val);
         lineDiv.dataset.selectedProductId = val;
         lineDiv.dataset.conversionFactor = conversionFactor;
 
-        lineDiv.querySelector('.stock-unit').textContent = (lineDiv.dataset.unitMode === 'stocking' ? selected.stocking_unit_code : selected.purchasing_unit_code) || '—';
-        updateStockQtyDisplay(lineDiv);
-        syncSelectOptionsState();
-    });
+        const unitCode = (lineDiv.dataset.unitMode === "stocking"
+            ? data.stocking_unit_code
+            : data.purchasing_unit_code) || "—";
 
-    $(`#${selectId}`).on("select2:clear", function () {
-        const currentSelection = lineDiv.dataset.selectedProductId || "";
-        if (currentSelection) {
-            selectedProducts.delete(currentSelection);
-        }
-        lineDiv.dataset.selectedProductId = "";
-        lineDiv.querySelector('.stock-unit').textContent = "—";
-        lineDiv.querySelector('.stock-unit-code').textContent = "—";
-        lineDiv.querySelector('.stock-qty-value').textContent = "0";
+        lineDiv.querySelector(".stock-unit").textContent = unitCode;
+        updateStockQtyDisplay(lineDiv);
         syncSelectOptionsState();
     });
 }
 
 function updateStockQtyDisplay(lineDiv) {
-    const select = lineDiv.querySelector('.product-select');
-    const qtyInput = lineDiv.querySelector('.qty-input');
-    const stockQtyValue = lineDiv.querySelector('.stock-qty-value');
-    const stockUnitCode = lineDiv.querySelector('.stock-unit-code');
+    const select = lineDiv.querySelector(".product-select");
+    const qtyInput = lineDiv.querySelector(".qty-input");
+    const stockQtyValue = lineDiv.querySelector(".stock-qty-value");
+    const stockUnitCode = lineDiv.querySelector(".stock-unit-code");
 
-    if (!select.value) {
-        stockQtyValue.textContent = '0';
-        stockUnitCode.textContent = '—';
+    const selectedData = $(select).select2("data")[0];
+    if (!selectedData || !selectedData.id) {
+        stockQtyValue.textContent = "0";
+        stockUnitCode.textContent = "—";
         return;
     }
 
-    const selected = $(select).find(':selected').data();
-    const conversionFactor = Number(selected.conversion_factor) || 1;
+    const conversionFactor = Number(selectedData.conversion_factor) || 1;
     const qty = Number(qtyInput.value) || 0;
     const unitMode = lineDiv.dataset.unitMode || currentUnitMode;
-    const displayUnitCode = unitMode === 'purchasing' ? selected.purchasing_unit_code || '—' : selected.stocking_unit_code || '—';
-    const equivalentQty = unitMode === 'purchasing' ? roundTo2(qty * conversionFactor) : roundTo2(qty);
+    const displayUnitCode = unitMode === "purchasing"
+        ? (selectedData.purchasing_unit_code || "—")
+        : (selectedData.stocking_unit_code || "—");
+    const equivalentQty = unitMode === "purchasing"
+        ? roundTo2(qty * conversionFactor)
+        : roundTo2(qty);
 
-    lineDiv.querySelector('.stock-unit').textContent = displayUnitCode;
-    stockQtyValue.textContent = equivalentQty.toLocaleString(undefined, {maximumFractionDigits: 2});
-    stockUnitCode.textContent = selected.stocking_unit_code || '—';
+    lineDiv.querySelector(".stock-unit").textContent = displayUnitCode;
+    stockQtyValue.textContent = equivalentQty.toLocaleString(undefined, { maximumFractionDigits: 2 });
+    stockUnitCode.textContent = selectedData.stocking_unit_code || "—";
 }
 
 // Prompt user to open the stock adjustment modal if they have permission.
@@ -844,41 +849,33 @@ function promptStockAdjustment(stockLink, warehouseCode, qtyNeeded = 0) {
 function renderSummaryUltraCompact() {
     const summaryDiv = document.getElementById("ibt-summary");
     if (!summaryDiv) return;
-    
+
     summaryDiv.innerHTML = "";
 
-    // Create compact summary section
     const compactSection = document.createElement("div");
     compactSection.className = "compact-summary";
-    
+
     const header = document.createElement("div");
     header.className = "compact-header";
     header.textContent = "Transfer Summary";
     compactSection.appendChild(header);
-    
-    // Ultra-compact 2-column layout
-    const gridDiv = document.createElement("div");
-    gridDiv.className = "compact-grid-inline";
-    gridDiv.style.padding = "12px 15px";
-    gridDiv.style.gap = "10px 20px";
-    
-    const summaryData = [
-        { label: "From", value: $('#wh-from').find(':selected').text() },
-        { label: "To", value: $('#wh-to').find(':selected').text() },
-    ];
-    
-    summaryData.forEach(item => {
-        const itemDiv = document.createElement("div");
-        itemDiv.className = "compact-item-inline";
-        itemDiv.style.minHeight = "auto";
-        itemDiv.innerHTML = `
-            <strong style="min-width: 75px; font-size: 0.75rem;">${item.label}</strong>
-            <span style="font-size: 0.85rem;">${item.value}</span>
-        `;
-        gridDiv.appendChild(itemDiv);
-    });
-    
-    compactSection.appendChild(gridDiv);
+
+    const fromText = $('#wh-from').find(':selected').text() || "—";
+    const toText = $('#wh-to').find(':selected').text() || "—";
+
+    const whRow = document.createElement("div");
+    whRow.className = "summary-wh-row";
+    whRow.innerHTML = `
+        <div class="summary-wh">
+            <span class="label">From</span>
+            <span class="value">${fromText}</span>
+        </div>
+        <div class="summary-wh">
+            <span class="label">To</span>
+            <span class="value">${toText}</span>
+        </div>
+    `;
+    compactSection.appendChild(whRow);
     summaryDiv.appendChild(compactSection);
 
     renderCompactProducts(summaryDiv);
@@ -886,15 +883,15 @@ function renderSummaryUltraCompact() {
 
 function renderCompactProducts(summaryDiv) {
     if (!summaryDiv) return;
-    
+
     const productsSection = document.createElement("div");
     productsSection.className = "compact-products";
-    
+
     const header = document.createElement("div");
     header.className = "compact-header";
     header.textContent = `Products (${ibtLines.length})`;
     productsSection.appendChild(header);
-    
+
     if (ibtLines.length === 0) {
         const emptyMsg = document.createElement("div");
         emptyMsg.className = "compact-product-item";
@@ -906,27 +903,28 @@ function renderCompactProducts(summaryDiv) {
         ibtLines.forEach((line) => {
             const productItem = document.createElement("div");
             productItem.className = "compact-product-item";
-            
-            const qtyDisplay = Number(line.qty).toLocaleString(undefined, {maximumFractionDigits:2});
-            const stockDisplay = Number(line.stock_qty).toLocaleString(undefined, {maximumFractionDigits:2});
-            const displayUnit = line.display_unit_code || line.uom_code;
+
+            const qtyDisplay = Number(line.qty).toLocaleString(undefined, {
+                maximumFractionDigits: 2
+            });
+            const displayUnit = line.display_unit_code || line.uom_code || "";
+
+            // Prefer clean product name if you stored it; fall back to productText
+            const name = line.product_desc || (line.productText || "").split(" (In:")[0];
 
             productItem.innerHTML = `
                 <div class="product-details">
-                    <div class="product-name">${line.productText}</div>
-                    <div class="product-meta">
-                        ${qtyDisplay} ${displayUnit} → ${stockDisplay} ${line.stocking_uom_code}
-                    </div>
+                    <div class="product-name">${name}</div>
                 </div>
                 <div class="product-qty">
                     <span class="qty-badge">${qtyDisplay} ${displayUnit}</span>
                 </div>
             `;
-            
+
             productsSection.appendChild(productItem);
         });
     }
-    
+
     summaryDiv.appendChild(productsSection);
 }
 

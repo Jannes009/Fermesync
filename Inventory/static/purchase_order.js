@@ -55,6 +55,13 @@ const createSelect2Field = (selectEl, placeholder, onSelect = () => {}) => {
     let currentPlaceholder = placeholder || '';
     let initialized = false;
 
+    const optionMarkup = data => {
+        if (!data.id || data.loading) {
+            return escapeHtml(data.text || '');
+        }
+        return data.html || escapeHtml(data.text || '');
+    };
+
     const initSelect2 = () => {
         if (initialized) {
             try {
@@ -70,7 +77,10 @@ const createSelect2Field = (selectEl, placeholder, onSelect = () => {}) => {
             placeholder: currentPlaceholder,
             width: 'resolve',
             dropdownParent: $(document.body),
-            allowClear: true
+            allowClear: false,
+            escapeMarkup: markup => markup,
+            templateResult: optionMarkup,
+            templateSelection: optionMarkup
         });
 
         $sel.off('.select2wrapper');
@@ -88,16 +98,25 @@ const createSelect2Field = (selectEl, placeholder, onSelect = () => {}) => {
     };
 
     const setOptions = newOptions => {
-        optionsCache = Array.isArray(newOptions) ? newOptions.map(opt => ({
-            ...opt,
-            id: opt.id ?? opt.value,
-            text: opt.text ?? opt.label
-        })) : [];
-        if (!initialized) initSelect2();
-        $sel.empty();
-        optionsCache.forEach(opt => {
-            $sel.append(new Option(opt.text, opt.id, false, false));
-        });
+        optionsCache = Array.isArray(newOptions)
+            ? newOptions.map(opt => ({
+                ...opt,
+                id: String(opt.id ?? opt.value ?? ''),
+                text: opt.text ?? opt.label ?? ''
+            }))
+            : [];
+
+        // Always re-initialize so Select2 receives the full rich objects
+        if (initialized) {
+            try {
+                $sel.select2('destroy');
+            } catch (e) {
+                // ignore
+            }
+            initialized = false;
+        }
+
+        initSelect2();               // uses data: optionsCache
         $sel.val(null).trigger('change');
     };
 
@@ -137,11 +156,21 @@ const productItems = () => products.map(product => ({
     data: product
 }));
 
-const unitItems = units => units.map(unit => ({
-    id: unit.unit_id,
-    text: `${unit.unit_code} — ${formatCurrency(unit.cost)}${unit.inv_date ? ` (${new Date(unit.inv_date).toLocaleDateString()})` : ''}`,
-    data: unit
-}));
+const unitItems = units => units.map(unit => {
+    const plainText = `${unit.unit_code} — ${formatCurrency(unit.cost)}${unit.inv_date ? ` (${new Date(unit.inv_date).toLocaleDateString()})` : ''}`;
+    const htmlText = unit.default_unit
+        ? `<strong>${escapeHtml(plainText)}</strong>`
+        : escapeHtml(plainText);
+    return {
+        id: unit.unit_id,
+        text: plainText,
+        html: htmlText,
+        cost: unit.cost,
+        unit_code: unit.unit_code,
+        default_unit: unit.default_unit,
+        original: unit
+    };
+});
 
 const updateTotals = () => {
     const rows = Array.from(linesBody.querySelectorAll('.line-row'));
@@ -251,10 +280,10 @@ const lineTemplate = () => `
             </div>
         </td>
         <td class="col-qty" data-label="Qty">
-            <input type="number" class="line-qty" min="0" step="1" placeholder="Enter qty" aria-label="Quantity">
+            <input type="number" class="line-qty" min="1" step="1" placeholder="Enter qty" aria-label="Quantity">
         </td>
         <td class="col-price" data-label="Price">
-            <input type="number" class="line-price" min="0" step="0.01" value="0.00" aria-label="Price">
+            <input type="number" class="line-price" min="0.01" step="0.01" value="0.00" aria-label="Price">
         </td>
         <td class="col-tax" data-label="Tax">
             <div class="line-tax">R 0.00</div>
@@ -301,7 +330,11 @@ const initializeRowFields = row => {
                 priceInput.value = Number(defaultUnit.cost || 0).toFixed(2);
             }
         } catch (err) {
-            alert(err.message);
+            Swal.fire({
+                icon: 'error',
+                title: 'Error',
+                text: err.message
+            });
             unitField.clear();
             unitField.setDisabled(true);
         }
@@ -310,7 +343,10 @@ const initializeRowFields = row => {
     });
 
     const unitField = createSelect2Field(unitSelectEl, 'Search unit', option => {
-        priceInput.value = Number(option.data.cost || 0).toFixed(2);
+        // option.data is now the Select2 object that contains .cost
+        const cost = option.data?.cost ?? 0;
+        priceInput.value = Number(cost).toFixed(2);
+        console.log('Unit selected:', option, 'Price set to:', priceInput.value);
         updateTotals();
     });
 
@@ -348,7 +384,11 @@ const supplierField = createSelect2Field(
             await loadProducts();
             updateAddLineState();
         } catch (err) {
-            alert(err.message);
+            Swal.fire({
+                icon: 'error',
+                title: 'Error',
+                text: err.message
+            });
         }
     }
 );
@@ -360,7 +400,11 @@ const warehouseField = createSelect2Field(
         await loadProducts();
         updateAddLineState();
     } catch (err) {
-        alert(err.message);
+        Swal.fire({
+            icon: 'error',
+            title: 'Error',
+            text: err.message
+        });
     }
 });
 
@@ -393,15 +437,39 @@ saveBtn.addEventListener('click', () => {
     const rows = Array.from(linesBody.querySelectorAll('.line-row'));
 
     if (!supplierId || !warehouseId) {
-        alert('Please select a supplier and warehouse.');
+        Swal.fire({
+            icon: 'error',
+            title: 'Missing Information',
+            text: 'Please select both a supplier and a warehouse before saving the purchase order.'
+        });
+        return;
+    }
+    if (!description) {
+        Swal.fire({
+            icon: 'error',
+            title: 'Missing Information',
+            text: 'Please provide a description for the purchase order (maximum 40 characters).'
+        });
+        return;
+    }
+    if (description.length > 40) {
+        Swal.fire({
+            icon: 'error',
+            title: 'Invalid Input',
+            text: 'Description must be 40 characters or fewer.'
+        });
         return;
     }
     if (!rows.length) {
-        alert('Please add at least one order line.');
+        Swal.fire({
+            icon: 'error',
+            title: 'Missing Information',
+            text: 'Please add at least one order line.'
+        });
         return;
     }
 
-    const lines = rows.map(row => {
+    const rawLines = rows.map(row => {
         const itemField = row.itemField;
         const unitField = row.unitField;
         const qty = Number(row.querySelector('.line-qty').value) || 0;
@@ -415,10 +483,26 @@ saveBtn.addEventListener('click', () => {
             unit_price: price,
             tax_type_id: row.dataset.taxTypeId || null
         };
-    }).filter(line => line.item_id && line.unit_id && line.qty > 0 && line.tax_type_id);
+    });
+
+    const invalidLine = rawLines.some(line => !line.item_id || !line.unit_id || line.qty <= 0 || line.unit_price <= 0 || !line.tax_type_id);
+    if (invalidLine) {
+        Swal.fire({
+            icon: 'error',
+            title: 'Invalid Line',
+            text: 'Each order line must include an item, unit, quantity greater than 0, and price greater than 0.'
+        });
+        return;
+    }
+
+    const lines = rawLines.filter(line => line.item_id && line.unit_id && line.qty > 0 && line.unit_price > 0 && line.tax_type_id);
 
     if (!lines.length) {
-        alert('Please complete each line with item, unit, quantity, and price.');
+        Swal.fire({
+            icon: 'error',
+            title: 'Missing Information',
+            text: 'Please complete each line with item, unit, quantity, and price.'
+        });
         return;
     }
 
@@ -466,6 +550,10 @@ window.addEventListener('DOMContentLoaded', async () => {
         addLine(false);
         updateAddLineState();
     } catch (err) {
-        alert(err.message);
+        Swal.fire({
+            icon: 'error',
+            title: 'Error',
+            text: err.message
+        });
     }
 });

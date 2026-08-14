@@ -20,9 +20,6 @@ function init() {
     document.getElementById("step-1-next").addEventListener("click", onStartCounting);
     document.getElementById("step-2-next").addEventListener("click", onCompleteCount);
 
-    const finalizeBtn = document.getElementById("step-3-next");
-    if (finalizeBtn) finalizeBtn.addEventListener("click", onFinalizeClicked);
-
     // Command bar setup
     setupCommandBar();
 }

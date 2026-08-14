@@ -186,14 +186,14 @@ def stock_count_detail(header_id):
 
         cursor.execute("""
             SELECT
-                l.InvCountLineStockCode,
+                l.InvCountLineStockId,
                 STK.StockDescription,
                 l.InvCountLineQtyOnHand,
                 l.InvCountLineQtyCounted
             FROM [stk].InventoryCountLines l
-            LEFT JOIN [cmn]._uvStockItems STK ON STK.StockCode = l.InvCountLineStockCode
+            LEFT JOIN [cmn]._uvStockItems STK ON STK.StockLink = l.InvCountLineStockId
             WHERE l.InvCountLineHeaderId = ?
-            ORDER BY l.InvCountLineStockCode
+            ORDER BY STK.StockDescription
         """, (header_id,))
 
         lines = [{

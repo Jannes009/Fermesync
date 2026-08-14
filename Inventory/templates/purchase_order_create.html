@@ -23,7 +23,7 @@
             </div>
             <div class="field-group full-width">
                 <span>Description</span>
-                <textarea id="description" rows="2" placeholder="Optional order description"></textarea>
+                <textarea id="description" rows="2" maxlength="40" placeholder="Required, up to 40 characters"></textarea>
             </div>
         </div>
     </section>
@@ -379,6 +379,6 @@ body {
 }
     </style>
 
-    <script src="{{ url_for('inventory.static', filename='purchase_order.js') }}"></script>
-    <script src="{{ url_for('inventory.static', filename='purchase_order_prefill.js') }}"></script>
+    <script src="{{ url_for('inventory.static', filename='purchase_order.js') }}?{{ filemtime('inventory', 'purchase_order.js') }}"></script>
+    <script src="{{ url_for('inventory.static', filename='purchase_order_prefill.js') }}?{{ filemtime('inventory', 'purchase_order_prefill.js') }}"></script>
 {% endblock %}

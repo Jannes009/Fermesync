@@ -126,7 +126,7 @@ def api_consignments():
     '''
     cursor.execute(query)
     columns = [col[0] for col in cursor.description]
-    print(columns)
+
     consignments = {}
     for row in cursor.fetchall():
         row_dict = {columns[i]: row[i] for i in range(len(columns))}
@@ -186,7 +186,6 @@ def api_delivery_note_lines():
     WHERE SalesDelLineId = ?
     ORDER BY AutoSale DESC
     '''
-    print(del_line_index)
     cursor.execute(query, (del_line_index,))
     columns = [col[0] for col in cursor.description]
     lines = [dict(zip(columns, row)) for row in cursor.fetchall()]

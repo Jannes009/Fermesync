@@ -1,5 +1,5 @@
 
-const IS_DEV = true;
+const IS_DEV = false;
 
 const CACHE_NAME = IS_DEV
   ? 'fermesync-dev-v1'          // never rely on versioning
@@ -72,8 +72,7 @@ self.addEventListener('fetch', event => {
   if (!req.url.startsWith(self.location.origin)) return;
 
   // PROD: cache-first for shell
-  event.respondWith(networkFirst(req)
-  );
+  event.respondWith(networkFirst(req));
 });
 
 // -------------------------

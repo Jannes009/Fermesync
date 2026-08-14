@@ -76,17 +76,19 @@ def create_stock_count():
         conn.close()
 
 
-@inventory_bp.route("/fetch_categories", methods=["POST"])
+@inventory_bp.route("/fetch_categories", methods=["GET"])
 def fetch_categories():
-    whse_id = request.json.get("whse_id")
+    whse_id = request.args.get("whse_id")
     conn = create_db_connection()
     cursor = conn.cursor()
     try:
 
         cursor.execute("""
-        Select Distinct ItemCategoryID, cCategoryName
-        from [stk].[_uvWarehouseCategories]
+        Select ItemCategoryID, CAT.cCategoryName, COUNT(QTY.StockLink) AS ProductCount
+        from [stk].[_uvWarehouseCategories] CAT
+        JOIN stk._uvInventoryQty QTY on QTY.idStockCategories = CAT.ItemCategoryID AND CAT.WhseID = Qty.WhseLink
         where WhseID = ?
+        GROUP BY ItemCategoryID, CAT.cCategoryName
         """, (whse_id,))
 
         rows = cursor.fetchall()
@@ -97,6 +99,7 @@ def fetch_categories():
             {
                 "category_id": row.ItemCategoryID,
                 "category_name": row.cCategoryName,
+                "product_count": row.ProductCount
             }
             for row in rows
         ]

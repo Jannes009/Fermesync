@@ -37,31 +37,45 @@
         const warehouseId = prefill.warehouse_id || '';
         const lines = Array.isArray(prefill.lines) ? prefill.lines : [];
 
+        console.log('Applying prefill:', { supplierId, warehouseId, lines });
         try {
-            // Wait until Select2 is ready on both fields
-            await waitFor(() =>
-                window.jQuery &&
-                window.jQuery('#supplier-select').data('select2') &&
-                window.jQuery('#warehouse-select').data('select2')
-            );
+            // Wait until Select2 is ready AND real options have been loaded
+            await waitFor(() => {
+                const $s = window.jQuery('#supplier-select');
+                const $w = window.jQuery('#warehouse-select');
+                return $s.data('select2') &&
+                    $w.data('select2') &&
+                    $s.find('option').length > 1 &&   // more than just the empty placeholder
+                    $w.find('option').length > 1;
+            }, 100, 15000);
 
             const $supplier = window.jQuery('#supplier-select');
             const $warehouse = window.jQuery('#warehouse-select');
 
             // --- Supplier ---
             if (supplierId) {
-                $supplier.val(String(supplierId)).trigger('change');
-                triggerSelect2Select($supplier);
+                if ($supplier.find(`option[value="${String(supplierId)}"]`).length === 0) {
+                    console.warn('Supplier ID not found in options:', supplierId);
+                } else {
+                    $supplier.val(String(supplierId)).trigger('change');
+                    triggerSelect2Select($supplier);
+                }
             }
-
-            // Small pause so the first (incomplete) loadProducts finishes
-            await new Promise(r => setTimeout(r, 250));
 
             // --- Warehouse ---
             if (warehouseId) {
-                $warehouse.val(String(warehouseId)).trigger('change');
-                triggerSelect2Select($warehouse);
+                if ($warehouse.find(`option[value="${String(warehouseId)}"]`).length === 0) {
+                    console.warn('Warehouse ID not found in options:', warehouseId);
+                } else {
+                    $warehouse.val(String(warehouseId)).trigger('change');
+                    triggerSelect2Select($warehouse);
+                }
             }
+
+            console.log('After set → warehouseId:', warehouseId, 'val:', $warehouse.val());
+
+            // Small pause so the first (incomplete) loadProducts finishes
+            await new Promise(r => setTimeout(r, 250));
 
             // Wait until products have loaded and the Add-line button is enabled
             await waitFor(() => {

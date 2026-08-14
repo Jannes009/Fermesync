@@ -10,7 +10,7 @@
     header { display:flex; justify-content:space-between; align-items:center; margin-bottom:0.5rem; }
     header h1 { margin:0; font-size:1.4rem; }
     .btn-primary, .btn-secondary, .btn-danger {
-      padding:6px 12px; border-radius:6px; font-size:0.85rem; font-weight:500; cursor:pointer; text-decoration:none; display:inline-block;
+      padding:10px 12px; border-radius:6px; font-size:0.85rem; font-weight:500; cursor:pointer; text-decoration:none; display:inline-block;
     }
     .btn-primary { background:var(--button-bg); color:var(--button-text); border:none; }
     .btn-secondary { background:#6c757d; color:#fff; }
@@ -52,11 +52,25 @@
     .quantity-inputs { display:grid; grid-template-columns:1fr; gap:10px; margin-top:8px; }
     .quantity-group { display:flex; flex-direction:column; gap:6px; }
     .quantity-group label { font-size:0.85rem; margin-bottom:3px; font-weight:600; color:var(--secondary-text); }
+    .quantity-input-wrapper { position: relative; }
     .quantity-input {
-      padding:10px 12px; border:1px solid var(--input-border); border-radius:8px; background:var(--form-bg); font-size:0.95rem;
+      width: 100%;
+      padding:10px 12px 10px 12px; border:1px solid var(--input-border); border-radius:8px; background:var(--form-bg); font-size:0.95rem;
+      padding-right: 72px;
+      box-sizing: border-box;
     }
     .quantity-input:focus { outline:none; border-color:var(--input-focus); box-shadow:0 0 0 2px var(--input-shadow); }
-    .quantity-status { display:flex; justify-content:space-between; gap:10px; align-items:center; background:#f8f9fa; padding:10px 12px; border-radius:8px; font-size:0.85rem; color:var(--secondary-text); }
+    .input-unit-label {
+      position: absolute;
+      right: 12px;
+      top: 50%;
+      transform: translateY(-50%);
+      color: var(--secondary-text);
+      font-size: 0.85rem;
+      pointer-events: none;
+      white-space: nowrap;
+    }
+    .quantity-status { display:flex; justify-content:flex-start; gap:10px; align-items:center; background:#f8f9fa; padding:10px 12px; border-radius:8px; font-size:0.85rem; color:var(--secondary-text); }
     .quantity-status strong { font-weight:700; color:var(--primary-text); }
     .quantity-total { background:transparent; padding:0; border-radius:0; text-align:left; font-size:0.9rem; font-weight:600; margin-top:0; }
     .quantity-error { color:#e74c3c; font-size:0.8rem; margin-top:2px; display:none; }
@@ -259,16 +273,18 @@ async function loadIbtList() {
                             <div class="product-desc">${line.product_desc}</div>
                             <div class="line-reference" style="font-size:0.75rem;color:#888;margin-top:4px;">${line.reference || ''}</div>
                         </div>
-                        <div class="qty-issued"><span>Issued</span>${Math.round(line.qty_issued / line.conversion_factor)} ${line.purchasing_unit_code || ''} / ${line.qty_issued } ${line.stocking_unit_code || ''}</div>
+                        <div class="qty-issued" data-line="${i}">Issued ${Math.round(line.qty_issued)} ${line.stocking_unit_code || ''}</div>
                     </div>
                     <div class="quantity-inputs">
                         <div class="quantity-group">
-                            <label id="received-label-${i}">Received (${line.stocking_unit_code || ''})</label>
-                            <input type="number" class="quantity-input qty-received" data-line="${i}" min="0" step="0.01" placeholder="0" oninput="updateQty(${i})">
+                            <label id="received-label-${i}">Received</label>
+                            <div class="quantity-input-wrapper">
+                                <input type="number" class="quantity-input qty-received" data-line="${i}" min="0" step="0.01" placeholder="0" oninput="updateQty(${i})">
+                                <span class="input-unit-label">${line.stocking_unit_code || ''}</span>
+                            </div>
                         </div>
                         <div class="quantity-status">
                             <span id="variance-label-${i}">Variance: 0 ${line.stocking_unit_code || ''}</span>
-                            <span id="mode-label-${i}">In stocking units</span>
                         </div>
                     </div>
                 </div>`;
@@ -284,11 +300,11 @@ async function loadIbtList() {
             radio.addEventListener('change', (event) => {
                 currentUnitMode = event.target.value;
                 document.querySelectorAll('.product-line').forEach(line => {
-                    // preserve previous input values where possible
                     const i = line.dataset.line;
                     const input = document.querySelector(`.qty-received[data-line="${i}"]`);
                     if (input) input.dataset.prev = input.value;
                     updateQty(i);
+                    updateIssuedDisplay(line);
                 });
             });
         });
@@ -363,7 +379,7 @@ async function loadIbtList() {
         const receivedNum = isNaN(parseFloat(raw)) ? 0 : parseFloat(raw);
         const receivedLabel = document.getElementById(`received-label-${i}`);
         const varianceLabel = document.getElementById(`variance-label-${i}`);
-        const modeLabel = document.getElementById(`mode-label-${i}`);
+        const unitLabel = lineEl.querySelector('.input-unit-label');
 
         let variance = 0;
         let unitCode = lineEl.dataset.stockingUnitCode || '';
@@ -372,13 +388,11 @@ async function loadIbtList() {
         if (currentUnitMode === 'stocking') {
             maxAllowed = issuedStocking;
             unitCode = lineEl.dataset.stockingUnitCode || '';
-            receivedLabel.textContent = `Received (${unitCode})`;
-            modeLabel.textContent = `Mode: Stocking Units`;
+            if (unitLabel) unitLabel.textContent = unitCode;
         } else {
             maxAllowed = issuedPurchasing;
             unitCode = lineEl.dataset.purchasingUnitCode || '';
-            receivedLabel.textContent = `Received (${unitCode})`;
-            modeLabel.textContent = `Mode: Purchasing Units`;
+            if (unitLabel) unitLabel.textContent = unitCode;
         }
 
         // Only use numeric value for calculations; do not overwrite user's partial input
@@ -395,7 +409,25 @@ async function loadIbtList() {
         receivedInput.max = maxAllowed;
 
         varianceLabel.textContent = `Variance: ${variance.toLocaleString(undefined, {maximumFractionDigits:2})} ${unitCode}`;
+        updateIssuedDisplay(lineEl);
     };
+
+    function updateIssuedDisplay(lineEl) {
+        if (!lineEl) return;
+        const issuedStocking = Number(lineEl.dataset.issuedStocking) || 0;
+        const conversionFactor = Number(lineEl.dataset.conversionFactor) || 1;
+        const issuedPurchasing = Math.round((issuedStocking / conversionFactor) * 100) / 100;
+        const issuedLabel = lineEl.querySelector('.qty-issued');
+        const unitCode = currentUnitMode === 'stocking'
+            ? lineEl.dataset.stockingUnitCode || ''
+            : lineEl.dataset.purchasingUnitCode || '';
+        const displayQty = currentUnitMode === 'stocking'
+            ? Math.round(issuedStocking * 100) / 100
+            : issuedPurchasing;
+        if (issuedLabel) {
+            issuedLabel.textContent = `Issued ${displayQty.toLocaleString(undefined, {maximumFractionDigits:2})} ${unitCode}`;
+        }
+    }
 
     async function submitReceipt() {
         const lines = document.querySelectorAll('.product-line');

@@ -48,14 +48,21 @@ def create_app():
     @app.context_processor 
     def utility_processor(): 
         def filemtime(bp_name, filename): 
+            # Main application static folder (main_static)
+            if bp_name in (None, '', 'app', 'static', 'main'):
+                path = os.path.join(app.static_folder, filename)
+                if os.path.exists(path):
+                    return int(os.path.getmtime(path))
+                return 0
+
+            # Blueprint static folders
             bp = app.blueprints.get(bp_name) 
-            if bp and hasattr(bp, 'static_folder') and bp.static_folder: 
+            if bp and getattr(bp, 'static_folder', None):
                 path = os.path.join(bp.static_folder, filename) 
                 if os.path.exists(path): 
                     return int(os.path.getmtime(path)) 
-            return 0  # return 0 if file not found
+            return 0
 
-        # ⚠️ Must return a dictionary
         return dict(filemtime=filemtime)
 
     @app.context_processor

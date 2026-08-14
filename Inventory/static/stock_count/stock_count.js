@@ -294,10 +294,9 @@ async function onWarehouseChanged() {
     }
 
     try {
-        const res = await request("/inventory/fetch_categories", {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ whse_id: selectedWarehouse })
+        const res = await request(`/inventory/fetch_categories?whse_id=${selectedWarehouse}`, {
+            method: "GET",
+            headers: { "Content-Type": "application/json" }
         });
         const data = await res.json();
 
@@ -311,7 +310,7 @@ async function onWarehouseChanged() {
 
         catSelect.innerHTML = "<option value=''>Select category</option>";
         cats.forEach(c => {
-            catSelect.innerHTML += `<option value="${c.category_id}">${c.category_name}</option>`;
+            catSelect.innerHTML += `<option value="${c.category_id}">${c.category_name} (${c.product_count})</option>`;
         });
 
         $('#category-select').off('change');
@@ -480,13 +479,7 @@ function onCompleteCount() {
         Swal.fire("Missing", "Please count all items", "warning");
         return;
     }
-    findDiscrepancies();
-    if (discrepancies.length === 0) {
-        submitFinalCount();
-    } else {
-        displayRecounts();
-        showStep(3);
-    }
+    submitFinalCount();
 }
 
 function validateAllProductsCounted() {
@@ -501,143 +494,6 @@ function validateAllProductsCounted() {
         countedProducts.push({ ...products[i], counted_qty: Number(val) });
     }
     return true;
-}
-
-function findDiscrepancies() {
-    discrepancies = countedProducts
-        .filter(p => Math.abs(p.counted_qty - Number(p.system_qty || 0)) > 0.001)
-        .map(p => ({ ...p, original_count: p.counted_qty }));
-    console.log("Discrepancies:", discrepancies);
-}
-
-/* ====== Recounts ====== */
-function displayRecounts() {
-    const container = document.getElementById("recount-container");
-    const info = document.getElementById("recount-info");
-    container.innerHTML = "";
-
-    let saveTimer = null;
-
-    container.addEventListener("input", e => {
-        if (!e.target.classList.contains("recount-input")) return;
-        clearTimeout(saveTimer);
-        saveTimer = setTimeout(saveRecountDraft, 500);
-    });
-
-    async function saveRecountDraft() {
-        const lines = [];
-        discrepancies.forEach((item, i) => {
-            const input = document.getElementById(`recount-${i}`);
-            if (input && input.value !== "") {
-                lines.push({
-                    product_id: item.product_id,
-                    counted_qty: Number(input.value)
-                });
-            }
-        });
-
-        if (!lines.length) return;
-
-        await request(`/inventory/stock-counts/${sessionId}/lines`, {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ lines })
-        }).then(r => r.json())
-          .then(data => {
-            if (!data.success) {
-                Swal.fire("Error", data.message || "Failed to save recount draft", "error");
-            }
-        });
-    }
-
-    info.className = "progress-info";
-    info.textContent = `Please recount ${discrepancies.length} item(s)`;
-
-    discrepancies.forEach((item, i) => {
-        const row = document.createElement("div");
-        row.className = "product-row";
-        row.style.border = "2px solid #f39c12";
-        row.style.background = "#fff9e6";
-        row.innerHTML = `
-            <div class="product-desc" title="${item.product_desc || ''}">
-                <strong>${item.product_desc}</strong><br>
-            </div>
-            <input type="number" 
-                   id="recount-${i}" 
-                   class="qty-input recount-input" 
-                   min="0" 
-                   step="1" 
-                   placeholder="0"
-                   style="border-color:#f39c12; font-size:1.2rem;">
-            <div class="uom-label">${item.stocking_unit || "EA"}</div>
-        `;
-
-        container.appendChild(row);
-    });
-
-    container.addEventListener("input", e => {
-        if (!e.target.classList.contains("recount-input")) return;
-
-        const index = Number(e.target.id.split("-")[1]);
-        const value = Number(e.target.value);
-
-        if (!isNaN(value)) {
-            const productId = discrepancies[index].product_id;
-            const prod = products.find(p => p.product_id === productId);
-            if (prod) {
-                prod.counted_qty = value;
-            }
-        }
-
-        const allFilled = [...container.querySelectorAll(".recount-input")]
-            .every(input => input.value.trim() !== "");
-
-        if (allFilled) {
-            info.className = "completed-info";
-            info.textContent = "All recounted! Ready to finalize.";
-            document.getElementById("step-3-next").disabled = false;
-        } else {
-            info.className = "progress-info";
-            info.textContent = `Please recount ${discrepancies.length} item(s)`;
-        }
-    });
-}
-
-/* ====== Finalize & Submit ====== */
-async function onFinalizeClicked() {
-  if (discrepancies.length > 0) {
-    const missing = Array.from(
-      document.querySelectorAll("#recount-container .recount-input")
-    ).some(i => i.value === "");
-
-    if (missing) {
-      Swal.fire("Incomplete", "Please enter all recount values", "warning");
-      return;
-    }
-  }
-
-  const btn = document.getElementById("step-3-next");
-  btn.disabled = true;
-  btn.textContent = "Finalising...";
-
-  try {
-    const res = await request(`/inventory/stock-counts/${sessionId}/finalise`, {
-      method: "POST"
-    });
-
-    const data = await res.json();
-
-    if (data.success) {
-      Swal.fire("Success!", data.message || "Stock count completed", "success")
-        .then(() => window.location.href = "/inventory/stock-counts");
-    } else {
-      Swal.fire("Failed", data.message || "Finalization failed", "error");
-    }
-  } catch (err) {
-    Swal.fire("Failed", err.message || "Submission failed", "error");
-    btn.disabled = false;
-    btn.textContent = "Finalize Count";
-  }
 }
 
 async function submitFinalCount() {
@@ -668,7 +524,7 @@ async function submitFinalCount() {
 }
 
 function showStep(n) {
-    document.querySelectorAll("#step-1, #step-2, #step-3").forEach((el, i) => {
+    document.querySelectorAll("#step-1, #step-2").forEach((el, i) => {
         el.classList.toggle("hidden", i + 1 !== n);
     });
 }

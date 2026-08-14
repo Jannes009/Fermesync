@@ -952,6 +952,15 @@ main {
   display: flex;
 }
 
+/* Ensure desktop connection indicator is hidden when online
+   and only becomes visible when the 'offline' class is present. */
+.connection-indicator.desktop-only {
+  display: none;
+}
+.connection-indicator.desktop-only.offline {
+  display: flex;
+}
+
 .mobile-inline {
   display: none !important; /* Changed from 'flex !important' */
   font-size: 0.75rem;

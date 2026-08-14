@@ -123,8 +123,6 @@ def create_entry():
             connection.commit()
 
             del_note_no = form_data['ZZDelNoteNo']
-            print(del_note_no)
-
             # --------------------------
             # Close main connection
             # --------------------------

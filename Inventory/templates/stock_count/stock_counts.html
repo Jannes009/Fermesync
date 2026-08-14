@@ -1,7 +1,5 @@
 {% extends "inventory_base.html" %}
 {% block content %}
-
-<link rel="stylesheet" href="{{ url_for('static', filename='color-template.css') }}">
 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
 
 <style>
@@ -277,65 +275,7 @@ onclick="window.location.href='{{ url_for('inventory.stock_count_start') }}'">
 </div>
 
 
-<!-- DUE COUNTS -->
-
-<div class="stock-card collapsible open" data-section="due">
-
-<div class="section-title toggle">
-<div><i class="fas fa-calendar-times"></i> Due & Overdue Shelves</div>
-<span class="summary"></span>
-<button class="btn-action-small" onclick="openScheduleModal()"><i class="fas fa-calendar-plus"></i> Schedule</button>
-<i class="fas fa-chevron-down arrow"></i>
-</div>
-
-<div class="card-body">
-
-<table class="table" id="dueTable">
-<thead>
-<tr>
-<th>Warehouse</th>
-<th>Shelf</th>
-<th>Frequency</th>
-<th>Last Count</th>
-<th>Next Due</th>
-<th>Status</th>
-<th>Action</th>
-</tr>
-</thead>
-<tbody></tbody>
-</table>
-
-</div>
-</div>
-
-<!-- Schedule Modal -->
-<div id="scheduleModal" class="modal hidden">
-  <div class="modal-content">
-      <h3><i class="fas fa-calendar-plus"></i> Create Count Schedule</h3>
-      <form id="scheduleForm">
-          <div class="form-group">
-              <label for="scheduleWarehouse">Warehouse *</label>
-              <select id="scheduleWarehouse" required>
-                  <option value="">-- Select Warehouse --</option>
-              </select>
-          </div>
-          <div class="form-group">
-              <label for="scheduleCategory">Shelf / Category *</label>
-              <select id="scheduleCategory" required>
-                  <option value="">-- Select Category --</option>
-              </select>
-          </div>
-          <div class="form-group">
-              <label for="scheduleFrequency">Frequency (Days) *</label>
-              <input type="number" id="scheduleFrequency" min="1" required placeholder="e.g., 30">
-          </div>
-          <div style="display:flex; gap:1rem; justify-content:flex-end; margin-top:1.5rem;">
-              <button type="button" class="btn-action-small" onclick="closeScheduleModal()">Cancel</button>
-              <button type="submit" class="btn-action-small">Create Schedule</button>
-          </div>
-      </form>
-  </div>
-</div>
+<!-- Scheduling and due/overdue sections removed to simplify page -->
 
 
 <!-- INCOMPLETE -->
@@ -430,6 +370,6 @@ Close
 </div>
 
 
-<script src="{{ url_for('inventory.static', filename='stock_count/stock_counts.js') }}"></script>
+<script src="{{ url_for('inventory.static', filename='stock_count/stock_counts.js') }}?{{ filemtime('inventory', 'stock_count/stock_counts.js') }}"></script>
 
 {% endblock %}
