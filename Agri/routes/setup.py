@@ -172,7 +172,9 @@ def add_spray_method():
     return redirect(url_for("agri.setup"))
 
 
-@agri_bp.route("/setup/projectattr/add", methods=["POST"])
+@agri_bp.route("/setup/projectattr", methods=["POST"])
+# Also accept trailing slash to avoid 404 when clients POST to `/setup/projectattr/`
+@agri_bp.route("/setup/projectattr/", methods=["POST"])
 @login_required
 def add_project_attr():
     # Accept both form-encoded and JSON payloads (modal posts JSON)
