@@ -132,11 +132,81 @@ document.addEventListener('DOMContentLoaded', () => {
       cropRows.innerHTML = '';
       (CHEMSTOCK.Crops || []).forEach(c => cropRows.appendChild(createCropRow(c)));
       modal.style.display = 'flex';
+
+      // enhance styling (small but visible) and add 'add active ingredient' button next to active select
+      inputActive.style.minWidth = '240px';
+      inputActive.style.marginRight = '8px';
+
+      // create add button if not present
+      if (!document.getElementById('add-active-btn')) {
+        const addBtn = document.createElement('button');
+        addBtn.type = 'button';
+        addBtn.id = 'add-active-btn';
+        addBtn.className = 'btn-primary';
+        addBtn.textContent = 'Add';
+        addBtn.style.margin = '4px';
+        addBtn.style.padding = '8px 10px';
+        addBtn.addEventListener('click', openAddActiveModal);
+        inputActive.parentNode.appendChild(addBtn);
+      }
     })();
   }
 
   function closeModal() {
     modal.style.display = 'none';
+  }
+
+  // Small modal for adding an active ingredient
+  function openAddActiveModal() {
+    // If modal exists, show it
+    let small = document.getElementById('add-active-modal');
+    if (!small) {
+      small = document.createElement('div');
+      small.id = 'add-active-modal';
+      small.style.position = 'fixed';
+      small.style.right = '20px';
+      small.style.top = '120px';
+      small.style.zIndex = 11000;
+      small.style.background = '#fff';
+      small.style.border = '1px solid rgba(0,0,0,0.08)';
+      small.style.borderRadius = '8px';
+      small.style.boxShadow = '0 6px 20px rgba(0,0,0,0.12)';
+      small.style.padding = '12px';
+      small.innerHTML = `
+        <div style="font-weight:700;margin-bottom:8px;">New Active Ingredient</div>
+        <input id="new-active-name" placeholder="e.g. Glyphosate" style="padding:8px;border:1px solid #ddd;border-radius:6px;width:220px;margin-bottom:8px;" />
+        <div style="display:flex;gap:8px;justify-content:flex-end;">
+          <button id="cancel-new-active" class="btn-ghost" style="padding:6px 10px;">Cancel</button>
+          <button id="save-new-active" class="btn-primary" style="padding:6px 10px;">Save</button>
+        </div>
+      `;
+      document.body.appendChild(small);
+      document.getElementById('cancel-new-active').addEventListener('click', () => small.remove());
+      document.getElementById('save-new-active').addEventListener('click', async () => {
+        const name = document.getElementById('new-active-name').value.trim();
+        if (!name) return alert('Please enter a name');
+        try {
+          const res = await request('/inventory/product/chemstock/add-active-ingredient', {
+            method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ name })
+          });
+          const data = await res.json();
+          if (!res.ok || !data.success) {
+            return alert(data.message || 'Failed to add');
+          }
+          // Refresh options and select the new one
+          const opt = document.createElement('option');
+          opt.value = data.id;
+          opt.textContent = data.name;
+          inputActive.appendChild(opt);
+          inputActive.value = data.id;
+          // remove small modal
+          small.remove();
+        } catch (err) {
+          console.error(err);
+          alert('Failed to create active ingredient');
+        }
+      });
+    }
   }
 
   editBtn.addEventListener('click', openModal);

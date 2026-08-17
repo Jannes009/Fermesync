@@ -69,7 +69,6 @@
   <div class="po-table-card">
     <div class="section-head">
       <h1 class="page-title">Agricultural Setup</h1>
-      <div class="muted">Manage farms, blocks, seasons and spray methods</div>
     </div>
 
     <div class="row">
@@ -154,18 +153,6 @@
               <h2>Project Attributes</h2>
               <div class="controls" style="width:100%;">
                 <div style="flex:1; display:flex; gap:8px; align-items:center;">
-                  <select id="filter-farm" class="input select2" style="min-width:140px;">
-                    <option value="">All Farms</option>
-                    {% for f in farms %}<option value="{{ f.IdFarm }}">{{ f.FarmName }}</option>{% endfor %}
-                  </select>
-                  <select id="filter-warehouse" class="input select2" style="min-width:160px;">
-                    <option value="">All Warehouses</option>
-                    {% for w in warehouses %}<option value="{{ w.WhseLink }}">{{ w.WhseDescription }}</option>{% endfor %}
-                  </select>
-                  <select id="filter-crop" class="input select2" style="min-width:160px;">
-                    <option value="">All Crops</option>
-                    {% for c in crops %}<option value="{{ c.IdCrop }}">{{ c.CropCode }}</option>{% endfor %}
-                  </select>
                   <input id="filter-search" class="input" placeholder="Search project or block..." style="min-width:220px;">
                 </div>
                 <div style="display:flex; gap:8px; align-items:center;">
@@ -568,7 +555,32 @@ document.addEventListener('DOMContentLoaded', function () {
         }
       });
     }
-
+    // If there's a saved draft for a new project_attr, restore it
+    try {
+      const draftRaw = sessionStorage.getItem('project_attr_draft');
+      if (draftRaw) {
+        const draft = JSON.parse(draftRaw);
+        // Only restore when adding a NEW project (id empty)
+        if (!id) {
+          if (draft.project_id) $('#edit-project-attr-project').val(draft.project_id).trigger('change');
+          if (draft.farm_id) $('#edit-project-attr-farm').val(draft.farm_id).trigger('change');
+          if (draft.warehouse_id) $('#edit-project-attr-warehouse').val(draft.warehouse_id).trigger('change');
+          if (draft.crop_id) $('#edit-project-attr-crop').val(draft.crop_id).trigger('change');
+          if (draft.variety_id) $('#edit-project-attr-variety').val(draft.variety_id).trigger('change');
+          if (draft.ha) document.getElementById('edit-project-attr-ha').value = draft.ha;
+          if (draft.plant_date) document.getElementById('edit-project-attr-plant-date').value = draft.plant_date;
+          if (draft.project_manager) document.getElementById('edit-project-attr-manager').value = draft.project_manager;
+          if (draft.agriculturist) document.getElementById('edit-project-attr-agriculturist').value = draft.agriculturist;
+          if (draft.block_no) document.getElementById('edit-project-attr-block-no').value = draft.block_no;
+          if (draft.default_spray_method_id) document.getElementById('edit-project-default-spray-method').value = draft.default_spray_method_id;
+          if (draft.default_dose) document.getElementById('edit-project-default-dose').value = draft.default_dose;
+          if (draft.default_water_per_ha) document.getElementById('edit-project-default-water-per-ha').value = draft.default_water_per_ha;
+          if (draft.default_water_per_tank) document.getElementById('edit-project-default-water-per-tank').value = draft.default_water_per_tank;
+        }
+      }
+    } catch (err) {
+      console.error('Failed to restore project_attr draft', err);
+    }
     modal.classList.add('active');
   }
 
@@ -623,7 +635,21 @@ document.addEventListener('DOMContentLoaded', function () {
       payload.farms = $('#edit-person-farms').val() || [];
     }
     if (entity === 'project_attr') {
-      payload.project_id = document.getElementById('edit-project-attr-project').value;
+      // Client-side required-field validation
+      const projectId = document.getElementById('edit-project-attr-project').value;
+      const farmId = document.getElementById('edit-project-attr-farm').value;
+      const whseId = document.getElementById('edit-project-attr-warehouse').value;
+      const cropId = document.getElementById('edit-project-attr-crop').value;
+      const varietyId = document.getElementById('edit-project-attr-variety').value;
+      const haVal = document.getElementById('edit-project-attr-ha').value;
+      const plantDateVal = document.getElementById('edit-project-attr-plant-date').value;
+
+      if (!projectId || !farmId || !whseId || !cropId || !varietyId || !haVal || !plantDateVal) {
+        Swal.fire('Validation error', 'Please fill Project, Farm, Warehouse, Crop, Variety, Hectares and Plant Date.', 'warning');
+        return;
+      }
+
+      payload.project_id = projectId;
       payload.farm_id = document.getElementById('edit-project-attr-farm').value;
       payload.warehouse_id = document.getElementById('edit-project-attr-warehouse').value;
       payload.crop_id = document.getElementById('edit-project-attr-crop').value;
@@ -669,6 +695,8 @@ document.addEventListener('DOMContentLoaded', function () {
         }
         if (!id) {
           // newly added record - reload to show it in the list
+          // Clear any saved draft for new project_attr
+          try { sessionStorage.removeItem('project_attr_draft'); } catch(e) {}
           window.location.reload();
           return;
         }
@@ -767,23 +795,55 @@ document.addEventListener('DOMContentLoaded', function () {
       });
   });
 
-  // Client-side filters for project attributes
-  const filterFarmEl = document.getElementById('filter-farm');
-  const filterWhseEl = document.getElementById('filter-warehouse');
-  const filterCropEl = document.getElementById('filter-crop');
+  // Persist project_attr modal draft to sessionStorage on changes (so accidental close retains values)
+  function saveProjectAttrDraft() {
+    try {
+      const draft = {
+        project_id: document.getElementById('edit-project-attr-project').value || '',
+        farm_id: document.getElementById('edit-project-attr-farm').value || '',
+        warehouse_id: document.getElementById('edit-project-attr-warehouse').value || '',
+        crop_id: document.getElementById('edit-project-attr-crop').value || '',
+        variety_id: document.getElementById('edit-project-attr-variety').value || '',
+        ha: document.getElementById('edit-project-attr-ha').value || '',
+        plant_date: document.getElementById('edit-project-attr-plant-date').value || '',
+        project_manager: document.getElementById('edit-project-attr-manager').value || '',
+        agriculturist: document.getElementById('edit-project-attr-agriculturist').value || '',
+        block_no: document.getElementById('edit-project-attr-block-no').value || '',
+        default_spray_method_id: document.getElementById('edit-project-default-spray-method').value || '',
+        default_dose: document.getElementById('edit-project-default-dose').value || '',
+        default_water_per_ha: document.getElementById('edit-project-default-water-per-ha').value || '',
+        default_water_per_tank: document.getElementById('edit-project-default-water-per-tank').value || ''
+      };
+      sessionStorage.setItem('project_attr_draft', JSON.stringify(draft));
+    } catch (err) {
+      console.error('Failed to save project_attr draft', err);
+    }
+  }
+
+  // Attach change/input listeners to modal fields (delegated)
+  ['change', 'input'].forEach(evt => {
+    document.addEventListener(evt, function (ev) {
+      const tgt = ev.target;
+      if (!tgt) return;
+      if (tgt.id && tgt.id.startsWith('edit-project-attr-')) {
+        // Save draft only for new (when edit-id empty)
+        const currentId = document.getElementById('edit-id').value;
+        if (!currentId) saveProjectAttrDraft();
+      }
+      if (tgt.id && (tgt.id === 'edit-project-default-spray-method' || tgt.id === 'edit-project-default-dose' || tgt.id === 'edit-project-default-water-per-ha' || tgt.id === 'edit-project-default-water-per-tank')) {
+        const currentId = document.getElementById('edit-id').value;
+        if (!currentId) saveProjectAttrDraft();
+      }
+    });
+  });
+
   const filterSearchEl = document.getElementById('filter-search');
 
   function applyProjectFilters() {
-    const f = filterFarmEl ? filterFarmEl.value : '';
-    const w = filterWhseEl ? filterWhseEl.value : '';
-    const c = filterCropEl ? filterCropEl.value : '';
     const s = filterSearchEl ? filterSearchEl.value.trim().toLowerCase() : '';
     document.querySelectorAll('.main-row').forEach(row => {
       const rid = row.dataset.id;
       let show = true;
-      if (f && row.dataset.farmId !== f) show = false;
-      if (w && row.dataset.whseId !== w) show = false;
-      if (c && row.dataset.cropId !== c) show = false;
       if (s) {
         const combined = (row.textContent || '') + ' ' + (document.querySelector(`.expand-row[data-parent-id="${rid}"]`)?.textContent || '');
         if (!combined.toLowerCase().includes(s)) show = false;
@@ -793,10 +853,6 @@ document.addEventListener('DOMContentLoaded', function () {
       if (expand) expand.style.display = 'none';
     });
   }
-
-  if (filterFarmEl) filterFarmEl.addEventListener('change', applyProjectFilters);
-  if (filterWhseEl) filterWhseEl.addEventListener('change', applyProjectFilters);
-  if (filterCropEl) filterCropEl.addEventListener('change', applyProjectFilters);
   if (filterSearchEl) filterSearchEl.addEventListener('input', applyProjectFilters);
 
 });

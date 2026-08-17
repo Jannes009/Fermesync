@@ -431,6 +431,43 @@ def chemstock_options():
     })
 
 
+@inventory_bp.route('/product/chemstock/add-active-ingredient', methods=['POST'])
+@login_required
+def add_active_ingredient():
+    data = request.get_json(silent=True) or {}
+    name = (data.get('name') or '').strip()
+    if not name:
+        return jsonify({'success': False, 'message': 'Active ingredient name is required'}), 400
+
+    conn = create_db_connection()
+    if not conn:
+        return jsonify({'success': False, 'message': 'Database connection failed'}), 500
+    cur = conn.cursor()
+    try:
+        cur.execute("""
+            INSERT INTO agr.ChemActiveIngredient (ChemActIngredient)
+            VALUES (?)
+        """, (name,))
+        # commit then try to fetch the inserted id deterministically
+        conn.commit()
+        new_id = None
+        try:
+            # Prefer selecting by the generated identity in the same table matching the name
+            cur.execute("SELECT TOP 1 IdChemAct FROM agr.ChemActiveIngredient WHERE ChemActIngredient = ? ORDER BY IdChemAct DESC", (name,))
+            row = cur.fetchone()
+            if row:
+                new_id = row[0]
+        except Exception:
+            new_id = None
+    except Exception as e:
+        conn.close()
+        return jsonify({'success': False, 'message': str(e)}), 500
+    conn.close()
+    if new_id is None:
+        return jsonify({'success': False, 'message': 'Inserted but failed to determine new id'}), 500
+    return jsonify({'success': True, 'id': int(new_id), 'name': name})
+
+
 def build_notices(selected_warehouse, suppliers, chemstock):
     notices = []
 

@@ -1099,8 +1099,7 @@ document.getElementById('spray-form').addEventListener('submit', function (e) {
                 icon: 'success',
                 title: 'Saved',
                 text: 'Spray recommendation saved: ' + data.spray_no,
-                timer: 1800,
-                showConfirmButton: false
+                showConfirmButton: true
             }).then(() => {
                 if (canView) {
                     window.location.href = '/agri/spray-recommendations-summary';
