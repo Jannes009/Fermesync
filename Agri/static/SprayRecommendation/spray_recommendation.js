@@ -682,9 +682,6 @@ function validateSprayForm(mode, projects, lines) {
     if (!sprayDescription) {
         errors.push('Please enter a description.');
     }
-    if (new Date(sprayDate) < new Date().setHours(0, 0, 0, 0)) {
-        errors.push('Spray date cannot be in the past.');
-    }
     if (!projects.length) {
         errors.push('Please select at least one project.');
     }
