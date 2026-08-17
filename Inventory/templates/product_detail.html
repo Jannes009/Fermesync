@@ -511,7 +511,7 @@ body { background: var(--bg-gray); }
     <button type="button" class="tab-btn" data-tab="warehouses" onclick="switchTab('warehouses', this)">Warehouses</button>
     <button type="button" class="tab-btn" data-tab="history" onclick="switchTab('history', this)">History</button>
     <button type="button" class="tab-btn" data-tab="suppliers" onclick="switchTab('suppliers', this)">Suppliers</button>
-    <button type="button" class="tab-btn" data-tab="registrations" onclick="switchTab('registrations', this)">Registrations</button>
+    <button type="button" class="tab-btn" data-tab="chemstock" onclick="switchTab('chemstock', this)">ChemStock</button>
     <button type="button" class="tab-btn" data-tab="inventory" onclick="switchTab('inventory', this)">Inventory</button>
   </div>
 
@@ -749,65 +749,95 @@ body { background: var(--bg-gray); }
       </div>
     </div>
 
-    <!-- REGISTRATIONS -->
-    <div id="tab-registrations" class="tab-panel">
+    <!-- CHEMSTOCK -->
+    <div id="tab-chemstock" class="tab-panel">
       <div class="section">
-        <div class="section-header"><h3>Active Ingredient</h3></div>
+        <div class="section-header" style="display:flex; justify-content:space-between; align-items:center;">
+          <h3>ChemStock</h3>
+          <div>
+            <button id="edit-chemstock-btn" class="btn-primary">Edit ChemStock</button>
+          </div>
+        </div>
         <div class="section-content">
           <dl class="def-grid">
             <div class="def-row">
               <dt>Active Ingredient</dt>
-              <dd>{{ registrations.ActiveIngredient or '—' }}</dd>
+              <dd id="reg-active">{{ chemstock.ActiveIngredient or '—' }}</dd>
             </div>
-          </dl>
-        </div>
-      </div>
-
-      <div class="section">
-        <div class="section-header"><h3>Colour</h3></div>
-        <div class="section-content">
-          <dl class="def-grid">
             <div class="def-row">
               <dt>Colour Code</dt>
-              <dd>{{ registrations.ColourCode or '—' }}</dd>
+              <dd id="reg-colour">{{ chemstock.ColourCode or '—' }}</dd>
             </div>
           </dl>
+
+          <div style="margin-top: 1rem;">
+            <h4 style="margin:0 0 0.5rem 0;">Crops</h4>
+            <div id="reg-crops-wrap">
+              {% if chemstock.Crops %}
+              <div class="table-container">
+                <table class="table-compact">
+                  <thead>
+                    <tr>
+                      <th>Crop</th>
+                      <th>Reg Number</th>
+                      <th>Type</th>
+                      <th>Function</th>
+                      <th>Withholding Period</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {% for crop in chemstock.Crops %}
+                    <tr>
+                      <td>{{ crop.CropDescription }}</td>
+                      <td>{{ crop.RegNumber }}</td>
+                      <td>{{ crop.Type }}</td>
+                      <td>{{ crop.Function }}</td>
+                      <td>{{ crop.WithholdingPeriod }}</td>
+                    </tr>
+                    {% endfor %}
+                  </tbody>
+                </table>
+              </div>
+              {% else %}
+              <div class="empty-state">No crop registrations on file.</div>
+              {% endif %}
+            </div>
+          </div>
         </div>
       </div>
 
-      <div class="section">
-        <div class="section-header"><h3>Crop Registrations</h3></div>
-        <div class="section-content">
-          {% if registrations.Crops %}
-          <div class="table-container">
-            <table class="table-compact">
-              <thead>
-                <tr>
-                  <th>Crop</th>
-                  <th>Reg Number</th>
-                  <th>Type</th>
-                  <th>Function</th>
-                  <th>Withholding Period</th>
-                </tr>
-              </thead>
-              <tbody>
-                {% for crop in registrations.Crops %}
-                <tr>
-                  <td>{{ crop.CropDescription }}</td>
-                  <td>{{ crop.RegNumber }}</td>
-                  <td>{{ crop.Type }}</td>
-                  <td>{{ crop.Function }}</td>
-                  <td>{{ crop.WithholdingPeriod }}</td>
-                </tr>
-                {% endfor %}
-              </tbody>
-            </table>
+      <!-- Edit Modal -->
+      <div id="edit-chemstock-modal" style="display:none; position:fixed; inset:0; background:rgba(0,0,0,0.45); align-items:center; justify-content:center; z-index:2000;">
+        <div style="background:var(--bg-white); padding:18px; border-radius:8px; width:min(920px, 96%); max-height:90vh; overflow:auto; box-shadow:0 8px 24px rgba(0,0,0,0.2);">
+          <h3 style="margin:0 0 8px 0;">Edit Chemstock</h3>
+          <div style="display:flex; flex-direction:column; gap:12px;">
+            <div style="display:grid; grid-template-columns:1fr 1fr; gap:12px;">
+              <div>
+                <label style="display:block; font-weight:600; margin-bottom:6px;">Active Ingredient</label>
+                <select id="edit-active" style="width:100%; padding:8px; border:1px solid var(--border); border-radius:6px;"></select>
+              </div>
+              <div>
+                <label style="display:block; font-weight:600; margin-bottom:6px;">Colour Code</label>
+                <select id="edit-colour" style="width:100%; padding:8px; border:1px solid var(--border); border-radius:6px;"></select>
+              </div>
+            </div>
+
+            <div>
+              <div style="display:flex; justify-content:space-between; align-items:center;">
+                <strong>Crops</strong>
+                <button id="add-crop-row" class="btn-ghost">Add Crop</button>
+              </div>
+              <div id="crop-rows" style="margin-top:8px; display:flex; flex-direction:column; gap:8px;"></div>
+            </div>
+
+            <div style="display:flex; gap:8px; justify-content:flex-end; margin-top:6px;">
+              <button id="cancel-edit-chemstock" class="btn-action secondary">Cancel</button>
+              <button id="save-edit-chemstock" class="btn-action primary">Save</button>
+            </div>
           </div>
-          {% else %}
-          <div class="empty-state">No crop registrations on file.</div>
-          {% endif %}
         </div>
       </div>
+    </div>
 
       <div class="section">
         <div class="section-header"><h3>Sprays</h3></div>
@@ -868,6 +898,7 @@ body { background: var(--bg-gray); }
 
 <script>
 const PRODUCT_STOCK_LINK = {{ product.StockLink }};
+const CHEMSTOCK = {{ chemstock | tojson }};
 const CURRENT_WAREHOUSE_ID = {{ warehouse_id }};
 const INITIAL_CATEGORY_ID = {{ selected_warehouse.CategoryId if selected_warehouse.CategoryId is not none else 'null' }};
 
@@ -900,7 +931,7 @@ function switchTab(tabName, button) {
   if (tabName === 'suppliers' && !pageState.outstandingLoaded && !pageState.outstandingLoading) {
     fetchOutstandingOrders();
   }
-  if (tabName === 'registrations' && !pageState.spraysLoaded && !pageState.spraysLoading) {
+  if (tabName === 'chemstock' && !pageState.spraysLoaded && !pageState.spraysLoading) {
     fetchSprays();
   }
   if (tabName === 'inventory' && !pageState.categoriesLoaded) {
@@ -1364,5 +1395,9 @@ function resetInventoryForm() {
 document.addEventListener('DOMContentLoaded', () => {
   defaultHistoryDates();
 });
+</script>
+<script
+  src="{{ url_for('inventory.static',
+    filename='edit_chemstock.js') }}?v={{ filemtime('inventory','edit_chemstock.js') }}">
 </script>
 {% endblock %}

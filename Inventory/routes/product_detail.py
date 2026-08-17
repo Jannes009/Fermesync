@@ -215,7 +215,7 @@ def load_outstanding_orders(stock_link):
     ]
 
 
-def load_registrations(stock_link):
+def load_chemstock(stock_link):
     conn = create_db_connection()
     if not conn:
         return {
@@ -230,9 +230,13 @@ def load_registrations(stock_link):
         cur.execute("""
             SELECT
                 STK.ChemStockLink,
+                STK.IdChemStock,
+                ACT.IdChemAct AS ChemActId,
                 ACT.ChemActIngredient,
+                CRP.IdCrop AS CropId,
                 CRP.CropDescription,
                 STKCRP.StkCrpRegNumber,
+                CLR.IdChemCol AS ChemColId,
                 CLR.ChemColCode,
                 STKCRP.StkCrpType,
                 STKCRP.StkCrpFunctionDef,
@@ -260,6 +264,7 @@ def load_registrations(stock_link):
     first = rows[0]
     crops = [
         {
+            'CropId': row.get('CropId'),
             'CropDescription': row.get('CropDescription') or '-',
             'RegNumber': row.get('StkCrpRegNumber') or '-',
             'Type': row.get('StkCrpType') or '-',
@@ -272,13 +277,161 @@ def load_registrations(stock_link):
 
     return {
         'ActiveIngredient': first.get('ChemActIngredient'),
+        'ActiveIngredientId': first.get('ChemActId'),
         'ColourCode': first.get('ChemColCode'),
+        'ColourCodeId': first.get('ChemColId'),
+        'ChemStockId': first.get('IdChemStock'),
         'Crops': crops,
         'IsChemProduct': first.get('ChemStockLink') is not None,
     }
 
 
-def build_notices(selected_warehouse, suppliers, registrations):
+@inventory_bp.route('/product/<int:stock_link>/update-chemstock', methods=['POST'])
+@login_required
+def update_chemstock(stock_link):
+    data = request.get_json(silent=True) or {}
+    active = (data.get('active_ingredient') or '').strip() or None
+    colour = (data.get('colour_code') or '').strip() or None
+    crops = data.get('crops') or []
+
+    conn = create_db_connection()
+    if not conn:
+        return jsonify({'success': False, 'message': 'DB connection failed'}), 500
+    cur = conn.cursor()
+
+    try:
+          # Ensure ChemStock exists for this stock_link
+        cur.execute("SELECT IdChemStock FROM agr.ChemStock WHERE ChemStockLink = ?", (stock_link,))
+        row = cur.fetchone()
+        if row:
+            chem_id = row[0]
+        else:
+            # create minimal ChemStock row
+            # attempt to use stock code/name from cmn._uvStockItems
+            cur.execute("SELECT StockCode, StockDescription FROM cmn._uvStockItems WHERE StockLink = ?", (stock_link,))
+            s = cur.fetchone()
+            code = s[0] if s else f'P{stock_link}'
+            name = s[1] if s else f'Product {stock_link}'
+            cur.execute("INSERT INTO agr.ChemStock (ChemStockLink, ChemStockCode, ChemStockName) VALUES (?, ?, ?)", (stock_link, code, name))
+            conn.commit()
+            cur.execute("SELECT IdChemStock FROM agr.ChemStock WHERE ChemStockLink = ?", (stock_link,))
+            chem_id = cur.fetchone()[0]
+
+        print(chem_id)
+        # Update ChemStock fields
+        cur.execute("UPDATE agr.ChemStock SET ChemStockActiveIngrId = ?, ChemStockColourCodeId = ? WHERE IdChemStock = ?", (active, colour, chem_id))
+        conn.commit()
+        print(crops)
+        # Replace ChemStockCrop rows
+        cur.execute("DELETE FROM agr.ChemStockCrop WHERE StkCrpChemStockId = ?", (chem_id,))
+        for c in crops:
+            crop_val = c.get('crop') or c.get('crop_id') or None
+            reg = c.get('reg_number') or c.get('RegNumber') or None
+            typ = c.get('type') or c.get('Type') or None
+            func = c.get('function') or c.get('Function') or None
+            withhold = c.get('withholding') or c.get('WithholdingPeriod') or None
+            # If crop_val is not numeric, try to find crop id by description
+            crop_id = None
+            if crop_val:
+                try:
+                    crop_id = int(crop_val)
+                except Exception:
+                    cur.execute("SELECT IdCrop FROM agr.Crop WHERE CropDescription = ? OR CropCode = ?", (crop_val, crop_val))
+                    cr = cur.fetchone()
+                    if cr:
+                        crop_id = cr[0]
+            cur.execute("INSERT INTO agr.ChemStockCrop (StkCrpChemStockId, StkCrpCropId, StkCrpRegNumber, StkCrpType, StkCrpWitholdingPeriodDef, StkCrpFunctionDef) VALUES (?, ?, ?, ?, ?, ?)", (chem_id, crop_id, reg, typ, withhold, func))
+        conn.commit()
+
+        # Return updated chemstock structure
+        regs = load_chemstock(stock_link)
+        return jsonify({'success': True, 'chemstock': regs})
+
+    except Exception as e:
+        conn.rollback()
+        return jsonify({'success': False, 'message': str(e)}), 500
+    finally:
+        try:
+            cur.close()
+        except Exception:
+            pass
+        try:
+            conn.close()
+        except Exception:
+            pass
+
+@inventory_bp.route('/product/chemstock_options', methods=['GET'])
+@login_required
+def chemstock_options():
+    conn = create_db_connection()
+    cur = conn.cursor()
+
+    # Units of measure (stocking units only)
+    cur.execute("""
+        SELECT DISTINCT UOM.idUnits, UOM.cUnitCode, UOM.iUnitCategoryID
+        FROM cmn._uvUOM UOM
+        WHERE UOM.cUnitCode IN ('L','Kg')
+        ORDER BY UOM.cUnitCode
+    """)
+    rows = cur.fetchall()
+    uoms = [row_to_dict(cur, row) for row in rows]
+
+    # Crops
+    cur.execute("""
+        SELECT IdCrop, CropCode, CropDescription
+        FROM agr.Crop
+        ORDER BY CropCode
+    """)
+    rows = cur.fetchall()
+    crops = [row_to_dict(cur, row) for row in rows]
+
+    # Active ingredients
+    cur.execute("""
+        SELECT IdChemAct, ChemActIngredient
+        FROM agr.ChemActiveIngredient
+        ORDER BY ChemActIngredient
+    """)
+    rows = cur.fetchall()
+    active_ings = [row_to_dict(cur, row) for row in rows]
+
+    cur.execute("""
+        Select Distinct idGrpTbl, Description
+        from [agr].[ChemStock] STK
+        JOIN cmn._uvStockGroups GRP on GRP.idGrpTbl = ChemStockGroupId
+        ORDER BY Description
+    """)
+    rows = cur.fetchall()
+    groups = [row_to_dict(cur, row) for row in rows]
+
+    # colour codes
+    cur.execute("""
+        SELECT IdChemCol, ChemColCode
+        FROM agr.ChemColour
+        ORDER BY ChemColCode
+    """)
+    rows = cur.fetchall()
+    colour_codes = [row_to_dict(cur, row) for row in rows]
+
+    # types
+    cur.execute("""
+        Select Distinct StkCrpType
+        from agr.ChemStockCrop
+    """)
+    rows = cur.fetchall()
+    types = [row_to_dict(cur, row) for row in rows]
+    conn.close()
+    return jsonify({
+        'success': True,
+        'uoms': uoms,
+        'crops': crops,
+        'active_ingredients': active_ings,
+        'groups': groups,
+        'colour_codes': colour_codes,
+        'types': types,
+    })
+
+
+def build_notices(selected_warehouse, suppliers, chemstock):
     notices = []
 
     has_default = any(s.get('IsDefault') for s in suppliers)
@@ -292,12 +445,12 @@ def build_notices(selected_warehouse, suppliers, registrations):
             'message': 'Product will become negative soon',
         })
 
-    if registrations.get('IsChemProduct'):
-        if not registrations.get('ActiveIngredient'):
+    if chemstock.get('IsChemProduct'):
+        if not chemstock.get('ActiveIngredient'):
             notices.append({'severity': 'warning', 'message': 'Missing active ingredient registration'})
-        if not registrations.get('ColourCode'):
+        if not chemstock.get('ColourCode'):
             notices.append({'severity': 'warning', 'message': 'Missing colour code'})
-        if not registrations.get('Crops'):
+        if not chemstock.get('Crops'):
             notices.append({'severity': 'warning', 'message': 'Missing crop registrations'})
 
     return notices
@@ -446,8 +599,8 @@ def product_detail(stock_link):
         abort(404)
 
     suppliers = load_suppliers(stock_link)
-    registrations = load_registrations(stock_link)
-    notices = build_notices(selected, suppliers, registrations)
+    chemstock = load_chemstock(stock_link)
+    notices = build_notices(selected, suppliers, chemstock)
     warehouses = load_warehouse_selector(stock_link)
 
     product = {
@@ -464,7 +617,7 @@ def product_detail(stock_link):
         selected_warehouse=selected,
         all_warehouses=formatted_rows,
         suppliers=suppliers,
-        registrations=registrations,
+        chemstock=chemstock,
         notices=notices,
     )
 

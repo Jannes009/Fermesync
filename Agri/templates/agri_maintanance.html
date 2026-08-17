@@ -189,7 +189,7 @@
                 </thead>
                 <tbody>
                   {% for pa in spray_projects %}
-                  <tr class="main-row" data-entity="project_attr" data-id="{{ pa.IdProjAttr }}" data-project-id="{{ pa.ProjAttrProjectId }}" data-farm-id="{{ pa.ProjAttrFarmId }}" data-whse-id="{{ pa.ProjAttrWhseId }}" data-whse-name="{{ pa.ProjAttrWhseName }}" data-crop-id="{{ pa.ProjAttrCropId }}" data-variety-id="{{ pa.ProjAttrVarietyId }}" data-ha="{{ pa.ProjAttrHa }}" data-plant-date="{{ pa.ProjAttrPlantDate.strftime('%Y-%m-%d') if pa.ProjAttrPlantDate else '' }}" data-project-manager="{{ pa.ProjAttrProjectManager }}" data-agriculturist="{{ pa.ProjAttrAgriculturist }}" data-block-no="{{ pa.ProjAttrBlockNo }}">
+                  <tr class="main-row" data-entity="project_attr" data-id="{{ pa.IdProjAttr }}" data-project-id="{{ pa.ProjAttrProjectId }}" data-farm-id="{{ pa.ProjAttrFarmId }}" data-whse-id="{{ pa.ProjAttrWhseId }}" data-whse-name="{{ pa.ProjAttrWhseName }}" data-crop-id="{{ pa.ProjAttrCropId }}" data-variety-id="{{ pa.ProjAttrVarietyId }}" data-ha="{{ pa.ProjAttrHa }}" data-plant-date="{{ pa.ProjAttrPlantDate.strftime('%Y-%m-%d') if pa.ProjAttrPlantDate else '' }}" data-project-manager="{{ pa.ProjAttrProjectManager }}" data-agriculturist="{{ pa.ProjAttrAgriculturist }}" data-block-no="{{ pa.ProjAttrBlockNo }}" data-default-spray-method-id="{{ pa.ProjAttrDefaultSprayMethodId or '' }}" data-default-dose="{{ pa.ProjAttrDefaultDose or '' }}" data-default-water-per-ha="{{ pa.ProjAttrDefaultWaterPerHa or '' }}" data-default-water-per-tank="{{ pa.ProjAttrDefaultWaterPerTank or '' }}">
                     <td>{{ pa.ProjectName }}</td>
                     <td>{{ pa.ProjAttrFarmName }}</td>
                     <td>{{ pa.CropCode }}</td>
@@ -208,6 +208,12 @@
                         <div><strong>Manager:</strong> {{ pa.ProjAttrProjectManager }}</div>
                         <div><strong>Agriculturist:</strong> {{ pa.ProjAttrAgriculturist }}</div>
                         <div><strong>Block:</strong> {{ pa.ProjAttrBlockNo }}</div>
+                        <div style="margin-left:12px;"><strong>Defaults:</strong>
+                          <div>Method: {{ pa.ProjAttrDefaultSprayMethodId or '-' }}</div>
+                          <div>Dose: {{ pa.ProjAttrDefaultDose or '-' }}</div>
+                          <div>Water/Ha: {{ pa.ProjAttrDefaultWaterPerHa or '-' }}</div>
+                          <div>Water/Tank: {{ pa.ProjAttrDefaultWaterPerTank or '-' }}</div>
+                        </div>
                       </div>
                     </td>
                   </tr>
@@ -351,6 +357,38 @@
           <div class="form-row">
             <label for="edit-project-attr-block-no">Block No</label>
             <input type="text" id="edit-project-attr-block-no" name="block_no" required>
+          </div>
+          <div style="margin-top:12px; border-left:2px solid #f1f5f9; padding-left:12px;">
+            <h4 style="margin:0 0 8px 0;">Defaults</h4>
+            <div class="form-row">
+              <label for="edit-project-default-spray-method">Default Spray Method</label>
+              <select id="edit-project-default-spray-method" name="default_spray_method_id" class="input select2">
+                <option value="">(inherit)</option>
+                {% for m in spray_methods %}
+                <option value="{{ m.IdSprayMethod }}">{{ m.SprayMethodName }}</option>
+                {% endfor %}
+              </select>
+            </div>
+
+            <div class="form-row">
+              <label for="edit-project-default-dose">Default Dose</label>
+              <select id="edit-project-default-dose" name="default_dose" class="input">
+                <option value="">(inherit)</option>
+                <option value="per_100l">Per 100L</option>
+                <option value="per_ha_tank">Per Ha (Mix)</option>
+                <option value="per_ha_direct">Per Ha (Direct)</option>
+              </select>
+            </div>
+
+            <div class="form-row">
+              <label for="edit-project-default-water-per-ha">Default Water / Ha</label>
+              <input type="number" id="edit-project-default-water-per-ha" name="default_water_per_ha" step="0.0001">
+            </div>
+
+            <div class="form-row">
+              <label for="edit-project-default-water-per-tank">Default Water / Tank</label>
+              <input type="number" id="edit-project-default-water-per-tank" name="default_water_per_tank" step="0.0001">
+            </div>
           </div>
         </div>
 
@@ -498,6 +536,10 @@ document.addEventListener('DOMContentLoaded', function () {
       document.getElementById('edit-project-attr-manager').value = row.dataset.projectManager || '';
       document.getElementById('edit-project-attr-agriculturist').value = row.dataset.agriculturist || '';
       document.getElementById('edit-project-attr-block-no').value = row.dataset.blockNo || '';
+      document.getElementById('edit-project-default-spray-method').value = row.dataset.defaultSprayMethodId || '';
+      document.getElementById('edit-project-default-dose').value = row.dataset.defaultDose || '';
+      document.getElementById('edit-project-default-water-per-ha').value = row.dataset.defaultWaterPerHa || '';
+      document.getElementById('edit-project-default-water-per-tank').value = row.dataset.defaultWaterPerTank || '';
     }
 
     modal.classList.add('active');
@@ -591,6 +633,10 @@ document.addEventListener('DOMContentLoaded', function () {
       payload.project_manager = document.getElementById('edit-project-attr-manager').value.trim();
       payload.agriculturist = document.getElementById('edit-project-attr-agriculturist').value.trim();
       payload.block_no = document.getElementById('edit-project-attr-block-no').value.trim();
+      payload.default_spray_method_id = document.getElementById('edit-project-default-spray-method').value || null;
+      payload.default_dose = document.getElementById('edit-project-default-dose').value || null;
+      payload.default_water_per_ha = document.getElementById('edit-project-default-water-per-ha').value || null;
+      payload.default_water_per_tank = document.getElementById('edit-project-default-water-per-tank').value || null;
     }
 
     const routeMap = {
@@ -682,6 +728,10 @@ document.addEventListener('DOMContentLoaded', function () {
             row.dataset.projectManager = payload.project_manager;
             row.dataset.agriculturist = payload.agriculturist;
             row.dataset.blockNo = payload.block_no;
+            row.dataset.defaultSprayMethodId = payload.default_spray_method_id || '';
+            row.dataset.defaultDose = payload.default_dose || '';
+            row.dataset.defaultWaterPerHa = payload.default_water_per_ha || '';
+            row.dataset.defaultWaterPerTank = payload.default_water_per_tank || '';
 
             row.cells[0].textContent = projectOption ? projectOption.textContent : row.cells[0].textContent;
             row.cells[1].textContent = farmOption ? farmOption.textContent : row.cells[1].textContent;
@@ -699,6 +749,12 @@ document.addEventListener('DOMContentLoaded', function () {
                   <div><strong>Manager:</strong> ${payload.project_manager || ''}</div>
                   <div><strong>Agriculturist:</strong> ${payload.agriculturist || ''}</div>
                   <div><strong>Block:</strong> ${payload.block_no || ''}</div>
+                  <div style="margin-left:12px;"><strong>Defaults:</strong>
+                    <div>Method: ${payload.default_spray_method_id || '-'}</div>
+                    <div>Dose: ${payload.default_dose || '-'}</div>
+                    <div>Water/Ha: ${payload.default_water_per_ha || '-'}</div>
+                    <div>Water/Tank: ${payload.default_water_per_tank || '-'}</div>
+                  </div>
                 `;
               }
             }

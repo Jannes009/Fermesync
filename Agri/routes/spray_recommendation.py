@@ -44,34 +44,36 @@ def create_spray_recommendation():
         warehouses=warehouses
     )
 
-@agri_bp.route("/spray-recommendation/default_qty_per_ha/<int:stock_id>", methods=["GET"])
+@agri_bp.route("/spray-recommendation/project_defaults/<int:project_id>", methods=["GET"])
 @login_required
-def get_default_qty_per_ha(stock_id):
+def project_defaults(project_id):
     conn = create_db_connection()
     cur = conn.cursor()
 
     cur.execute("""
-        SELECT [ChemStockDefaultQtyPer100L]
-        FROM agr.ChemStock
-        WHERE [ChemStockLink] = ?
-    """, (stock_id,))
+        SELECT ProjAttrDefaultSprayMethodId, ProjAttrDefaultDose, ProjAttrDefaultWaterPerHa, ProjAttrDefaultWaterPerTank
+        FROM [agr].[ProjectAttributes]
+        WHERE [ProjAttrProjectId] = ?
+    """, (project_id,))
     result = cur.fetchone()
 
     conn.close()
 
     if result:
-        return jsonify({"success": True, "default_qty_per_ha": result.ChemStockDefaultQtyPer100L})
+        return jsonify({
+            "success": True,
+            "default_spray_method_id": result.ProjAttrDefaultSprayMethodId,
+            "default_dose": result.ProjAttrDefaultDose,
+            "default_water_per_ha": result.ProjAttrDefaultWaterPerHa,
+            "default_water_per_tank": result.ProjAttrDefaultWaterPerTank
+        })
     else:
         return jsonify({"success": True, "default_qty_per_ha": 0})
     
-@agri_bp.route("/fetch_products_linked_with_warehouse", methods=["GET"])
+@agri_bp.route("/fetch_products_linked_with_projects", methods=["GET"])
 @login_required
-def fetch_products_linked_with_warehouse():
-    whse_id = request.args.get("warehouse_id")
+def fetch_products_linked_with_projects():
     project_ids_raw = request.args.get("project_ids", "")
-
-    if not whse_id:
-        return jsonify({"success": False, "message": "Warehouse ID is required", "products": []}), 400
 
     # Require at least one project id to scope products to project crops
     project_ids = [int(x) for x in project_ids_raw.split(',') if x.strip().isdigit()]
@@ -97,9 +99,20 @@ def fetch_products_linked_with_warehouse():
         conn.close()
         return jsonify({"success": False, "products": [], "message": "Selected projects must belong to the same crop"})
 
-    # Fetch products available in the warehouse and linked to those crops
+    cursor.execute("SELECT ProjAttrWhseId FROM agr.ProjectAttributes WHERE ProjAttrProjectId IN ({})".format(placeholders), tuple(project_ids))
+    whse_rows = cursor.fetchall()
+    whse_ids = [r[0] for r in whse_rows if r and r[0] is not None]
+
+    if not whse_ids:
+        conn.close()
+        return jsonify({"success": False, "products": [], "message": "No warehouses found for selected projects"})
+
+    if len(set(whse_ids)) > 1:
+        conn.close()
+        return jsonify({"success": False, "products": [], "message": "Selected projects must belong to the same warehouse"})
+
+    # Fetch products available in the warehouse and linked to those crop
     # Include RegNumber, WitholdingPeriod, Function from ChemStockCrop
-    crop_placeholders = ','.join('?' for _ in crop_ids)
     sql = f"""
     SELECT StockLink, StockCode, StockDescription,
     WhseLink, WhseCode, WhseName, QtyOnHand
@@ -112,12 +125,11 @@ def fetch_products_linked_with_warehouse():
 	JOIN agr.ChemStockCrop CRP on CRP.StkCrpChemStockId = STK.IdChemStock
     JOIN [agr].[ChemActiveIngredient] ACT on ACT.IdChemAct = STK.ChemStockActiveIngrId
     WHERE WhseLink = ?
-     AND CRP.StkCrpCropId IN ({crop_placeholders})
+     AND CRP.StkCrpCropId = ?
     ORDER BY ChemActIngredient, StockDescription
     """
 
-    params = tuple([whse_id] + crop_ids)
-    cursor.execute(sql, params)
+    cursor.execute(sql, whse_ids[0], crop_ids[0])
     rows = cursor.fetchall()
     conn.close()
 
@@ -151,24 +163,44 @@ def fetch_products_linked_with_warehouse():
 @agri_bp.route("/fetch_projects_for_warehouse", methods=["GET"])
 @login_required
 def fetch_projects_for_warehouse():
+    # Accept optional warehouse_id; if omitted, return projects for current user's warehouses
     warehouse_id = request.args.get("warehouse_id")
-    if not warehouse_id:
-        return jsonify({"success": False, "message": "Warehouse ID is required", "projects": []}), 400
 
     conn = create_db_connection()
     cursor = conn.cursor()
-    cursor.execute("""
-        SELECT DISTINCT p.ProjectLink, p.ProjectCode, pa.ProjAttrCropId, pa.ProjAttrHa,
-               c.CropThemeColor
-        FROM cmn._uvProject p
-        JOIN agr.ProjectAttributes pa
-            ON pa.ProjAttrProjectId = p.ProjectLink
-        LEFT JOIN agr.Crop c
-            ON c.IdCrop = pa.ProjAttrCropId
-        WHERE pa.ProjAttrWhseId = ?
-          AND pa.ProjAttrIsActive = 1
-        ORDER BY p.ProjectCode
-    """, (warehouse_id,))
+
+    if warehouse_id:
+        cursor.execute("""
+            SELECT DISTINCT p.ProjectLink, p.ProjectCode, pa.ProjAttrCropId, pa.ProjAttrHa,
+                   c.CropThemeColor, pa.ProjAttrBlockNo, pa.ProjAttrWhseId
+            FROM cmn._uvProject p
+            JOIN agr.ProjectAttributes pa
+                ON pa.ProjAttrProjectId = p.ProjectLink
+            LEFT JOIN agr.Crop c
+                ON c.IdCrop = pa.ProjAttrCropId
+            WHERE pa.ProjAttrWhseId = ?
+              AND pa.ProjAttrIsActive = 1
+            ORDER BY p.ProjectCode
+        """, (warehouse_id,))
+    else:
+        whse_ids = tuple(current_user.warehouses or [])
+        if not whse_ids:
+            conn.close()
+            return jsonify({"success": False, "message": "No warehouses available for current user", "projects": []}), 400
+        placeholders = ','.join('?' for _ in whse_ids)
+        cursor.execute(f"""
+            SELECT DISTINCT p.ProjectLink, p.ProjectCode, pa.ProjAttrCropId, pa.ProjAttrHa,
+                   c.CropThemeColor, pa.ProjAttrBlockNo, pa.ProjAttrWhseId
+            FROM cmn._uvProject p
+            JOIN agr.ProjectAttributes pa
+                ON pa.ProjAttrProjectId = p.ProjectLink
+            LEFT JOIN agr.Crop c
+                ON c.IdCrop = pa.ProjAttrCropId
+            WHERE pa.ProjAttrWhseId IN ({placeholders})
+              AND pa.ProjAttrIsActive = 1
+            ORDER BY p.ProjectCode
+        """, whse_ids)
+
     rows = cursor.fetchall()
     conn.close()
 
@@ -178,7 +210,9 @@ def fetch_projects_for_warehouse():
             "project_code": row.ProjectCode,
             "proj_attr_crop_id": row.ProjAttrCropId,
             "proj_attr_ha": float(row.ProjAttrHa or 0),
-            "crop_theme_color": row.CropThemeColor
+            "crop_theme_color": row.CropThemeColor,
+            "proj_attr_block_no": getattr(row, 'ProjAttrBlockNo', None) if hasattr(row, 'ProjAttrBlockNo') else (row[5] if len(row) > 5 else None),
+            "proj_attr_whse_id": getattr(row, 'ProjAttrWhseId', None) if hasattr(row, 'ProjAttrWhseId') else (row[6] if len(row) > 6 else None)
         }
         for row in rows
     ]
@@ -797,9 +831,6 @@ def create_execution():
     responsible_person = data.get("responsible_person")
     recommendation_ids = data.get("recommendation_ids", [])
     
-    if not execution_date or not responsible_person or not recommendation_ids:
-        return jsonify({"success": False, "message": "Missing required fields"}), 400
-
     try:
         recommendation_ids = [int(r) for r in recommendation_ids if isinstance(r, (int, str)) and str(r).strip().isdigit()]
     except Exception:

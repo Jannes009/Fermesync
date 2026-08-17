@@ -699,31 +699,19 @@
                         Week: -
                     </div>
                 </div>
-
-                <div>
-                    <label>Description</label>
-                        <input type="text" id="spray_description" required>
-                </div>
-            </div>
-
-            <div class="grid-2" style="margin-top:14px;">
-                <div>
-                    <label>Warehouse</label>
-                    <select id="warehouse_id" class="select2">
-                        <option value="">Select warehouse</option>
-                        {% for w in warehouses %}
-                        <option value="{{w.WhseLink}}">
-                            {{w.WhseDescription}}
-                        </option>
-                        {% endfor %}
-                    </select>
-                </div>
-
                 <div>
                     <label>Scouting Note</label>
                     <input type="text" id="scouting_note">
                 </div>
+
             </div>
+
+            <!-- PROJECTS -->
+            <div class="section-title">Projects</div>
+
+            <select id="project_ids" multiple class="select2" data-placeholder="Select projects">
+                <option></option>
+            </select>
 
             <!-- DOSE MODE -->
             <div class="section-title">Dose Method</div>
@@ -744,13 +732,6 @@
                     <div class="mode-title">Per Ha(Direct)</div>
                 </label>
             </div>
-
-            <!-- PROJECTS -->
-            <div class="section-title">Projects</div>
-
-            <select id="project_ids" multiple class="select2" disabled data-placeholder="Select warehouse first">
-                <option></option>
-            </select>
 
             <div id="project-configs" style="margin-top:12px"></div>
 
@@ -799,6 +780,12 @@
                     No mixing required. Rates entered directly per hectare.
                 </div>
             </div>
+            
+            <!-- Move description here so it reflects selected projects -->
+            <div style="margin-top:12px;">
+                <label>Description</label>
+                <input type="text" id="spray_description" required>
+            </div>
 
             <hr style="margin:18px 0">
 
@@ -811,6 +798,7 @@
                 <button type="button" class="btn" onclick="addLine()">Add Product</button>
                 <button type="button" class="btn ghost" onclick="clearLines()">Clear</button>
             </div>
+
 
             <!-- Tank plan removed; sticky bar shows summary -->
 
@@ -947,32 +935,14 @@ function getMode() {
     return document.querySelector('input[name="dose_mode"]:checked')?.value || 'per_100l';
 }
 
-// Validate spray form
-function validateSprayForm(mode, projects, lines) {
-    const errors = [];
-    
-    if (!document.getElementById('spray_date').value) {
-        errors.push('Date is required');
-    }
-    if (!document.getElementById('spray_description').value.trim()) {
-        errors.push('Description is required');
-    }
-    if (!document.getElementById('warehouse_id').value) {
-        errors.push('Warehouse is required');
-    }
-    if (!projects || projects.length === 0) {
-        errors.push('At least one project is required');
-    }
-    if (!lines || lines.length === 0) {
-        errors.push('At least one product is required');
-    }
-    
-    return errors;
-}
-
 // Form Submit
 document.getElementById('spray-form').addEventListener('submit', function (e) {
     e.preventDefault();
+
+    // disable submit button to prevent double submission
+    const submitButton = this.querySelector('button[type="submit"]');
+    submitButton.textContent = 'Saving...';
+    submitButton.disabled = true;
 
     const mode = getMode();
     const totalHa = parseFloat(document.getElementById('total-ha').textContent) || 0;
@@ -1085,6 +1055,8 @@ document.getElementById('spray-form').addEventListener('submit', function (e) {
 
     const validationErrors = validateSprayForm(mode, projects, lines);
     if (validationErrors.length) {
+        submitButton.disabled = false;
+        submitButton.textContent = 'Save Recommendation';
         Swal.fire({
             icon: 'error',
             title: 'Please fix the form',
@@ -1097,7 +1069,8 @@ document.getElementById('spray-form').addEventListener('submit', function (e) {
     const payload = {
         spray_date: document.getElementById('spray_date').value,
         spray_description: document.getElementById('spray_description').value,
-        warehouse_id: document.getElementById('warehouse_id').value,
+        // Infer warehouse from first selected project
+        warehouse_id: (document.querySelector('#project_ids option:checked') || {}).dataset ? (document.querySelector('#project_ids option:checked').dataset.whseId || null) : null,
         method_id: document.getElementById('method_id').value,
         scouting_note: document.getElementById('scouting_note').value,
         application_type: mode,
@@ -1144,6 +1117,8 @@ document.getElementById('spray-form').addEventListener('submit', function (e) {
         }
     })
     .catch(err => {
+        submitButton.disabled = false;
+        submitButton.textContent = 'Save Recommendation';
         Swal.fire({
             icon: 'error',
             title: 'Error',
