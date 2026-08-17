@@ -34,24 +34,52 @@ document.addEventListener("DOMContentLoaded", async () => {
         width: '100%'
     });
 
-    const res2 = await request("/inventory/SDK/fetch_all_warehouses");
-    const data2 = await res2.json();
-    if (!data2.success) {
-        return Swal.fire("Error Loading Warehouses", data2.message || "Failed to fetch warehouses.", "error");
-    }
-    const warehouses2 = data2.warehouses;
-    whTo.innerHTML = '<option disabled selected>Select warehouse</option>';
+    // When a 'From' warehouse is chosen, limit 'To' warehouses to the same type
+    $('#wh-from').on('change', async function () {
+        const fromId = $(this).val();
+        const $whTo = $('#wh-to');
 
-    // Initialize warehouse dropdowns with Select2
-    warehouses2.forEach(w => {
-        whTo.innerHTML += `<option value="${w.id}">${w.name}</option>`;
+        if (!fromId) {
+            // Reset To select to default state
+            $whTo.empty().append('<option disabled selected>Select warehouse</option>').trigger('change');
+            return;
+        }
+
+        try {
+            const res = await request(`/inventory/fetch_whses_with_same_type?whse_id=${encodeURIComponent(fromId)}`);
+            const data = await res.json();
+            if (!data.success) {
+                return Swal.fire('Error', data.message || 'Failed to fetch matching warehouses.', 'error');
+            }
+
+            const warehousesSameType = data.warehouses || [];
+
+            // Rebuild the To select options while keeping Select2 intact
+            const previous = $whTo.val();
+            $whTo.empty();
+            $whTo.append('<option disabled selected>Select warehouse</option>');
+            warehousesSameType.forEach(w => {
+                $whTo.append(`<option value="${w.id}">${w.name}</option>`);
+            });
+            // Try to restore previous selection if still present
+            if (previous && $whTo.find(`option[value="${previous}"]`).length) {
+                $whTo.val(previous);
+            } else {
+                $whTo.val(null);
+            }
+            $whTo.trigger('change.select2');
+            $('#wh-to').select2({
+                placeholder: "Select warehouse",
+                allowClear: false,
+                width: '100%'
+            });
+
+        } catch (err) {
+            console.error('Error fetching same-type warehouses', err);
+            Swal.fire('Error', 'Failed to fetch matching warehouses.', 'error');
+        }
     });
 
-    $('#wh-to').select2({
-        placeholder: "Select warehouse", 
-        allowClear: false,
-        width: '100%'
-    });
 
         // mark warehouse population complete so prefill logic can proceed
         if (typeof window.__resolveIbtWarehouses === 'function') {

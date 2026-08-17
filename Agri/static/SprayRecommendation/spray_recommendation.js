@@ -841,6 +841,7 @@ $('#project_ids').on('change', function() {
         updateProjectConfigs();
         fetchAndApplyProjectDefaults(selectedIds[0]);
         defaultDescription();
+        updateContextDataset();
         return;
     }
 
@@ -904,6 +905,7 @@ $('#project_ids').on('change', function() {
     // Update products for selected projects using the common warehouse id
     const selectedProjectIds = selectedIds.map(x => Number(x));
     updateProducts(selectedProjectIds);
+    updateContextDataset();
 });
 
 async function fetchAndApplyProjectDefaults(projectId) {

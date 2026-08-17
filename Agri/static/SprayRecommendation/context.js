@@ -280,11 +280,14 @@ function renderContextTimeline() {
 }
 
 async function updateContextDataset() {
+    const selectedIds = $('#project_ids').val() || [];
+    const projectId = selectedIds.length === 1 ? selectedIds[0] : null;
+    const option = $(`#project_ids option[value="${projectId}"]`);
+    const warehouseId = option.attr('data-whse-id');
     // use jQuery to read Select2 value reliably
-    const warehouseId = $('#warehouse_id').val();
     const rangeMonths = $('#filter-range').val() || '6';
     if (!warehouseId || String(warehouseId).trim() === '') {
-        document.getElementById('context-timeline').innerHTML = '<div class="context-empty">Select a warehouse to view recent spray context.</div>';
+        document.getElementById('context-timeline').innerHTML = '<div class="context-empty">Select a project to view recent spray context.</div>';
         document.getElementById('context-stats').innerHTML = '';
         return;
     }
@@ -319,8 +322,3 @@ async function updateContextDataset() {
     renderContextStats();
     renderContextTimeline();
 }
-
-// ensure context updates when warehouse/projects change
-$('#warehouse_id').on('change', function() {
-    updateContextDataset(); // <- ensure history refresh
-});

@@ -33,6 +33,32 @@ def fetch_all_warehouses():
         print("Error fetching warehouses:", str(e))
         return jsonify({"success": False, "message": str(e)}), 500
 
+@inventory_bp.route("/fetch_whses_with_same_type", methods=["GET"])
+@login_required
+def fetch_whses_with_same_type():
+    whse_id = request.args.get("whse_id")
+    try:
+        conn = create_db_connection()
+        cursor = conn.cursor()
+
+        cursor.execute("""
+        SELECT WhseLink, WhseCode, WhseDescription
+        FROM cmn.[_uvWarehouses] WHSE
+        JOIN [agr].[WarehouseAttributes] 
+            ATTR on ATTR.WhAttrWhseId = WHSE.WhseLink
+            AND ATTR.WhAttrWhseType = (Select TOP 1 WhAttrWhseType from [agr].[WarehouseAttributes] where WhAttrWhseId = ?)
+        """, (whse_id,))
+
+        warehouses = [
+            {"id": row.WhseLink, "code": row.WhseCode, "name": row.WhseDescription}
+            for row in cursor.fetchall()
+        ]
+        conn.close()
+
+        return jsonify({"success": True, "warehouses": warehouses})
+    except Exception as e:
+        print("Error fetching warehouses with same type:", str(e))
+        return jsonify({"success": False, "message": str(e)}), 500
 
 @inventory_bp.route("/fetch_products_in_both_whses", methods=["POST"])
 def fetch_products_in_both_whses():
@@ -59,7 +85,7 @@ def fetch_products_in_both_whses():
             FROM [stk]._uvInventoryQty TOQTY
             WHERE TOQTY.WhseLink = ? AND TOQTY.StockLink = FROMQTY.StockLink
         )
-        AND FROMQTY.QtyOnHand > 0 AND FROMQTY.WhseLink = ? AND FROMQTY.ItemActive = 1
+        AND FROMQTY.WhseLink = ? AND FROMQTY.ItemActive = 1
         """, (whse_to_id, whse_from_id,))
 
         rows = cursor.fetchall()

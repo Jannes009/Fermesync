@@ -620,6 +620,27 @@ body { background: var(--bg-gray); }
     <!-- HISTORY -->
     <div id="tab-history" class="tab-panel">
       <div class="section">
+        <div class="section-header"><h3>Sprays</h3></div>
+        <div class="section-content">
+          <div id="spraysLoading" class="loading-state">Loading sprays...</div>
+          <div id="spraysError" class="status-message error" style="display: none;"></div>
+          <div class="table-container" id="spraysTableWrap" style="display: none;">
+            <table class="table-compact">
+              <thead>
+                <tr>
+                  <th>Description</th>
+                  <th>Status</th>
+                  <th>Execution Date</th>
+                  <th class="text-right">Qty UOM</th>
+                </tr>
+              </thead>
+              <tbody id="spraysTableBody"></tbody>
+            </table>
+          </div>
+          <div id="spraysEmpty" class="empty-state" style="display: none;">No spray records found.</div>
+        </div>
+      </div>
+      <div class="section">
         <div class="section-header">
           <h3>Transaction History</h3>
           <div class="filter-actions">
@@ -684,7 +705,6 @@ body { background: var(--bg-gray); }
         </div>
       </div>
     </div>
-
     <!-- SUPPLIERS -->
     <div id="tab-suppliers" class="tab-panel">
       <div class="section">
@@ -839,28 +859,7 @@ body { background: var(--bg-gray); }
       </div>
     </div>
 
-      <div class="section">
-        <div class="section-header"><h3>Sprays</h3></div>
-        <div class="section-content">
-          <div id="spraysLoading" class="loading-state">Loading sprays...</div>
-          <div id="spraysError" class="status-message error" style="display: none;"></div>
-          <div class="table-container" id="spraysTableWrap" style="display: none;">
-            <table class="table-compact">
-              <thead>
-                <tr>
-                  <th>Description</th>
-                  <th>Status</th>
-                  <th>Execution Date</th>
-                  <th class="text-right">Qty UOM</th>
-                </tr>
-              </thead>
-              <tbody id="spraysTableBody"></tbody>
-            </table>
-          </div>
-          <div id="spraysEmpty" class="empty-state" style="display: none;">No spray records found.</div>
-        </div>
-      </div>
-    </div>
+      
 
     <!-- INVENTORY -->
     <div id="tab-inventory" class="tab-panel">
@@ -927,12 +926,10 @@ function switchTab(tabName, button) {
 
   if (tabName === 'history' && !pageState.historyLoaded && !pageState.historyLoading) {
     fetchTransactionHistory();
+    fetchSprays();
   }
   if (tabName === 'suppliers' && !pageState.outstandingLoaded && !pageState.outstandingLoading) {
     fetchOutstandingOrders();
-  }
-  if (tabName === 'chemstock' && !pageState.spraysLoaded && !pageState.spraysLoading) {
-    fetchSprays();
   }
   if (tabName === 'inventory' && !pageState.categoriesLoaded) {
     populateInventoryCategories();
