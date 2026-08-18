@@ -144,6 +144,23 @@ def fetch_spray_record_data(instruction_id):
         for row in cur.fetchall()
     ]
 
+    cur.execute("""
+    Select DISTINCT IssInvoiceNo 
+    from stk.IssueHeader ISS
+    JOIN agr.SprayExecution EXE on EXE.IdSprExec = ISS.IssSprayExecutionId
+    JOIN agr.SprayHeader HEA on HEA.SprayHExecutionId = EXE.IdSprExec
+    Where HEA.IdSprayH = ?
+    """, instruction_id)
+
+    invoice_numbers = []
+    for row in cur.fetchall():
+        value = row[0] if row and row[0] is not None else None
+        if value is not None:
+            value = str(value).strip()
+            if value:
+                invoice_numbers.append(value)
+    invoice_numbers = list(dict.fromkeys(invoice_numbers))
+    invoice_list = ", ".join(invoice_numbers)
     conn.close()
 
     total_ha = sum(item["ha"] for item in projects)
@@ -179,6 +196,7 @@ def fetch_spray_record_data(instruction_id):
         "total_ha": total_ha,
         "stock_requirements": stock_requirements,
         "created_by": getattr(current_user, "username", str(getattr(current_user, "id", "unknown"))),
+        "invoice_numbers": invoice_list,
         "app_logo_data": app_logo_data,
         "client_logo_data": client_logo_data
     }

@@ -117,6 +117,10 @@ body { font-family: Arial, sans-serif; color: var(--primary-text); line-height:1
       <div class="info-value">{{ instruction.scouting or "N/A" }}</div>
     </div>
     <div class="info-box">
+      <div class="info-label">Invoice Number(s)</div>
+      <div class="info-value">{{ instruction.invoice_numbers or "N/A" }}</div>
+    </div>
+    <div class="info-box">
       <div class="info-label">Total Ha</div>
       <div class="info-value">{{ instruction.total_ha }} ha</div>
     </div>

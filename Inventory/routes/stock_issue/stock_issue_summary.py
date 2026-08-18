@@ -212,8 +212,8 @@ def submit_stock_issue(issue_id, cursor):
                 OD.Warehouse = Evo.Warehouse(int(warehouse_id))
                 OD.Project = Evo.Project(int(line.IssLinProjProjectId))
 
-            SO.Complete()
-            return SO.OrderNo
+            invoice_no = SO.Complete()
+            return invoice_no
 
     except Exception as ex:
         print("Stock Issue Submission Error:", str(ex))
