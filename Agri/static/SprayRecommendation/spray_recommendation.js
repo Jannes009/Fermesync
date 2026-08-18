@@ -599,8 +599,8 @@ function recalcEverything() {
 
     // Update water display (sticky bar is primary; update legacy ids only if present)
     const sumWaterEl = document.getElementById('sum-water');
-    if (sumWaterEl) sumWaterEl.textContent = totalWater.toFixed(1) + ' L';
-    const stickyWaterEl2 = document.getElementById('sticky-water'); if (stickyWaterEl2) stickyWaterEl2.textContent = totalWater.toFixed(1);
+    if (sumWaterEl) sumWaterEl.textContent = totalWater.toFixed(2) + ' L';
+    const stickyWaterEl2 = document.getElementById('sticky-water'); if (stickyWaterEl2) stickyWaterEl2.textContent = totalWater.toFixed(2);
 
     if (!waterPerTank || totalWater <= 0) {
         const sumTanksEl = document.getElementById('sum-tanks'); if (sumTanksEl) sumTanksEl.textContent = '-';
@@ -615,7 +615,7 @@ function recalcEverything() {
 
     const sumTanksEl2 = document.getElementById('sum-tanks'); if (sumTanksEl2) sumTanksEl2.textContent = totalTanks;
     const stickyTanksEl3 = document.getElementById('sticky-tanks'); if (stickyTanksEl3) stickyTanksEl3.textContent = totalTanks;
-    const sumPartialEl2 = document.getElementById('sum-partial'); if (sumPartialEl2) sumPartialEl2.textContent = partial > 0 ? partial.toFixed(1) + ' L' : '0 L';
+    const sumPartialEl2 = document.getElementById('sum-partial'); if (sumPartialEl2) sumPartialEl2.textContent = partial > 0 ? partial.toFixed(2) + ' L' : '0 L';
 
     updateProductTotals(totalHa, totalWater, waterPerTank);
     renderTankBreakdown(totalWater, waterPerTank);
@@ -641,13 +641,13 @@ function updateProductTotals(totalHa, totalWater, waterPerTank) {
         if (mode === "per_100l") {
             totalQty = (totalWater / 100) * rate;
             if (waterPerTank) {
-                perTank = ((waterPerTank / 100) * rate).toFixed(1);
+                perTank = ((waterPerTank / 100) * rate).toFixed(2);
             }
         }
         else if (mode === "per_ha_tank") {
             totalQty = totalHa * rate;
             if (waterPerTank && totalWater > 0) {
-                perTank = ((waterPerTank / (totalWater / totalHa)) * rate).toFixed(1);
+                perTank = ((waterPerTank / (totalWater / totalHa)) * rate).toFixed(2);
             }
         }
         else if (mode === "per_ha_direct") {
@@ -655,7 +655,7 @@ function updateProductTotals(totalHa, totalWater, waterPerTank) {
             perTank = '-';
         }
 
-        card.querySelector('.total-qty').textContent = totalQty > 0 ? totalQty.toFixed(1) : '-';
+        card.querySelector('.total-qty').textContent = totalQty > 0 ? totalQty.toFixed(2) : '-';
         card.querySelector('.per-tank').textContent = perTank;
     });
 
@@ -758,12 +758,12 @@ function syncWaterFields() {
     // If user just edited water_per_ha, update total_water
     if (event && event.target.id === 'global_water_per_ha' && waterPerHa > 0) {
         const calculated = totalHa * waterPerHa;
-        document.getElementById('global_total_water').value = calculated.toFixed(1);
+        document.getElementById('global_total_water').value = calculated.toFixed(2);
     }
     // If user just edited total_water, update water_per_ha
     else if (event && event.target.id === 'global_total_water' && totalWater > 0) {
         const calculated = totalWater / totalHa;
-        document.getElementById('global_water_per_ha').value = calculated.toFixed(1);
+        document.getElementById('global_water_per_ha').value = calculated.toFixed(2);
     }
 }
 
@@ -783,12 +783,12 @@ function syncProjectWaterFields(row) {
     // If user just edited water_per_ha, update total_water
     if (event.target === waterPerHaInput && waterPerHa > 0) {
         const calculated = ha * waterPerHa;
-        totalWaterInput.value = calculated.toFixed(1);
+        totalWaterInput.value = calculated.toFixed(2);
     }
     // If user just edited total_water, update water_per_ha
     else if (event.target === totalWaterInput && totalWater > 0) {
         const calculated = totalWater / ha;
-        waterPerHaInput.value = calculated.toFixed(1);
+        waterPerHaInput.value = calculated.toFixed(2);
     }
 }
 
@@ -983,7 +983,7 @@ async function fetchAndApplyProjectDefaults(projectId) {
         if (defs.default_water_per_ha !== undefined && defs.default_water_per_ha !== null && defs.default_water_per_tank !== undefined && defs.default_water_per_tank !== null) {
             const totalHa = parseFloat(document.getElementById('total-ha').textContent) || 0;
             const totalWater = totalHa * parseFloat(defs.default_water_per_ha);
-            document.getElementById('global_total_water').value = totalWater.toFixed(1);
+            document.getElementById('global_total_water').value = totalWater.toFixed(2);
         }
         
     } catch (err) {
