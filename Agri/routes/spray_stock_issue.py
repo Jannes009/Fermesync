@@ -9,16 +9,22 @@ def fetch_spray_for_issue():
     conn = create_db_connection()
     cursor = conn.cursor()
     cursor.execute(f"""
-    Select IdSprExec, SprExecDate, PPL.PersonName, HEA.SprayHWhseId
-    from agr.SprayExecution EXE
-    JOIN [agr].[SprayHeader] HEA on HEA.SprayHExecutionId = EXE.IdSprExec
-    JOIN [agr].[People] PPL on PPL.IdPerson = EXE.SprExecResponsiblePerson
-    Where EXE.SprExecFinalised = 0
+    SELECT
+        EXE.IdSprExec,
+        STRING_AGG(HEA.SprayHDescription, ', ') AS SprayHDescriptions,
+        MAX(HEA.SprayHWhseId) AS SprayHWhseId,
+        People.PersonName
+    FROM agr.SprayExecution EXE
+    JOIN agr.SprayHeader HEA
+        ON HEA.SprayHExecutionId = EXE.IdSprExec
+    LEFT JOIN agr.People on People.IdPerson = EXE.SprExecResponsiblePerson
+    WHERE EXE.SprExecFinalised = 0
+    GROUP BY EXE.IdSprExec, PersonName;
     """)
     rows = cursor.fetchall()
     conn.close()
     return jsonify({"success": True, "executions": [
-        {"execution_id": row.IdSprExec, "date": row.SprExecDate, "responsible_person": row.PersonName, "warehouse_id": row.SprayHWhseId}
+        {"execution_id": row.IdSprExec, "description": row.SprayHDescriptions, "warehouse_id": row.SprayHWhseId, "responsible_person": row.PersonName}
         for row in rows
     ]})
 

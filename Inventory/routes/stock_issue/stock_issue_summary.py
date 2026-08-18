@@ -184,12 +184,12 @@ def submit_stock_issue(issue_id, cursor):
             SO.InvoiceDate = net_issue_date
 
             cursor.execute("""              
-            Select IssLineStockLink, IssLinProjProjectId, SUM(IssLinProjWeight) as TotalWeight, IssLineQtyFinalised
+            Select IssLineStockLink, IssLinProjProjectId, SUM(IssLinProjWeight) as TotalWeight, IssLineQtyFinalised, IssLineUoMId
             from [stk].[IssueHeader] HEA
             JOIN [stk].[IssueLines] LIN on HEA.IdIssue = LIN.IssLineIssueId
             JOIN stk.IssueLineProjects PROJ on PROJ.IssLinProjLineId = LIN.IdIssLine
             Where HEA.IdIssue = ?
-            Group by IssLineStockLink, IssLinProjProjectId, IssLineQtyFinalised
+            Group by IssLineStockLink, IssLinProjProjectId, IssLineQtyFinalised, IssLineUoMId
             """, (issue_id,))
             lines = cursor.fetchall()
 
@@ -204,9 +204,11 @@ def submit_stock_issue(issue_id, cursor):
                 SO.Detail.Add(OD)
 
                 weighted_qty = total_qty * line.TotalWeight
+                print(weighted_qty, warehouse_id)
 
                 OD.InventoryItem = Evo.InventoryItem(int(line.IssLineStockLink))
                 OD.Quantity = weighted_qty
+                OD.Unit = Evo.Unit(int(line.IssLineUoMId))
                 OD.Warehouse = Evo.Warehouse(int(warehouse_id))
                 OD.Project = Evo.Project(int(line.IssLinProjProjectId))
 

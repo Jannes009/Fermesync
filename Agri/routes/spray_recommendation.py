@@ -377,6 +377,21 @@ def to_decimal(val):
     return Decimal(str(val))
 
 
+def get_inserted_id(cursor, table_name):
+    row = cursor.fetchone()
+    value = row[0] if row else None
+
+    if value is None:
+        cursor.execute(f"SELECT CAST(IDENT_CURRENT('{table_name}') AS int) AS last_id")
+        row = cursor.fetchone()
+        value = row[0] if row else None
+
+    if value is None:
+        raise ValueError(f"Unable to read the inserted ID for {table_name}.")
+
+    return int(value)
+
+
 def generate_spray_no(cursor):
     cursor.execute("""
         DECLARE @DocumentNumber VARCHAR(30);
@@ -501,7 +516,6 @@ def submit_spray_recommendation():
                 SprayHMix,
                 SprayHCropId
             )
-            OUTPUT INSERTED.IdSprayH
             VALUES (
                 ?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?
             )
@@ -525,7 +539,8 @@ def submit_spray_recommendation():
             crop_id
         )
 
-        spray_id = int(cursor.fetchone()[0])
+        cursor.execute("SELECT CAST(SCOPE_IDENTITY() AS int) AS spray_id")
+        spray_id = get_inserted_id(cursor, 'agr.SprayHeader')
 
 
         # -------------------------------
@@ -616,7 +631,6 @@ def submit_spray_recommendation():
                     SprayMixHa,
                     SprayMixWater
                 )
-                OUTPUT INSERTED.IdSprayMix
                 VALUES (?,?,?,?)
             """,
                 spray_id,
@@ -625,7 +639,8 @@ def submit_spray_recommendation():
                 to_decimal(mix['mix_water'])
             )
 
-            mix_id = int(cursor.fetchone()[0])
+            cursor.execute("SELECT CAST(SCOPE_IDENTITY() AS int) AS mix_id")
+            mix_id = get_inserted_id(cursor, 'agr.SprayMix')
 
 
             # ---------------------------
@@ -715,6 +730,7 @@ def get_spray_recommendations():
         HEA.SprayHWhseId,
         WHSE.WhseDescription AS WarehouseName,
         HEA.SprayHExecutionId,
+        HEA.SprayHFinalised,
         BLK.ProjAttrBlockNo,
         FRM.FarmName
     FROM agr.SprayHeader HEA
@@ -761,7 +777,8 @@ def get_spray_recommendations():
             "warehouse_name": row.WarehouseName,
             "execution_id": row.SprayHExecutionId,
             "block_no": row.ProjAttrBlockNo,
-            "farm_name": row.FarmName
+            "farm_name": row.FarmName,
+            "finalised": bool(row.SprayHFinalised)
         })
 
     conn.close()
@@ -781,44 +798,6 @@ def get_method_water(method_id):
         return jsonify({"water_per_ha": None}), 404
 
 
-@agri_bp.route("/execution/responsible-persons", methods=["GET"])
-@login_required
-def get_responsible_persons():
-    if "SPRAY_EXEC_CREATE" not in current_user.permissions and "SPRAY_EXEC_VIEW" not in current_user.permissions:
-        abort(403)
-    
-    spray_ids_raw = request.args.get("spray_ids", "")
-    spray_ids = [int(x) for x in spray_ids_raw.split(',') if x.strip().isdigit()] if spray_ids_raw else []
-    
-    conn = create_db_connection()
-    cur = conn.cursor()
-    
-    if spray_ids:
-        # Get farms for the selected sprays and then get people assigned to those farms
-        placeholders = ','.join('?' for _ in spray_ids)
-        cur.execute(f"""
-            SELECT DISTINCT p.IdPerson, p.PersonName
-            FROM agr.People p
-            JOIN agr.FarmPeople fp ON fp.PersonId = p.IdPerson
-            JOIN agr.ProjectAttributes pa ON pa.ProjAttrFarmId = fp.FarmId
-            JOIN agr.SprayProjects sp ON sp.SprayPProjectId = pa.ProjAttrProjectId
-            WHERE sp.SprayPSprayId IN ({placeholders})
-              AND p.PersonSprayExecutionResponsible = 1
-            ORDER BY p.PersonName
-        """, tuple(spray_ids))
-    else:
-        # Fallback: get all responsible persons if no spray IDs provided
-        cur.execute("""
-            SELECT IdPerson, PersonName
-            FROM agr.People
-            WHERE PersonSprayExecutionResponsible = 1 
-            ORDER BY PersonName
-        """)
-    
-    persons = [{"id": row[0], "name": row[1]} for row in cur.fetchall()]
-    conn.close()
-    return jsonify({"success": True, "persons": persons})
-
 
 @agri_bp.route("/execution/create", methods=["POST"])
 @login_required
@@ -826,11 +805,10 @@ def create_execution():
     if "SPRAY_EXEC_CREATE" not in current_user.permissions:
         abort(403)
     
-    data = request.get_json()
-    execution_date = data.get("execution_date")
-    responsible_person = data.get("responsible_person")
+    data = request.get_json() or {}
     recommendation_ids = data.get("recommendation_ids", [])
-    
+    execution_date = data.get("execution_date")
+
     try:
         recommendation_ids = [int(r) for r in recommendation_ids if isinstance(r, (int, str)) and str(r).strip().isdigit()]
     except Exception:
@@ -867,30 +845,46 @@ def create_execution():
         return jsonify({"success": False, "message": "Selected recommendations must all come from the same warehouse"}), 400
 
     try:
-        # Create the execution
+        if execution_date:
+            if isinstance(execution_date, str):
+                try:
+                    execution_date = datetime.strptime(execution_date, "%Y-%m-%d").date()
+                except ValueError:
+                    execution_date = datetime.strptime(execution_date, "%Y-%m-%d %H:%M:%S").date()
+            elif isinstance(execution_date, datetime):
+                execution_date = execution_date.date()
+        else:
+            # Determine execution date as earliest scheduled date among the selected recommendations
+            placeholders = ','.join('?' for _ in recommendation_ids)
+            cur.execute(f"SELECT MIN(COALESCE(SprayHStartDateTime, SprayHDate)) AS EarliestDate FROM agr.SprayHeader WHERE IdSprayH IN ({placeholders})", tuple(recommendation_ids))
+            row = cur.fetchone()
+            execution_date = None
+            if row:
+                try:
+                    execution_date = row.EarliestDate
+                except Exception:
+                    execution_date = row[0]
+
+            if execution_date is None:
+                execution_date = datetime.now()
+
+        if hasattr(execution_date, 'isoformat'):
+            execution_date = execution_date.isoformat()
+
+        # Use a driver-safe insert path to avoid ODBC SQLBindParameter issues on OUTPUT INSERTED.
         cur.execute("""
             INSERT INTO agr.SprayExecution (SprExecDate, SprExecResponsiblePerson)
-            OUTPUT INSERTED.IdSprExec
-            VALUES (?, ?)
-        """, execution_date, responsible_person)
-        
-        execution_id = cur.fetchone()[0]
-        
-        # Update the spray headers to link them to the execution
-        # Note: This assumes SprayHeader has a column called SprayHExecutionId (int, nullable)
-        # If this column doesn't exist, you'll need to add it: ALTER TABLE agr.SprayHeader ADD SprayHExecutionId int NULL
-        for rec_id in recommendation_ids:
-            cur.execute("""
-                UPDATE agr.SprayHeader 
-                SET SprayHExecutionId = ? , SprayHStatus = 'SCHEDULED'
-                WHERE IdSprayH = ?
-            """, execution_id, rec_id)
-        
+            VALUES (CONVERT(date, ?), NULL)
+        """, (execution_date,))
+        cur.execute("SELECT CAST(SCOPE_IDENTITY() AS int) AS execution_id")
+        execution_id = get_inserted_id(cur, 'agr.SprayExecution')
+
+        # Link all selected spray headers to this execution in a single update
+        cur.execute(f"UPDATE agr.SprayHeader SET SprayHExecutionId = ?, SprayHStatus = 'SCHEDULED' WHERE IdSprayH IN ({placeholders})", (execution_id,) + tuple(recommendation_ids))
+
         conn.commit()
         conn.close()
-        
         return jsonify({"success": True, "message": "Execution created successfully", "execution_id": execution_id})
-    
     except Exception as e:
         conn.rollback()
         conn.close()

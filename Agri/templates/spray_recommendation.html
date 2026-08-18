@@ -799,6 +799,12 @@
                 <button type="button" class="btn ghost" onclick="clearLines()">Clear</button>
             </div>
 
+            <div style="margin-top:18px; display:flex; justify-content:flex-end; align-items:center;">
+                <label style="display:inline-flex; align-items:center; gap:8px; cursor:pointer; font-weight:600; color:var(--muted);">
+                    <input type="checkbox" id="create_execution_immediately" checked>
+                    <span>Create execution immediately</span>
+                </label>
+            </div>
 
             <!-- Tank plan removed; sticky bar shows summary -->
 
@@ -1078,6 +1084,7 @@ document.getElementById('spray-form').addEventListener('submit', function (e) {
         water_per_ha: mode === 'per_ha_tank' ? parseFloat(document.getElementById('global_water_per_ha').value) || null : null,
         total_water: mode === 'per_ha_tank' ? parseFloat(document.getElementById('global_total_water').value) || null : null,
         total_ha: totalHa,
+        create_execution_immediately: document.getElementById('create_execution_immediately')?.checked === true,
 
         projects: projects,
         lines: lines,
@@ -1092,28 +1099,44 @@ document.getElementById('spray-form').addEventListener('submit', function (e) {
         body: JSON.stringify(payload)
     })
     .then(r => r.json())
-    .then(data => {
-        if (data.success) {
-            const canView = {{ 'true' if 'SPRAY_REC_VIEW' in current_user.permissions else 'false' }};
-            Swal.fire({
-                icon: 'success',
-                title: 'Saved',
-                text: 'Spray recommendation saved: ' + data.spray_no,
-                showConfirmButton: true
-            }).then(() => {
-                if (canView) {
-                    window.location.href = '/agri/spray-recommendations-summary';
-                } else {
-                    window.location.href = '/agri/spray-recommendation/create';
-                }
-            });
-        } else {
-            Swal.fire({
-                icon: 'error',
-                title: 'Error',
-                text: data.message || 'An error occurred'
-            });
+    .then(async (data) => {
+        if (!data.success) {
+            throw new Error(data.message || 'An error occurred');
         }
+
+        const shouldCreateExecution = document.getElementById('create_execution_immediately')?.checked === true;
+
+        if (shouldCreateExecution) {
+            const executionResponse = await request('/agri/execution/create', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    recommendation_ids: [data.id],
+                    execution_date: payload.spray_date
+                })
+            });
+
+            const executionData = await executionResponse.json();
+            if (!executionResponse.ok || !executionData.success) {
+                throw new Error(executionData.message || 'Failed to create execution');
+            }
+        }
+
+        const canView = {{ 'true' if 'SPRAY_REC_VIEW' in current_user.permissions else 'false' }};
+        Swal.fire({
+            icon: 'success',
+            title: 'Saved',
+            text: shouldCreateExecution
+                ? 'Spray recommendation saved and execution created: ' + data.spray_no
+                : 'Spray recommendation saved: ' + data.spray_no,
+            showConfirmButton: true
+        }).then(() => {
+            if (canView) {
+                window.location.href = '/agri/spray-recommendations-summary';
+            } else {
+                window.location.href = '/agri/spray-recommendation/create';
+            }
+        });
     })
     .catch(err => {
         submitButton.disabled = false;

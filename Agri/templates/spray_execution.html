@@ -652,9 +652,6 @@
         <div style="display: flex; gap: 0.5rem;">
           <a href="/agri/execution/{{ execution.id }}/instruction_pdf" target="_blank" class="btn-success">Print Instructions</a>
           {% if not execution.finalised %}
-            {% if execution.can_finalize and 'SPRAY_EXEC_CREATE' in current_user.permissions %}
-            <button class="btn-primary" onclick="finalizeExecution({{ execution.id }})">Finalize Execution</button>
-            {% endif %}
             {% if execution.can_delete and 'SPRAY_EXEC_CREATE' in current_user.permissions %}
             <button class="btn-secondary" style="background: #dc3545;" onclick="deleteExecution({{ execution.id }})">Delete Execution</button>
             {% endif %}
@@ -668,16 +665,21 @@
           <div class="header-value">{{ execution.date.strftime('%B %d, %Y') if execution.date else 'Not set' }}</div>
         </div>
         <div class="header-item">
-          <div class="header-label">Responsible Person</div>
-          <div class="header-value">{{ execution.responsible_person or 'Not assigned' }}</div>
-        </div>
-        <div class="header-item">
           <div class="header-label">Warehouse</div>
           <div class="header-value">{{ execution.warehouse or '-' }}</div>
         </div>
         <div class="header-item">
           <div class="header-label">Total Spray Instructions</div>
           <div class="header-value">{{ spray_instructions|length }}</div>
+        </div>
+                <div class="header-item">
+          <div class="header-label">Responsible Person</div>
+          <div class="header-value" id="responsible-person-display">{{ execution.responsible_person or 'Not assigned' }}</div>
+          {% if not execution.finalised and 'SPRAY_EXEC_CREATE' in current_user.permissions %}
+          <div style="margin-top: 0.75rem;">
+            <button type="button" class="btn-secondary" onclick="openResponsiblePersonModal()">Assign / Edit</button>
+          </div>
+          {% endif %}
         </div>
       </div>
     </div>
@@ -775,7 +777,7 @@
             </div>
           </div>
           <div class="update-instruction-actions" style="margin-top: 0.75rem; flex-wrap: wrap; align-items: center;">
-            {% if not instruction.finalised and 'SPRAY_EXEC_CREATE' in current_user.permissions %}
+            {% if execution.can_finalize and not instruction.finalised and 'SPRAY_EXEC_CREATE' in current_user.permissions %}
               <button type="button" class="btn-success" onclick="openInstructionModal({{ instruction.id }}, '{{ instruction.spray_date or '' }}', '{{ instruction.start_date_time or '' }}', '{{ instruction.end_date_time or '' }}', '{{ instruction.weather or '' }}')">Finalise instruction</button>
             {% endif %}
             <button type="button" class="btn-secondary" onclick="window.location.href='/agri/spray/{{ instruction.id }}'">View details</button>
@@ -794,6 +796,27 @@
   </div>
 </div>
 
+<div id="responsible-person-modal" class="modal-backdrop" hidden>
+  <div class="modal-window">
+    <div class="modal-header">
+      <h3>Responsible Person</h3>
+      <button type="button" class="modal-close" onclick="closeResponsiblePersonModal()">×</button>
+    </div>
+    <div class="modal-body">
+      <div class="modal-field">
+        <label for="responsible-person-select">Assign person</label>
+        <select id="responsible-person-select" style="width: 100%; padding: 0.8rem 0.85rem; border-radius: 10px; border: 1px solid var(--input-border); background: var(--primary-bg); color: var(--primary-text);">
+          <option value="">Not assigned</option>
+        </select>
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="btn-secondary" onclick="closeResponsiblePersonModal()">Cancel</button>
+        <button type="button" class="btn-primary" id="save-responsible-person-btn">Save</button>
+      </div>
+    </div>
+  </div>
+</div>
+
 <div id="instruction-modal" class="modal-backdrop" hidden>
   <div class="modal-window">
     <div class="modal-header">
@@ -804,12 +827,18 @@
       <form id="instruction-form" action="" method="post">
         <input type="hidden" name="spray_date" id="modal-spray-date">
         <div class="modal-field">
-          <label for="modal-start-time">Start Date & Time</label>
-          <input type="datetime-local" id="modal-start-time" name="start_date_time" required>
+          <label>Start Date & Time</label>
+          <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 0.5rem;">
+            <input type="date" id="modal-start-date" required>
+            <input type="time" id="modal-start-time" required>
+          </div>
         </div>
         <div class="modal-field">
-          <label for="modal-end-time">End Date & Time</label>
-          <input type="datetime-local" id="modal-end-time" name="end_date_time" required>
+          <label>End Date & Time</label>
+          <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 0.5rem;">
+            <input type="date" id="modal-end-date" required>
+            <input type="time" id="modal-end-time" required>
+          </div>
         </div>
         <div class="modal-field">
           <label for="modal-weather">Weather</label>
@@ -834,6 +863,7 @@
 <script>
 window.onStockIssueReturnSuccess = () => window.location.reload();
 const executionId = {{ execution.id }};
+const executionDate = '{{ execution.date.strftime("%Y-%m-%d") if execution.date else "" }}';
 
 function setInstructionStatus(message = '', type = 'info') {
     const statusEl = document.getElementById('instruction-status');
@@ -859,8 +889,13 @@ async function handleInstructionSubmit(event) {
     event.preventDefault();
     const form = event.target;
     const action = form.action;
-    const start_date_time = document.getElementById('modal-start-time').value;
-    const end_date_time = document.getElementById('modal-end-time').value;
+    const startDate = document.getElementById('modal-start-date').value;
+    const startTime = document.getElementById('modal-start-time').value;
+    const endDate = document.getElementById('modal-end-date').value;
+    const endTime = document.getElementById('modal-end-time').value;
+
+    const start_date_time = startDate && startTime ? `${startDate}T${startTime}` : '';
+    const end_date_time = endDate && endTime ? `${endDate}T${endTime}` : '';
     const weather = document.getElementById('modal-weather').value;
     const spray_date = document.getElementById('modal-spray-date').value;
 
@@ -896,26 +931,129 @@ async function handleInstructionSubmit(event) {
 function openInstructionModal(instructionId, sprayDate, startTime, endTime, weather) {
     const modal = document.getElementById('instruction-modal');
     const form = document.getElementById('instruction-form');
-    const startInput = document.getElementById('modal-start-time');
-    const endInput = document.getElementById('modal-end-time');
     const weatherInput = document.getElementById('modal-weather');
     const sprayDateInput = document.getElementById('modal-spray-date');
 
-    function normalizeDateTime(value) {
-      if (!value) return '';
-      const normalized = value.replace(' ', 'T');
-      return normalized.length > 16 ? normalized.substring(0, 16) : normalized;
+    if (!('{{ execution.responsible_person_id or '' }}' || '{{ execution.responsible_person or '' }}')) {
+        Swal.fire({
+            icon: 'warning',
+            title: 'Responsible person required',
+            text: 'Assign a responsible person before finalising this instruction.'
+        });
+        return;
     }
+
+    function normalizeDateTime(value) {
+        if (!value) return '';
+        const normalized = value.replace(' ', 'T');
+        return normalized.length > 16 ? normalized.substring(0, 16) : normalized;
+    }
+
+    function splitDateTime(value) {
+        const normalized = normalizeDateTime(value);
+        if (!normalized) return { date: '', time: '' };
+        const [date, time] = normalized.split('T');
+        return { date: date || '', time: time || '' };
+    }
+
+    const start = splitDateTime(startTime);
+    const end = splitDateTime(endTime);
+
+    // Default only the date to the execution date when no existing value
+    document.getElementById('modal-start-date').value = start.date || executionDate || '';
+    document.getElementById('modal-start-time').value = start.time || '';
+    document.getElementById('modal-end-date').value = end.date || executionDate || '';
+    document.getElementById('modal-end-time').value = end.time || '';
 
     form.action = `/agri/execution/${executionId}/update_instruction/${instructionId}`;
     modal.dataset.instructionId = instructionId;
-    startInput.value = normalizeDateTime(startTime);
-    endInput.value = normalizeDateTime(endTime);
     weatherInput.value = weather || '';
-    sprayDateInput.value = sprayDate || normalizeDateTime(startTime).split('T')[0] || '';
+    sprayDateInput.value = sprayDate || start.date || executionDate || '';
     setInstructionStatus('');
     setInstructionFormSaving(false);
     modal.hidden = false;
+}
+
+function openResponsiblePersonModal() {
+    const modal = document.getElementById('responsible-person-modal');
+    if (modal) modal.hidden = false;
+    loadResponsiblePersons();
+}
+
+function closeResponsiblePersonModal() {
+    const modal = document.getElementById('responsible-person-modal');
+    if (modal) modal.hidden = true;
+}
+
+async function loadResponsiblePersons() {
+    const select = document.getElementById('responsible-person-select');
+    if (!select) return;
+
+    try {
+        const response = await request(`/agri/execution/responsible-persons/${executionId}`, { method: 'GET' });
+        const data = await response.json();
+        if (!response.ok || !Array.isArray(data.persons)) {
+            throw new Error('Unable to load responsible persons');
+        }
+
+        const currentPersonId = '{{ execution.responsible_person_id if execution.responsible_person_id is not none else '' }}';
+        select.innerHTML = '<option value="">Not assigned</option>';
+
+        data.persons.forEach((person) => {
+            const option = document.createElement('option');
+            option.value = person.id;
+            option.textContent = person.name;
+            if (String(person.id) === String(currentPersonId)) {
+                option.selected = true;
+            }
+            select.appendChild(option);
+        });
+
+        if (!currentPersonId) {
+            const display = document.getElementById('responsible-person-display');
+            if (display) display.textContent = 'Not assigned';
+        }
+    } catch (error) {
+        console.error('Error loading responsible persons:', error);
+    }
+}
+
+async function saveResponsiblePerson() {
+    const select = document.getElementById('responsible-person-select');
+    if (!select) return;
+
+    const personId = select.value || '';
+    try {
+        const response = await request(`/agri/execution/${executionId}/update_responsible_person`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json', 'Accept': 'application/json' },
+            body: JSON.stringify({ person_id: personId })
+        });
+        const data = await response.json().catch(() => null);
+
+        if (!response.ok || !data?.success) {
+            throw new Error(data?.message || 'Unable to save responsible person.');
+        }
+
+        const display = document.getElementById('responsible-person-display');
+        if (display) {
+            display.textContent = select.options[select.selectedIndex]?.text || 'Not assigned';
+        }
+
+        closeResponsiblePersonModal();
+        window.location.reload();
+    } catch (error) {
+        Swal.fire({
+            icon: 'error',
+            title: 'Unable to save',
+            text: error.message || 'Please try again.'
+        });
+    }
+}
+
+const saveResponsiblePersonBtn = document.getElementById('save-responsible-person-btn');
+if (saveResponsiblePersonBtn) {
+    saveResponsiblePersonBtn.addEventListener('click', saveResponsiblePerson);
 }
 
 function closeInstructionModal() {
@@ -932,49 +1070,6 @@ function toggleStockDetail(element) {
     icon.classList.toggle('expanded');
 }
 
-async function finalizeExecution(executionId) {
-    const confirmation = await Swal.fire({
-        icon: 'warning',
-        title: 'Finalize Execution?',
-        text: 'This will mark the execution as finalized and cannot be undone.',
-        showCancelButton: true,
-        confirmButtonText: 'Yes, finalize it',
-        cancelButtonText: 'Cancel'
-    });
-    if (!confirmation.isConfirmed) {
-        return;
-    }
-
-    try {
-        const response = await request(`/agri/execution/${executionId}/finalize`, {
-            method: 'POST'
-        });
-        const data = await response.json();
-        if (data.success) {
-            await Swal.fire({
-                icon: 'success',
-                title: 'Finalized',
-                text: 'Execution finalized successfully.',
-                timer: 1500,
-                showConfirmButton: false
-            });
-            location.reload();
-        } else {
-            await Swal.fire({
-                icon: 'error',
-                title: 'Finalize failed',
-                text: 'Failed to finalize execution: ' + (data.message || 'Unknown error.')
-            });
-        }
-    } catch (err) {
-        console.error('Error finalizing execution:', err);
-        await Swal.fire({
-            icon: 'error',
-            title: 'Network error',
-            text: 'Failed to finalize execution. Please try again.'
-        });
-    }
-}
 
 async function deleteExecution(executionId) {
     const confirmation = await Swal.fire({

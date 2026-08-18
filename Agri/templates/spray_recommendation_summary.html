@@ -201,6 +201,46 @@
     width: 100%;
   }
 
+  .toggle-wrap {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    margin-left: auto;
+  }
+  .toggle-group {
+    position: relative;
+    display: inline-flex;
+    gap: 0.25rem;
+    background: var(--form-bg);
+    border: 1px solid var(--input-border);
+    border-radius: 999px;
+    padding: 0.25rem;
+  }
+  .toggle-option {
+    position: relative;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    min-width: 140px;
+    padding: 0.55rem 0.9rem;
+    border-radius: 999px;
+    cursor: pointer;
+    font-size: 0.85rem;
+    font-weight: 700;
+    color: var(--secondary-text);
+    transition: all 0.2s ease;
+  }
+  .toggle-option input {
+    position: absolute;
+    opacity: 0;
+    pointer-events: none;
+  }
+  .toggle-option.selected {
+    background: var(--button-bg, #0d6efd);
+    color: var(--button-text, #fff);
+    box-shadow: 0 2px 8px rgba(13, 110, 253, 0.25);
+  }
+
   #pendingExecutionsTableWrapper,
   #completedExecutionsTableWrapper {
     margin-top: 1rem;
@@ -763,6 +803,158 @@
     gap: 10px;
     margin-top: 20px;
   }
+  .list-card {
+  margin-top: 0.25rem;
+}
+
+.list-toolbar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-start;
+  gap: 0.75rem 1.25rem;
+  margin-bottom: 1rem;
+  padding-bottom: 0.75rem;
+  border-bottom: 1px solid var(--input-border);
+}
+
+.toolbar-actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.6rem;
+  min-width: 0;
+}
+
+.selection-summary {
+  color: var(--secondary-text);
+  font-size: 0.9rem;
+  line-height: 1.3;
+}
+
+.toolbar-filters {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.75rem;
+  align-items: flex-end;
+  flex: 1 1 280px;
+}
+
+.filter-field {
+  min-width: 160px;
+  flex: 1 1 160px;
+  max-width: 220px;
+}
+
+.filter-field label {
+  display: block;
+  margin-bottom: 0.35rem;
+  font-size: 0.75rem;
+  color: var(--secondary-text);
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+.filter-field select {
+  width: 100%;
+  padding: 0.65rem 0.75rem;
+  border-radius: 8px;
+  border: 1px solid var(--input-border);
+  background: var(--form-bg);
+  color: var(--primary-text);
+  font-size: 0.95rem;
+}
+
+.toolbar-toggle {
+  display: flex;
+  align-items: center;
+  margin-left: auto;
+}
+
+@media (max-width: 768px) {
+  .list-toolbar {
+    flex-direction: column;
+    align-items: stretch;
+    gap: 0.75rem;
+  }
+
+  .toolbar-actions {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 0.5rem;
+    width: 100%;
+  }
+
+  .toolbar-actions .btn-primary,
+  .toolbar-actions .btn-secondary {
+    flex: 0 1 auto;
+    min-width: 120px;
+  }
+
+  .toolbar-filters {
+    display: flex;
+    flex-direction: row;
+    flex-wrap: wrap;
+    gap: 0.5rem;
+    width: 100%;
+    flex: 1;
+  }
+
+  .filter-field {
+    flex: 1 1 calc(50% - 0.25rem);
+    min-width: 120px;
+    max-width: none;
+  }
+
+  .toolbar-toggle {
+    width: 100%;
+    margin-left: 0;
+  }
+
+  .toggle-group {
+    width: 100%;
+  }
+
+  .toggle-option {
+    flex: 1;
+    min-width: 0;
+    padding: 0.45rem 0.6rem;
+    font-size: 0.8rem;
+  }
+
+  .selection-summary {
+    width: 100%;
+    text-align: left;
+    margin-top: 0.25rem;
+  }
+}
+@media (max-width: 480px) {
+  .list-toolbar {
+    gap: 0.5rem;
+    padding-bottom: 0.5rem;
+  }
+
+  .toolbar-actions {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .toolbar-actions .btn-primary,
+  .toolbar-actions .btn-secondary {
+    width: 100%;
+  }
+
+  .filter-field {
+    flex: 1 1 100%;
+  }
+
+  .toggle-option {
+    font-size: 0.75rem;
+    padding: 0.35rem 0.5rem;
+    min-width: 0;
+  }
+}
 </style>
 
 <div class="page-content">
@@ -774,45 +966,48 @@
         <a href="/agri/spray-recommendation/create" class="btn-primary" style="text-decoration:none; margin:0; white-space: nowrap;">+ New Recommendation</a>
         {% endif %}
       </header>
-      <div class="card" style="margin-bottom: 2rem; position: relative;">
-        <div style="display:flex; justify-content:space-between; align-items:flex-start; gap:1rem; flex-wrap:wrap;">
-          <div style="display:flex; gap:0.75rem; align-items:center; flex-wrap:wrap;">
-            <button id="filterToggle" type="button" class="btn-secondary">Filters</button>
-            {% if 'SPRAY_EXEC_CREATE' in current_user.permissions %}
-            <button id="createExecutionButton" type="button" class="btn-primary" disabled>Create Execution</button>
-            {% endif %}
-            <button id="cancelSelectionButton" type="button" class="btn-secondary" style="display:none;">Cancel</button>
-            <span id="selectionSummary" style="color: var(--secondary-text); font-size:0.95rem;"></span>
-          </div>
-        </div>
+      <div class="card list-card">
+  <div class="list-toolbar">
+    <div class="toolbar-actions">
+      {% if 'SPRAY_EXEC_CREATE' in current_user.permissions %}
+      <button id="createExecutionButton" type="button" class="btn-primary" disabled>
+        Create Execution
+      </button>
+      {% endif %}
+      <button id="cancelSelectionButton" type="button" class="btn-secondary" style="display:none;">
+        Cancel
+      </button>
+      <span id="selectionSummary" class="selection-summary"></span>
+    </div>
 
-        <div id="filterPanel" class="filter-panel" style="display:none;">
-          <div class="filter-row">
-            <div class="form-group">
-              <label for="filterSearch">Search</label>
-              <input type="text" id="filterSearch" placeholder="Search spray number, description, block, farm, warehouse">
-            </div>
-            <div class="form-group">
-              <label for="filterStatus">Status</label>
-              <select id="filterStatus">
-                <option value="">All</option>
-              </select>
-            </div>
-            <div class="form-group">
-              <label for="filterFarm">Farm</label>
-              <select id="filterFarm">
-                <option value="">All</option>
-              </select>
-            </div>
-            <div class="form-group">
-              <label for="filterWarehouse">Warehouse</label>
-              <select id="filterWarehouse">
-                <option value="">All</option>
-              </select>
-            </div>
-          </div>
-        </div>
+    <div class="toolbar-filters">
+      <div class="filter-field">
+        <label for="filterFarm">Farm</label>
+        <select id="filterFarm">
+          <option value="">All farms</option>
+        </select>
+      </div>
+      <div class="filter-field">
+        <label for="filterBlock">Block</label>
+        <select id="filterBlock">
+          <option value="">All blocks</option>
+        </select>
+      </div>
+    </div>
 
+    <div class="toolbar-toggle">
+      <div class="toggle-group" aria-label="Finalised recommendation visibility">
+        <label class="toggle-option selected">
+          <input type="radio" name="recommendationFinalisedFilter" value="hide" checked>
+          <span>Hide finalised</span>
+        </label>
+        <label class="toggle-option">
+          <input type="radio" name="recommendationFinalisedFilter" value="show">
+          <span>Show all</span>
+        </label>
+      </div>
+    </div>
+  </div>
         <div id="recTableWrapper">
           <table id="recTable">
             <thead>
@@ -822,8 +1017,6 @@
                 <th data-sort="description">Description</th>
                 <th data-sort="week">Week</th>
                 <th data-sort="status">Status</th>
-                <th data-sort="start_date">Start</th>
-                <th data-sort="end_date">End</th>
                 <th data-sort="block_no">Block</th>
               </tr>
             </thead>
@@ -862,27 +1055,24 @@ function getSelectionSummary() {
 }
 
 document.addEventListener('DOMContentLoaded', () => {
-    const filterToggle = document.getElementById('filterToggle');
-    const searchInput = document.getElementById('filterSearch');
-    const statusSelect = document.getElementById('filterStatus');
     const farmSelect = document.getElementById('filterFarm');
-    const warehouseSelect = document.getElementById('filterWarehouse');
+    const blockSelect = document.getElementById('filterBlock');
+    const recommendationFinalisedOptions = document.querySelectorAll('input[name="recommendationFinalisedFilter"]');
     const createButton = getCreateButton();
 
-    if (filterToggle) {
-        filterToggle.addEventListener('click', toggleFilterPanel);
-    }
-    if (searchInput) {
-        searchInput.addEventListener('input', renderRecommendationsTable);
-    }
-    if (statusSelect) {
-        statusSelect.addEventListener('change', renderRecommendationsTable);
-    }
     if (farmSelect) {
         farmSelect.addEventListener('change', renderRecommendationsTable);
     }
-    if (warehouseSelect) {
-        warehouseSelect.addEventListener('change', renderRecommendationsTable);
+    if (blockSelect) {
+        blockSelect.addEventListener('change', renderRecommendationsTable);
+    }
+    if (recommendationFinalisedOptions.length) {
+        recommendationFinalisedOptions.forEach(option => {
+            option.addEventListener('change', () => {
+                updateRecommendationFinalisedToggleSelection();
+                renderRecommendationsTable();
+            });
+        });
     }
     if (createButton) {
         createButton.addEventListener('click', handleCreateExecutionButtonClick);
@@ -896,6 +1086,7 @@ document.addEventListener('DOMContentLoaded', () => {
         th.addEventListener('click', () => setSort(th.dataset.sort));
     });
 
+    updateRecommendationFinalisedToggleSelection();
     loadRecommendations();
 });
 
@@ -922,101 +1113,60 @@ async function loadRecommendations() {
 }
 
 function populateFilters(data) {
-    const statusSelect = document.getElementById('filterStatus');
     const farmSelect = document.getElementById('filterFarm');
+    const blockSelect = document.getElementById('filterBlock');
 
-    if (!statusSelect || !farmSelect) {
+    if (!farmSelect || !blockSelect) {
         return;
     }
 
-    const statuses = Array.from(new Set(data.map(item => item.status || '').filter(Boolean))).sort();
     const farms = Array.from(new Set(data.map(item => item.farm_name || '').filter(Boolean))).sort();
-    const warehouses = Array.from(new Set(data.map(item => item.warehouse_name || '').filter(Boolean))).sort();
+    const blocks = Array.from(new Set((data
+        .map(item => item.block_no || '')
+        .join(',')
+        .split(',')
+        .map(value => value.trim())
+        .filter(Boolean)))).sort();
 
-    statusSelect.innerHTML = '<option value="">All</option>' + statuses.map(status => `
-        <option value="${status}">${status}</option>`).join('');
-
-    farmSelect.innerHTML = '<option value="">All</option>' + farms.map(farm => `
+    farmSelect.innerHTML = '<option value="">All farms</option>' + farms.map(farm => `
         <option value="${farm}">${farm}</option>`).join('');
 
-    const warehouseSelect = document.getElementById('filterWarehouse');
-    if (warehouseSelect) {
-        warehouseSelect.innerHTML = '<option value="">All</option>' + warehouses.map(warehouse => `
-            <option value="${warehouse}">${warehouse}</option>`).join('');
-    }
+    blockSelect.innerHTML = '<option value="">All blocks</option>' + blocks.map(block => `
+        <option value="${block}">${block}</option>`).join('');
 }
 
-let _filterOutsideHandler = null;
-function toggleFilterPanel() {
-  const panel = document.getElementById('filterPanel');
-  const btn = document.getElementById('filterToggle');
-  if (!panel || !btn) return;
-
-  const isOpen = panel.classList.contains('show');
-  if (isOpen) {
-    panel.classList.remove('show');
-    panel.style.display = 'none';
-    if (_filterOutsideHandler) {
-      document.removeEventListener('click', _filterOutsideHandler);
-      _filterOutsideHandler = null;
-    }
-    return;
-  }
-
-  // Position under the button
-  const rect = btn.getBoundingClientRect();
-  panel.style.position = 'fixed';
-  panel.style.left = `${Math.max(8, rect.left)}px`;
-  panel.style.top = `${rect.bottom + 8}px`;
-  panel.style.minWidth = `${Math.max(200, rect.width)}px`;
-  panel.style.display = 'block';
-  panel.classList.add('show');
-
-  // Close when clicking outside (attach after opening to avoid immediate close)
-  _filterOutsideHandler = function(ev) {
-    if (!panel.contains(ev.target) && !btn.contains(ev.target)) {
-      panel.classList.remove('show');
-      panel.style.display = 'none';
-      document.removeEventListener('click', _filterOutsideHandler);
-      _filterOutsideHandler = null;
-    }
-  };
-  setTimeout(() => document.addEventListener('click', _filterOutsideHandler), 0);
+function updateRecommendationFinalisedToggleSelection() {
+    document.querySelectorAll('input[name="recommendationFinalisedFilter"]').forEach(option => {
+        const label = option.closest('.toggle-option');
+        if (label) {
+            label.classList.toggle('selected', option.checked);
+        }
+    });
 }
 
 function applyFilters() {
-    const searchText = document.getElementById('filterSearch')?.value.trim().toLowerCase() || '';
-    const selectedStatus = document.getElementById('filterStatus')?.value || '';
     const selectedFarm = document.getElementById('filterFarm')?.value || '';
-    const selectedWarehouse = document.getElementById('filterWarehouse')?.value || '';
+    const selectedBlock = document.getElementById('filterBlock')?.value || '';
+    const hideFinalised = document.querySelector('input[name="recommendationFinalisedFilter"][value="hide"]')?.checked ?? true;
 
     return recommendations.filter(item => {
-        if (selectedStatus && item.status !== selectedStatus) {
+        if (hideFinalised && item.finalised) {
             return false;
         }
         if (selectedFarm && item.farm_name !== selectedFarm) {
             return false;
         }
-        if (selectedWarehouse && item.warehouse_name !== selectedWarehouse) {
+
+        const itemBlocks = (item.block_no || '')
+            .split(',')
+            .map(value => value.trim())
+            .filter(Boolean);
+        const matchesBlock = !selectedBlock || itemBlocks.includes(selectedBlock);
+        if (!matchesBlock) {
             return false;
         }
 
-        if (!searchText) {
-            return true;
-        }
-
-        const searchable = [
-            String(item.id || ''),
-            item.spray_no || '',
-            item.description || '',
-            item.week || '',
-            item.status || '',
-            item.block_no || '',
-            item.farm_name || '',
-            item.warehouse_name || ''
-        ].join(' ').toLowerCase();
-
-        return searchable.includes(searchText);
+        return true;
     });
 }
 
@@ -1059,8 +1209,6 @@ function renderRecommendationsTable() {
                 <td>${escapeHtml(rec.description)}</td>
                 <td>${escapeHtml(rec.week)}</td>
                 <td>${escapeHtml(rec.status)}</td>
-                <td>${formatDateTime(rec.start_date)}</td>
-                <td>${formatDateTime(rec.end_date)}</td>
                 <td>${escapeHtml(rec.block_no)}</td>
             </tr>
         `;
@@ -1095,8 +1243,6 @@ function renderRecommendationsTable() {
                         <div class="mobile-card-status">${escapeHtml(rec.status)}</div>
                     </div>
                     <div class="mobile-card-row"><strong>Week:</strong> ${escapeHtml(rec.week)}</div>
-                    <div class="mobile-card-row"><strong>Start:</strong> ${formatDateTime(rec.start_date)}</div>
-                    <div class="mobile-card-row"><strong>End:</strong> ${formatDateTime(rec.end_date)}</div>
                     <div class="mobile-card-row"><strong>Block:</strong> ${escapeHtml(rec.block_no)}</div>
                     ${checkboxHtml}
                 </article>
@@ -1148,7 +1294,7 @@ function updateSelectionState() {
       console.log('Updating Create Execution button. Selection mode:', selectionMode, 'Selected IDs:', selectedRecommendationIds);
         if (selectionMode) {
             createButton.disabled = selectedRecommendationIds.length === 0;
-            createButton.textContent = 'Next';
+            createButton.textContent = 'Create';
         } else {
             createButton.disabled = !hasEligibleRecommendations();
             createButton.textContent = 'Create Execution';
@@ -1174,7 +1320,7 @@ function handleCreateExecutionButtonClick() {
         return;
     }
 
-    openCreateExecutionModal();
+    submitExecutionCreation();
 }
 
 function hasEligibleRecommendations() {
@@ -1207,113 +1353,9 @@ function updateSelectionModeUI() {
     updateSelectionState();
 }
 
-function openCreateExecutionModal() {
-    if (selectedRecommendationIds.length === 0) {
-        return;
-    }
-
-    const existingModal = document.getElementById('executionModal');
-    if (existingModal) {
-        existingModal.remove();
-    }
-
-    const modal = document.createElement('div');
-    modal.className = 'modal';
-    modal.id = 'executionModal';
-    modal.innerHTML = `
-        <div class="modal-content">
-            <div class="modal-header">
-                <h3 class="modal-title">Create Execution</h3>
-                <button class="modal-close" onclick="closeExecutionModal()">&times;</button>
-            </div>
-            <div class="modal-body">
-                <div class="form-group">
-                    <label for="execDate">Execution Date</label>
-                    <input type="date" id="execDate" required value="${new Date().toISOString().slice(0, 10)}">
-                </div>
-                <div class="form-group">
-                    <label for="execResponsible">Responsible Person</label>
-                    <select id="execResponsible" required>
-                        <option value="">Select person...</option>
-                    </select>
-                </div>
-                <div style="margin-top: 16px;">
-                    <strong>${selectedRecommendationIds.length} recommendation${selectedRecommendationIds.length === 1 ? '' : 's'} selected</strong>
-                    ${selectedWarehouseName ? `<div style="margin-top:8px;color: var(--secondary-text);">Warehouse: ${escapeHtml(selectedWarehouseName)}</div>` : ''}
-                </div>
-            </div>
-            <div class="modal-footer">
-                <button class="btn-secondary" onclick="closeExecutionModal()">Cancel</button>
-                <button class="btn-primary" onclick="submitExecutionCreation()">Create Execution</button>
-            </div>
-        </div>
-    `;
-    document.body.appendChild(modal);
-    modal.style.display = 'block';
-
-    loadResponsiblePersonsForExecutionModal();
-
-    modal.addEventListener('click', (event) => {
-        if (event.target === modal) {
-            closeExecutionModal();
-        }
-    });
-
-    document.addEventListener('keydown', function onEscape(event) {
-        if (event.key === 'Escape') {
-            closeExecutionModal();
-            document.removeEventListener('keydown', onEscape);
-        }
-    });
-}
-
-function closeExecutionModal() {
-    const modal = document.getElementById('executionModal');
-    if (modal) {
-        modal.remove();
-    }
-}
-
-async function loadResponsiblePersonsForExecutionModal() {
-    try {
-        const response = await request(
-            `/agri/execution/responsible-persons?spray_ids=${selectedRecommendationIds.join(',')}`
-        );
-
-        const data = await response.json();
-        if (!data.success) {
-            throw new Error(data.message || 'Failed to load responsible persons');
-        }
-        const persons = data.persons;
-
-        const select = document.getElementById('execResponsible');
-
-        select.innerHTML =
-            '<option value="">Select person...</option>' +
-            persons.map(person => `
-                <option value="${person.id}">
-                    ${escapeHtml(person.name)}
-                </option>
-            `).join('');
-
-    } catch (err) {
-        console.error(err);
-    }
-}
-
 async function submitExecutionCreation() {
-    const dateInput = document.getElementById('execDate');
-    const responsibleSelect = document.getElementById('execResponsible');
-
-    if (!dateInput || !responsibleSelect) {
-        return;
-    }
-
-    const executionDate = dateInput.value;
-    const responsiblePerson = responsibleSelect.value;
-
-    if (!executionDate || !responsiblePerson) {
-        Swal.fire({icon: 'warning', title: 'Missing Information', text: 'Please choose a date and a responsible person.'});
+    if (selectedRecommendationIds.length === 0) {
+        Swal.fire({icon: 'info', title: 'No Selection', text: 'Please select at least one recommendation.'});
         return;
     }
 
@@ -1324,8 +1366,6 @@ async function submitExecutionCreation() {
                 'Content-Type': 'application/json'
             },
             body: JSON.stringify({
-                execution_date: executionDate,
-                responsible_person: Number(responsiblePerson),
                 recommendation_ids: selectedRecommendationIds
             })
         });
@@ -1336,7 +1376,6 @@ async function submitExecutionCreation() {
         }
 
         Swal.fire({icon: 'success', title: 'Success', text: 'Execution created successfully.'}).then(() => {
-            closeExecutionModal();
             exitSelectionMode();
             loadRecommendations();
         });
@@ -1375,10 +1414,6 @@ function normalizeSortValue(value) {
     }
     if (sortField === 'id') {
         return Number(value) || 0;
-    }
-    if (sortField === 'start_date' || sortField === 'end_date') {
-        const date = new Date(value);
-        return isNaN(date.getTime()) ? String(value).toLowerCase() : date.getTime();
     }
     return String(value).toLowerCase();
 }

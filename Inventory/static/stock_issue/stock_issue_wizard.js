@@ -155,7 +155,7 @@ async function loadSprayExecutions() {
       });
     const select = document.getElementById('spray-select');
     select.innerHTML = '<option></option>';
-    sprays.forEach(s => select.insertAdjacentHTML('beforeend', `<option value="${s.execution_id}" data-warehouse="${s.warehouse_id}">${s.date} - ${s.responsible_person}</option>`));
+    sprays.forEach(s => select.insertAdjacentHTML('beforeend', `<option value="${s.execution_id}" data-warehouse="${s.warehouse_id}">${s.description} - ${s.responsible_person || 'Not Assigned'}</option>`));
   } catch (error) {
     console.error("Error loading spray executions:", error);
     sprays = [];
