@@ -1,5 +1,9 @@
 {% extends 'inventory_base.html' %}
 {% block content %}
+<script>
+    // Expose current user ID for form state manager
+    window.CURRENT_USER_ID = {{ current_user.id }};
+</script>
 <style>
     :root {
         --accent: #2563eb;
@@ -928,6 +932,10 @@
 <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11/dist/sweetalert2.all.min.js"></script>
 <script
   src="{{ url_for('agri.static',
+    filename='SprayRecommendation/form-state-manager.js') }}?v={{ filemtime('agri','SprayRecommendation/form-state-manager.js') }}">
+</script>
+<script
+  src="{{ url_for('agri.static',
     filename='SprayRecommendation/spray_recommendation.js') }}?v={{ filemtime('agri','SprayRecommendation/spray_recommendation.js') }}">
 </script>
 <script
@@ -1123,6 +1131,12 @@ document.getElementById('spray-form').addEventListener('submit', function (e) {
         }
 
         const canView = {{ 'true' if 'SPRAY_REC_VIEW' in current_user.permissions else 'false' }};
+        
+        // Clear saved form state on success
+        if (FormStateManager) {
+            FormStateManager.clear();
+        }
+        
         Swal.fire({
             icon: 'success',
             title: 'Saved',

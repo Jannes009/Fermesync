@@ -1,10 +1,11 @@
+let isRestoringDraft = false;
 
 $('.select2').each(function() {
     const placeholder = $(this).data('placeholder');
     $(this).select2({
         width: '100%',
         placeholder: placeholder || undefined,
-        allowClear: !!placeholder
+        allowClear: false
     });
 });
 
@@ -42,29 +43,41 @@ $('#spray_date').on('change', defaultDescription);
 // Custom initialization for product selects with better width control
 function initProductSelects() {
     $('.product-select').each(function() {
-        if (!$(this).data('select2')) {
-            const placeholder = $(this).data('placeholder') || 'Select product';
-            $(this).select2({
+        const $select = $(this);
+        
+        if (!$select.data('select2')) {
+            const placeholder = $select.data('placeholder') || 'Select product';
+            $select.select2({
                 width: '100%',
                 placeholder: placeholder || undefined,
-                allowClear: !!placeholder,
+                allowClear: false,
                 dropdownAutoWidth: true,
                 dropdownCssClass: 'product-dropdown',
                 containerCssClass: 'product-select-container'
             });
+
+            // FIX: Force immediate open on mobile touch devices
+            $select.data('select2').$container.on('touchstart', function(e) {
+                // Check if it's already open to prevent unnecessary toggles
+                if (!$select.data('select2').isOpen()) {
+                    e.preventDefault(); // Prevents the browser's delayed click emulation
+                    $select.select2('open');
+                }
+            });
         }
         
         // Sync closed select width to opened dropdown min-width
-        $(this).on('select2:opening', function() {
-            const $container = $(this).data('select2').$container;
+        $select.on('select2:opening', function() {
+            const $container = $select.data('select2').$container;
             const closedWidth = $container.outerWidth();
-            const $dropdown = $(this).data('select2').$dropdown;
+            const $dropdown = $select.data('select2').$dropdown;
             if ($dropdown && closedWidth) {
                 $dropdown.css('min-width', closedWidth + 'px');
             }
         });
     });
 }
+
 
 let PRODUCT_OPTIONS = "";
 let PRODUCTS_DATA = {}; // Store product data for modal editing: {stock_id: {reg_number, witholding_period, function}}
@@ -80,7 +93,6 @@ async function updateProducts(projectIds) {
         return;
     }
 
-
     const pidParam = encodeURIComponent(projectIds.join(','));
     const response = await request(`/agri/fetch_products_linked_with_projects?project_ids=${pidParam}`);
     const data = await response.json();
@@ -88,10 +100,8 @@ async function updateProducts(projectIds) {
     if (!data.success) {
         Swal.fire({ icon: 'error', title: 'Error fetching products', text: data.message || 'Failed to fetch products' });
     } else {
-        
         if (data.products && data.products.length > 0) {
             // Build options HTML with useful data-* attributes
-            // Use an empty placeholder option; Select2 will display the placeholder text
             let options = '<option value=""></option>';
             PRODUCTS_DATA = {}; // Reset products data
             
@@ -124,7 +134,7 @@ async function updateProducts(projectIds) {
                 $sel.select2({
                     width: '100%',
                     placeholder: placeholder || undefined,
-                    allowClear: !!placeholder,
+                    allowClear: false,
                     dropdownAutoWidth: true,
                     dropdownCssClass: 'product-dropdown',
                     containerCssClass: 'product-select-container'
@@ -144,17 +154,10 @@ async function updateProducts(projectIds) {
             });
 
             // If products returned and there are no product lines, add one automatically
-            if (data.products.length > 0 && document.querySelectorAll('.product-card').length === 0) {
+            if (data.products.length > 0 
+                && document.querySelectorAll('.product-card').length === 0
+                && !isRestoringDraft) {
                 addLine();
-                // set first select to first product
-                setTimeout(() => {
-                    const firstSelect = document.querySelector('.product-select');
-                    if (firstSelect) {
-                        firstSelect.value = data.products[0].product_link;
-                        $(firstSelect).trigger('change');
-                    }
-                    recalcEverything();
-                }, 50);
             }
 
         } else {
@@ -168,6 +171,7 @@ async function updateProducts(projectIds) {
         }
     }
 }
+
 
 async function updateProjects() {
     const $projectSelect = $('#project_ids');
@@ -411,7 +415,8 @@ function updateProjectConfigs() {
     recalcEverything();
     // After rendering projects, refetch products for the selected warehouse + projects
     const projectIds = $('#project_ids').val() || [];
-    updateProducts( projectIds);
+    updateProducts(projectIds);
+    FormStateManager.scheduleSave();
 }
 
 function updateLineLabels() {
@@ -482,7 +487,7 @@ function addLine() {
             document.querySelectorAll('.product-select').forEach(sel => {
                 if (sel !== this && sel.value === productId) isDuplicate = true;
             });
-            if (isDuplicate) {
+            if (isDuplicate && !isRestoringDraft) {
                 $(this).val('').trigger('change');
                 const productName = this.options[this.selectedIndex]?.text || 'Product';
                 Swal.fire({
@@ -501,6 +506,7 @@ function addLine() {
             card.find('.line-function').val(PRODUCTS_DATA[productId].function || '');
         }
         recalcEverything();
+        FormStateManager.scheduleSave();
     });
     
     // Edit defaults button
@@ -520,17 +526,20 @@ function addLine() {
         $(this).closest('.product-card').remove();
         recalcEverything();
         updateSubmitAvailability();
+        FormStateManager.scheduleSave();
     });
     
     updateLineLabels();
     recalcEverything();
     updateSubmitAvailability();
+    FormStateManager.scheduleSave();
 }
 
 function clearLines() {
     document.getElementById('lines').innerHTML = '';
     recalcEverything();
     updateSubmitAvailability();
+    FormStateManager.scheduleSave();
 }
 
 /* ====================== FRONTEND CALCULATION ENGINE ====================== */
@@ -816,6 +825,7 @@ function saveEditDefaults() {
     currentEditingCard.find('.line-function').val(document.getElementById('modal-function').value);
     
     closeEditDefaultsModal();
+    FormStateManager.scheduleSave();
 }
 
 // Event Listeners
@@ -903,6 +913,7 @@ $('#project_ids').on('change', function() {
     const selectedProjectIds = selectedIds.map(x => Number(x));
     updateProducts(selectedProjectIds);
     updateContextDataset();
+    FormStateManager.scheduleSave();
 });
 
 async function fetchAndApplyProjectDefaults(projectId) {
@@ -1090,5 +1101,12 @@ document.getElementById('spray_date').addEventListener('change', updateSprayWeek
 document.getElementById('edit-defaults-modal').addEventListener('click', function(e) {
     if (e.target === this) {
         closeEditDefaultsModal();
+    }
+});
+
+// Save form state when user navigates away or closes the tab
+window.addEventListener('beforeunload', function() {
+    if (document.getElementById('spray-form') && window.FormStateManager) {
+        window.FormStateManager.save();
     }
 });

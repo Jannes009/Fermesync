@@ -1,28 +1,13 @@
 // db.js
 import Dexie from 'https://unpkg.com/dexie@4.2.1/dist/dexie.mjs';
 
-export const db = new Dexie('fermesync-db-v14');
+export const db = new Dexie('fermesync-db-v1');
 
-db.version(15).stores({
+db.version(1).stores({
   meta: 'key',
-  warehouses: 'id',
-  projects: 'id',
-  products: '[product_link+whse_id], product_link, whse_id, qty_in_whse',
 
-  // OFFLINE data (client-generated)
-  offlineIssues: '++local_id, client_issue_id, status',
-  offlineIssueLines: '++id, client_issue_id, product_link', // Simple structure
-
-  offlineReturns: '++local_id, client_issue_id, status',
-  
-  // SERVER data (downloaded)
-  serverIssues: 'IssueId',
-  serverIssueLines: 'line_id, header_id, product_link', // Server structure
-  
   outbox: '++id, created_at, retry_count',
   notifications: 'id, created_at, read',
-
-  grvDrafts: 'poNumber, updatedAt'
 });
 
 /**
