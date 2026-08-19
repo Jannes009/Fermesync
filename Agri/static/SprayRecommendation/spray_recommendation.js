@@ -1104,9 +1104,3 @@ document.getElementById('edit-defaults-modal').addEventListener('click', functio
     }
 });
 
-// Save form state when user navigates away or closes the tab
-window.addEventListener('beforeunload', function() {
-    if (document.getElementById('spray-form') && window.FormStateManager) {
-        window.FormStateManager.save();
-    }
-});

@@ -25,6 +25,7 @@ const FormStateManager = (() => {
     let autoSaveTimeout = null;
     let currentUser = null;
     let draftWasRestored = false;
+    let draftCleared = false;
 
     /**
      * Get user-specific storage key
@@ -401,6 +402,8 @@ const FormStateManager = (() => {
      * Setup auto-save event listeners
      */
     function setupAutoSave() {
+        draftCleared = false;
+
         // Attach auto-save listeners to form inputs
         const form = document.getElementById('spray-form');
         if (form) {
@@ -426,6 +429,12 @@ const FormStateManager = (() => {
      * Clear the saved draft (call after successful submission)
      */
     function clear() {
+        draftCleared = true;
+        if (autoSaveTimeout) {
+            clearTimeout(autoSaveTimeout);
+            autoSaveTimeout = null;
+        }
+
         try {
             localStorage.removeItem(getStorageKey());
             console.log('[FormStateManager] Draft cleared');
@@ -435,6 +444,8 @@ const FormStateManager = (() => {
     }
 
     function scheduleAutoSave() {
+        if (draftCleared) return;
+
         if (autoSaveTimeout) {
             clearTimeout(autoSaveTimeout);
         }
@@ -456,6 +467,8 @@ const FormStateManager = (() => {
      * Explicitly trigger a save (call this after major structural changes)
      */
     function triggerSave() {
+        if (draftCleared) return;
+
         const state = collectFormState();
         saveToLocalStorage(state);
     }
