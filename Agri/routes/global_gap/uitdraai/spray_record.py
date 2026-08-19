@@ -56,7 +56,6 @@ def fetch_spray_record_data(instruction_id):
         LEFT JOIN agr.SprayMethod SM ON SM.IdSprayMethod = HEA.SprayHMethodId
         JOIN agr.SprayExecution EXE on EXE.IdSprExec = HEA.SprayHExecutionId
         JOIN agr.People PEA on PEA.IdPerson = EXE.SprExecResponsiblePerson
-
         LEFT JOIN agr.Crop HC on HC.IdCrop = HEA.SprayHCropId
         WHERE HEA.IdSprayH = ?
     """, instruction_id)
@@ -178,7 +177,7 @@ def fetch_spray_record_data(instruction_id):
     if client_logo_jpeg_path.exists():
         raw = client_logo_jpeg_path.read_bytes()
         client_logo_data = "data:image/jpeg;base64," + base64.b64encode(raw).decode("ascii")
-
+    
     return {
         "instruction_id": header.SprayHNo or instruction_id,
         "recommended_date": str(header.SprayHDate) if header.SprayHDate else None,
@@ -186,6 +185,7 @@ def fetch_spray_record_data(instruction_id):
         "end_datetime": str(header.SprayHEndDateTime) if header.SprayHEndDateTime else None,
         "responsible_person": header.PersonName or "",
         "crop": header.SprayHCropCode if hasattr(header, 'SprayHCropCode') else None,
+        "grower_code": header.SprayHCropGrowerCode if hasattr(header, 'SprayHCropGrowerCode') else None,
         "instruction_description": header.SprayHDescription,
         "dose_basis": header.SprayLineDoseBasis,
         "scouting": header.SprayHScouting or "",
