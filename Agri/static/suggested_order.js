@@ -99,7 +99,7 @@ function initSuggestedOrder(container = document) {
                 opt.dataset.supplierName = s.name;
                 opt.dataset.price = s.last_invoice_price || 0;
                 opt.dataset.unitId = s.unit_id || '';
-                if (row.supplier_dc_link && Number(row.supplier_dc_link) === Number(s.dc_link)) opt.selected = true;
+                if (s.default_supplier) opt.selected = true;
                 supSelect.appendChild(opt);
             }
 
