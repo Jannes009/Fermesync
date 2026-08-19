@@ -35,57 +35,55 @@ def suggested_order_data():
             ISNULL(MAIN.QtyOnPO, 0) AS MainWhQtyOnPO,
             ISNULL(MAIN.QtyAvailable, 0) AS QtyAvailable,
             ISNULL(MAIN.StockingUnitCode, '') AS StockingUnitCode,
-			ISNULL(MAIN.PurchasingUnitId, '') AS PurchasingUnitId,
+            ISNULL(MAIN.PurchasingUnitId, '') AS PurchasingUnitId,
             ISNULL(MAIN.PurchasingUnitCode, '') AS PurchasingUnitCode,
             ISNULL(MAIN.PurchaseUnitOnHand, 0) AS PurchaseUnitOnHand,
             ISNULL(MAIN.PurchaseUnitOnPO, 0) AS PurchaseUnitOnPO,
             ISNULL(MAIN.PurchaseUnitAvailable, 0) AS PurchaseUnitAvailable,
             ISNULL(MAIN.PurchaseUnitsNeeded, 0) AS PurchaseUnitsNeeded,
             ISNULL(MAIN.PurchaseUnitsToOrder, 0) AS PurchaseUnitsToOrder,
-            -- supplier and pricing information (from stock links)
-            ISNULL(LINK.iDCLink, 0) AS SupplierDCLink,
-            ISNULL(LINK.bDefaultSupplier, 0) AS DefaultSupplier,
-            ISNULL(SUP.Name, '') AS SupplierName,
-            COALESCE(LINKUNIT.LastInvoicePrice, GRV.PurchaseUnitLastGRVCost, 0) AS LastInvoicePrice,
+
             MAIN.SprayHWeek,
+
             ROW_NUMBER() OVER (
                 PARTITION BY MAIN.StockLink
                 ORDER BY MAIN.SprayHWeek DESC
             ) AS rn
+
         FROM agr._uvMainWarehouseReordering MAIN
+
         LEFT JOIN agr.ChemStock S
             ON S.ChemStockLink = MAIN.StockLink
-        LEFT JOIN stk._uvStockLinks LINK
-            ON LINK.iStockID = MAIN.StockLink
-		LEFT JOIN stk._uvStockLinks LINKUNIT ON LINKUNIT.iStockID = MAIN.StockLink and LINKUNIT.iUnitsOfMeasureID = MAIN.PurchasingUnitId
-        LEFT JOIN cmn._uvSuppliers SUP
-            ON SUP.DCLink = LINK.iDCLink
-		LEFT JOIN [cmn].[_uvLastGRVCost] GRV on GRV.StockLink = MAIN.StockLink AND GRV.iDCLink = LINK.iDCLink
-       WHERE MAIN.SprayHWeek <= ?
+
+        WHERE MAIN.SprayHWeek <= ?
     )
     SELECT
-        LatestWeek.StockLink,
-        LatestWeek.StockCode,
-        LatestWeek.StockDescription,
-        LatestWeek.SupplierDCLink,
-        LatestWeek.DefaultSupplier,
-        LatestWeek.SupplierName,
-        LatestWeek.LastInvoicePrice,
-        LatestWeek.TotalRequiredStocking,
-        LatestWeek.MainWhQty,
-        LatestWeek.MainWhQtyOnPO,
-        LatestWeek.QtyAvailable,
-        LatestWeek.StockingUnitCode,
-		LatestWeek.PurchasingUnitId,
-        LatestWeek.PurchasingUnitCode,
-        LatestWeek.PurchaseUnitOnHand,
-        LatestWeek.PurchaseUnitOnPO,
-        LatestWeek.PurchaseUnitAvailable,
-        LatestWeek.PurchaseUnitsNeeded,
-        LatestWeek.PurchaseUnitsToOrder,
-        LatestWeek.SprayHWeek
+        StockLink,
+        StockCode,
+        StockDescription,
+        TotalRequiredStocking,
+        MainWhQty,
+        MainWhQtyOnPO,
+        QtyAvailable,
+        StockingUnitCode,
+        PurchasingUnitId,
+        PurchasingUnitCode,
+        PurchaseUnitOnHand,
+        PurchaseUnitOnPO,
+        PurchaseUnitAvailable,
+        PurchaseUnitsNeeded,
+        PurchaseUnitsToOrder,
+        SprayHWeek,
+                CASE
+                WHEN EXISTS (
+                    SELECT 1
+                    FROM stk._uvStockLinks SL
+                    WHERE SL.iStockID = StockLink
+                )
+                THEN 1
+                ELSE 0
+            END AS HasStockLink
     FROM LatestWeek
-    LEFT JOIN cmn._uvUOM UOM ON UOM.cUnitCode = LatestWeek.PurchasingUnitCode
     WHERE rn = 1
     ORDER BY StockCode;
     """
@@ -112,10 +110,7 @@ def suggested_order_data():
             'purchase_unit_available': float(r.PurchaseUnitAvailable),
             'purchase_units_needed': float(r.PurchaseUnitsNeeded),
             'purchase_units_to_order': float(r.PurchaseUnitsToOrder),
-            'supplier_dc_link': int(r.SupplierDCLink) if hasattr(r, 'SupplierDCLink') else None,
-            'default_supplier': bool(r.DefaultSupplier) if hasattr(r, 'DefaultSupplier') else False,
-            'supplier_name': r.SupplierName if hasattr(r, 'SupplierName') else '',
-            'last_invoice_price': float(r.LastInvoicePrice) if hasattr(r, 'LastInvoicePrice') else 0.0
+            'has_stock_link': bool(r.HasStockLink)
         })
 
     return jsonify({'success': True, 'week': week, 'data': results})

@@ -68,7 +68,7 @@ function initSuggestedOrder(container = document) {
 
             function computeStatus(r) {
                 const qty = Number(r.purchase_units_to_order || 0);
-                if (!r.supplier_dc_link) return 'no-supplier';
+                if (!r.has_stock_link) return 'no-supplier';
                 if (qty <= 0) return 'ok';
                 return 'needs';
             }
