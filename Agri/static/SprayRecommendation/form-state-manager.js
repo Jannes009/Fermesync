@@ -217,7 +217,7 @@ const FormStateManager = (() => {
      */
     function restoreBasicFields(state) {
         const fields = [
-            'spray_date', 'spray_description', 'method_id', 'scouting_note', 
+            'spray_date', 'spray_description', 'scouting_note', 
             'warehouse_id', 'global_water_per_tank', 'global_water_per_ha', 'global_total_water'
         ];
         
@@ -271,76 +271,102 @@ const FormStateManager = (() => {
      * This now waits for product data to be loaded before adding product lines.
      */
     async function restoreComplexState(state) {
-        window.isRestoringDraft = true;
-        console.log('[FormStateManager] Starting complex state restoration...');
+    window.isRestoringDraft = true;
+    console.log('[FormStateManager] Starting complex state restoration...');
 
-        try {
-            // 1) Restore projects. This should trigger updateProducts().
-            if (state.project_ids && state.project_ids.length > 0) {
-                const $projectSelect = $('#project_ids');
-                $projectSelect.val(state.project_ids).trigger('change');
-            }
+    try {
+        // 1) Restore projects. This should trigger updateProducts().
+        if (state.project_ids && state.project_ids.length > 0) {
+            const $projectSelect = $('#project_ids');
+            $projectSelect.val(state.project_ids).trigger('change');
+        }
 
-            // 2) CRITICAL FIX: Wait for the products to be fetched and rendered.
-            //    This ensures that when we call addLine(), the PRODUCT_OPTIONS are available.
-            await waitForProductsLoaded();
-
-            // 3) Clear any lines that updateProducts may have auto-added
-            clearLines();
-
-            // 4) Add saved lines one by one
-            if (state.product_lines && state.product_lines.length > 0) {
-                for (const lineData of state.product_lines) {
-                    addLine();
-
-                    // Let Select2 init finish
-                    await new Promise(r => setTimeout(r, 30));
-
-                    const cards = document.querySelectorAll('.product-card');
-                    const card = cards[cards.length - 1];
-                    if (!card) continue;
-
-                    const $select = $(card.querySelector('.product-select'));
-
-                    // Set product without fighting duplicate checks across parallel lines
-                    if (lineData.stock_id) {
-                        $select.val(String(lineData.stock_id)).trigger('change');
+        // 2) CRITICAL FIX: Wait for the method dropdown to be populated
+        //    before trying to restore the method selection
+        if (state.project_ids && state.project_ids.length > 0) {
+            // First, fetch and populate the methods dropdown
+            await updateMethods(state.project_ids[0]);
+            
+            // Wait a bit for the DOM to update after the method population
+            await new Promise(r => setTimeout(r, 50));
+            
+            // Now restore the saved method if it exists in the dropdown
+            if (state.method_id) {
+                const methodSelect = document.getElementById('method_id');
+                if (methodSelect) {
+                    // Check if the saved method exists in the dropdown
+                    const savedMethodExists = Array.from(methodSelect.options || [])
+                        .some(option => String(option.value) === String(state.method_id));
+                    
+                    if (savedMethodExists) {
+                        $(methodSelect).val(String(state.method_id)).trigger('change');
+                        console.log('[FormStateManager] Method restored:', state.method_id);
+                    } else {
+                        console.warn('[FormStateManager] Saved method not available:', state.method_id);
                     }
-
-                    const qtyInput = card.querySelector('.qty-input');
-                    if (qtyInput && lineData.qty_input) {
-                        qtyInput.value = lineData.qty_input;
-                    }
-
-                    card.querySelector('.line-reg-number').value = lineData.reg_number || '';
-                    card.querySelector('.line-witholding-period').value = lineData.witholding_period || '';
-                    card.querySelector('.line-function').value = lineData.function || '';
                 }
             }
-
-            // 5) Restore project water configs
-            if (state.project_configs && state.project_configs.length > 0) {
-                const rows = document.querySelectorAll('.project-row:not(.project-head)');
-                state.project_configs.forEach(configData => {
-                    const row = rows[configData.index];
-                    if (!row) return;
-                    const waterInput = row.querySelector('.project-water-input');
-                    const totalInput = row.querySelector('.project-water-total');
-                    if (waterInput && configData.water_per_ha) waterInput.value = configData.water_per_ha;
-                    if (totalInput && configData.water_total) totalInput.value = configData.water_total;
-                });
-            }
-
-            if (typeof recalcEverything === 'function') {
-                recalcEverything();
-            }
-
-            draftWasRestored = true;
-            console.log('[FormStateManager] Complex state restoration complete');
-        } finally {
-            window.isRestoringDraft = false;
         }
+
+        // 3) Wait for products to be fetched and rendered
+        await waitForProductsLoaded();
+
+        // 4) Clear any lines that updateProducts may have auto-added
+        clearLines();
+
+        // 5) Add saved lines one by one
+        if (state.product_lines && state.product_lines.length > 0) {
+            for (const lineData of state.product_lines) {
+                addLine();
+
+                // Let Select2 init finish
+                await new Promise(r => setTimeout(r, 30));
+
+                const cards = document.querySelectorAll('.product-card');
+                const card = cards[cards.length - 1];
+                if (!card) continue;
+
+                const $select = $(card.querySelector('.product-select'));
+
+                // Set product without fighting duplicate checks across parallel lines
+                if (lineData.stock_id) {
+                    $select.val(String(lineData.stock_id)).trigger('change');
+                }
+
+                const qtyInput = card.querySelector('.qty-input');
+                if (qtyInput && lineData.qty_input) {
+                    qtyInput.value = lineData.qty_input;
+                }
+
+                card.querySelector('.line-reg-number').value = lineData.reg_number || '';
+                card.querySelector('.line-witholding-period').value = lineData.witholding_period || '';
+                card.querySelector('.line-function').value = lineData.function || '';
+            }
+        }
+
+        // 6) Restore project water configs
+        if (state.project_configs && state.project_configs.length > 0) {
+            const rows = document.querySelectorAll('.project-row:not(.project-head)');
+            state.project_configs.forEach(configData => {
+                const row = rows[configData.index];
+                if (!row) return;
+                const waterInput = row.querySelector('.project-water-input');
+                const totalInput = row.querySelector('.project-water-total');
+                if (waterInput && configData.water_per_ha) waterInput.value = configData.water_per_ha;
+                if (totalInput && configData.water_total) totalInput.value = configData.water_total;
+            });
+        }
+
+        if (typeof recalcEverything === 'function') {
+            recalcEverything();
+        }
+
+        draftWasRestored = true;
+        console.log('[FormStateManager] Complex state restoration complete');
+    } finally {
+        window.isRestoringDraft = false;
     }
+}
 
     /**
      * Initialize the form state manager

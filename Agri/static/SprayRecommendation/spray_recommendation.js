@@ -82,6 +82,41 @@ function initProductSelects() {
 let PRODUCT_OPTIONS = "";
 let PRODUCTS_DATA = {}; // Store product data for modal editing: {stock_id: {reg_number, witholding_period, function}}
 
+async function updateMethods(projectId) {
+    const methodSelect = $('#method_id');
+    methodSelect.empty().append('<option value="">Loading methods...</option>');
+    methodSelect.prop('disabled', true).trigger('change');
+
+    if (!projectId) {
+        methodSelect.empty().append('<option value="">Select a project first</option>');
+        methodSelect.val('').trigger('change');
+        return;
+    }
+
+    try {
+        const response = await request(`/agri/spray-recommendation/methods/${encodeURIComponent(projectId)}`);
+        const data = await response.json();
+        if (!response.ok || !data.success) {
+            throw new Error(data.message || 'Failed to fetch spray methods');
+        }
+        console.log('Fetched methods for project', projectId, data.methods);
+        methodSelect.empty().append('<option value="">Select method</option>');
+        data.methods.forEach(method => {
+            methodSelect.append(new Option(method.name, method.id));
+        });
+        methodSelect.prop('disabled', false).trigger('change');
+        
+        // Return the methods data for the caller
+        return data.methods;
+    } catch (error) {
+        methodSelect.empty().append('<option value="">Unable to load methods</option>');
+        methodSelect.prop('disabled', true).trigger('change');
+        Swal.fire({ icon: 'error', title: 'Error fetching methods', text: error.message });
+        // Return empty array on error
+        return [];
+    }
+}
+
 // Function to fetch products when warehouse or projects change
 async function updateProducts(projectIds) {
     // Only fetch when both a warehouse and at least one project are selected
@@ -322,11 +357,11 @@ function renderModeUI() {
     const mode = getMode();
 
     document.getElementById('tank-fields').classList.add('hidden');
-    document.getElementById('direct-fields').classList.add('hidden');
     // tank plan removed; updates now appear in the sticky bar
 
     document.querySelectorAll('.per-100l-field').forEach(i => i.classList.add('hidden'));
     document.querySelectorAll('.per-ha-tank-field').forEach(i => i.classList.add('hidden'));
+    document.querySelectorAll('.water-per-tank-field').forEach(i => i.classList.add('hidden'));
 
     // Disable all inputs in hidden sections first
     document.querySelectorAll('#tank-fields input, #tank-fields select, .per-100l-field input, .per-ha-tank-field input').forEach(el => {
@@ -335,6 +370,7 @@ function renderModeUI() {
 
     if (mode === "per_100l") {
         document.getElementById('tank-fields').classList.remove('hidden');
+        document.querySelectorAll('.water-per-tank-field').forEach(i => i.classList.remove('hidden'));
         document.querySelectorAll('.per-100l-field').forEach(i => i.classList.remove('hidden'));
         // Enable visible inputs
         document.querySelectorAll('.per-100l-field input').forEach(i => i.disabled = false);
@@ -343,6 +379,7 @@ function renderModeUI() {
 
     if (mode === "per_ha_tank") {
         document.getElementById('tank-fields').classList.remove('hidden');
+        document.querySelectorAll('.water-per-tank-field').forEach(i => i.classList.remove('hidden'));
         document.querySelectorAll('.per-ha-tank-field').forEach(i => i.classList.remove('hidden'));
         // Enable visible inputs
         document.querySelectorAll('.per-ha-tank-field input').forEach(i => i.disabled = false);
@@ -350,7 +387,8 @@ function renderModeUI() {
     }
 
     if (mode === "per_ha_direct") {
-        document.getElementById('direct-fields').classList.remove('hidden');
+        document.getElementById('tank-fields').classList.remove('hidden');
+        document.getElementById('method_id').disabled = false;
         // tank plan removed
         // All tank fields remain disabled
     }
@@ -697,7 +735,7 @@ function validateSprayForm(mode, projects, lines) {
     if (!lines.length) {
         errors.push('Please add at least one product line.');
     }
-    if (mode !== 'per_ha_direct' && !methodId) {
+    if (!methodId) {
         errors.push('Please select an application method.');
     }
     if (mode === 'per_100l') {
@@ -846,7 +884,11 @@ $('#project_ids').on('change', function() {
         const color = $(`#project_ids option[value="${selectedIds[0]}"]`).attr('data-crop-theme-color');
         applyPageThemeColor(color);
         updateProjectConfigs();
-        fetchAndApplyProjectDefaults(selectedIds[0]);
+        if (!window.isRestoringDraft) {
+            updateMethods(selectedIds[0]).then(() => fetchAndApplyProjectDefaults(selectedIds[0]));
+        } else {
+            fetchAndApplyProjectDefaults(selectedIds[0]);
+        }
         defaultDescription();
         updateContextDataset();
         return;
@@ -908,7 +950,12 @@ $('#project_ids').on('change', function() {
     // All projects validated: proceed
     updateProjectConfigs();
     // After rows are rendered, fetch and apply per-project defaults for each selected project
-    selectedIds.forEach(id => fetchAndApplyProjectDefaults(id));
+    const methodsReady = window.isRestoringDraft
+        ? Promise.resolve()
+        : updateMethods(selectedIds[0]);
+    methodsReady.then(() => {
+        selectedIds.forEach(id => fetchAndApplyProjectDefaults(id));
+    });
     // Update products for selected projects using the common warehouse id
     const selectedProjectIds = selectedIds.map(x => Number(x));
     updateProducts(selectedProjectIds);
@@ -926,10 +973,11 @@ async function fetchAndApplyProjectDefaults(projectId) {
             return;
         }
         const defs = json.defaults || json; // support either { success, defaults:{...} } or direct object
-        console.log('Fetched project defaults:', defs);
+        console.log(defs)
         // 1) Set spray method (if present)
-        if (defs.default_spray_method_id) {
+        if (defs.default_spray_method_id && !window.isRestoringDraft) {
             const methodEl = document.getElementById('method_id');
+            console.log('Setting default spray method to', defs.default_spray_method_id);
             if (methodEl) {
                 methodEl.value = defs.default_spray_method_id;
                 // trigger change if other code listens

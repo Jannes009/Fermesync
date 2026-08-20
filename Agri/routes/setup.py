@@ -323,6 +323,29 @@ def update_project_attr():
     return jsonify({"success": True})
 
 
+@agri_bp.route('/setup/farm/<int:farm_id>/spray-methods', methods=['GET'])
+@login_required
+def get_farm_spray_methods(farm_id):
+    conn = create_db_connection()
+    cur = conn.cursor()
+    try:
+        cur.execute("""
+            SELECT IdSprayMethod, SprayMethodName
+            FROM agr.SprayMethod
+            WHERE SprayMethodFarmId = ?
+            ORDER BY SprayMethodName
+        """, farm_id)
+        methods = [
+            {"id": row.IdSprayMethod, "name": row.SprayMethodName}
+            for row in cur.fetchall()
+        ]
+        return jsonify({"success": True, "methods": methods})
+    except Exception as e:
+        return jsonify({"success": False, "message": str(e), "methods": []}), 500
+    finally:
+        conn.close()
+
+
 # =========================
 # People Management
 # =========================

@@ -16,12 +16,6 @@ def create_spray_recommendation():
     cur = conn.cursor()
 
 
-    cur.execute("""
-        SELECT IdSprayMethod, SprayMethodName
-        FROM agr.SprayMethod
-        """)
-    spray_methods = cur.fetchall()
-
     whse_ids = tuple(current_user.warehouses or [])
     if not whse_ids:
         return jsonify([])
@@ -40,9 +34,42 @@ def create_spray_recommendation():
 
     return render_template(
         "spray_recommendation.html",
-        methods=spray_methods,
         warehouses=warehouses
     )
+
+@agri_bp.route("/spray-recommendation/methods/<int:project_id>", methods=["GET"])
+@login_required
+def methods_for_project(project_id):
+    if "SPRAY_REC_CREATE" not in current_user.permissions:
+        abort(403)
+
+    conn = create_db_connection()
+    cur = conn.cursor()
+    try:
+        cur.execute("""
+            SELECT DISTINCT
+                SM.IdSprayMethod,
+                SM.SprayMethodName
+            FROM agr.ProjectAttributes PA
+            JOIN agr.SprayMethod SM
+                ON SM.SprayMethodFarmId = PA.ProjAttrFarmId
+            WHERE PA.ProjAttrProjectId = ?
+              AND PA.ProjAttrIsActive = 1
+            ORDER BY SM.SprayMethodName
+        """, (project_id,))
+
+        methods = [
+            {
+                "id": row.IdSprayMethod,
+                "name": row.SprayMethodName
+            }
+            for row in cur.fetchall()
+        ]
+        return jsonify({"success": True, "methods": methods})
+    except Exception as e:
+        return jsonify({"success": False, "message": str(e), "methods": []}), 500
+    finally:
+        conn.close()
 
 @agri_bp.route("/spray-recommendation/project_defaults/<int:project_id>", methods=["GET"])
 @login_required
@@ -453,7 +480,7 @@ def submit_spray_recommendation():
         else:
             dose_basis = 'PER_HA'
 
-        if application_type == 'per_ha':
+        if application_type == 'per_ha_direct':
             mix = False
         else:
             mix = True
