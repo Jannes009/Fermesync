@@ -778,7 +778,7 @@
           </div>
           <div class="update-instruction-actions" style="margin-top: 0.75rem; flex-wrap: wrap; align-items: center;">
             {% if execution.can_finalize and not instruction.finalised and 'SPRAY_EXEC_CREATE' in current_user.permissions %}
-              <button type="button" class="btn-success" onclick="openInstructionModal({{ instruction.id }}, '{{ instruction.spray_date or '' }}', '{{ instruction.start_date_time or '' }}', '{{ instruction.end_date_time or '' }}', '{{ instruction.weather or '' }}')">Finalise instruction</button>
+              <button type="button" class="btn-success" onclick="openInstructionModal({{ instruction.id }}, '{{ instruction.spray_date or '' }}', {{ 'true' if instruction.require_date_time else 'false' }}, {{ 'true' if instruction.require_weather else 'false' }})">Finalise instruction</button>
             {% endif %}
             <button type="button" class="btn-secondary" onclick="window.location.href='/agri/spray/{{ instruction.id }}'">View details</button>
             {% if instruction.finalised and execution.finalised %}
@@ -928,10 +928,9 @@ async function handleInstructionSubmit(event) {
     }
 }
 
-function openInstructionModal(instructionId, sprayDate, startTime, endTime, weather) {
+function openInstructionModal(instructionId, sprayDate, requireDateTime, requireWeather) {
     const modal = document.getElementById('instruction-modal');
     const form = document.getElementById('instruction-form');
-    const weatherInput = document.getElementById('modal-weather');
     const sprayDateInput = document.getElementById('modal-spray-date');
 
     if (!('{{ execution.responsible_person_id or '' }}' || '{{ execution.responsible_person or '' }}')) {
@@ -943,31 +942,45 @@ function openInstructionModal(instructionId, sprayDate, startTime, endTime, weat
         return;
     }
 
-    function normalizeDateTime(value) {
-        if (!value) return '';
-        const normalized = value.replace(' ', 'T');
-        return normalized.length > 16 ? normalized.substring(0, 16) : normalized;
-    }
-
-    function splitDateTime(value) {
-        const normalized = normalizeDateTime(value);
-        if (!normalized) return { date: '', time: '' };
-        const [date, time] = normalized.split('T');
-        return { date: date || '', time: time || '' };
-    }
-
-    const start = splitDateTime(startTime);
-    const end = splitDateTime(endTime);
-
     // Default only the date to the execution date when no existing value
-    document.getElementById('modal-start-date').value = start.date || executionDate || '';
-    document.getElementById('modal-start-time').value = start.time || '';
-    document.getElementById('modal-end-date').value = end.date || executionDate || '';
-    document.getElementById('modal-end-time').value = end.time || '';
+    const dateTimeFields = document.querySelectorAll('#modal-start-date, #modal-start-time, #modal-end-date, #modal-end-time');
+    const dateTimeFieldGroups = document.querySelectorAll('#modal-start-date, #modal-end-date');
+    dateTimeFieldGroups.forEach(field => {
+      const group = field.closest('.modal-field');
+      if (group) {
+        group.hidden = !requireDateTime;
+        group.style.display = requireDateTime ? 'grid' : 'none';
+      }
+    });
+
+    dateTimeFields.forEach(field => {
+      field.required = Boolean(requireDateTime);
+      field.hidden = !requireDateTime;
+      field.style.display = requireDateTime ? '' : 'none';
+      console.log(field, field.required, field.hidden)
+      field.value = requireDateTime ? field.value : '';
+    });
+
+    if (requireDateTime) {
+      document.getElementById('modal-start-date').value = executionDate || '';
+      document.getElementById('modal-start-time').value = '';
+      document.getElementById('modal-end-date').value = executionDate || '';
+      document.getElementById('modal-end-time').value = '';
+    }
+
+    const weatherField = document.getElementById('modal-weather')?.closest('.modal-field');
+    if (weatherField) {
+      weatherField.hidden = !requireWeather;
+      weatherField.style.display = requireWeather ? 'grid' : 'none';
+    }
+    const weatherInput = document.getElementById('modal-weather');
+    weatherInput.required = Boolean(requireWeather);
+    weatherInput.value = '';
+    weatherInput.hidden = !requireWeather;
+    weatherInput.style.display = requireWeather ? '' : 'none';
 
     form.action = `/agri/execution/${executionId}/update_instruction/${instructionId}`;
     modal.dataset.instructionId = instructionId;
-    weatherInput.value = weather || '';
     sprayDateInput.value = sprayDate || start.date || executionDate || '';
     setInstructionStatus('');
     setInstructionFormSaving(false);

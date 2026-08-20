@@ -116,6 +116,7 @@ button {
 .btn-primary {
     background-color: var(--button-bg);
     color: var(--button-text);
+    padding: 0.6rem;
 }
 
 .btn-primary:hover {

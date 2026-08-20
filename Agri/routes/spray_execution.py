@@ -164,7 +164,9 @@ def view_execution(execution_id):
     # Get spray instructions in this execution
     cur.execute("""
         SELECT h.IdSprayH, h.SprayHNo, h.SprayHDescription, h.SprayHWeek, h.SprayHStatus,
-               h.SprayHDate, h.SprayHStartDateTime, h.SprayHEndDateTime, h.SprayHWeather, h.SprayHFinalised
+             h.SprayHDate, h.SprayHFinalised,
+             ISNULL(h.SprayHRequireDateTime, 1) AS SprayHRequireDateTime,
+             ISNULL(h.SprayHRequireWeather, 1) AS SprayHRequireWeather
         FROM agr.SprayHeader h
         JOIN agr.SprayExecution b ON b.IdSprExec = h.SprayHExecutionId
         WHERE b.IdSprExec = ?
@@ -179,9 +181,8 @@ def view_execution(execution_id):
             "week_number": row.SprayHWeek,
             "status": row.SprayHStatus,
             "spray_date": row.SprayHDate,
-            "start_date_time": row.SprayHStartDateTime,
-            "end_date_time": row.SprayHEndDateTime,
-            "weather": row.SprayHWeather,
+            "require_date_time": bool(row.SprayHRequireDateTime),
+            "require_weather": bool(row.SprayHRequireWeather),
             "finalised": bool(row.SprayHFinalised)
         }
         for row in cur.fetchall()
@@ -521,6 +522,27 @@ def update_instruction(execution_id, instruction_id):
     start_date_time = data.get('start_date_time')
     end_date_time = data.get('end_date_time')
     weather = data.get('weather')
+
+    cur.execute("""
+        SELECT ISNULL(SprayHRequireDateTime, 1), ISNULL(SprayHRequireWeather, 1)
+        FROM agr.SprayHeader
+        WHERE IdSprayH = ? AND SprayHExecutionId = ?
+    """, instruction_id, execution_id)
+    requirement_row = cur.fetchone()
+    if not requirement_row:
+        conn.close()
+        return jsonify({"success": False, "message": "Instruction not found in this execution."}), 404
+
+    require_date_time = bool(requirement_row[0])
+    require_weather = bool(requirement_row[1])
+
+    if require_date_time and (not start_date_time or not end_date_time):
+        conn.close()
+        return jsonify({"success": False, "message": "Start and end date/time are required for this instruction."}), 400
+
+    if require_weather and not weather:
+        conn.close()
+        return jsonify({"success": False, "message": "Weather is required for this instruction."}), 400
 
     start_dt = None
     end_dt = None

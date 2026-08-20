@@ -3,7 +3,7 @@
 {% block title %}Import Page{% endblock %}
 
 {% block head %}
-<link rel="stylesheet" href="{{ url_for('market.static', filename='Import/import.css') }}">
+<link rel="stylesheet" href="{{ url_for('market.static', filename='Import/import.css') }}?filemtime('market', 'Import/import.css')">
 {% endblock %}
 
 {% block content %}

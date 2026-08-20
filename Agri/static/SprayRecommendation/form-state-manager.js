@@ -93,7 +93,9 @@ const FormStateManager = (() => {
             product_lines: [],
             
             // Checkbox for immediate execution
-            create_execution_immediately: document.getElementById('create_execution_immediately')?.checked || false
+            create_execution_immediately: document.getElementById('create_execution_immediately')?.checked || false,
+            require_date_time: document.getElementById('require_date_time')?.checked ?? true,
+            require_weather: document.getElementById('require_weather')?.checked ?? true
         };
 
         // Collect project-level configs (if present)
@@ -240,6 +242,16 @@ const FormStateManager = (() => {
         const execCheckbox = document.getElementById('create_execution_immediately');
         if (execCheckbox && state.create_execution_immediately !== undefined) {
             execCheckbox.checked = state.create_execution_immediately;
+        }
+
+        const requireDateTime = document.getElementById('require_date_time');
+        if (requireDateTime && state.require_date_time !== undefined) {
+            requireDateTime.checked = state.require_date_time;
+        }
+
+        const requireWeather = document.getElementById('require_weather');
+        if (requireWeather && state.require_weather !== undefined) {
+            requireWeather.checked = state.require_weather;
         }
 
         console.log('[FormStateManager] Basic fields restored');
@@ -447,6 +459,10 @@ const FormStateManager = (() => {
         if (execCheckbox) {
             execCheckbox.addEventListener('change', scheduleAutoSave);
         }
+
+        document.querySelectorAll('#require_date_time, #require_weather').forEach(toggle => {
+            toggle.addEventListener('change', scheduleAutoSave);
+        });
 
         console.log('[FormStateManager] Auto-save listeners attached');
     }

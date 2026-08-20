@@ -541,10 +541,12 @@ def submit_spray_recommendation():
                 SprayHTotalWater,
                 SprayHTotalHa,
                 SprayHMix,
-                SprayHCropId
+                SprayHCropId,
+                SprayHRequireDateTime,
+                SprayHRequireWeather
             )
             VALUES (
-                ?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?
+                ?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?
             )
         """,
             spray_no,
@@ -563,7 +565,9 @@ def submit_spray_recommendation():
             to_decimal(data.get('total_water')),
             to_decimal(data.get('total_ha')),
             mix,
-            crop_id
+            crop_id,
+            1 if data.get('require_date_time', True) else 0,
+            1 if data.get('require_weather', True) else 0
         )
 
         cursor.execute("SELECT CAST(SCOPE_IDENTITY() AS int) AS spray_id")

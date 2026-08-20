@@ -253,6 +253,77 @@
         box-shadow: 0 -4px 12px rgba(0, 0, 0, .05);
     }
 
+    .requirements-section {
+        margin-top: 18px;
+        padding: 14px;
+        border: 1px solid var(--line);
+        border-radius: 12px;
+        background: #f8fafc;
+    }
+
+    .requirements-title {
+        margin: 0 0 10px;
+        font-weight: 700;
+        color: #0f172a;
+    }
+
+    .slider-options {
+        display: grid;
+        grid-template-columns: repeat(3, minmax(0, 1fr));
+        gap: 10px;
+    }
+
+    .slider-option {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 10px;
+        min-height: 44px;
+        padding: 8px 10px;
+        border: 1px solid var(--line);
+        border-radius: 9px;
+        background: #fff;
+        cursor: pointer;
+        color: #334155;
+        font-size: .88rem;
+    }
+
+    .slider-option input {
+        position: absolute;
+        opacity: 0;
+        pointer-events: none;
+    }
+
+    .slider {
+        position: relative;
+        flex: 0 0 auto;
+        width: 42px;
+        height: 24px;
+        border-radius: 999px;
+        background: #cbd5e1;
+        transition: background .2s ease;
+    }
+
+    .slider::after {
+        content: '';
+        position: absolute;
+        top: 3px;
+        left: 3px;
+        width: 18px;
+        height: 18px;
+        border-radius: 50%;
+        background: #fff;
+        box-shadow: 0 1px 3px rgba(15, 23, 42, .25);
+        transition: transform .2s ease;
+    }
+
+    .slider-option input:checked + .slider { background: var(--accent); }
+    .slider-option input:checked + .slider::after { transform: translateX(18px); }
+
+    @media (max-width: 900px) {
+        .slider-options { grid-template-columns: 1fr; }
+    }
+
     /* ====== SELECT2 CUSTOM STYLES ====== */
 
 /* ====== SELECT2 – prevent page widening + allow wrapping ====== */
@@ -790,11 +861,25 @@
                 <button type="button" class="btn ghost" onclick="clearLines()">Clear</button>
             </div>
 
-            <div style="margin-top:18px; display:flex; justify-content:flex-end; align-items:center;">
-                <label style="display:inline-flex; align-items:center; gap:8px; cursor:pointer; font-weight:600; color:var(--muted);">
-                    <input type="checkbox" id="create_execution_immediately" checked>
-                    <span>Create execution immediately</span>
-                </label>
+            <div class="requirements-section">
+                <div class="requirements-title">Execution &amp; requirements</div>
+                <div class="slider-options">
+                    <label class="slider-option">
+                        <span>Create execution immediately</span>
+                        <input type="checkbox" id="create_execution_immediately" checked>
+                        <span class="slider" aria-hidden="true"></span>
+                    </label>
+                    <label class="slider-option">
+                        <span>Require date and time</span>
+                        <input type="checkbox" id="require_date_time" checked>
+                        <span class="slider" aria-hidden="true"></span>
+                    </label>
+                    <label class="slider-option">
+                        <span>Require weather</span>
+                        <input type="checkbox" id="require_weather" checked>
+                        <span class="slider" aria-hidden="true"></span>
+                    </label>
+                </div>
             </div>
 
             <!-- Tank plan removed; sticky bar shows summary -->
@@ -1080,6 +1165,8 @@ document.getElementById('spray-form').addEventListener('submit', function (e) {
         total_water: mode === 'per_100l' || mode === 'per_ha_tank' ? totalWater || null : null,
         total_ha: totalHa,
         create_execution_immediately: document.getElementById('create_execution_immediately')?.checked === true,
+        require_date_time: document.getElementById('require_date_time')?.checked === true,
+        require_weather: document.getElementById('require_weather')?.checked === true,
 
         projects: projects,
         lines: lines,
