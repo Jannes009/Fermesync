@@ -40,6 +40,7 @@ def spray_executions_summary():
         SELECT
             EXE.IdSprExec,
             HEA.IdSprayH,
+            HEA.SprayHNo,
             HEA.SprayHDescription,
             HEA.SprayHWhseId,
             People.PersonName,
@@ -69,13 +70,14 @@ def spray_executions_summary():
                 "finalised": bool(row.SprExecFinalised),
                 "farm_names": [],
                 "block_numbers": [],
-                "recommendations": []
+                "descriptions": [],
+                "spray_nos": []
             }
 
         if row.IdSprayH:
             description = (row.SprayHDescription or '').strip()
             if description:
-                executions[exec_id]["recommendations"].append(description)
+                executions[exec_id]["descriptions"].append(description)
 
             block_no = row.SprayPBlockNo
             if block_no not in (None, ''):
@@ -85,14 +87,23 @@ def spray_executions_summary():
             if farm_name:
                 executions[exec_id]["farm_names"].append(farm_name)
 
+            spray_no = (row.SprayHNo or '').strip()
+            if spray_no:
+                executions[exec_id]["spray_nos"].append(spray_no)
+
     execution_rows = []
     all_farms = []
     all_blocks = []
     for execution in executions.values():
         unique_descriptions = []
-        for description in execution["recommendations"]:
+        for description in execution["descriptions"]:
             if description and description not in unique_descriptions:
                 unique_descriptions.append(description)
+
+        unique_spray_nos = []
+        for spray_no in execution["spray_nos"]:
+            if spray_no and spray_no not in unique_spray_nos:
+                unique_spray_nos.append(spray_no)
 
         unique_farms = []
         for farm_name in execution["farm_names"]:
@@ -118,6 +129,7 @@ def spray_executions_summary():
             "block_numbers": unique_blocks,
             "block_text": ', '.join(unique_blocks) if unique_blocks else '-',
             "description": ', '.join(unique_descriptions) if unique_descriptions else '-',
+            "spray_no": ', '.join(unique_spray_nos) if unique_spray_nos else '-',
             "recommendations_count": len(unique_descriptions)
         })
 

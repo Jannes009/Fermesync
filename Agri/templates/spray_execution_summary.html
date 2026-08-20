@@ -131,6 +131,7 @@
       <table>
         <thead>
           <tr>
+            <th>Spray No/s</th>
             <th>Description</th>
             <th>Date</th>
             <th>Responsible</th>
@@ -148,6 +149,7 @@
                 data-farm="{{ exe.farm_name_text|e }}"
                 data-block="{{ exe.block_text|e }}"
                 data-description="{{ exe.description|e }}">
+              <td>{{ exe.spray_no }}</td>
               <td class="description-cell">
                 <span class="description-text">{{ exe.description }}</span>
               </td>
