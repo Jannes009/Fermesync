@@ -1090,7 +1090,7 @@ document.getElementById('spray-form').addEventListener('submit', function (e) {
         application_type: mode,
         water_per_tank: waterPerTank || null,
         water_per_ha: mode === 'per_ha_tank' ? parseFloat(document.getElementById('global_water_per_ha').value) || null : null,
-        total_water: mode === 'per_ha_tank' ? parseFloat(document.getElementById('global_total_water').value) || null : null,
+        total_water: mode === 'per_100l' || mode === 'per_ha_tank' ? totalWater || null : null,
         total_ha: totalHa,
         create_execution_immediately: document.getElementById('create_execution_immediately')?.checked === true,
 

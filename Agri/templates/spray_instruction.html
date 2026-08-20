@@ -681,7 +681,7 @@ async function renderLines() {
                 const desc = escapeHtml(product.stock_description || '');
                 const qtyOnHand = product.qty_on_hand !== null ? parseFloat(product.qty_on_hand).toFixed(2) : '0.00';
                 const unit = product.stocking_uom_code || '';
-                return `<option value="${product.stock_link}" ${product.stock_link === parseInt(line.stock_id) ? 'selected' : ''} data-active-ingredient="${ai}">${ai} - ${desc} (Available: ${qtyOnHand} ${unit})</option>`;
+                return `<option value="${product.stock_link}" ${product.stock_link === parseInt(line.stock_id) ? 'selected' : ''} data-active-ingredient="${ai}" data-stock-description="${desc}" data-uom-id="${product.stocking_uom_id || ''}" data-uom-code="${escapeHtml(unit)}">${ai} - ${desc} (Available: ${qtyOnHand} ${unit})</option>`;
             }).join('');
             html += `
                 <tr data-line-idx="${idx}">
@@ -768,9 +768,38 @@ function handleLineProductChange(idx) {
 
     const selected = select.options[select.selectedIndex];
     line.stock_id = select.value || null;
-    line.stock_description = selected ? selected.textContent : '';
+    line.stock_description = selected?.dataset.stockDescription || '';
     line.active_ingredient = selected ? selected.dataset.activeIngredient : '';
+    line.uom_id = selected?.dataset.uomId ? Number(selected.dataset.uomId) : null;
+    line.uom = selected?.dataset.uomCode || '';
+    updateLineTotal(idx);
     recalculateMixes();
+}
+
+function calculateLineTotal(line) {
+    const quantity = doseBasis === 'PER_100L' ? Number(line.qty_per_100l || 0) : Number(line.qty_per_ha || 0);
+    const totalWater = Number(sprayData?.header?.total_water || 0);
+    const totalHa = Number(sprayData?.header?.total_ha || 0);
+    console.log(sprayData);
+    if (doseBasis === 'PER_100L') {
+        return totalWater > 0 ? (quantity / 100) * totalWater : 0;
+    }
+    if (doseBasis === 'PER_HA') {
+        return totalHa > 0 ? quantity * totalHa : 0;
+    }
+    return Number(line.total_qty || 0);
+}
+
+function updateLineTotal(idx) {
+    const line = sprayData?.lines?.[idx];
+    const row = document.querySelector(`tr[data-line-idx="${idx}"]`);
+    if (!line || !row) return;
+
+    line.total_qty = calculateLineTotal(line);
+    const totalQtySpan = row.querySelector('.total-qty-display');
+    if (totalQtySpan) {
+        totalQtySpan.innerHTML = `<b>${line.total_qty.toFixed(2)} ${escapeHtml(line.uom || '')}</b>`;
+    }
 }
 
 function syncLineInputs() {
@@ -784,8 +813,10 @@ function syncLineInputs() {
         if (select) {
             line.stock_id = select.value || null;
             const selected = select.options[select.selectedIndex];
-            line.stock_description = selected ? selected.textContent : line.stock_description;
+            line.stock_description = selected?.dataset.stockDescription || line.stock_description;
             line.active_ingredient = selected ? selected.dataset.activeIngredient : line.active_ingredient;
+            line.uom_id = selected?.dataset.uomId ? Number(selected.dataset.uomId) : line.uom_id || null;
+            line.uom = selected?.dataset.uomCode || line.uom || '';
         }
         console.log(select ? select.value : null, line.stock_description, line.stock_id);
         const input = row.querySelector('input.line-qty-input');
@@ -796,13 +827,7 @@ function syncLineInputs() {
             } else {
                 line.qty_per_ha = isNaN(value) ? 0 : value;
             }
-            const totalHa = sprayData.header.total_ha || 0;
-            const totalWater = sprayData.header.total_water || 0;
-            if (doseBasis === 'PER_100L' && totalWater > 0) {
-                line.total_qty = ((line.qty_per_100l || 0) / 100) * totalWater;
-            } else if (doseBasis === 'PER_HA' && totalHa > 0) {
-                line.total_qty = ((line.qty_per_ha || 0) * totalHa);
-            }
+            line.total_qty = calculateLineTotal(line);
         }
     });
 }
@@ -1171,20 +1196,7 @@ function handleLineQtyChange(idx) {
         line.qty_per_ha = newQty;
     }
     
-    // Recalculate total qty
-    const totalHa = sprayData.header.total_ha || 0;
-    const totalWater = sprayData.header.total_water || 0;
-    
-    if (doseBasis === 'PER_100L' && totalWater > 0) {
-        line.total_qty = (newQty / 100) * totalWater;
-    } else if (doseBasis === 'PER_HA' && totalHa > 0) {
-        line.total_qty = newQty * totalHa;
-    }
-    
-    // Update display
-    const row = document.querySelector(`tr[data-line-idx="${idx}"]`);
-    const totalQtySpan = row.querySelector('.total-qty-display');
-    totalQtySpan.innerHTML = `<b>${line.total_qty.toFixed(2)} ${line.uom || ''}</b>`;
+    updateLineTotal(idx);
     
     // Recalculate mixes
     recalculateMixes();

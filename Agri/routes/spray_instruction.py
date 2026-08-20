@@ -251,6 +251,25 @@ def save_spray_lines(spray_id):
         incoming_ids = set()
 
         for line in lines:
+            stock_id = as_number(line.get('stock_id'))
+            if stock_id is None:
+                return jsonify({"success": False, "message": "Every spray line must have a product selected."}), 400
+
+            uom_id = as_number(line.get('uom_id'))
+            if uom_id is None:
+                cur.execute("""
+                    SELECT TOP 1 QTY.StockingUnitId
+                    FROM agr.SprayHeader HEA
+                    JOIN stk._uvInventoryQty QTY ON QTY.WhseLink = HEA.SprayHWhseId
+                    WHERE HEA.IdSprayH = ? AND QTY.StockLink = ?
+                """, spray_id, stock_id)
+                uom_row = cur.fetchone()
+                uom_id = as_number(uom_row[0]) if uom_row else None
+                line['uom_id'] = uom_id
+
+            if uom_id is None:
+                return jsonify({"success": False, "message": "No unit of measure is configured for the selected product."}), 400
+
             line_id = as_number(line.get('line_id'))
             if line_id is not None:
                 incoming_ids.add(line_id)
@@ -496,7 +515,7 @@ def fetch_products_for_spray_whse(spray_id):
     cur = conn.cursor()
 
     cur.execute("""
-    SELECT QTY.StockLink, StockCode, StockDescription, QtyOnHand, ACT.ChemActIngredient, QTY.StockingUnitCode
+    SELECT QTY.StockLink, StockCode, StockDescription, QtyOnHand, ACT.ChemActIngredient, QTY.StockingUnitId, QTY.StockingUnitCode
     FROM [agr].SprayHeader HEA
     JOIN stk._uvInventoryQty QTY on QTY.WhseLink = HEA.SprayHWhseId
 	JOIN agr.ChemStock STK on STK.ChemStockLink = QTY.StockLink
@@ -510,6 +529,7 @@ def fetch_products_for_spray_whse(spray_id):
         "stock_description": row.StockDescription,
         "qty_on_hand": float(row.QtyOnHand),
         "active_ingredient": row.ChemActIngredient,
+        "stocking_uom_id": row.StockingUnitId,
         "stocking_uom_code": row.StockingUnitCode
     } for row in cur.fetchall()]
     conn.close()
