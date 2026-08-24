@@ -1,4 +1,39 @@
 let eventSource; // Local scoped
+document.getElementById("manualImportForm").addEventListener("submit", async function (event) {
+    event.preventDefault();
+    const button = document.getElementById("manualImportBtn");
+    button.disabled = true;
+    button.textContent = "Processing...";
+
+    Swal.fire({
+        title: "Processing file",
+        text: "Please wait while the import is processed.",
+        allowOutsideClick: false,
+        showConfirmButton: false,
+        didOpen: () => Swal.showLoading()
+    });
+
+    try {
+        const response = await fetch("/market/import/manual_import", {
+            method: "POST",
+            body: new FormData(this)
+        });
+        const data = await response.json();
+        Swal.close();
+        if (!response.ok || !data.success) {
+            throw new Error(data.message || "Manual import failed.");
+        }
+        await Swal.fire("Import completed", data.message, "success");
+        this.reset();
+        fetchImportedData();
+    } catch (error) {
+        Swal.fire("Import failed", error.message, "error");
+    } finally {
+        button.disabled = false;
+        button.textContent = "Process File";
+    }
+});
+
 // document.getElementById("manualImportForm").addEventListener("submit", function (event) {
 //     event.preventDefault();
 //     let formData = new FormData(this);

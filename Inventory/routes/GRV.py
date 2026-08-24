@@ -38,16 +38,20 @@ def get_po_numbers():
         # If a supplier_code is provided, filter by it; otherwise return POs across all warehouses
         if supplier_code:
             query = f"""
-            SELECT DISTINCT DcLink, SupplierName, OrderNum, OrderDate, OrderDesc, OrdTotIncl
+                 SELECT DcLink, SupplierName, OrderNum, OrderDate, OrderDesc, OrdTotIncl,
+                     CASE WHEN MIN(ISNULL(fUnitPriceExcl, 0)) <= 0 THEN 1 ELSE 0 END AS HasZeroCost
             FROM [stk]._uvPO_Outstanding
             WHERE DcLink = ? AND WhseLink IN ({','.join(['?'] * len(current_user.warehouses))})
+                 GROUP BY DcLink, SupplierName, OrderNum, OrderDate, OrderDesc, OrdTotIncl
             """
             params = [supplier_code] + current_user.warehouses
         else:
             query = f"""
-            SELECT DISTINCT DcLink, SupplierName, OrderNum, OrderDate, OrderDesc, OrdTotIncl
+                 SELECT DcLink, SupplierName, OrderNum, OrderDate, OrderDesc, OrdTotIncl,
+                     CASE WHEN MIN(ISNULL(fUnitPriceExcl, 0)) <= 0 THEN 1 ELSE 0 END AS HasZeroCost
             FROM [stk]._uvPO_Outstanding
             WHERE WhseLink IN ({','.join(['?'] * len(current_user.warehouses))})
+                 GROUP BY DcLink, SupplierName, OrderNum, OrderDate, OrderDesc, OrdTotIncl
             """
             params = list(current_user.warehouses)
 
@@ -62,7 +66,8 @@ def get_po_numbers():
                 "order_num": row[2],
                 "order_date": row[3],
                 "order_desc": row[4],
-                "order_total": row[5]
+                "order_total": row[5],
+                "has_zero_cost": bool(row[6])
             }
             for row in rows
         ]
@@ -130,6 +135,36 @@ def submit_grv():
 
     if not lines or not isinstance(lines, list) or len(lines) == 0:
         return jsonify({"success": False, "error": "Lines collection required"}), 400
+
+    line_ids = [line.get("lineId") for line in lines if line.get("lineId") is not None]
+    if len(line_ids) != len(lines):
+        return jsonify({"success": False, "error": "Every submitted line must have a line ID"}), 400
+
+    try:
+        conn = create_db_connection()
+        cursor = conn.cursor()
+        placeholders = ",".join(["?"] * len(line_ids))
+        cursor.execute(
+            f"""
+            SELECT iLineID, StockDesc, ISNULL(fUnitPriceExcl, 0)
+            FROM [stk]._uvPO_Outstanding
+            WHERE OrderNum = ?
+              AND iLineID IN ({placeholders})
+              AND WhseLink IN ({','.join(['?'] * len(current_user.warehouses))})
+            """,
+            [po_number] + line_ids + list(current_user.warehouses)
+        )
+        zero_cost_lines = [row[1] for row in cursor.fetchall() if float(row[2] or 0) <= 0]
+        conn.close()
+        if zero_cost_lines:
+            return jsonify({
+                "success": False,
+                "error": "Cannot submit a GRV containing lines with zero cost: " + ", ".join(zero_cost_lines)
+            }), 400
+    except Exception as ex:
+        if 'conn' in locals() and conn:
+            conn.close()
+        return jsonify({"success": False, "error": str(ex)}), 400
 
     try:
         with EvolutionConnection():

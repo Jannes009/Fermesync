@@ -50,6 +50,24 @@
                 <button type="submit" id="autoImportBtn" class="btn-primary d-none">Auto Import</button>
             </form>
 
+            <h4>Manual file</h4>
+            <form id="manualImportForm" enctype="multipart/form-data">
+                <div class="form-group">
+                    <label for="manualService">Select Service</label>
+                    <select id="manualService" name="service" required>
+                        <option value="" disabled selected>Select a service</option>
+                        {% for service in services %}
+                            <option value="{{ service }}">{{ service }}</option>
+                        {% endfor %}
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label for="manualFile">Excel file</label>
+                    <input id="manualFile" name="file" type="file" accept=".xls,.xlsx" required>
+                </div>
+                <button type="submit" id="manualImportBtn" class="btn-primary">Process File</button>
+            </form>
+
 
 
         <div class="results-container">

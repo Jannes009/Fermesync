@@ -12,7 +12,7 @@ function loadPOTable(supplierCode) {
     const tbody = document.getElementById("poTableBody");
 
     wrapper.classList.remove("hidden");
-    tbody.innerHTML = "<tr><td colspan='5'>Loading...</td></tr>";
+    tbody.innerHTML = "<tr><td colspan='6'>Loading...</td></tr>";
 
     const body = supplierCode ? { supplier_code: supplierCode } : {};
     request("/inventory/get_po_numbers", {
@@ -23,25 +23,31 @@ function loadPOTable(supplierCode) {
         .then(r => r.json())
         .then(data => {
             if (!data.success) {
-                tbody.innerHTML = `<tr><td colspan="5">Error: ${data.error || 'Failed to load POs.'}</td></tr>`;
+                tbody.innerHTML = `<tr><td colspan="6">Error: ${data.error || 'Failed to load POs.'}</td></tr>`;
                 return;
             }
             tbody.innerHTML = "";
             if (!data.po_list?.length) {
-                tbody.innerHTML = `<tr><td colspan="5">No PO’s found</td></tr>`;
+                tbody.innerHTML = `<tr><td colspan="6">No PO’s found</td></tr>`;
                 return;
             }
 
             data.po_list.forEach(p => {
                 const tr = document.createElement("tr");
+                const hasZeroCost = p.has_zero_cost === true;
                 tr.innerHTML = `
                     <td>${p.order_num}</td>
                     <td>${formatDate(p.order_date)}</td>
                     <td>${p.supplier_name || p.supplier_code || ''}</td>
                     <td>${p.order_desc}</td>
                     <td>${p.order_total}</td>
+                    <td>${hasZeroCost ? '<span class="zero-cost-status">Zero cost</span>' : 'Ready'}</td>
                 `;
                 tr.addEventListener("click", () => {
+                    if (hasZeroCost) {
+                        Swal.fire("Cannot process GRV", "This PO contains a line with zero cost.", "error");
+                        return;
+                    }
                     window.location.href = `/inventory/grv/${p.order_num}`;
                 });
                 tbody.appendChild(tr);

@@ -1,8 +1,10 @@
 ﻿from flask import render_template, request, jsonify, Response, stream_with_context
 import logging
+import os
+import tempfile
 from flask_login import current_user
-from Market.routes.Import.freshlinq import Freshlinq
-from Market.routes.Import.technofresh import Technofresh
+from Market.routes.Import.freshlinq import Freshlinq, process_excel as process_freshlinq_excel
+from Market.routes.Import.technofresh import Technofresh, insert_data as insert_technofresh_data
 from flask_login import current_user
 from Market.routes import market_bp
 from Market.routes.Import.user_services import get_services_for_user
@@ -132,6 +134,47 @@ def update_market_del_note_no():
 #                 "message": str(e)
 #             }]
 #         }), 500
+
+@market_bp.route('/import/manual_import', methods=['POST'])
+def manual_import():
+    service = request.form.get('service')
+    upload = request.files.get('file')
+
+    if service not in {'Technofresh', 'FreshLinq'}:
+        return jsonify({"success": False, "message": "Select a valid import service."}), 400
+    if not upload or not upload.filename:
+        return jsonify({"success": False, "message": "Select an Excel file to import."}), 400
+
+    file_path = None
+    try:
+        suffix = os.path.splitext(upload.filename)[1].lower()
+        if suffix not in {'.xls', '.xlsx'}:
+            return jsonify({"success": False, "message": "Only .xls and .xlsx files are supported."}), 400
+
+        with tempfile.NamedTemporaryFile(delete=False, suffix=suffix) as temporary_file:
+            upload.save(temporary_file)
+            file_path = temporary_file.name
+
+        if service == 'Technofresh':
+            count = insert_technofresh_data(file_path, current_user)
+            message = f"{count} records imported successfully."
+        else:
+            messages = list(process_freshlinq_excel(file_path, current_user))
+            errors = [message for message in messages if 'ERROR' in message]
+            if errors:
+                return jsonify({"success": False, "message": errors[-1].replace('data: ', '').strip()}), 400
+            message = 'FreshLinq file imported successfully.'
+
+        return jsonify({"success": True, "message": message})
+    except Exception as ex:
+        logging.exception("Manual %s import failed", service)
+        return jsonify({"success": False, "message": str(ex)}), 400
+    finally:
+        if file_path:
+            try:
+                os.remove(file_path)
+            except OSError:
+                logging.warning("Could not remove manual import file %s", file_path)
 
 @market_bp.route('/import/auto_import', methods=['GET'])
 def auto_import():
