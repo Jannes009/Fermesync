@@ -1083,7 +1083,7 @@ document.getElementById('spray-form').addEventListener('submit', function (e) {
     document.querySelectorAll('.product-card').forEach(card => {
         const select = card.querySelector('.product-select');
         const rate = parseFloat(card.querySelector('.qty-input').value || 0);
-        const totalQty = parseFloat(card.querySelector('.total-qty').textContent) || 0;
+        const totalQty = parseFloat(card.querySelector('.total-qty-input').value) || 0;
         const uomId = select.selectedOptions[0]?.dataset.uomId || select.selectedOptions[0]?.dataset.uom;
         const regNumber = card.querySelector('.line-reg-number').value;
         const witholdingPeriod = card.querySelector('.line-witholding-period').value;

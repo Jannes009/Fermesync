@@ -489,7 +489,7 @@ function addLine() {
 
             <div class="total-field">
                 <label>Total Qty</label>
-                <div class="readonly-box total-qty">-</div>
+                <input class="total-qty-input" type="number" step="0.01" placeholder="Total">
             </div>
 
             <div class="per-tank-field">
@@ -674,8 +674,9 @@ function updateProductTotals(totalHa, totalWater, waterPerTank) {
 
     document.querySelectorAll('.product-card').forEach(card => {
         const rate = parseFloat(card.querySelector('.qty-input').value || 0);
+        const totalQtyInput = card.querySelector('.total-qty-input');
         if (!rate) {
-            card.querySelector('.total-qty').textContent = '-';
+            if (!totalQtyInput.value) totalQtyInput.value = '';
             card.querySelector('.per-tank').textContent = '-';
             return;
         }
@@ -702,12 +703,41 @@ function updateProductTotals(totalHa, totalWater, waterPerTank) {
             perTank = '-';
         }
 
-        card.querySelector('.total-qty').textContent = totalQty > 0 ? totalQty.toFixed(2) : '-';
+        if (document.activeElement !== totalQtyInput) {
+            totalQtyInput.value = totalQty > 0 ? totalQty.toFixed(2) : '';
+        }
         card.querySelector('.per-tank').textContent = perTank;
     });
 
     const sumProductsEl = document.getElementById('sum-products'); if (sumProductsEl) sumProductsEl.textContent = productCount;
     const stickyProductsEl = document.getElementById('sticky-products'); if (stickyProductsEl) stickyProductsEl.textContent = productCount;
+}
+
+function syncProductQuantity(card, source) {
+    const mode = getMode();
+    const doseInput = card.querySelector('.qty-input');
+    const totalInput = card.querySelector('.total-qty-input');
+    const totalHa = parseFloat(document.getElementById('total-ha').textContent) || 0;
+    const totalWater = mode === 'per_100l'
+        ? parseFloat(document.getElementById('sticky-water')?.textContent || 0)
+        : 0;
+    const totalQty = parseFloat(totalInput.value) || 0;
+
+    if (source === 'total') {
+        if (mode === 'per_100l' && totalWater > 0) {
+            doseInput.value = ((totalQty * 100) / totalWater).toFixed(2);
+        } else if (totalHa > 0) {
+            doseInput.value = (totalQty / totalHa).toFixed(2);
+        } else {
+            doseInput.value = '';
+        }
+    } else {
+        const dose = parseFloat(doseInput.value) || 0;
+        const calculatedTotal = mode === 'per_100l'
+            ? (totalWater / 100) * dose
+            : totalHa * dose;
+        totalInput.value = calculatedTotal > 0 ? calculatedTotal.toFixed(2) : '';
+    }
 }
 
 function renderTankBreakdown(totalWater, waterPerTank) {
@@ -1090,6 +1120,11 @@ document.addEventListener('input', function (e) {
         recalcEverything();
     }
     if (e.target.matches('.qty-input')) {
+        syncProductQuantity(e.target.closest('.product-card'), 'dose');
+        recalcEverything();
+    }
+    if (e.target.matches('.total-qty-input')) {
+        syncProductQuantity(e.target.closest('.product-card'), 'total');
         recalcEverything();
     }
     if (e.target.matches('#global_water_per_ha')) {

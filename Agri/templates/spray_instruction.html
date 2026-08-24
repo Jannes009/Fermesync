@@ -672,7 +672,7 @@ async function renderLines() {
     lines.forEach((line, idx) => {
         const qty = doseBasis === 'PER_100L' ? line.qty_per_100l : line.qty_per_ha;
         const qtyDisplay = qty !== null ? qty : 0;
-        const totalQtyDisplay = line.total_qty !== null ? `<b>${line.total_qty.toFixed(2)} ${line.uom || ''}</b>` : '-';
+        const totalQtyDisplay = line.total_qty !== null ? Number(line.total_qty).toFixed(2) : '';
         console.log(line.stock_description, typeof line.stock_id);
 
         if (editModes.lines) {
@@ -692,7 +692,7 @@ async function renderLines() {
                         </select>
                     </td>
                     <td><input type="number" class="line-qty-input" data-line-idx="${idx}" value="${qtyDisplay}" step="0.01" oninput="handleLineQtyChange(${idx})"></td>
-                    <td><span class="total-qty-display">${totalQtyDisplay}</span></td>
+                    <td><input type="number" class="line-total-qty-input" data-line-idx="${idx}" value="${totalQtyDisplay}" step="0.01" oninput="handleLineTotalQtyChange(${idx})"></td>
                     <td><button class="remove-btn" onclick="removeLine(${idx})">Remove</button></td>
                 </tr>
             `;
@@ -796,9 +796,9 @@ function updateLineTotal(idx) {
     if (!line || !row) return;
 
     line.total_qty = calculateLineTotal(line);
-    const totalQtySpan = row.querySelector('.total-qty-display');
-    if (totalQtySpan) {
-        totalQtySpan.innerHTML = `<b>${line.total_qty.toFixed(2)} ${escapeHtml(line.uom || '')}</b>`;
+    const totalQtyInput = row.querySelector('.line-total-qty-input');
+    if (totalQtyInput) {
+        totalQtyInput.value = line.total_qty > 0 ? line.total_qty.toFixed(2) : '';
     }
 }
 
@@ -820,6 +820,7 @@ function syncLineInputs() {
         }
         console.log(select ? select.value : null, line.stock_description, line.stock_id);
         const input = row.querySelector('input.line-qty-input');
+        const totalInput = row.querySelector('input.line-total-qty-input');
         if (input) {
             const value = parseFloat(input.value);
             if (doseBasis === 'PER_100L') {
@@ -829,7 +830,42 @@ function syncLineInputs() {
             }
             line.total_qty = calculateLineTotal(line);
         }
+        if (totalInput) {
+            const value = parseFloat(totalInput.value);
+            if (!Number.isNaN(value)) {
+                line.total_qty = value;
+                const totalWater = Number(sprayData?.header?.total_water || 0);
+                const totalHa = Number(sprayData?.header?.total_ha || 0);
+                if (doseBasis === 'PER_100L' && totalWater > 0) {
+                    line.qty_per_100l = (value * 100) / totalWater;
+                } else if (doseBasis === 'PER_HA' && totalHa > 0) {
+                    line.qty_per_ha = value / totalHa;
+                }
+            }
+        }
     });
+}
+
+function handleLineTotalQtyChange(idx) {
+    const input = document.querySelector(`input.line-total-qty-input[data-line-idx="${idx}"]`);
+    const line = sprayData.lines[idx];
+    if (!input || !line) return;
+
+    const totalQty = parseFloat(input.value) || 0;
+    line.total_qty = totalQty;
+    const totalWater = Number(sprayData?.header?.total_water || 0);
+    const totalHa = Number(sprayData?.header?.total_ha || 0);
+    if (doseBasis === 'PER_100L' && totalWater > 0) {
+        line.qty_per_100l = (totalQty * 100) / totalWater;
+    } else if (doseBasis === 'PER_HA' && totalHa > 0) {
+        line.qty_per_ha = totalQty / totalHa;
+    }
+    const doseInput = document.querySelector(`input.line-qty-input[data-line-idx="${idx}"]`);
+    if (doseInput) {
+        const dose = doseBasis === 'PER_100L' ? line.qty_per_100l : line.qty_per_ha;
+        doseInput.value = dose > 0 ? dose.toFixed(2) : '';
+    }
+    recalculateMixes();
 }
 
 function addLine() {

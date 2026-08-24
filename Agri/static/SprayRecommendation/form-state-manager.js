@@ -114,6 +114,7 @@ const FormStateManager = (() => {
                 index: idx,
                 stock_id: select?.value || '',
                 qty_input: card.querySelector('.qty-input')?.value || '',
+                total_qty_input: card.querySelector('.total-qty-input')?.value || '',
                 reg_number: card.querySelector('.line-reg-number')?.value || '',
                 witholding_period: card.querySelector('.line-witholding-period')?.value || '',
                 function: card.querySelector('.line-function')?.value || ''
@@ -348,6 +349,10 @@ const FormStateManager = (() => {
                 const qtyInput = card.querySelector('.qty-input');
                 if (qtyInput && lineData.qty_input) {
                     qtyInput.value = lineData.qty_input;
+                }
+                const totalQtyInput = card.querySelector('.total-qty-input');
+                if (totalQtyInput && lineData.total_qty_input) {
+                    totalQtyInput.value = lineData.total_qty_input;
                 }
 
                 card.querySelector('.line-reg-number').value = lineData.reg_number || '';
