@@ -462,6 +462,8 @@ async function renderHeader() {
     sprayData.header = header;
     doseBasis = header.dose_basis;
 
+    console.log(sprayData, method);
+
     applyPageThemeColor(header.crop_theme_color);
 
     const startDate = formatDateTime(header.start_datetime);
@@ -493,7 +495,7 @@ async function renderHeader() {
     document.getElementById("page-title").innerHTML = pageTitle;
 
     let projectsSection = '';
-    if (header.mix && header.projects && header.projects.length > 0) {
+    if (header.projects && header.projects.length > 0) {
         const projectRows = header.projects.map(p => {
             let row = `<tr><td>${escapeHtml(p.project_code || '')}</td><td>${Number(p.ha || 0).toFixed(2)}</td>`;
             if (doseBasis === 'PER_100L') {
