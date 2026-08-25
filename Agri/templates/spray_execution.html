@@ -779,6 +779,8 @@
           <div class="update-instruction-actions" style="margin-top: 0.75rem; flex-wrap: wrap; align-items: center;">
             {% if execution.can_finalize and not instruction.finalised and 'SPRAY_EXEC_CREATE' in current_user.permissions %}
               <button type="button" class="btn-success" onclick="openInstructionModal({{ instruction.id }}, '{{ instruction.spray_date or '' }}', {{ 'true' if instruction.require_date_time else 'false' }}, {{ 'true' if instruction.require_weather else 'false' }})">Finalise instruction</button>
+            {% elif not instruction.finalised and execution.finalize_block_reason and 'SPRAY_EXEC_CREATE' in current_user.permissions %}
+              <div style="color: #856404; font-size: 0.9rem;">Cannot finalise yet: {{ execution.finalize_block_reason }}</div>
             {% endif %}
             <button type="button" class="btn-secondary" onclick="window.location.href='/agri/spray/{{ instruction.id }}'">View details</button>
             {% if instruction.finalised and execution.finalised %}
@@ -830,14 +832,18 @@
           <label>Start Date & Time</label>
           <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 0.5rem;">
             <input type="date" id="modal-start-date" required>
-            <input type="time" id="modal-start-time" required>
+            <select id="modal-start-time" required>
+              <option value="">Select time</option>
+            </select>
           </div>
         </div>
         <div class="modal-field">
           <label>End Date & Time</label>
           <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 0.5rem;">
             <input type="date" id="modal-end-date" required>
-            <input type="time" id="modal-end-time" required>
+            <select id="modal-end-time" required>
+              <option value="">Select time</option>
+            </select>
           </div>
         </div>
         <div class="modal-field">
@@ -957,7 +963,6 @@ function openInstructionModal(instructionId, sprayDate, requireDateTime, require
       field.required = Boolean(requireDateTime);
       field.hidden = !requireDateTime;
       field.style.display = requireDateTime ? '' : 'none';
-      console.log(field, field.required, field.hidden)
       field.value = requireDateTime ? field.value : '';
     });
 
@@ -981,7 +986,7 @@ function openInstructionModal(instructionId, sprayDate, requireDateTime, require
 
     form.action = `/agri/execution/${executionId}/update_instruction/${instructionId}`;
     modal.dataset.instructionId = instructionId;
-    sprayDateInput.value = sprayDate || start.date || executionDate || '';
+    sprayDateInput.value = sprayDate || executionDate || '';
     setInstructionStatus('');
     setInstructionFormSaving(false);
     modal.hidden = false;
@@ -1030,6 +1035,23 @@ async function loadResponsiblePersons() {
         console.error('Error loading responsible persons:', error);
     }
 }
+
+function populateTimes(selectId) {
+    const select = document.getElementById(selectId);
+
+  for (let minutes = 7 * 60; minutes <= 18 * 60; minutes += 30) {
+        const option = document.createElement('option');
+    const hour = Math.floor(minutes / 60);
+    const minute = minutes % 60;
+    const time = `${String(hour).padStart(2, '0')}:${String(minute).padStart(2, '0')}`;
+    option.value = time;
+    option.textContent = time;
+        select.appendChild(option);
+    }
+}
+
+populateTimes('modal-start-time');
+populateTimes('modal-end-time');
 
 async function saveResponsiblePerson() {
     const select = document.getElementById('responsible-person-select');

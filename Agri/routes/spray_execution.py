@@ -217,10 +217,21 @@ def view_execution(execution_id):
         and bool(issue_stats.TotalIssues)
         and not bool(issue_stats.IssuesWithUnfinalisedQty)
     )
+    if bool(execution_row.SprExecFinalised):
+        finalize_block_reason = "This execution is already finalised."
+    elif not bool(execution_row.SprExecResponsiblePerson):
+        finalize_block_reason = "Assign a responsible person before finalising."
+    elif not bool(issue_stats.TotalIssues):
+        finalize_block_reason = "Issue stock before finalising this instruction."
+    elif bool(issue_stats.IssuesWithUnfinalisedQty):
+        finalize_block_reason = "Finalise or return all outstanding stock issues before finalising this instruction."
+    else:
+        finalize_block_reason = None
     execution_can_delete = not bool(execution_row.SprExecFinalised) and not bool(issue_stats.IssuesWithQty)
 
     execution.update({
         "can_finalize": execution_can_finalize,
+        "finalize_block_reason": finalize_block_reason,
         "can_delete": execution_can_delete
     })
 
