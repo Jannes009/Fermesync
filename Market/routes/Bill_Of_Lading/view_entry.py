@@ -220,9 +220,9 @@ def get_available_lines(del_note_no):
             ProductDescription,
             DelLineQuantityBags,
             TotalQtySold,
-            (DelLineQuantityBags - TotalQtySold) as available_qty
+            (DelLineQuantityBags - ISNULL(TotalQtySold,0)) as available_qty
         FROM [mkt].[_uvMarketDeliveryNote]
-        WHERE DelNoteNo = '32800462'
+        WHERE DelNoteNo = ?
         AND (DelLineQuantityBags - ISNULL(TotalQtySold,0)) > 0
         ORDER BY DelLineIndex
     """, (del_note_no,))
