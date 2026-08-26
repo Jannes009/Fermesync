@@ -57,9 +57,10 @@ def create_stock_count():
             INSERT INTO [stk].InventoryCountLines (
                 InvCountLineHeaderId,
                 InvCountLineStockId,
-                InvCountLineQtyOnHand
+                InvCountLineQtyOnHand, 
+                InvCountUoMId
             )
-            SELECT ?, StockLink, QtyOnHand
+            SELECT ?, StockLink, QtyOnHand, StockingUnitId
             FROM [stk]._uvInventoryQty
             WHERE WhseLink = ?
             AND idStockCategories = ?
@@ -142,11 +143,12 @@ def fetch_session_products(header_id):
         cursor.execute("""
             SELECT DISTINCT
                 InvCountLineStockId,
-                QTY.StockDescription, QTY.StockingUnitCode,
+                STK.StockDescription, UOM.cUnitCode,
                 InvCountLineQtyOnHand,
                 InvCountLineQtyCounted
             FROM [stk].InventoryCountLines LIN
-            JOIN stk._uvInventoryQty QTY on QTY.StockLink = LIN.InvCountLineStockId
+            JOIN cmn._uvUOM UOM on UOM.idUnits = LIN.InvCountUoMId
+            JOIN cmn._uvStockItems STK on STK.StockLink = LIN.InvCountLineStockId
             WHERE InvCountLineHeaderId = ?
         """, (header_id,))
 
@@ -158,7 +160,7 @@ def fetch_session_products(header_id):
             "products": [{
                 "product_id": r.InvCountLineStockId,
                 "product_desc": r.StockDescription,
-                "stocking_unit": r.StockingUnitCode,
+                "unit": r.cUnitCode,
                 "system_qty": float(r.InvCountLineQtyOnHand),
                 "counted_qty": r.InvCountLineQtyCounted
             } for r in rows]

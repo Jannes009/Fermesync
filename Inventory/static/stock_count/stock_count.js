@@ -386,7 +386,7 @@ function displayProducts() {
                 <input type="number" id="qty-${i}" class="qty-input" min="0" step="1" placeholder="0"
                 value="${p.counted_qty !== null ? p.counted_qty : ""}"
                 >
-                <div class="uom-label">${p.stocking_unit || "EA"}</div>
+                <div class="uom-label">${p.unit || "EA"}</div>
             </div>`;
     });
 
