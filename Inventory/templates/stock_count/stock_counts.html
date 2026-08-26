@@ -221,6 +221,8 @@ body{
     display:flex;
     align-items:center;
     justify-content:center;
+    padding:1rem;
+    overflow-y:auto;
     z-index:1000;
 }
 
@@ -252,10 +254,85 @@ body{
 
 .modal-content{
     background:var(--container-bg);
-    width:90%;
+    width:min(100%, 900px);
     max-width:800px;
+    max-height:calc(100vh - 2rem);
+    border:1px solid var(--border-color);
     border-radius:10px;
-    padding:2rem;
+    box-shadow:0 18px 50px rgba(0,0,0,.2);
+    display:flex;
+    flex-direction:column;
+    overflow:hidden;
+}
+
+.details-modal-header,
+.details-modal-footer{
+    display:flex;
+    align-items:center;
+    justify-content:space-between;
+    gap:1rem;
+    flex-shrink:0;
+    padding:1rem 1.25rem;
+}
+
+.details-modal-header{
+    border-bottom:1px solid var(--border-color);
+    background:var(--table-header-bg);
+}
+
+.details-modal-header h3{
+    margin:0;
+    color:var(--primary-text);
+    font-size:1.1rem;
+    line-height:1.35;
+}
+
+.details-modal-body{
+    min-height:0;
+    overflow:auto;
+    padding:0 1.25rem;
+}
+
+.details-table{
+    min-width:600px;
+    margin:1rem 0;
+}
+
+.details-table th{
+    position:sticky;
+    top:0;
+    z-index:1;
+}
+
+.details-modal-footer{
+    justify-content:flex-end;
+    border-top:1px solid var(--border-color);
+}
+
+.modal-close{
+    display:inline-flex;
+    align-items:center;
+    gap:.4rem;
+}
+
+@media(max-width:600px){
+    .modal{
+        align-items:flex-start;
+        padding:.5rem;
+    }
+
+    .modal-content{
+        max-height:calc(100vh - 1rem);
+    }
+
+    .details-modal-header,
+    .details-modal-footer{
+        padding:.85rem 1rem;
+    }
+
+    .details-modal-body{
+        padding:0 .75rem;
+    }
 }
 
 </style>
@@ -296,6 +373,7 @@ onclick="window.location.href='{{ url_for('inventory.stock_count_start') }}'">
 <th>Warehouse</th>
 <th>Shelf</th>
 <th>Progress</th>
+<th></th>
 </tr>
 </thead>
 <tbody></tbody>
@@ -342,11 +420,15 @@ onclick="window.location.href='{{ url_for('inventory.stock_count_start') }}'">
 
 <div id="countModal" class="modal hidden">
 
-<div class="modal-content">
+<div class="modal-content" role="dialog" aria-modal="true" aria-labelledby="modalTitle">
 
+<div class="details-modal-header">
 <h3 id="modalTitle">Stock Count Details</h3>
+</div>
 
-<table class="table">
+<div class="details-modal-body">
+<div class="details-table-scroll">
+<table class="table details-table">
 
 <thead>
 <tr>
@@ -361,10 +443,14 @@ onclick="window.location.href='{{ url_for('inventory.stock_count_start') }}'">
 <tbody id="modalLines"></tbody>
 
 </table>
+</div>
+</div>
 
+<div class="details-modal-footer">
 <button onclick="closeModal()" class="btn-action-small">
-Close
+<i class="fas fa-times"></i> Close
 </button>
+</div>
 
 </div>
 </div>

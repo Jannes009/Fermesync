@@ -449,6 +449,8 @@ async function loadFilters() {
         const warehouseFilter = document.getElementById("warehouseFilter");
         const shelfFilter = document.getElementById("shelfFilter");
 
+        if (!warehouseFilter || !shelfFilter) return;
+
         const res = await request("/inventory/stock-counts/filters");
         const data = await res.json();
         if (data.success !== true) {
