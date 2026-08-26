@@ -352,6 +352,7 @@ body {
   top: 0;
   left: 0;
   width: 100%;
+  max-width: 100vw;
   background-color: var(--taskbar-bg);
   color: var(--taskbar-text);
   z-index: 1000;
@@ -364,6 +365,7 @@ body {
   height: 60px;
   border-radius: 0;
   box-sizing: border-box;
+  overflow-x: clip;
 }
 
 /* Utility class for content that needs to be pushed below the fixed taskbar */

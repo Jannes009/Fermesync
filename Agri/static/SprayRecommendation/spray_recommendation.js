@@ -17,6 +17,30 @@ $(document).on('select2:open', function () {
     }, 0);
 });
 
+// Ensure Select2 dropdowns are properly contained on mobile
+$(document).on('select2:open', function(e) {
+    const dropdown = document.querySelector('.product-dropdown.select2-dropdown');
+    if (!dropdown) return;
+
+    requestAnimationFrame(() => {
+        const viewportPadding = 8;
+        const container = dropdown.closest('.select2-container--open') || dropdown;
+        const rect = container.getBoundingClientRect();
+        const maxWidth = Math.max(0, window.innerWidth - (viewportPadding * 2));
+        const width = Math.min(rect.width, maxWidth);
+        const left = Math.max(
+            viewportPadding,
+            Math.min(rect.left, window.innerWidth - width - viewportPadding)
+        );
+
+        container.style.width = `${width}px`;
+        container.style.maxWidth = `${maxWidth}px`;
+        container.style.left = `${left + window.scrollX}px`;
+        dropdown.style.width = '100%';
+        dropdown.style.maxWidth = '100%';
+    });
+});
+
 // Ensure any Select2 dropdown opened has a minimum width at least as wide
 // as its closed/select container so opened dropdowns don't shrink smaller
 // than the visible select. Applies globally to all Select2 instances.
@@ -51,7 +75,6 @@ function initProductSelects() {
                 width: '100%',
                 placeholder: placeholder || undefined,
                 allowClear: false,
-                dropdownAutoWidth: true,
                 dropdownCssClass: 'product-dropdown',
                 containerCssClass: 'product-select-container'
             });
@@ -170,7 +193,6 @@ async function updateProducts(projectIds) {
                     width: '100%',
                     placeholder: placeholder || undefined,
                     allowClear: false,
-                    dropdownAutoWidth: true,
                     dropdownCssClass: 'product-dropdown',
                     containerCssClass: 'product-select-container'
                 });

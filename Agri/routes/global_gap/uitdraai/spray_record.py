@@ -133,13 +133,13 @@ def fetch_spray_record_data(instruction_id):
     stock_requirements = [
         {
             "description": row.StockDescription,
-            "ingredient": row.ChemActIngredient,
-            "reason": row.SprayLineFunction,
-            "withholding_period": row.SprayLineWitholdingPeriod,
-            "colour_code": row.ChemColCode,
+            "ingredient": row.ChemActIngredient or "",
+            "reason": row.SprayLineFunction or "",
+            "withholding_period": row.SprayLineWitholdingPeriod or "",
+            "colour_code": row.ChemColCode or "",
             "recommended_qty": float(row.QtyRecommended or 0),
             "finalised_qty": float(row.Finalised or 0),
-            "uom": row.cUnitCode
+            "uom": row.cUnitCode or ""
         }
         for row in cur.fetchall()
     ]
