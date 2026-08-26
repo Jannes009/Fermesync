@@ -108,10 +108,18 @@ body { font-family: Arial, sans-serif; color: var(--primary-text); line-height:1
       <div class="info-label">Date Executed End</div>
       <div class="info-value">{{ instruction.end_datetime or "N/A" }}</div>
     </div>
+    {% if instruction.grower_code %}
     <div class="info-box">
       <div class="info-label">Grower Code</div>
-      <div class="info-value">{{ instruction.grower_code or "N/A" }}</div>
+      <div class="info-value">{{ instruction.grower_code }}</div>
     </div>
+    {% endif %}
+    {% if instruction.puc_code %}
+    <div class="info-box">
+      <div class="info-label">PUC Code</div>
+      <div class="info-value">{{ instruction.puc_code }}</div>
+    </div>
+    {% endif %}
     <div class="info-box">
       <div class="info-label">Scouting</div>
       <div class="info-value">{{ instruction.scouting or "N/A" }}</div>
@@ -134,7 +142,7 @@ body { font-family: Arial, sans-serif; color: var(--primary-text); line-height:1
   <table class="projects-table">
     <thead>
       <tr>
-        <th>Project</th><th>Block</th><th>Crop</th><th>Variety</th>
+        <th>Project</th><th>Block</th><th>Variety</th>
         <th>Plant Date</th><th>Ha</th><th>Water/Ha</th><th>Agriculturist</th><th>Manager</th>
       </tr>
     </thead>
@@ -143,7 +151,6 @@ body { font-family: Arial, sans-serif; color: var(--primary-text); line-height:1
       <tr>
         <td>{{ project.code }}</td>
         <td>{{ project.block_no }}</td>
-        <td>{{ project.crop }}</td>
         <td>{{ project.variety }}</td>
         <td>{{ project.plant_date }}</td>
         <td>{{ project.ha }}</td>
@@ -192,7 +199,10 @@ body { font-family: Arial, sans-serif; color: var(--primary-text); line-height:1
     <div class="compact-signature-item">
       <span>Operator Signature:</span><span class="compact-signature-line">&nbsp;</span>
     </div>
-    <div class="compact-created">Created by: <strong>{{ instruction.created_by }}</strong></div>
+    <div class="compact-created">
+      <div>Created by: <strong>{{ instruction.created_by }}</strong></div>
+      <div>Created at: <strong>{{ instruction.fetched_at }}</strong></div>
+    </div>
     {% if instruction.app_logo_data %}
     <div class="app-logo-container">
       <img class="logo app-logo" src="{{ instruction.app_logo_data }}" alt="App Logo">

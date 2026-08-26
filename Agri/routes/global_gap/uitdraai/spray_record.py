@@ -52,6 +52,7 @@ def fetch_spray_record_data(instruction_id):
             SM.SprayMethodName,
             SM.SprayMethodTankSize
             , HEA.SprayHCropId, HC.CropCode AS SprayHCropCode, HC.CropGrowerCode AS SprayHCropGrowerCode
+            , HC.CropPUCCode
         FROM agr.SprayHeader HEA
         LEFT JOIN agr.SprayMethod SM ON SM.IdSprayMethod = HEA.SprayHMethodId
         JOIN agr.SprayExecution EXE on EXE.IdSprExec = HEA.SprayHExecutionId
@@ -180,12 +181,14 @@ def fetch_spray_record_data(instruction_id):
     
     return {
         "instruction_id": header.SprayHNo or instruction_id,
+        "fetched_at": datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
         "recommended_date": str(header.SprayHDate) if header.SprayHDate else None,
         "start_datetime": str(header.SprayHStartDateTime) if header.SprayHStartDateTime else None,
         "end_datetime": str(header.SprayHEndDateTime) if header.SprayHEndDateTime else None,
         "responsible_person": header.PersonName or "",
         "crop": header.SprayHCropCode if hasattr(header, 'SprayHCropCode') else None,
         "grower_code": header.SprayHCropGrowerCode if hasattr(header, 'SprayHCropGrowerCode') else None,
+        "puc_code": header.CropPUCCode if hasattr(header, 'CropPUCCode') else None,
         "instruction_description": header.SprayHDescription,
         "dose_basis": header.SprayLineDoseBasis,
         "scouting": header.SprayHScouting or "",
