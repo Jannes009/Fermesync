@@ -168,30 +168,14 @@ function renderHistoryTable(rows) {
     }
 
     completedRows.forEach(r => {
-        const varianceCategory = getVarianceCategory(r.variance, r.systemQty);
-        let statusBadge = '';
-        let rowClass = '';
-
-        if (varianceCategory === "clean") {
-            statusBadge = '<span class="badge badge-completed"><i class="fas fa-check"></i> Clean</span>';
-            rowClass = "ok";
-        } else if (varianceCategory === "slight") {
-            statusBadge = '<span class="badge badge-variance-slight"><i class="fas fa-exclamation"></i> Slight Variance</span>';
-            rowClass = "warn";
-        } else {
-            statusBadge = '<span class="badge badge-variance-big"><i class="fas fa-exclamation-triangle"></i> Significant Variance</span>';
-            rowClass = "warn";
-        }
-
         tbody.insertAdjacentHTML("beforeend", `
-            <tr class="${rowClass}" data-header-id="${r.headerId}" style="cursor: pointer;">
-                <td data-label="Date">${r.date}</td>
+            <tr data-header-id="${r.headerId}" style="cursor: pointer;">
                 <td data-label="Warehouse">${r.warehouse}</td>
                 <td data-label="Shelf">${r.shelf}</td>
-                <td class="detail-cell" data-label="System Qty">${r.systemQty}</td>
-                <td class="detail-cell" data-label="Counted Qty">${r.countedQty}</td>
-                <td data-label="Variance">${r.variance}</td>
-                <td data-label="Status">${statusBadge}</td>
+                <td data-label="Username">${r.username || "N/A"}</td>
+                <td data-label="Date">${r.date}</td>
+                <td data-label="Products Counted">${r.countedProducts}/${r.totalProducts}</td>
+                <td data-label="Avg Variance">${formatVariance(r.avgVariancePct)}</td>
             </tr>
         `);
     });
@@ -211,6 +195,10 @@ function renderHistoryTable(rows) {
             }
         });
     });
+}
+
+function formatVariance(value) {
+    return value === null || value === undefined ? "N/A" : `${Number(value).toFixed(1)}%`;
 }
 
 // New function to render incomplete counts
@@ -387,7 +375,10 @@ async function openModal(headerId) {
         const modalTitle = document.getElementById("modalTitle");
         const modalLines = document.getElementById("modalLines");
 
-        modalTitle.innerHTML = `<i class="fas fa-warehouse"></i> ${data.warehouse} – ${data.shelf} (${data.date})`;
+        modalTitle.innerHTML = `<i class="fas fa-warehouse"></i> ${data.warehouse} - ${data.shelf}`;
+        document.getElementById("modalUsername").textContent = data.counted_by || "N/A";
+        document.getElementById("modalStartTime").textContent = data.start_time || "N/A";
+        document.getElementById("modalEndTime").textContent = data.end_time || "N/A";
         modalLines.innerHTML = "";
 
         if (data.lines.length === 0) {
@@ -408,11 +399,11 @@ async function openModal(headerId) {
                     varianceText = '<span style="color: #10b981;"><i class="fas fa-check"></i> OK</span>';
                     rowClass = "ok";
                 } else if (varianceCategory === "slight") {
-                    const percent = ((Math.abs(l.variance) / l.system) * 100).toFixed(1);
+                    const percent = l.system ? ((Math.abs(l.variance) / l.system) * 100).toFixed(1) : "N/A";
                     varianceText = `<span style="color: #b45309;"><i class="fas fa-exclamation"></i> ${l.variance} (${percent}%)</span>`;
                     rowClass = "warn";
                 } else {
-                    const percent = ((Math.abs(l.variance) / l.system) * 100).toFixed(1);
+                    const percent = l.system ? ((Math.abs(l.variance) / l.system) * 100).toFixed(1) : "N/A";
                     varianceText = `<span style="color: #991b1b;"><i class="fas fa-times"></i> ${l.variance} (${percent}%)</span>`;
                     rowClass = "warn";
                 }
@@ -421,8 +412,8 @@ async function openModal(headerId) {
                     <tr class="${rowClass}">
                         <td>${l.stock}</td>
                         <td>${l.description || "–"}</td>
-                        <td style="text-align: right;">${l.system}</td>
-                        <td style="text-align: right;">${l.counted}</td>
+                        <td style="text-align: right;">${l.system} ${l.unit || ""}</td>
+                        <td style="text-align: right;">${l.counted ?? "N/A"} ${l.unit || ""}</td>
                         <td style="text-align: center;">${varianceText}</td>
                     </tr>
                 `);

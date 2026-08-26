@@ -287,6 +287,36 @@ body{
     line-height:1.35;
 }
 
+.details-meta{
+    display:grid;
+    grid-template-columns:repeat(3, 1fr);
+    gap:.75rem;
+    padding:1rem 0 0;
+}
+
+.details-meta div{
+    display:flex;
+    flex-direction:column;
+    gap:.2rem;
+    padding:.7rem .8rem;
+    background:var(--table-header-bg);
+    border:1px solid var(--border-color);
+    border-radius:6px;
+}
+
+.details-meta span{
+    color:var(--secondary-text);
+    font-size:.75rem;
+    font-weight:600;
+    text-transform:uppercase;
+}
+
+.details-meta strong{
+    color:var(--primary-text);
+    font-size:.85rem;
+    overflow-wrap:anywhere;
+}
+
 .details-modal-body{
     min-height:0;
     overflow:auto;
@@ -332,6 +362,10 @@ body{
 
     .details-modal-body{
         padding:0 .75rem;
+    }
+
+    .details-meta{
+        grid-template-columns:1fr;
     }
 }
 
@@ -397,13 +431,12 @@ onclick="window.location.href='{{ url_for('inventory.stock_count_start') }}'">
 <table class="table clickable" id="historyTable">
 <thead>
 <tr>
-<th>Date</th>
-<th>Warehouse</th>
-<th>Shelf</th>
-<th>System</th>
-<th>Counted</th>
-<th>Variance</th>
-<th>Status</th>
+    <th>Warehouse</th>
+    <th>Shelf</th>
+    <th>Username</th>
+    <th>Date</th>
+    <th>Products Counted</th>
+    <th>Avg Variance</th>
 </tr>
 </thead>
 <tbody></tbody>
@@ -427,6 +460,11 @@ onclick="window.location.href='{{ url_for('inventory.stock_count_start') }}'">
 </div>
 
 <div class="details-modal-body">
+<div class="details-meta" aria-label="Stock count summary">
+<div><span>Username</span><strong id="modalUsername">N/A</strong></div>
+<div><span>Start time</span><strong id="modalStartTime">N/A</strong></div>
+<div><span>End time</span><strong id="modalEndTime">N/A</strong></div>
+</div>
 <div class="details-table-scroll">
 <table class="table details-table">
 
@@ -434,8 +472,8 @@ onclick="window.location.href='{{ url_for('inventory.stock_count_start') }}'">
 <tr>
 <th>Stock</th>
 <th>Description</th>
-<th>System</th>
-<th>Counted</th>
+<th>System Qty</th>
+<th>Counted Qty</th>
 <th>Variance</th>
 </tr>
 </thead>

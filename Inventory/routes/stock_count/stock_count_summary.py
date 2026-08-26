@@ -103,15 +103,18 @@ def stock_counts_history():
             h.InvCountCatName,
             h.InvCountStatus,
             h.InvCountTimeFinalised,
-
-            -- Totals
-            SUM(l.InvCountLineQtyOnHand) AS SystemQty,
-            SUM(ISNULL(l.InvCountLineQtyCounted, 0)) AS CountedQty,
-
-            -- New counts
+            h.InvCountUserName,
+            AVG(
+                CASE
+                    WHEN l.InvCountLineQtyOnHand = 0 THEN NULL
+                    WHEN l.InvCountLineQtyCounted IS NULL THEN NULL
+                    ELSE (l.InvCountLineQtyCounted - l.InvCountLineQtyOnHand)
+                         * 100.0
+                         / l.InvCountLineQtyOnHand
+                END
+            ) AS AvgVariancePct,
             COUNT(l.InvCountLineHeaderId) AS TotalProducts,
             COUNT(l.InvCountLineQtyCounted) AS ProductsCounted
-
         FROM [stk].InventoryCountHeaders h
         LEFT JOIN [stk].InventoryCountLines l
             ON l.InvCountLineHeaderId = h.InvCountHeaderId
@@ -124,7 +127,8 @@ def stock_counts_history():
             h.InvCountWhseCode,
             h.InvCountCatName,
             h.InvCountStatus,
-            h.InvCountTimeFinalised
+            h.InvCountTimeFinalised,
+            h.InvCountUserName
         ORDER BY h.InvCountTimeCreated DESC;
 
         """, current_user.warehouses)
@@ -138,20 +142,15 @@ def stock_counts_history():
             else:
                 date_str = str(count_date) if count_date else "N/A"
 
-            system_qty = float(r.SystemQty or 0)
-            counted_qty = float(r.CountedQty or 0)
-            variance = counted_qty - system_qty
-
             rows.append({
                 "headerId": r.InvCountHeaderId,
                 "date": date_str,
                 "warehouse": r.InvCountWhseCode,
                 "shelf": r.InvCountCatName,
-                "systemQty": system_qty,
-                "countedQty": counted_qty,
+                "username": r.InvCountUserName,
+                "avgVariancePct": float(r.AvgVariancePct) if r.AvgVariancePct is not None else None,
                 "countedProducts": r.ProductsCounted,
                 "totalProducts": r.TotalProducts,
-                "variance": variance,
                 "status": r.InvCountStatus,
                 "canContinue": r.InvCountTimeFinalised is None
             })
@@ -174,7 +173,8 @@ def stock_count_detail(header_id):
             SELECT
                 InvCountWhseCode,
                 InvCountCatName,
-                InvCountUsername,
+                InvCountUserName,
+                InvCountTimeCreated,
                 InvCountTimeFinalised
             FROM [stk].InventoryCountHeaders
             WHERE InvCountHeaderId = ?
@@ -189,9 +189,11 @@ def stock_count_detail(header_id):
                 l.InvCountLineStockId,
                 STK.StockDescription,
                 l.InvCountLineQtyOnHand,
-                l.InvCountLineQtyCounted
+                l.InvCountLineQtyCounted,
+                UOM.cUnitCode
             FROM [stk].InventoryCountLines l
             LEFT JOIN [cmn]._uvStockItems STK ON STK.StockLink = l.InvCountLineStockId
+            LEFT JOIN [cmn]._uvUOM UOM ON UOM.idUnits = l.InvCountUoMId
             WHERE l.InvCountLineHeaderId = ?
             ORDER BY STK.StockDescription
         """, (header_id,))
@@ -201,15 +203,20 @@ def stock_count_detail(header_id):
             "description": l[1],
             "system": l[2],
             "counted": l[3],
-            "variance": l[3] - l[2]
+            "unit": l[4],
+            "variance": (l[3] - l[2]) if l[3] is not None else None
         } for l in cursor.fetchall()]
+
+        def format_datetime(value):
+            return value.strftime("%Y-%m-%d %H:%M:%S") if value else "N/A"
 
         return jsonify({
             "success": True,
             "warehouse": h[0],
             "shelf": h[1],
             "counted_by": h[2],
-            "date": h[3].strftime("%Y-%m-%d") if h[3] else "N/A",
+            "start_time": format_datetime(h[3]),
+            "end_time": format_datetime(h[4]),
             "lines": lines
         })
     except Exception as e:
