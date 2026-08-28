@@ -173,6 +173,8 @@
         <th>Project / Block</th>
         <th>Variety</th>
         <th>Plant Date</th>
+        <th>Harvest Date</th>
+        <th>80% Petal Fall</th>
         <th class="num">Water/Ha</th>
         <th>People</th>
       </tr>
@@ -186,6 +188,8 @@
         </td>
         <td>{{ project.variety or "" }}</td>
         <td>{{ project.plant_date or "" }}</td>
+        <td>{{ project.harvest_date or "" }}</td>
+        <td>{{ project.petal_fall_date or "" }}</td>
         <td class="num">{{ "%.0f"|format(project.water_per_ha) }}</td>
         <td>
           {% if project.agriculturist %}<div>Agri: {{ project.agriculturist }}</div>{% endif %}

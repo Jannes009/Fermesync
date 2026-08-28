@@ -102,6 +102,8 @@ def setup():
         VA.VarietyCode,
         pa.ProjAttrHa,
         pa.ProjAttrPlantDate,
+        pa.ProjAttrHarvestDate,
+        pa.ProjAttr80PercPetalFallDate,
         pa.ProjAttrProjectManager,
         pa.ProjAttrAgriculturist,
         pa.ProjAttrBlockNo,
@@ -191,6 +193,8 @@ def add_project_attr():
         variety_id = data.get('variety_id')
         ha = data.get('ha')
         plant_date = data.get('plant_date')
+        harvest_date = data.get('harvest_date') or None
+        petal_fall_date = data.get('80_perc_petal_fall_date') or None
         project_manager = data.get('project_manager')
         agriculturist = data.get('agriculturist')
         block_no = data.get('block_no')
@@ -206,6 +210,8 @@ def add_project_attr():
         variety_id = request.form.get('variety_id')
         ha = request.form.get('ha')
         plant_date = request.form.get('plant_date')
+        harvest_date = request.form.get('harvest_date') or None
+        petal_fall_date = request.form.get('80_perc_petal_fall_date') or None
         project_manager = request.form.get('project_manager')
         agriculturist = request.form.get('agriculturist')
         block_no = request.form.get('block_no')
@@ -218,9 +224,9 @@ def add_project_attr():
     cur = conn.cursor()
     cur.execute("""
         INSERT INTO agr.ProjectAttributes
-        (ProjAttrProjectId, ProjAttrFarmId, ProjAttrWhseId, ProjAttrCropId, ProjAttrVarietyId, ProjAttrHa, ProjAttrPlantDate, ProjAttrProjectManager, ProjAttrAgriculturist, ProjAttrBlockNo, ProjAttrDefaultSprayMethodId, ProjAttrDefaultDose, ProjAttrDefaultWaterPerHa, ProjAttrDefaultWaterPerTank)
-        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-    """, project_id, farm_id, whse_id, crop_id, variety_id, ha, plant_date, project_manager, agriculturist, block_no, default_spray_method_id, default_dose, default_water_per_ha, default_water_per_tank)
+        (ProjAttrProjectId, ProjAttrFarmId, ProjAttrWhseId, ProjAttrCropId, ProjAttrVarietyId, ProjAttrHa, ProjAttrPlantDate, ProjAttrHarvestDate, ProjAttr80PercPetalFallDate, ProjAttrProjectManager, ProjAttrAgriculturist, ProjAttrBlockNo, ProjAttrDefaultSprayMethodId, ProjAttrDefaultDose, ProjAttrDefaultWaterPerHa, ProjAttrDefaultWaterPerTank)
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+    """, project_id, farm_id, whse_id, crop_id, variety_id, ha, plant_date, harvest_date, petal_fall_date, project_manager, agriculturist, block_no, default_spray_method_id, default_dose, default_water_per_ha, default_water_per_tank)
     conn.commit()
     conn.close()
 
@@ -299,6 +305,8 @@ def update_project_attr():
     variety_id = data.get('variety_id')
     ha = data.get('ha')
     plant_date = data.get('plant_date')
+    harvest_date = data.get('harvest_date') or None
+    petal_fall_date = data.get('80_perc_petal_fall_date') or None
     project_manager = (data.get('project_manager') or '').strip()
     agriculturist = (data.get('agriculturist') or '').strip()
     block_no = (data.get('block_no') or '').strip()
@@ -314,9 +322,9 @@ def update_project_attr():
     cur = conn.cursor()
     cur.execute("""
         UPDATE agr.ProjectAttributes
-        SET ProjAttrProjectId = ?, ProjAttrFarmId = ?, ProjAttrWhseId = ?, ProjAttrCropId = ?, ProjAttrVarietyId = ?, ProjAttrHa = ?, ProjAttrPlantDate = ?, ProjAttrProjectManager = ?, ProjAttrAgriculturist = ?, ProjAttrBlockNo = ?, ProjAttrDefaultSprayMethodId = ?, ProjAttrDefaultDose = ?, ProjAttrDefaultWaterPerHa = ?, ProjAttrDefaultWaterPerTank = ?
+        SET ProjAttrProjectId = ?, ProjAttrFarmId = ?, ProjAttrWhseId = ?, ProjAttrCropId = ?, ProjAttrVarietyId = ?, ProjAttrHa = ?, ProjAttrPlantDate = ?, ProjAttrHarvestDate = ?, ProjAttr80PercPetalFallDate = ?, ProjAttrProjectManager = ?, ProjAttrAgriculturist = ?, ProjAttrBlockNo = ?, ProjAttrDefaultSprayMethodId = ?, ProjAttrDefaultDose = ?, ProjAttrDefaultWaterPerHa = ?, ProjAttrDefaultWaterPerTank = ?
         WHERE IdProjAttr = ?
-    """, project_id, farm_id, whse_id, crop_id, variety_id, ha, plant_date, project_manager, agriculturist, block_no, default_spray_method_id, default_dose, default_water_per_ha, default_water_per_tank, attr_id)
+    """, project_id, farm_id, whse_id, crop_id, variety_id, ha, plant_date, harvest_date, petal_fall_date, project_manager, agriculturist, block_no, default_spray_method_id, default_dose, default_water_per_ha, default_water_per_tank, attr_id)
     conn.commit()
     conn.close()
 

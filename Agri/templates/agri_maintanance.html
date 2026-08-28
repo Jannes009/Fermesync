@@ -176,7 +176,7 @@
                 </thead>
                 <tbody>
                   {% for pa in spray_projects %}
-                  <tr class="main-row" data-entity="project_attr" data-id="{{ pa.IdProjAttr }}" data-project-id="{{ pa.ProjAttrProjectId }}" data-farm-id="{{ pa.ProjAttrFarmId }}" data-whse-id="{{ pa.ProjAttrWhseId }}" data-whse-name="{{ pa.ProjAttrWhseName }}" data-crop-id="{{ pa.ProjAttrCropId }}" data-variety-id="{{ pa.ProjAttrVarietyId }}" data-ha="{{ pa.ProjAttrHa }}" data-plant-date="{{ pa.ProjAttrPlantDate.strftime('%Y-%m-%d') if pa.ProjAttrPlantDate else '' }}" data-project-manager="{{ pa.ProjAttrProjectManager }}" data-agriculturist="{{ pa.ProjAttrAgriculturist }}" data-block-no="{{ pa.ProjAttrBlockNo }}" data-default-spray-method-id="{{ pa.ProjAttrDefaultSprayMethodId or '' }}" data-default-dose="{{ pa.ProjAttrDefaultDose or '' }}" data-default-water-per-ha="{{ pa.ProjAttrDefaultWaterPerHa or '' }}" data-default-water-per-tank="{{ pa.ProjAttrDefaultWaterPerTank or '' }}">
+                  <tr class="main-row" data-entity="project_attr" data-id="{{ pa.IdProjAttr }}" data-project-id="{{ pa.ProjAttrProjectId }}" data-farm-id="{{ pa.ProjAttrFarmId }}" data-whse-id="{{ pa.ProjAttrWhseId }}" data-whse-name="{{ pa.ProjAttrWhseName }}" data-crop-id="{{ pa.ProjAttrCropId }}" data-variety-id="{{ pa.ProjAttrVarietyId }}" data-ha="{{ pa.ProjAttrHa }}" data-plant-date="{{ pa.ProjAttrPlantDate.strftime('%Y-%m-%d') if pa.ProjAttrPlantDate else '' }}" data-harvest-date="{{ pa.ProjAttrHarvestDate.strftime('%Y-%m-%d') if pa.ProjAttrHarvestDate else '' }}" data-petal-fall-date="{{ pa.ProjAttr80PercPetalFallDate.strftime('%Y-%m-%d') if pa.ProjAttr80PercPetalFallDate else '' }}" data-project-manager="{{ pa.ProjAttrProjectManager }}" data-agriculturist="{{ pa.ProjAttrAgriculturist }}" data-block-no="{{ pa.ProjAttrBlockNo }}" data-default-spray-method-id="{{ pa.ProjAttrDefaultSprayMethodId or '' }}" data-default-dose="{{ pa.ProjAttrDefaultDose or '' }}" data-default-water-per-ha="{{ pa.ProjAttrDefaultWaterPerHa or '' }}" data-default-water-per-tank="{{ pa.ProjAttrDefaultWaterPerTank or '' }}">
                     <td>{{ pa.ProjectName }}</td>
                     <td>{{ pa.ProjAttrFarmName }}</td>
                     <td>{{ pa.CropCode }}</td>
@@ -192,6 +192,8 @@
                     <td colspan="7">
                       <div style="display:flex; gap:24px;">
                         <div><strong>Plant Date:</strong> {{ pa.ProjAttrPlantDate.strftime('%Y-%m-%d') if pa.ProjAttrPlantDate else '' }}</div>
+                        <div><strong>Harvest Date:</strong> {{ pa.ProjAttrHarvestDate.strftime('%Y-%m-%d') if pa.ProjAttrHarvestDate else '' }}</div>
+                        <div><strong>80% Petal Fall:</strong> {{ pa.ProjAttr80PercPetalFallDate.strftime('%Y-%m-%d') if pa.ProjAttr80PercPetalFallDate else '' }}</div>
                         <div><strong>Manager:</strong> {{ pa.ProjAttrProjectManager }}</div>
                         <div><strong>Agriculturist:</strong> {{ pa.ProjAttrAgriculturist }}</div>
                         <div><strong>Block:</strong> {{ pa.ProjAttrBlockNo }}</div>
@@ -332,6 +334,14 @@
           <div class="form-row">
             <label for="edit-project-attr-plant-date">Plant Date</label>
             <input type="date" id="edit-project-attr-plant-date" name="plant_date" required>
+          </div>
+          <div class="form-row">
+            <label for="edit-project-attr-harvest-date">Harvest Date</label>
+            <input type="date" id="edit-project-attr-harvest-date" name="harvest_date">
+          </div>
+          <div class="form-row">
+            <label for="edit-project-attr-petal-fall-date">80% Petal Fall Date</label>
+            <input type="date" id="edit-project-attr-petal-fall-date" name="80_perc_petal_fall_date">
           </div>
           <div class="form-row">
             <label for="edit-project-attr-manager">Project Manager</label>
@@ -550,6 +560,8 @@ document.addEventListener('DOMContentLoaded', function () {
 
       document.getElementById('edit-project-attr-ha').value = row.dataset.ha || '';
       document.getElementById('edit-project-attr-plant-date').value = row.dataset.plantDate || '';
+      document.getElementById('edit-project-attr-harvest-date').value = row.dataset.harvestDate || '';
+      document.getElementById('edit-project-attr-petal-fall-date').value = row.dataset.petalFallDate || '';
       document.getElementById('edit-project-attr-manager').value = row.dataset.projectManager || '';
       document.getElementById('edit-project-attr-agriculturist').value = row.dataset.agriculturist || '';
       document.getElementById('edit-project-attr-block-no').value = row.dataset.blockNo || '';
@@ -599,6 +611,8 @@ document.addEventListener('DOMContentLoaded', function () {
           if (draft.variety_id) $('#edit-project-attr-variety').val(draft.variety_id).trigger('change');
           if (draft.ha) document.getElementById('edit-project-attr-ha').value = draft.ha;
           if (draft.plant_date) document.getElementById('edit-project-attr-plant-date').value = draft.plant_date;
+          if (draft.harvest_date) document.getElementById('edit-project-attr-harvest-date').value = draft.harvest_date;
+          if (draft.petal_fall_date) document.getElementById('edit-project-attr-petal-fall-date').value = draft.petal_fall_date;
           if (draft.project_manager) document.getElementById('edit-project-attr-manager').value = draft.project_manager;
           if (draft.agriculturist) document.getElementById('edit-project-attr-agriculturist').value = draft.agriculturist;
           if (draft.block_no) document.getElementById('edit-project-attr-block-no').value = draft.block_no;
@@ -688,6 +702,8 @@ document.addEventListener('DOMContentLoaded', function () {
       payload.variety_id = document.getElementById('edit-project-attr-variety').value;
       payload.ha = document.getElementById('edit-project-attr-ha').value;
       payload.plant_date = document.getElementById('edit-project-attr-plant-date').value;
+      payload.harvest_date = document.getElementById('edit-project-attr-harvest-date').value || null;
+      payload['80_perc_petal_fall_date'] = document.getElementById('edit-project-attr-petal-fall-date').value || null;
       payload.project_manager = document.getElementById('edit-project-attr-manager').value.trim();
       payload.agriculturist = document.getElementById('edit-project-attr-agriculturist').value.trim();
       payload.block_no = document.getElementById('edit-project-attr-block-no').value.trim();
@@ -785,6 +801,8 @@ document.addEventListener('DOMContentLoaded', function () {
             row.dataset.varietyId = payload.variety_id;
             row.dataset.ha = payload.ha;
             row.dataset.plantDate = payload.plant_date;
+            row.dataset.harvestDate = payload.harvest_date || '';
+            row.dataset.petalFallDate = payload['80_perc_petal_fall_date'] || '';
             row.dataset.projectManager = payload.project_manager;
             row.dataset.agriculturist = payload.agriculturist;
             row.dataset.blockNo = payload.block_no;
@@ -806,6 +824,8 @@ document.addEventListener('DOMContentLoaded', function () {
               if (container) {
                 container.innerHTML = `
                   <div><strong>Plant Date:</strong> ${payload.plant_date || ''}</div>
+                  <div><strong>Harvest Date:</strong> ${payload.harvest_date || ''}</div>
+                  <div><strong>80% Petal Fall:</strong> ${payload['80_perc_petal_fall_date'] || ''}</div>
                   <div><strong>Manager:</strong> ${payload.project_manager || ''}</div>
                   <div><strong>Agriculturist:</strong> ${payload.agriculturist || ''}</div>
                   <div><strong>Block:</strong> ${payload.block_no || ''}</div>
@@ -838,6 +858,8 @@ document.addEventListener('DOMContentLoaded', function () {
         variety_id: document.getElementById('edit-project-attr-variety').value || '',
         ha: document.getElementById('edit-project-attr-ha').value || '',
         plant_date: document.getElementById('edit-project-attr-plant-date').value || '',
+        harvest_date: document.getElementById('edit-project-attr-harvest-date').value || '',
+        petal_fall_date: document.getElementById('edit-project-attr-petal-fall-date').value || '',
         project_manager: document.getElementById('edit-project-attr-manager').value || '',
         agriculturist: document.getElementById('edit-project-attr-agriculturist').value || '',
         block_no: document.getElementById('edit-project-attr-block-no').value || '',

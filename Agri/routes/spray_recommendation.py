@@ -591,7 +591,9 @@ def submit_spray_recommendation():
                 SprayPBlockNo,
                 SprayPPlantDate,
                 SprayPAgriculturist,
-                SprayPProjectManager
+                SprayPProjectManager,
+                SprayPHarvestDate,
+                SprayH80PercPetalFallDate
             )
             SELECT
                 ?,               -- SprayPSprayId
@@ -603,7 +605,9 @@ def submit_spray_recommendation():
                 ProjAttrBlockNo,
                 ProjAttrPlantDate,
                 ProjAttrAgriculturist,
-                ProjAttrProjectManager
+                ProjAttrProjectManager,
+                ProjAttrHarvestDate,
+                ProjAttr80PercPetalFallDate
             FROM agr.ProjectAttributes
             WHERE ProjAttrIsActive = 1
             AND ProjAttrProjectId = ?
