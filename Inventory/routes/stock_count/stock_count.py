@@ -150,6 +150,7 @@ def fetch_session_products(header_id):
             JOIN cmn._uvUOM UOM on UOM.idUnits = LIN.InvCountUoMId
             JOIN cmn._uvStockItems STK on STK.StockLink = LIN.InvCountLineStockId
             WHERE InvCountLineHeaderId = ?
+            ORDER BY STK.StockDescription
         """, (header_id,))
 
         rows = cursor.fetchall()

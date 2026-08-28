@@ -383,7 +383,7 @@ function displayProducts() {
                 <div class="product-desc" title="${p.product_desc}">
                     ${p.product_desc}
                 </div>
-                <input type="number" id="qty-${i}" class="qty-input" min="0" step="1" placeholder="0"
+                <input type="number" id="qty-${i}" class="qty-input" min="0" step="1" placeholder="Qty"
                 value="${p.counted_qty !== null ? p.counted_qty : ""}"
                 >
                 <div class="uom-label">${p.unit || "EA"}</div>

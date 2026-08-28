@@ -78,9 +78,15 @@ def execution_instruction_pdf(execution_id):
     
     sprays = cur.fetchall()
 
+    exec_dt = execution.SprExecDate
+    if hasattr(exec_dt, "strftime"):
+        execution_date = exec_dt.strftime("%Y-%m-%d")
+    else:
+        execution_date = str(exec_dt).split()[0] if exec_dt else ""
+
     execution_data = {
         "execution_id": execution.IdSprExec,
-        "execution_date": str(execution.SprExecDate),
+        "execution_date": execution_date,
         "responsible_person": execution.PersonName,
         "sprays": []
     }
@@ -127,6 +133,7 @@ def execution_instruction_pdf(execution_id):
             LEFT JOIN agr.ChemStock STK ON STK.IdChemStock = LIN.SprayMixLineStockId
             LEFT JOIN cmn._uvUOM UOM ON UOM.idUnits = LIN.SprayMixLineUoMId
             WHERE SME.SprayMixHeaderId = ?
+            ORDER BY SME.SprayMixNumber, EVOSTK.StockDescription
         """, spray_id)
         
         spray_lines = cur.fetchall()

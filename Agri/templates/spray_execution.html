@@ -648,7 +648,7 @@
     <!-- Execution Header -->
     <div class="card">
       <header style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1.5rem;">
-        <h1>Spray Execution #{{ execution.id }}</h1>
+        <h1>Spray Execution: {{ spray_instructions | map(attribute='description') | join(', ') }}</h1>
         <div style="display: flex; gap: 0.5rem;">
           <a href="/agri/execution/{{ execution.id }}/instruction_pdf" target="_blank" class="btn-success">Print Instructions</a>
           {% if not execution.finalised %}
@@ -778,7 +778,7 @@
           </div>
           <div class="update-instruction-actions" style="margin-top: 0.75rem; flex-wrap: wrap; align-items: center;">
             {% if execution.can_finalize and not instruction.finalised and 'SPRAY_EXEC_CREATE' in current_user.permissions %}
-              <button type="button" class="btn-success" onclick="openInstructionModal({{ instruction.id }}, '{{ instruction.spray_date or '' }}', {{ 'true' if instruction.require_date_time else 'false' }}, {{ 'true' if instruction.require_weather else 'false' }})">Finalise instruction</button>
+              <button type="button" class="btn-success" onclick="openInstructionModal({{ instruction.id }}, '{{ instruction.spray_date or '' }}', {{ 'true' if instruction.require_date_time else 'false' }}, {{ 'true' if instruction.require_weather else 'false' }})">Finalise Record</button>
             {% elif not instruction.finalised and execution.finalize_block_reason and 'SPRAY_EXEC_CREATE' in current_user.permissions %}
               <div style="color: #856404; font-size: 0.9rem;">Cannot finalise yet: {{ execution.finalize_block_reason }}</div>
             {% endif %}

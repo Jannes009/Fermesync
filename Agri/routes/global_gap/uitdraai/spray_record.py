@@ -21,13 +21,14 @@ def html_to_pdf(html: str, output_path: str):
         page.pdf(
             path=output_path,
             format="A4",
+            landscape=True,
             print_background=True,
             margin={
-                "top": "5mm",
-                "right": "5mm",
-                "bottom": "20mm",
-                "left": "5mm"
-            }
+                "top": "12mm",
+                "right": "12mm",
+                "bottom": "12mm",
+                "left": "12mm",
+            },
         )
 
         browser.close()
