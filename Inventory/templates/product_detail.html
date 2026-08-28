@@ -468,6 +468,152 @@ body { background: var(--bg-gray); }
   letter-spacing: 0.3px;
 }
 
+.chemstock-modal {
+  display: none;
+  position: fixed;
+  inset: 0;
+  align-items: center;
+  justify-content: center;
+  padding: 20px;
+  background: rgba(15, 23, 42, 0.55);
+  z-index: 2000;
+}
+
+.chemstock-dialog {
+  width: min(980px, 100%);
+  max-height: 92vh;
+  overflow: auto;
+  padding: 24px;
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  background: var(--bg-white);
+  box-shadow: 0 20px 50px rgba(15, 23, 42, 0.22);
+}
+
+.chemstock-dialog-header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 16px;
+  margin-bottom: 20px;
+  padding-bottom: 14px;
+  border-bottom: 1px solid var(--border);
+}
+
+.chemstock-dialog-header h3 {
+  margin: 0;
+  color: var(--text-primary);
+  font-size: 18px;
+}
+
+.chemstock-dialog-header p {
+  margin: 4px 0 0;
+  color: var(--text-secondary);
+  font-size: 12px;
+}
+
+.chemstock-form-section {
+  margin-bottom: 20px;
+}
+
+.chemstock-section-heading {
+  margin: 0 0 10px;
+  color: var(--text-primary);
+  font-size: 13px;
+  font-weight: 700;
+}
+
+.chemstock-form-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 14px 16px;
+}
+
+.chemstock-field {
+  display: flex;
+  min-width: 0;
+  flex-direction: column;
+  gap: 5px;
+}
+
+.chemstock-field label {
+  color: var(--text-secondary);
+  font-size: 11px;
+  font-weight: 700;
+}
+
+.chemstock-control,
+.crop-row select,
+.crop-row input {
+  width: 100%;
+  min-height: 38px;
+  padding: 8px 10px;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  background: var(--bg-white);
+  color: var(--text-primary);
+  font-size: 13px;
+}
+
+.chemstock-control:focus,
+.crop-row select:focus,
+.crop-row input:focus {
+  outline: none;
+  border-color: var(--primary);
+  box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.12);
+}
+
+.chemstock-crops-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 10px;
+}
+
+.chemstock-crops-header .btn-ghost {
+  padding: 7px 10px;
+  border-radius: 6px;
+  font-size: 12px;
+}
+
+.chemstock-crop-list {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.crop-row {
+  display: grid;
+  grid-template-columns: 2fr 1fr 140px 1fr 1fr auto;
+  gap: 10px;
+  align-items: end;
+  padding: 12px;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  background: var(--bg-gray);
+}
+
+.crop-row .btn-ghost {
+  min-height: 38px;
+  padding: 8px 10px;
+  border-radius: 6px;
+  font-size: 12px;
+}
+
+.chemstock-dialog-footer {
+  display: flex;
+  justify-content: flex-end;
+  gap: 10px;
+  margin-top: 22px;
+  padding-top: 16px;
+  border-top: 1px solid var(--border);
+}
+
+.chemstock-dialog-footer button {
+  min-height: 38px;
+}
+
 @media (max-width: 768px) {
   .erp-header,
   .tab-panel { padding: 12px; }
@@ -476,10 +622,20 @@ body { background: var(--bg-gray); }
   .filters { grid-template-columns: 1fr; }
   .header-content { flex-direction: column; align-items: stretch; }
   .warehouse-selector select { width: 100%; min-width: 0; }
+  .chemstock-dialog { padding: 18px; }
+  .crop-row { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .crop-row > div:first-child { grid-column: span 2; }
 }
 
 @media (max-width: 480px) {
   .stat-grid { grid-template-columns: 1fr; }
+  .chemstock-modal { padding: 10px; }
+  .chemstock-dialog { padding: 14px; }
+  .chemstock-form-grid,
+  .crop-row { grid-template-columns: 1fr; }
+  .crop-row > div:first-child { grid-column: auto; }
+  .chemstock-dialog-footer { flex-direction: column-reverse; }
+  .chemstock-dialog-footer button { width: 100%; }
 }
 </style>
 
@@ -827,30 +983,38 @@ body { background: var(--bg-gray); }
       </div>
 
       <!-- Edit Modal -->
-      <div id="edit-chemstock-modal" style="display:none; position:fixed; inset:0; background:rgba(0,0,0,0.45); align-items:center; justify-content:center; z-index:2000;">
-        <div style="background:var(--bg-white); padding:18px; border-radius:8px; width:min(920px, 96%); max-height:90vh; overflow:auto; box-shadow:0 8px 24px rgba(0,0,0,0.2);">
-          <h3 style="margin:0 0 8px 0;">Edit Chemstock</h3>
-          <div style="display:flex; flex-direction:column; gap:12px;">
-            <div style="display:grid; grid-template-columns:1fr 1fr; gap:12px;">
-              <div>
-                <label style="display:block; font-weight:600; margin-bottom:6px;">Active Ingredient</label>
-                <select id="edit-active" style="width:100%; padding:8px; border:1px solid var(--border); border-radius:6px;"></select>
-              </div>
-              <div>
-                <label style="display:block; font-weight:600; margin-bottom:6px;">Colour Code</label>
-                <select id="edit-colour" style="width:100%; padding:8px; border:1px solid var(--border); border-radius:6px;"></select>
-              </div>
-            </div>
-
+      <div id="edit-chemstock-modal" class="chemstock-modal">
+        <div class="chemstock-dialog">
+          <div class="chemstock-dialog-header">
             <div>
-              <div style="display:flex; justify-content:space-between; align-items:center;">
-                <strong>Crops</strong>
+              <h3>Edit ChemStock</h3>
+              <p>Maintain product registration and crop-specific spray information.</p>
+            </div>
+          </div>
+          <div>
+            <section class="chemstock-form-section">
+              <h4 class="chemstock-section-heading">Product registration</h4>
+              <div class="chemstock-form-grid">
+                <div class="chemstock-field">
+                  <label for="edit-active">Active Ingredient</label>
+                  <select id="edit-active" class="chemstock-control"></select>
+                </div>
+                <div class="chemstock-field">
+                  <label for="edit-colour">Colour Code</label>
+                  <select id="edit-colour" class="chemstock-control"></select>
+                </div>
+              </div>
+            </section>
+
+            <section class="chemstock-form-section">
+              <div class="chemstock-crops-header">
+                <h4 class="chemstock-section-heading" style="margin:0;">Crop registrations</h4>
                 <button id="add-crop-row" class="btn-ghost">Add Crop</button>
               </div>
-              <div id="crop-rows" style="margin-top:8px; display:flex; flex-direction:column; gap:8px;"></div>
-            </div>
+              <div id="crop-rows" class="chemstock-crop-list"></div>
+            </section>
 
-            <div style="display:flex; gap:8px; justify-content:flex-end; margin-top:6px;">
+            <div class="chemstock-dialog-footer">
               <button id="cancel-edit-chemstock" class="btn-action secondary">Cancel</button>
               <button id="save-edit-chemstock" class="btn-action primary">Save</button>
             </div>

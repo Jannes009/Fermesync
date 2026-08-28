@@ -15,9 +15,18 @@ document.addEventListener('DOMContentLoaded', () => {
   function createCropRow(crop) {
     const row = document.createElement('div');
     row.className = 'crop-row';
-    row.style.display = 'grid';
-    row.style.gridTemplateColumns = '2fr 1fr 140px 1fr auto';
-    row.style.gap = '8px';
+
+    function field(labelText, control) {
+      const wrapper = document.createElement('div');
+      wrapper.className = 'chemstock-field';
+      const label = document.createElement('label');
+      label.className = 'chemstock-field-label';
+      label.textContent = labelText;
+      control.classList.add('chemstock-control');
+      wrapper.appendChild(label);
+      wrapper.appendChild(control);
+      return wrapper;
+    }
 
     // Crop select
     const cropSelect = document.createElement('select');
@@ -73,16 +82,28 @@ document.addEventListener('DOMContentLoaded', () => {
     funcInput.style.borderRadius = '6px';
     funcInput.value = crop?.Function || '';
 
+    // Withholding period input
+    const withholdingInput = document.createElement('input');
+    withholdingInput.type = 'number';
+    withholdingInput.min = '0';
+    withholdingInput.step = '1';
+    withholdingInput.placeholder = 'Days';
+    withholdingInput.style.padding = '8px';
+    withholdingInput.style.border = '1px solid var(--border)';
+    withholdingInput.style.borderRadius = '6px';
+    withholdingInput.value = crop?.WithholdingPeriod === '-' ? '' : (crop?.WithholdingPeriod || '');
+
     const removeBtn = document.createElement('button');
     removeBtn.type = 'button';
     removeBtn.className = 'btn-ghost';
     removeBtn.textContent = 'Remove';
     removeBtn.addEventListener('click', () => row.remove());
 
-    row.appendChild(cropSelect);
-    row.appendChild(regInput);
-    row.appendChild(typeSelect);
-    row.appendChild(funcInput);
+    row.appendChild(field('Crop', cropSelect));
+    row.appendChild(field('Registration No.', regInput));
+    row.appendChild(field('Type', typeSelect));
+    row.appendChild(field('Function', funcInput));
+    row.appendChild(field('Withholding (days)', withholdingInput));
     row.appendChild(removeBtn);
 
     return row;
@@ -132,10 +153,6 @@ document.addEventListener('DOMContentLoaded', () => {
       cropRows.innerHTML = '';
       (CHEMSTOCK.Crops || []).forEach(c => cropRows.appendChild(createCropRow(c)));
       modal.style.display = 'flex';
-
-      // enhance styling (small but visible) and add 'add active ingredient' button next to active select
-      inputActive.style.minWidth = '240px';
-      inputActive.style.marginRight = '8px';
 
       // create add button if not present
       if (!document.getElementById('add-active-btn')) {
@@ -230,8 +247,9 @@ document.addEventListener('DOMContentLoaded', () => {
       const reg = inputs[0]?.value.trim() || '';
       const type = selects[1]?.value || '';
       const func = inputs[1]?.value?.trim() || '';
+      const withholding = inputs[2]?.value.trim() || '';
       if (!cropVal && !reg) continue;
-      payload.crops.push({ crop: cropVal, reg_number: reg, type: type, function: func });
+      payload.crops.push({ crop: cropVal, reg_number: reg, type: type, function: func, withholding: withholding });
     }
 
     try {
