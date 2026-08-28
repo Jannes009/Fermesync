@@ -9,6 +9,8 @@ const orderTax = document.getElementById('order-tax');
 const orderTotal = document.getElementById('order-total');
 
 let products = [];
+let productLoadRequest = 0;
+let isSavingOrder = false;
 
 const formatCurrency = value => {
     return 'R ' + Number(value || 0).toLocaleString(undefined, {
@@ -228,6 +230,22 @@ const resetRowFields = () => {
     updateTotals();
 };
 
+const updateProductFieldState = () => {
+    const placeholder =
+        !supplierField.getValue()
+            ? 'Select supplier first'
+            : !warehouseField.getValue()
+                ? 'Select warehouse first'
+                : 'Search product';
+
+    Array.from(linesBody.querySelectorAll('.line-row')).forEach(row => {
+        const itemField = row.itemField;
+        if (!itemField) return;
+        itemField.setPlaceholder(placeholder);
+        itemField.setDisabled(!supplierField.getValue() || !warehouseField.getValue() || !products.length);
+    });
+};
+
 const loadSuppliers = async () => {
     const data = await fetchJson('/inventory/purchase_order/suppliers');
     if (!data.success) {
@@ -409,12 +427,14 @@ const warehouseField = createSelect2Field(
 });
 
 const loadProducts = async () => {
+    const requestId = ++productLoadRequest;
     const supplierId = supplierField.getValue();
     const warehouseId = warehouseField.getValue();
 
     if (!supplierId || !warehouseId) {
         products = [];
         resetRowFields();
+        updateProductFieldState();
         return;
     }
 
@@ -424,13 +444,17 @@ const loadProducts = async () => {
         throw new Error(data.message || 'Failed to load products');
     }
 
+    if (requestId !== productLoadRequest) return;
     products = data.products || [];
     resetRowFields();
+    updateProductFieldState();
     console.log('Loaded products', products);
 };
 addLineBtn.addEventListener('click', () => addLine());
 
 saveBtn.addEventListener('click', () => {
+    if (isSavingOrder) return;
+
     const supplierId = supplierField.getValue();
     const warehouseId = warehouseField.getValue();
     const description = descriptionInput.value.trim();
@@ -506,6 +530,10 @@ saveBtn.addEventListener('click', () => {
         return;
     }
 
+    isSavingOrder = true;
+    saveBtn.disabled = true;
+    saveBtn.textContent = 'Saving...';
+
     const order = {
         supplier_id: supplierId,
         supplier_name: supplierField.getSelected()?.label || '',
@@ -535,12 +563,25 @@ saveBtn.addEventListener('click', () => {
                     window.location.href = `/inventory/create_purchase_order`;
                 });
           } else {
+              isSavingOrder = false;
+              saveBtn.disabled = false;
+              saveBtn.textContent = 'Save Purchase Order';
               Swal.fire({
                   icon: 'error',
                   title: 'Failed to Create Purchase Order',
                   text: data.message || 'An error occurred while creating the purchase order.'
               });
           }
+      })
+      .catch(error => {
+          isSavingOrder = false;
+          saveBtn.disabled = false;
+          saveBtn.textContent = 'Save Purchase Order';
+          Swal.fire({
+              icon: 'error',
+              title: 'Failed to Create Purchase Order',
+              text: error.message || 'An error occurred while creating the purchase order.'
+          });
       });
 });
 
@@ -548,6 +589,7 @@ window.addEventListener('DOMContentLoaded', async () => {
     try {
         await Promise.all([loadSuppliers(), loadWarehouses()]);
         addLine(false);
+        updateProductFieldState();
         updateAddLineState();
     } catch (err) {
         Swal.fire({
