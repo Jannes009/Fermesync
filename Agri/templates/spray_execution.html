@@ -675,7 +675,7 @@
                 <div class="header-item">
           <div class="header-label">Responsible Person</div>
           <div class="header-value" id="responsible-person-display">{{ execution.responsible_person or 'Not assigned' }}</div>
-          {% if not execution.finalised and 'SPRAY_EXEC_CREATE' in current_user.permissions %}
+          {% if not execution.finalised and 'SPRAY_EXEC_FINALISE' in current_user.permissions %}
           <div style="margin-top: 0.75rem;">
             <button type="button" class="btn-secondary" onclick="openResponsiblePersonModal()">Assign / Edit</button>
           </div>
@@ -777,9 +777,9 @@
             </div>
           </div>
           <div class="update-instruction-actions" style="margin-top: 0.75rem; flex-wrap: wrap; align-items: center;">
-            {% if execution.can_finalize and not instruction.finalised and 'SPRAY_EXEC_CREATE' in current_user.permissions %}
+            {% if execution.can_finalize and not instruction.finalised and 'SPRAY_EXEC_FINALISE' in current_user.permissions %}
               <button type="button" class="btn-success" onclick="openInstructionModal({{ instruction.id }}, '{{ instruction.spray_date or '' }}', {{ 'true' if instruction.require_date_time else 'false' }}, {{ 'true' if instruction.require_weather else 'false' }})">Finalise Record</button>
-            {% elif not instruction.finalised and execution.finalize_block_reason and 'SPRAY_EXEC_CREATE' in current_user.permissions %}
+            {% elif not instruction.finalised and execution.finalize_block_reason and 'SPRAY_EXEC_FINALISE' in current_user.permissions %}
               <div style="color: #856404; font-size: 0.9rem;">Cannot finalise yet: {{ execution.finalize_block_reason }}</div>
             {% endif %}
             <button type="button" class="btn-secondary" onclick="window.location.href='/agri/spray/{{ instruction.id }}'">View details</button>
