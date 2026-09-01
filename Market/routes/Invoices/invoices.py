@@ -193,7 +193,7 @@ def submit_invoice():
         cursor.execute(query, (
             headerId, line['salesLineId'],
         ))
-    conn.commit()
+        
     # create invoice
     cursor.execute("EXEC [mkt].[SIGCreateSalesOrder]")
     cursor.execute("""
