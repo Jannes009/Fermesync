@@ -389,7 +389,7 @@ def get_issue_details(issue_id):
 @agri_bp.route("/execution/responsible-persons/<int:execution_id>", methods=["GET"])
 @login_required
 def get_responsible_persons(execution_id):
-    if "SPRAY_EXEC_CREATE" not in current_user.permissions and "SPRAY_EXEC_VIEW" not in current_user.permissions:
+    if "SPRAY_EXEC_FINALISE" not in current_user.permissions and "SPRAY_EXEC_VIEW" not in current_user.permissions:
         abort(403)
     
     conn = create_db_connection()
@@ -416,7 +416,7 @@ def get_responsible_persons(execution_id):
 @agri_bp.route("/execution/<int:execution_id>/update_responsible_person", methods=["POST"])
 @login_required
 def update_responsible_person(execution_id):
-    if "SPRAY_EXEC_CREATE" not in current_user.permissions:
+    if "SPRAY_EXEC_FINALISE" not in current_user.permissions:
         abort(403)
 
     conn = create_db_connection()
@@ -464,7 +464,7 @@ def update_responsible_person(execution_id):
 @agri_bp.route("/execution/<int:execution_id>/finalize", methods=["POST"])
 @login_required
 def finalize_execution(execution_id):
-    if "SPRAY_EXEC_CREATE" not in current_user.permissions:
+    if "SPRAY_EXEC_FINALISE" not in current_user.permissions:
         abort(403)
 
     conn = create_db_connection()
@@ -520,7 +520,7 @@ def finalize_execution(execution_id):
 @agri_bp.route("/execution/<int:execution_id>/update_instruction/<int:instruction_id>", methods=["POST"])
 @login_required
 def update_instruction(execution_id, instruction_id):
-    if "SPRAY_EXEC_CREATE" not in current_user.permissions:
+    if "SPRAY_EXEC_FINALISE" not in current_user.permissions:
         abort(403)
     conn = create_db_connection()
     cur = conn.cursor()

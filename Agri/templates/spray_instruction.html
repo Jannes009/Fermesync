@@ -456,10 +456,12 @@ async function renderHeader() {
         return;
     }
 
-    const method = await fetchMethod(header.method_id);
+    const method = header.method_name;
+    const methods = await fetchMethods(sprayId);
 
     sprayData = sprayData || {};
     sprayData.header = header;
+    sprayData.methods = methods;
     doseBasis = header.dose_basis;
 
     console.log(sprayData, method);
@@ -486,6 +488,7 @@ async function renderHeader() {
                 <div class="meta-pill"><strong>Recommended</strong><span>${escapeHtml(header.spray_date || 'N/A')}</span></div>
                 <div class="meta-pill"><strong>Warehouse</strong><span>${escapeHtml(header.warehouse ? header.warehouse.name : 'N/A')}</span></div>
                 <div class="meta-pill"><strong>Week</strong><span>${escapeHtml(header.spray_week || 'N/A')}</span></div>
+                <div class="meta-pill"><strong>Weather</strong><span>${escapeHtml(header.weather || 'N/A')}</span></div>
                 <div class="meta-pill"><strong>Start</strong><span>${escapeHtml(startDate)}</span></div>
                 <div class="meta-pill"><strong>End</strong><span>${escapeHtml(endDate)}</span></div>
             </div>
@@ -494,35 +497,116 @@ async function renderHeader() {
     `;
     document.getElementById("page-title").innerHTML = pageTitle;
 
+    const doseModeValue = header.dose_basis || 'PER_100L';
+    const methodOptions = methods.map(m => `
+        <option value="${m.id}" ${String(m.id) === String(header.method_id || '') ? 'selected' : ''}>${escapeHtml(m.method_name || 'Unnamed method')}</option>
+    `).join('');
+
+    const projectWaterFields = (header.projects || []).map((project, index) => `
+        <div class="form-group">
+            <label>${escapeHtml(project.project_code || `Project ${index + 1}`)}</label>
+            <div class="form-grid" style="grid-template-columns:repeat(2,minmax(160px,1fr));">
+                <div class="form-group" style="margin-bottom:0;">
+                    <label style="font-size:0.75rem; text-transform:uppercase; letter-spacing:0.04em;">Water / Ha</label>
+                    <input type="number" step="0.01" inputmode="decimal" data-project-water-index="${index}" id="project-water-ha-${index}" value="${project.water_per_ha != null ? String(project.water_per_ha) : ''}" oninput="syncProjectEditorState()">
+                </div>
+                <div class="form-group" style="margin-bottom:0;">
+                    <label style="font-size:0.75rem; text-transform:uppercase; letter-spacing:0.04em;">Total Water</label>
+                    <input type="number" step="0.01" inputmode="decimal" data-project-total-water-index="${index}" id="project-total-water-${index}" value="${project.total_water != null ? String(project.total_water) : ''}" oninput="syncProjectEditorState()">
+                </div>
+            </div>
+        </div>
+    `).join('');
+
     let projectsSection = '';
     if (header.projects && header.projects.length > 0) {
         const projectRows = header.projects.map(p => {
             let row = `<tr><td>${escapeHtml(p.project_code || '')}</td><td>${Number(p.ha || 0).toFixed(2)}</td>`;
-            if (doseBasis === 'PER_100L') {
+            if (doseModeValue === 'PER_100L') {
                 row += `<td>${p.water_per_ha != null ? p.water_per_ha.toFixed(2) + ' L' : 'N/A'}</td><td>${p.total_water != null ? p.total_water.toFixed(2) + ' L' : 'N/A'}</td>`;
             }
             row += '</tr>';
             return row;
         }).join('');
 
-        const waterHeaders = doseBasis === 'PER_100L' ? '<th>Water / Ha</th><th>Total Water</th>' : '';
-        const methodDisplay = method ? `<div style="margin-bottom:1rem; padding-bottom:1rem; border-bottom:1px solid #eee;"><strong>Method:</strong> ${escapeHtml(method.method_name || '')} | <strong>Water per Tank:</strong> ${header.water_per_tank != null ? header.water_per_tank.toFixed(2) + ' L' : 'N/A'}</div>` : '';
-        const headerWaterInfo = `<div style="margin-bottom:1rem; padding-bottom:1rem; border-bottom:1px solid #eee;"><strong>Water / Ha:</strong> ${header.water_per_ha != null ? header.water_per_ha.toFixed(2) + ' L' : 'N/A'} | <strong>Total Water:</strong> ${header.total_water != null ? header.total_water.toFixed(2) + ' L' : 'N/A'}</div>`;
+        const waterHeaders = doseModeValue === 'PER_100L' ? '<th>Water / Ha</th><th>Total Water</th>' : '';
+
+        const projectEditor = editModes.projects ? `
+            <div class="form-grid" style="padding-top:0.5rem;">
+                <div class="form-group" style="grid-column:1 / -1;">
+                    <label>Dose Basis</label>
+                    <div class="form-grid" style="grid-template-columns:repeat(auto-fit,minmax(180px,1fr)); gap:0.75rem;">
+                        <label style="display:flex;align-items:center;gap:0.5rem;padding:0.75rem 0.8rem;border:1px solid #e5e7eb;border-radius:10px;background:#f9fafb;">
+                            <input type="radio" name="edit-project-dose-basis" value="PER_100L" ${doseModeValue === 'PER_100L' ? 'checked' : ''} onchange="syncProjectEditorState()">
+                            <span>Per 100L</span>
+                        </label>
+                        <label style="display:flex;align-items:center;gap:0.5rem;padding:0.75rem 0.8rem;border:1px solid #e5e7eb;border-radius:10px;background:#f9fafb;">
+                            <input type="radio" name="edit-project-dose-basis" value="PER_HA" ${doseModeValue === 'PER_HA' ? 'checked' : ''} onchange="syncProjectEditorState()">
+                            <span>Per Ha (Mix)</span>
+                        </label>
+                        <label style="display:flex;align-items:center;gap:0.5rem;padding:0.75rem 0.8rem;border:1px solid #e5e7eb;border-radius:10px;background:#f9fafb;">
+                            <input type="radio" name="edit-project-dose-basis" value="PER_HA_DIRECT" ${doseModeValue === 'PER_HA_DIRECT' ? 'checked' : ''} onchange="syncProjectEditorState()">
+                            <span>Per Ha (Direct)</span>
+                        </label>
+                    </div>
+                </div>
+                <div class="form-group" id="project-water-editor" style="grid-column:1 / -1; ${doseModeValue === 'PER_100L' ? '' : 'display:none;'}">
+                    <label>Water by Project</label>
+                    <div class="form-grid" style="grid-template-columns:repeat(auto-fit,minmax(220px,1fr)); gap:0.75rem;">
+                        ${projectWaterFields || '<div class="no-data" style="padding:1rem 0;">No projects linked to this spray instruction.</div>'}
+                    </div>
+                </div>
+                <div class="form-group" id="project-global-water-editor" style="grid-column:1 / -1; ${doseModeValue === 'PER_HA' ? '' : 'display:none;'}">
+                    <label>Global Water Settings</label>
+                    <div class="form-grid" style="grid-template-columns:repeat(auto-fit,minmax(180px,1fr));">
+                        <div class="form-group" style="margin-bottom:0;">
+                            <label>Water / Tank</label>
+                            <input type="number" step="0.01" inputmode="decimal" id="project-global-water-per-tank" value="${header.water_per_tank != null ? String(header.water_per_tank) : ''}" oninput="syncProjectEditorState()">
+                        </div>
+                        <div class="form-group" style="margin-bottom:0;">
+                            <label>Water / Ha</label>
+                            <input type="number" step="0.01" inputmode="decimal" id="project-global-water-per-ha" value="${header.water_per_ha != null ? String(header.water_per_ha) : ''}" oninput="syncProjectEditorState()">
+                        </div>
+                        <div class="form-group" style="margin-bottom:0;">
+                            <label>Total Water</label>
+                            <input type="number" step="0.01" inputmode="decimal" id="project-global-total-water" value="${header.total_water != null ? String(header.total_water) : ''}" oninput="syncProjectEditorState()">
+                        </div>
+                    </div>
+                </div>
+                <div class="form-group" id="project-global-water-editor-100l" style="grid-column:1 / -1; ${doseModeValue === 'PER_100L' ? '' : 'display:none;'}">
+                    <label>Global Water Settings</label>
+                    <div class="form-grid" style="grid-template-columns:repeat(auto-fit,minmax(180px,1fr));">
+                        <div class="form-group" style="margin-bottom:0;">
+                            <label>Water / Tank</label>
+                            <input type="number" step="0.01" inputmode="decimal" id="project-global-water-per-tank-100l" value="${header.water_per_tank != null ? String(header.water_per_tank) : ''}" oninput="syncProjectEditorState()">
+                        </div>
+                    </div>
+                </div>
+                <div class="edit-actions" style="margin-top:0.5rem;">
+                    <button class="save-btn" onclick="saveProjectsEdit()">Save Projects</button>
+                    <button class="cancel-btn" onclick="cancelProjectsEdit()">Cancel</button>
+                </div>
+            </div>
+        ` : `
+            <div class="summary-grid">
+                <div class="summary-item"><strong>Dose Basis</strong><span>${escapeHtml(doseModeValue || 'N/A')}</span></div>
+                <div class="summary-item"><strong>Water / Tank</strong><span>${header.water_per_tank != null ? header.water_per_tank.toFixed(2) + ' L' : (doseModeValue === 'PER_100L' ? 'N/A' : '—')}</span></div>
+                <div class="summary-item"><strong>Water / Ha</strong><span>${header.water_per_ha != null ? header.water_per_ha.toFixed(2) + ' L' : (doseModeValue === 'PER_HA' ? 'N/A' : '—')}</span></div>
+                <div class="summary-item"><strong>Total Water</strong><span>${header.total_water != null ? header.total_water.toFixed(2) + ' L' : (doseModeValue === 'PER_100L' || doseModeValue === 'PER_HA' ? 'N/A' : '—')}</span></div>
+            </div>
+        `;
+
+        const canEditProjects = canEdit && !header.issues_exist && !header.finalised;
 
         projectsSection = `
             <div class="section-card">
                 <div class="section-header">
                     <span>Projects</span>
-                    <span>${header.projects.length} project(s)</span>
+                    ${canEditProjects ? `<button class="edit-btn" onclick="toggleEditMode('projects')">${editModes.projects ? 'Cancel' : 'Edit Projects'}</button>` : ''}
                 </div>
                 <div class="section-body">
-                    <div class="summary-grid">
-                        <div class="summary-item"><strong>Spray Method</strong><span>${escapeHtml(method ? method.method_name : 'N/A')}</span></div>
-                        <div class="summary-item"><strong>Water / Ha</strong><span>${header.water_per_ha != null ? header.water_per_ha.toFixed(2) + ' L' : 'N/A'}</span></div>
-                        <div class="summary-item"><strong>Total Water</strong><span>${header.total_water != null ? header.total_water.toFixed(2) + ' L' : 'N/A'}</span></div>
-                        <div class="summary-item"><strong>Water / Tank</strong><span>${header.water_per_tank != null ? header.water_per_tank.toFixed(2) + ' L' : 'N/A'}</span></div>
-                    </div>
-                    <div class="table-wrap">
+                    ${projectEditor}
+                    <div class="table-wrap" style="margin-top:1rem;">
                         <table style="margin-bottom:0;">
                             <thead>
                                 <tr><th>Project</th><th>Hectares</th>${waterHeaders}</tr>
@@ -552,18 +636,25 @@ async function renderHeader() {
                     <input type="text" id="edit-week" value="${header.spray_week || ''}" readonly>
                 </div>
                 <div class="form-group">
+                    <label>Method</label>
+                    <select id="edit-method-id" class="form-control">
+                        <option value="">Select a method</option>
+                        ${methodOptions}
+                    </select>
+                </div>
+                <div class="form-group" style="grid-column:1 / -1;">
                     <label>Scouting</label>
                     <textarea id="edit-scouting" maxlength="100" class="form-control">${header.scouting || ''}</textarea>
                 </div>
             </div>
             <div class="edit-actions">
-                <button class="save-btn" onclick="saveHeaderEdit()">Save</button>
+                <button class="save-btn" onclick="saveHeaderEdit()">Save Details</button>
                 <button class="cancel-btn" onclick="cancelHeaderEdit()">Cancel</button>
             </div>
         ` : `
             <div class="info-list">
                 <div class="info-row"><strong>Description</strong><div class="info-value">${escapeHtml(header.spray_description || 'No description')}</div></div>
-                <div class="info-row"><strong>Weather</strong><div class="info-value">${escapeHtml(header.weather || 'N/A')}</div></div>
+                <div class="info-row"><strong>Method</strong><div class="info-value">${escapeHtml(method ? method : 'N/A')}</div></div>
                 <div class="info-row"><strong>Scouting</strong><div class="info-value scouting-text">${escapeHtml(header.scouting || 'No scouting notes')}</div></div>
             </div>
         `;
@@ -583,7 +674,7 @@ async function renderHeader() {
         <div class="section-card">
             <div class="section-header" id="header-section-header">
                 <span>Basic Details</span>
-                ${canEdit ? `<button class="edit-btn" onclick="toggleEditMode('header')">${editModes.header ? 'Cancel' : 'Edit'}</button>` : ''}
+                ${canEdit ? `<button class="edit-btn" onclick="toggleEditMode('header')">${editModes.header ? 'Cancel' : 'Edit Details'}</button>` : ''}
             </div>
             <div class="section-body" id="header-section-content">
                 ${headerEditBody}
@@ -594,6 +685,9 @@ async function renderHeader() {
 
     document.getElementById("spray-header").innerHTML = html;
     document.getElementById("spray-projects").innerHTML = projectsSection;
+    if (editModes.projects) {
+        syncProjectEditorState();
+    }
 }
 
 function formatDateTime(value) {
@@ -618,111 +712,6 @@ function applyPageThemeColor(colorHex) {
             if (body) body.style.backgroundColor = '';
         }
     }
-}
-
-async function renderLines() {
-    sprayData = sprayData || {};
-    let lines;
-    if (editModes.lines && sprayData.lines) {
-        lines = sprayData.lines;
-    } else {
-        linesData = await fetchLines(sprayId);
-        if (!linesData.success) {
-            document.getElementById("spray-lines").innerHTML = `<div class='no-data'>Error loading spray lines: ${linesData.message || 'Unknown error'}</div>`;
-            return;
-        }
-        sprayData.lines = linesData.lines;
-        lines = sprayData.lines;
-        console.log("Fetched lines:", linesData);
-    }
-
-    if (!lines || lines.length === 0) {
-        document.getElementById("spray-lines").innerHTML =
-            "<div class='no-data'>No spray lines found.</div>";
-        return;
-    }
-    const qtyColumnText = doseBasis === 'PER_100L' ? "Qty / 100L" : "Qty / Ha";
-    const editModeClass = editModes.lines ? 'edit-mode' : '';
-    let productOptions = [];
-    if (editModes.lines) {
-        productOptions = await fetchProductsOptions(sprayId);
-    }
-
-    const productHeader = editModes.lines ? '<th colspan="2">Product</th>' : '<th>Stock Description</th><th>Active Ingredient</th>';
-    let html = `
-        <div class="section-card">
-            <div class="section-header ${editModeClass}">
-                <span>Spray Products</span>
-                <div>
-                    ${editModes.lines ? `<button class="save-btn" onclick="saveLinesEdit()">Save</button><button class="cancel-btn" onclick="cancelLinesEdit()">Cancel</button><button class="add-btn" onclick="addLine()">Add Line</button>` : (sprayData.header.issues_exist || !canEdit ? '' : `<button class="edit-btn" onclick="toggleEditMode('lines')">Edit</button>`) }
-                </div>
-            </div>
-            <div class="section-body">
-                <div class="table-wrap">
-                    <table>
-                        <thead>
-                            <tr>
-                                ${productHeader}
-                                <th>${qtyColumnText}</th>
-                                <th>Total Qty</th>
-                                ${editModes.lines ? '<th></th>' : ''}
-                            </tr>
-                        </thead>
-                        <tbody id="lines-tbody">
-    `;
-
-    lines.forEach((line, idx) => {
-        const qty = doseBasis === 'PER_100L' ? line.qty_per_100l : line.qty_per_ha;
-        const qtyDisplay = qty !== null ? qty : 0;
-        const totalQtyDisplay = line.total_qty !== null ? Number(line.total_qty).toFixed(2) : '';
-        console.log(line.stock_description, typeof line.stock_id);
-
-        if (editModes.lines) {
-            const options = productOptions.map(product => {
-                const ai = escapeHtml(product.active_ingredient || '');
-                const desc = escapeHtml(product.stock_description || '');
-                const qtyOnHand = product.qty_on_hand !== null ? parseFloat(product.qty_on_hand).toFixed(2) : '0.00';
-                const unit = product.stocking_uom_code || '';
-                return `<option value="${product.stock_link}" ${product.stock_link === parseInt(line.stock_id) ? 'selected' : ''} data-active-ingredient="${ai}" data-stock-description="${desc}" data-uom-id="${product.stocking_uom_id || ''}" data-uom-code="${escapeHtml(unit)}">${ai} - ${desc} (Available: ${qtyOnHand} ${unit})</option>`;
-            }).join('');
-            html += `
-                <tr data-line-idx="${idx}">
-                    <td colspan="2">
-                        <select class="line-product-select" data-line-idx="${idx}" onchange="handleLineProductChange(${idx})">
-                            <option value="">Select product</option>
-                            ${options}
-                        </select>
-                    </td>
-                    <td><input type="number" class="line-qty-input" data-line-idx="${idx}" value="${qtyDisplay}" step="0.01" oninput="handleLineQtyChange(${idx})"></td>
-                    <td><input type="number" class="line-total-qty-input" data-line-idx="${idx}" value="${totalQtyDisplay}" step="0.01" oninput="handleLineTotalQtyChange(${idx})"></td>
-                    <td><button class="remove-btn" onclick="removeLine(${idx})">Remove</button></td>
-                </tr>
-            `;
-        } else {
-            html += `
-                <tr>
-                    <td>${line.stock_description || '-'}</td>
-                    <td>${line.active_ingredient || '-'}</td>
-                    <td>${qty !== null ? `${qty.toFixed(2)} ${line.uom || ''}` : '-'}</td>
-                    <td>${totalQtyDisplay}</td>
-                </tr>
-            `;
-        }
-    });
-
-    html += `
-                        </tbody>
-                    </table>
-                </div>
-            </div>
-        </div>
-    `;
-
-    document.getElementById("spray-lines").innerHTML = html;
-    if (editModes.lines) {
-        initLineSelects();
-    }
-    await renderMix();
 }
 
 function initLineSelects() {
@@ -964,81 +953,6 @@ async function cancelLinesEdit() {
     renderLines();
 }
 
-async function renderMix(forceFetch = false) {
-    sprayData = sprayData || {};
-    let lines = sprayData.mixLines;
-    if (forceFetch || !lines) {
-        lines = await fetchMixLines(sprayId);
-        if (!lines) return;
-        sprayData.mixLines = lines;
-    }
-
-    const mixContainer = document.getElementById("spray-mixes");
-    if (!mixContainer) return;
-
-    if (!lines || lines.length === 0) {
-        mixContainer.innerHTML = `
-            <div class="section-card">
-                <div class="section-header"><span>Mix Plan</span></div>
-                <div class="section-body"><div class='no-data'>No spray lines found.</div></div>
-            </div>
-        `;
-        return;
-    }
-
-    const mixGroups = {};
-    lines.forEach(line => {
-        if (!mixGroups[line.mix_number]) {
-            mixGroups[line.mix_number] = [];
-        }
-        mixGroups[line.mix_number].push(line);
-    });
-
-    let html = `
-        <div class="section-card">
-            <div class="section-header">
-                <span>Mix Plan</span>
-                <span>${Object.keys(mixGroups).length} mix${Object.keys(mixGroups).length === 1 ? '' : 'es'}</span>
-            </div>
-            <div class="section-body">
-                <div class="mix-plan-list">
-    `;
-
-    Object.keys(mixGroups).sort((a,b)=>a-b).forEach(mixNo => {
-        const mixLines = mixGroups[mixNo];
-        const firstLine = mixLines[0] || {};
-
-        const waterDisplay = typeof firstLine.water === 'number' && !isNaN(firstLine.water) ? `${firstLine.water.toFixed(2)} L Water` : '-';
-        const mixHaDisplay = typeof firstLine.mix_ha === 'number' && !isNaN(firstLine.mix_ha) ? `${firstLine.mix_ha.toFixed(2)} Ha` : '-';
-        const productItems = mixLines.map(line => {
-            const qtyDisplay = typeof line.qty === 'number' && !isNaN(line.qty) ? line.qty.toFixed(2) : '-';
-            return `
-                <div class="mix-plan-row">
-                    <span>${escapeHtml(line.stock_description || '-')}</span>
-                    <strong>${qtyDisplay} ${line.uom || ''}</strong>
-                </div>
-            `;
-        }).join('');
-
-        html += `
-            <div class="mix-plan-item">
-                <div class="mix-plan-header">
-                    <span>Mix ${mixNo}</span>
-                    <span class="mix-plan-meta">${waterDisplay} • ${mixHaDisplay}</span>
-                </div>
-                <div class="mix-plan-rows">${productItems}</div>
-            </div>
-        `;
-    });
-    
-    html += `
-                </div>
-            </div>
-        </div>
-    `;
-    mixContainer.innerHTML = html;
-}
-
 async function fetchHeader(sprayId) {
     return request(`/agri/spray/${sprayId}/spray_header`)
     .then(res => res.json())
@@ -1051,14 +965,15 @@ async function fetchLines(sprayId) {
     .then(data => data);
 }
 
-async function fetchMethod(methodId) {
-    return request('/agri/spray/methods')
+
+async function fetchMethods(sprayId) {
+    return request(`/agri/spray/${sprayId}/methods`)
     .then(res => res.json())
     .then(data => {
         if (!data.success) {
             throw new Error(data.message || 'Failed to fetch methods');
         }
-        return data.methods.find(m => m.id === methodId);
+        return data.methods || [];
     });
 }
 
@@ -1084,13 +999,418 @@ async function fetchProductsOptions(sprayId) {
     });
 }
 
-// Edit Mode Functions
-function toggleEditMode(section) {
-    editModes[section] = !editModes[section];
-    if (section === 'header') {
-        renderHeader();
-    } else if (section === 'lines') {
+function syncProjectEditorState() {
+    const activeMode = document.querySelector('input[name="edit-project-dose-basis"]:checked')?.value || sprayData?.header?.dose_basis || 'PER_100L';
+    const activeInput = document.activeElement;
+    const projectSection = document.getElementById('project-water-editor');
+    const project100lSection = document.getElementById('project-global-water-editor-100l');
+    const globalSection = document.getElementById('project-global-water-editor');
+    if (projectSection) projectSection.style.display = activeMode === 'PER_100L' ? 'block' : 'none';
+    if (project100lSection) project100lSection.style.display = activeMode === 'PER_100L' ? 'block' : 'none';
+    if (globalSection) globalSection.style.display = activeMode === 'PER_HA' ? 'block' : 'none';
+
+    if (!sprayData || !sprayData.header || !Array.isArray(sprayData.header.projects)) return;
+
+    const totalHa = Number(sprayData.header.total_ha || 0);
+    sprayData.header.dose_basis = activeMode;
+    doseBasis = activeMode;
+
+    const tankRead = readWaterPerTankInput(activeMode);
+    sprayData.header.water_per_tank = tankRead.value;
+
+    if (tankRead.input && document.getElementById('project-global-water-per-tank') &&
+        document.getElementById('project-global-water-per-tank-100l')) {
+        const other = activeMode === 'PER_100L'
+            ? document.getElementById('project-global-water-per-tank')
+            : document.getElementById('project-global-water-per-tank-100l');
+        if (other && other !== tankRead.input) {
+            other.value = tankRead.value != null ? String(tankRead.value) : '';
+        }
+    }
+
+    if (activeMode === 'PER_100L') {
+        sprayData.header.water_per_ha = null;
+        sprayData.header.total_water = 0;
+
+        sprayData.header.projects.forEach((project, index) => {
+            const waterInput = document.getElementById(`project-water-ha-${index}`);
+            const totalInput = document.getElementById(`project-total-water-${index}`);
+            const ha = Number(project.ha || 0);
+            let waterValue = waterInput ? Number(waterInput.value || 0) : Number(project.water_per_ha || 0);
+            let totalValue = totalInput ? Number(totalInput.value || 0) : Number(project.total_water || 0);
+
+            if (activeInput === waterInput && waterInput && waterInput.value !== '' && Number.isFinite(waterValue) && waterValue > 0 && ha > 0) {
+                totalValue = waterValue * ha;
+                if (totalInput) totalInput.value = String(totalValue);
+            } else if (activeInput === totalInput && totalInput && totalInput.value !== '' && Number.isFinite(totalValue) && totalValue > 0 && ha > 0) {
+                waterValue = totalValue / ha;
+                if (waterInput) waterInput.value = String(waterValue);
+            }
+
+            project.water_per_ha = Number.isFinite(waterValue) && waterValue > 0 ? waterValue : (ha > 0 && Number.isFinite(totalValue) && totalValue > 0 ? totalValue / ha : null);
+            project.total_water = Number.isFinite(totalValue) && totalValue > 0 ? totalValue : (ha > 0 && project.water_per_ha != null ? ha * project.water_per_ha : 0);
+            sprayData.header.total_water += Number(project.total_water || 0);
+
+            if (waterInput && document.activeElement !== waterInput) waterInput.value = project.water_per_ha != null ? String(project.water_per_ha) : '';
+            if (totalInput && document.activeElement !== totalInput) totalInput.value = project.total_water != null ? String(project.total_water) : '';
+        });
+    } else if (activeMode === 'PER_HA') {
+        const waterPerHaInput = document.getElementById('project-global-water-per-ha');
+        const totalWaterInput = document.getElementById('project-global-total-water');
+        let waterPerHa = waterPerHaInput ? Number(waterPerHaInput.value || 0) : Number(sprayData.header.water_per_ha || 0);
+        let totalWater = totalWaterInput ? Number(totalWaterInput.value || 0) : Number(sprayData.header.total_water || 0);
+
+        if (activeInput === waterPerHaInput && waterPerHaInput && waterPerHaInput.value !== '' && Number.isFinite(waterPerHa) && waterPerHa > 0 && totalHa > 0) {
+            totalWater = waterPerHa * totalHa;
+            if (totalWaterInput) totalWaterInput.value = String(totalWater);
+        } else if (activeInput === totalWaterInput && totalWaterInput && totalWaterInput.value !== '' && Number.isFinite(totalWater) && totalWater > 0 && totalHa > 0) {
+            waterPerHa = totalWater / totalHa;
+            if (waterPerHaInput) waterPerHaInput.value = String(waterPerHa);
+        }
+
+        sprayData.header.water_per_ha = Number.isFinite(waterPerHa) && waterPerHa > 0 ? waterPerHa : (totalHa > 0 && Number.isFinite(totalWater) && totalWater > 0 ? totalWater / totalHa : null);
+        sprayData.header.total_water = Number.isFinite(totalWater) && totalWater > 0 ? totalWater : (totalHa > 0 && sprayData.header.water_per_ha != null ? totalHa * sprayData.header.water_per_ha : 0);
+
+        sprayData.header.projects.forEach((project) => {
+            project.water_per_ha = null;
+            project.total_water = totalHa > 0 && sprayData.header.total_water > 0 ? sprayData.header.total_water : 0;
+        });
+
+        if (waterPerHaInput && document.activeElement !== waterPerHaInput) waterPerHaInput.value = sprayData.header.water_per_ha != null ? String(sprayData.header.water_per_ha) : '';
+        if (totalWaterInput && document.activeElement !== totalWaterInput) totalWaterInput.value = sprayData.header.total_water != null ? String(sprayData.header.total_water) : '';
+    } else {
+        sprayData.header.water_per_ha = null;
+        sprayData.header.water_per_tank = null;
+        sprayData.header.total_water = null;
+        sprayData.header.projects.forEach((project) => {
+            project.water_per_ha = null;
+            project.total_water = null;
+        });
+    }
+
+    syncLinePreviewQuantities(activeMode);
+
+    window.clearTimeout(window.projectSyncTimer);
+    window.projectSyncTimer = window.setTimeout(() => {
         renderLines();
+        recalculateMixes();
+    }, 0);
+}
+
+function readWaterPerTankInput(activeMode) {
+    const perHaInput = document.getElementById('project-global-water-per-tank');
+    const per100Input = document.getElementById('project-global-water-per-tank-100l');
+    const input = activeMode === 'PER_100L'
+        ? (per100Input || perHaInput)
+        : (perHaInput || per100Input);
+    if (!input || input.value === '') return { input: input || null, value: null };
+    const value = Number(input.value);
+    return {
+        input: input,
+        value: Number.isFinite(value) && value > 0 ? value : null
+    };
+}
+
+function currentDoseBasis() {
+    return (sprayData && sprayData.header && sprayData.header.dose_basis) || doseBasis || 'PER_100L';
+}
+
+function buildMixPlan(header, lines) {
+    const dose = (header && header.dose_basis) || doseBasis || 'PER_100L';
+    if (dose === 'PER_HA_DIRECT') return [];
+
+    const sprayLines = (lines || []).filter(function (line) {
+        return line && (line.stock_id || line.stock_description);
+    });
+
+    const totalWater = Number(header && header.total_water != null ? header.total_water : 0);
+    const totalHa = Number(header && header.total_ha != null ? header.total_ha : 0);
+    let waterPerHa = Number(header && header.water_per_ha != null ? header.water_per_ha : 0);
+    const waterPerTank = Number(header && header.water_per_tank != null ? header.water_per_tank : 0);
+    if (!(waterPerHa > 0) && totalHa > 0 && totalWater > 0) {
+        waterPerHa = totalWater / totalHa;
+    }
+
+    const tanks = [];
+    const maxMixes = 50;
+
+    if (dose === 'PER_100L') {
+        if (totalWater <= 0) {
+            tanks.push({ mix_number: 1, water: 0, mix_ha: totalHa || 0 });
+        } else {
+            const tank = waterPerTank > 0 ? waterPerTank : totalWater;
+            let remaining = totalWater;
+            let n = 1;
+            while (remaining > 1e-9 && n <= maxMixes) {
+                let mixWater = Math.min(tank, remaining);
+                if (n === maxMixes) mixWater = remaining;
+                const mixHa = totalWater > 0 ? (totalHa * mixWater / totalWater) : 0;
+                tanks.push({ mix_number: n, water: mixWater, mix_ha: mixHa });
+                remaining = Math.round((remaining - mixWater) * 1e6) / 1e6;
+                n += 1;
+            }
+        }
+    } else if (dose === 'PER_HA') {
+        if (totalHa <= 0) {
+            tanks.push({ mix_number: 1, water: totalWater || 0, mix_ha: 0 });
+        } else {
+            let haPerTank = totalHa;
+            if (waterPerTank > 0 && waterPerHa > 0) haPerTank = waterPerTank / waterPerHa;
+            else if (waterPerTank > 0 && totalWater > 0) haPerTank = totalHa * (waterPerTank / totalWater);
+
+            let remainingHa = totalHa;
+            let n = 1;
+            while (remainingHa > 1e-9 && n <= maxMixes) {
+                let mixHa = Math.min(haPerTank, remainingHa);
+                if (n === maxMixes) mixHa = remainingHa;
+                const mixWater = waterPerHa > 0
+                    ? waterPerHa * mixHa
+                    : (totalHa > 0 ? totalWater * mixHa / totalHa : 0);
+                tanks.push({ mix_number: n, water: mixWater, mix_ha: mixHa });
+                remainingHa = Math.round((remainingHa - mixHa) * 1e6) / 1e6;
+                n += 1;
+            }
+        }
+    }
+
+    const mixLines = [];
+    tanks.forEach(function (tank) {
+        sprayLines.forEach(function (line, idx) {
+            const qtyPerHa = Number(line.qty_per_ha || 0);
+            const qtyPer100L = Number(line.qty_per_100l || 0);
+            let qty = 0;
+            if (dose === 'PER_HA') qty = qtyPerHa * tank.mix_ha;
+            else if (dose === 'PER_100L') qty = (qtyPer100L / 100) * tank.water;
+            else qty = Number(line.total_qty || 0);
+
+            mixLines.push({
+                line_id: null,
+                stock_id: line.stock_id,
+                stock_description: line.stock_description,
+                active_ingredient: line.active_ingredient,
+                qty: qty,
+                uom: line.uom || '',
+                uom_id: line.uom_id == null ? null : line.uom_id,
+                mix_number: tank.mix_number,
+                water: tank.water,
+                mix_ha: tank.mix_ha,
+                placeholder_for_line_idx: idx
+            });
+        });
+    });
+    return mixLines;
+}
+
+function recalculateMixes() {
+    sprayData = sprayData || {};
+    const activeDoseBasis = currentDoseBasis();
+    doseBasis = activeDoseBasis;
+    if (activeDoseBasis === 'PER_HA_DIRECT') {
+        sprayData.mixLines = [];
+        renderMix();
+        return;
+    }
+    sprayData.mixLines = buildMixPlan(sprayData.header || {}, sprayData.lines || []);
+    renderMix();
+}
+
+function calculateLineTotal(line) {
+    const activeDoseBasis = currentDoseBasis();
+    const quantity = activeDoseBasis === 'PER_100L'
+        ? Number(line.qty_per_100l || 0)
+        : Number(line.qty_per_ha || 0);
+    const totalWater = Number(sprayData && sprayData.header ? sprayData.header.total_water || 0 : 0);
+    const totalHa = Number(sprayData && sprayData.header ? sprayData.header.total_ha || 0 : 0);
+    if (activeDoseBasis === 'PER_100L') {
+        return totalWater > 0 ? (quantity / 100) * totalWater : 0;
+    }
+    if (activeDoseBasis === 'PER_HA' || activeDoseBasis === 'PER_HA_DIRECT') {
+        return totalHa > 0 ? quantity * totalHa : Number(line.total_qty || 0);
+    }
+    return Number(line.total_qty || 0);
+}
+
+async function renderMix(forceFetch = false) {
+    sprayData = sprayData || {};
+    const mixContainer = document.getElementById("spray-mixes");
+    if (!mixContainer) return;
+
+    const isEditingMixInputs = editModes.projects || editModes.lines;
+
+    if (forceFetch || (!isEditingMixInputs && !sprayData.mixLines)) {
+        try {
+            const fetched = await fetchMixLines(sprayId);
+            sprayData.mixLines = Array.isArray(fetched) ? fetched : [];
+        } catch (err) {
+            console.error(err);
+            sprayData.mixLines = [];
+        }
+    } else if (isEditingMixInputs) {
+        sprayData.mixLines = buildMixPlan(sprayData.header || {}, sprayData.lines || []);
+    }
+
+    const lines = sprayData.mixLines || [];
+    if (currentDoseBasis() === 'PER_HA_DIRECT') {
+        mixContainer.innerHTML = `
+            <div class="section-card">
+                <div class="section-header"><span>Mix Plan</span></div>
+                <div class="section-body"><div class='no-data'>Direct per hectare — no tank mix is required.</div></div>
+            </div>
+        `;
+        return;
+    }
+
+    if (!lines.length) {
+        mixContainer.innerHTML = `
+            <div class="section-card">
+                <div class="section-header"><span>Mix Plan</span></div>
+                <div class="section-body"><div class='no-data'>Add products and water settings to build a mix plan.</div></div>
+            </div>
+        `;
+        return;
+    }
+
+    const mixGroups = {};
+    lines.forEach(function (line) {
+        const mixNo = line.mix_number != null ? String(line.mix_number) : '1';
+        if (!mixGroups[mixNo]) mixGroups[mixNo] = [];
+        mixGroups[mixNo].push(line);
+    });
+
+    let html = `
+        <div class="section-card">
+            <div class="section-header">
+                <span>Mix Plan</span>
+                <span>${Object.keys(mixGroups).length} mix${Object.keys(mixGroups).length === 1 ? '' : 'es'}</span>
+            </div>
+            <div class="section-body">
+                <div class="mix-plan-list">
+    `;
+
+    Object.keys(mixGroups).sort(function (a, b) { return Number(a) - Number(b); }).forEach(function (mixNo) {
+        const mixLines = mixGroups[mixNo];
+        const firstLine = mixLines[0] || {};
+        const waterValue = Number(firstLine.water);
+        const mixHaValue = Number(firstLine.mix_ha);
+        const waterDisplay = Number.isFinite(waterValue) ? waterValue.toFixed(2) + ' L Water' : '-';
+        const mixHaDisplay = Number.isFinite(mixHaValue) ? mixHaValue.toFixed(2) + ' Ha' : '-';
+        const productItems = mixLines.map(function (line) {
+            const qtyValue = Number(line.qty);
+            const qtyDisplay = Number.isFinite(qtyValue) ? qtyValue.toFixed(2) : '-';
+            return `
+                <div class="mix-plan-row">
+                    <span>${escapeHtml(line.stock_description || '-')}</span>
+                    <strong>${qtyDisplay} ${escapeHtml(line.uom || '')}</strong>
+                </div>
+            `;
+        }).join('');
+
+        html += `
+            <div class="mix-plan-item">
+                <div class="mix-plan-header">
+                    <span>Mix ${escapeHtml(mixNo)}</span>
+                    <span class="mix-plan-meta">${waterDisplay} • ${mixHaDisplay}</span>
+                </div>
+                <div class="mix-plan-rows">${productItems}</div>
+            </div>
+        `;
+    });
+
+    html += `
+                </div>
+            </div>
+        </div>
+    `;
+    mixContainer.innerHTML = html;
+}
+
+function saveProjectsEdit() {
+    syncProjectEditorState();
+    recalculateMixes();
+
+    const groupedMixes = {};
+    (sprayData && sprayData.mixLines || []).forEach(function (line) {
+        const mixNumber = line.mix_number != null ? Number(line.mix_number) : 1;
+        if (!groupedMixes[mixNumber]) {
+            groupedMixes[mixNumber] = {
+                mix_number: mixNumber,
+                mix_water: line.water != null ? Number(line.water) : 0,
+                mix_ha: line.mix_ha != null ? Number(line.mix_ha) : 0,
+                lines: []
+            };
+        }
+        groupedMixes[mixNumber].lines.push({
+            stock_id: line.stock_id,
+            qty: line.qty != null ? Number(line.qty) : 0,
+            uom_id: line.uom_id != null ? Number(line.uom_id) : null
+        });
+    });
+
+    const payload = {
+        dose_basis: sprayData && sprayData.header ? sprayData.header.dose_basis : 'PER_100L',
+        total_ha: sprayData && sprayData.header ? sprayData.header.total_ha : null,
+        total_water: sprayData && sprayData.header ? sprayData.header.total_water : null,
+        water_per_ha: sprayData && sprayData.header ? sprayData.header.water_per_ha : null,
+        water_per_tank: sprayData && sprayData.header ? sprayData.header.water_per_tank : null,
+        projects: ((sprayData && sprayData.header && sprayData.header.projects) || []).map(function (project) {
+            return {
+                project_id: project.project_id,
+                project_code: project.project_code,
+                water_per_ha: project.water_per_ha,
+                total_water: project.total_water
+            };
+        }),
+        lines: (sprayData && sprayData.lines || []).map(function (line) {
+            return {
+                line_id: line.line_id,
+                stock_id: line.stock_id,
+                qty_per_100l: line.qty_per_100l,
+                qty_per_ha: line.qty_per_ha,
+                total_qty: line.total_qty,
+                uom_id: line.uom_id
+            };
+        }),
+        mixes: Object.keys(groupedMixes).sort(function (a, b) { return Number(a) - Number(b); }).map(function (mixNumber) {
+            return groupedMixes[mixNumber];
+        })
+    };
+
+    request(`/agri/spray/${sprayId}/edit_spray_projects`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload)
+    })
+    .then(function (response) { return response.json(); })
+    .then(async function (result) {
+        if (!result.success) {
+            await Swal.fire({ icon: 'error', title: 'Project save failed', text: result.message || 'Failed to save project settings.' });
+            return;
+        }
+        await Swal.fire({ icon: 'success', title: 'Saved', text: 'Project settings saved.', timer: 1200, showConfirmButton: false });
+        editModes.projects = false;
+        await renderHeader();
+        await renderLines();
+        await renderMix(true);
+    })
+    .catch(async function (err) {
+        await Swal.fire({ icon: 'error', title: 'Network error', text: err.message });
+    });
+}
+
+function cancelProjectsEdit() {
+    editModes.projects = false;
+    renderHeader();
+}
+
+function toggleHeaderWaterFields() {
+    const selectedDoseBasis = document.querySelector('input[name="edit-dose-basis"]:checked')?.value || 'PER_100L';
+    const per100l = document.getElementById('project-water-editor');
+    const perHa = document.getElementById('global-water-editor');
+    if (per100l) per100l.style.display = selectedDoseBasis === 'PER_100L' ? 'block' : 'none';
+    if (perHa) perHa.style.display = selectedDoseBasis === 'PER_HA' ? 'block' : 'none';
+    if (selectedDoseBasis === 'PER_HA_DIRECT') {
+        if (per100l) per100l.style.display = 'none';
+        if (perHa) perHa.style.display = 'none';
     }
 }
 
@@ -1111,17 +1431,209 @@ function getWeekNumber(date) {
     return Math.ceil((((d - yearStart) / 86400000) + 1) / 7);
 }
 
+let lastPreviewDose = null;
+
+function formatQty(value) {
+    const amount = Number(value);
+    return Number.isFinite(amount) ? amount.toFixed(2) : '-';
+}
+
+function syncLinePreviewQuantities(activeMode) {
+    if (!sprayData || !Array.isArray(sprayData.lines)) return;
+
+    const totalWater = Number(sprayData.header && sprayData.header.total_water || 0);
+    const totalHa = Number(sprayData.header && sprayData.header.total_ha || 0);
+    const previous = lastPreviewDose || (sprayData.header && sprayData.header.dose_basis) || activeMode;
+
+    sprayData.lines.forEach(function (line) {
+        const rate100 = Number(line.qty_per_100l);
+        const rateHa = Number(line.qty_per_ha);
+        let total = Number(line.total_qty);
+        if (!Number.isFinite(total) || total < 0) total = 0;
+
+        // First recover a product total from the mode we were just using.
+        if (previous === 'PER_100L' && rate100 > 0 && totalWater > 0) {
+            total = (rate100 / 100) * totalWater;
+        } else if ((previous === 'PER_HA' || previous === 'PER_HA_DIRECT') && rateHa > 0 && totalHa > 0) {
+            total = rateHa * totalHa;
+        } else if (!(total > 0)) {
+            if (rate100 > 0 && totalWater > 0) total = (rate100 / 100) * totalWater;
+            else if (rateHa > 0 && totalHa > 0) total = rateHa * totalHa;
+        }
+
+        if (activeMode === 'PER_100L') {
+            if (previous === 'PER_100L' && rate100 > 0) {
+                // Same mode: keep the /100L rate, follow new water.
+                total = totalWater > 0 ? (rate100 / 100) * totalWater : total;
+                line.qty_per_100l = rate100;
+            } else {
+                // Switched into 100L: keep product total, derive /100L.
+                line.qty_per_100l = totalWater > 0 ? (total / totalWater) * 100 : 0;
+            }
+            line.total_qty = total;
+            line.qty_per_ha = totalHa > 0 ? total / totalHa : line.qty_per_ha;
+        } else {
+            if ((previous === 'PER_HA' || previous === 'PER_HA_DIRECT') && rateHa > 0) {
+                // Same mode: keep the /ha rate, follow hectares.
+                total = totalHa > 0 ? rateHa * totalHa : total;
+                line.qty_per_ha = rateHa;
+            } else {
+                // Switched into per-ha: keep product total, derive /ha.
+                line.qty_per_ha = totalHa > 0 ? total / totalHa : 0;
+            }
+            line.total_qty = total;
+            line.qty_per_100l = totalWater > 0 ? (total / totalWater) * 100 : line.qty_per_100l;
+        }
+        line.dose_basis = activeMode;
+    });
+
+    lastPreviewDose = activeMode;
+}
+
+async function renderLines() {
+    sprayData = sprayData || {};
+    let lines;
+
+    // Keep in-memory preview rows while editing projects or lines.
+    const useLocalLines = (editModes.lines || editModes.projects) && Array.isArray(sprayData.lines) && sprayData.lines.length;
+    if (useLocalLines) {
+        lines = sprayData.lines;
+    } else {
+        const linesData = await fetchLines(sprayId);
+        if (!linesData.success) {
+            document.getElementById("spray-lines").innerHTML =
+                `<div class='no-data'>Error loading spray lines: ${linesData.message || 'Unknown error'}</div>`;
+            return;
+        }
+        sprayData.lines = linesData.lines;
+        lines = sprayData.lines;
+        lastPreviewDose = (sprayData.header && sprayData.header.dose_basis) || doseBasis;
+    }
+
+    if (!lines || lines.length === 0) {
+        document.getElementById("spray-lines").innerHTML = "<div class='no-data'>No spray lines found.</div>";
+        return;
+    }
+
+    const activeDose = currentDoseBasis();
+    const qtyColumnText = activeDose === 'PER_100L' ? "Qty / 100L" : "Qty / Ha";
+    const editModeClass = editModes.lines ? 'edit-mode' : '';
+    let productOptions = [];
+    if (editModes.lines) {
+        productOptions = await fetchProductsOptions(sprayId);
+    }
+
+    const productHeader = editModes.lines
+        ? '<th colspan="2">Product</th>'
+        : '<th>Stock Description</th><th>Active Ingredient</th>';
+
+    let html = `
+        <div class="section-card">
+            <div class="section-header ${editModeClass}">
+                <span>Spray Products</span>
+                <div>
+                    ${editModes.lines
+                        ? `<button class="save-btn" onclick="saveLinesEdit()">Save</button><button class="cancel-btn" onclick="cancelLinesEdit()">Cancel</button><button class="add-btn" onclick="addLine()">Add Line</button>`
+                        : (sprayData.header && sprayData.header.issues_exist || !canEdit ? '' : `<button class="edit-btn" onclick="toggleEditMode('lines')">Edit</button>`)}
+                </div>
+            </div>
+            <div class="section-body">
+                <div class="table-wrap">
+                    <table>
+                        <thead>
+                            <tr>
+                                ${productHeader}
+                                <th>${qtyColumnText}</th>
+                                <th>Total Qty</th>
+                                ${editModes.lines ? '<th></th>' : ''}
+                            </tr>
+                        </thead>
+                        <tbody id="lines-tbody">
+    `;
+
+    lines.forEach(function (line, idx) {
+        const qty = activeDose === 'PER_100L' ? line.qty_per_100l : line.qty_per_ha;
+        const qtyDisplay = qty == null || qty === '' ? '' : formatQty(qty);
+        const totalQtyDisplay = line.total_qty == null || line.total_qty === '' ? '' : formatQty(line.total_qty);
+
+        if (editModes.lines) {
+            const options = productOptions.map(function (product) {
+                const ai = escapeHtml(product.active_ingredient || '');
+                const desc = escapeHtml(product.stock_description || '');
+                const qtyOnHand = product.qty_on_hand !== null ? parseFloat(product.qty_on_hand).toFixed(2) : '0.00';
+                const unit = product.stocking_uom_code || '';
+                return `<option value="${product.stock_link}" ${product.stock_link === parseInt(line.stock_id, 10) ? 'selected' : ''} data-active-ingredient="${ai}" data-stock-description="${desc}" data-uom-id="${product.stocking_uom_id || ''}" data-uom-code="${escapeHtml(unit)}">${ai} - ${desc} (Available: ${qtyOnHand} ${unit})</option>`;
+            }).join('');
+            html += `
+                <tr data-line-idx="${idx}">
+                    <td colspan="2">
+                        <select class="line-product-select" data-line-idx="${idx}" onchange="handleLineProductChange(${idx})">
+                            <option value="">Select product</option>
+                            ${options}
+                        </select>
+                    </td>
+                    <td><input type="number" class="line-qty-input" data-line-idx="${idx}" value="${qtyDisplay}" step="0.01" oninput="handleLineQtyChange(${idx})"></td>
+                    <td><input type="number" class="line-total-qty-input" data-line-idx="${idx}" value="${totalQtyDisplay}" step="0.01" oninput="handleLineTotalQtyChange(${idx})"></td>
+                    <td><button class="remove-btn" onclick="removeLine(${idx})">Remove</button></td>
+                </tr>
+            `;
+        } else {
+            html += `
+                <tr>
+                    <td>${escapeHtml(line.stock_description || '-')}</td>
+                    <td>${escapeHtml(line.active_ingredient || '-')}</td>
+                    <td>${qty != null && qty !== '' ? `${formatQty(qty)} ${escapeHtml(line.uom || '')}` : '-'}</td>
+                    <td>${totalQtyDisplay}</td>
+                </tr>
+            `;
+        }
+    });
+
+    html += `
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    `;
+
+    document.getElementById("spray-lines").innerHTML = html;
+    if (editModes.lines) {
+        initLineSelects();
+    }
+    await renderMix();
+}
+
+function toggleEditMode(section) {
+    editModes[section] = !editModes[section];
+    if (section === 'projects' && editModes.projects) {
+        lastPreviewDose = (sprayData && sprayData.header && sprayData.header.dose_basis) || doseBasis;
+    }
+    if (section === 'header' || section === 'projects') {
+        renderHeader();
+    } else if (section === 'lines') {
+        renderLines();
+    }
+}
+
 function saveHeaderEdit() {
     const description = document.getElementById('edit-description').value;
     const date = document.getElementById('edit-date').value;
     const week = document.getElementById('edit-week').value;
     const scouting = document.getElementById('edit-scouting').value;
-    
+    const weather = document.getElementById('edit-weather')?.value || '';
+    const startTime = document.getElementById('edit-start-time')?.value || null;
+    const endTime = document.getElementById('edit-end-time')?.value || null;
+    const methodId = document.getElementById('edit-method-id')?.value || sprayData?.header?.method_id || null;
     const payload = {
         spray_description: description,
         spray_date: date,
         spray_week: week,
-        scouting: scouting
+        scouting: scouting,
+        weather: weather,
+        start_datetime: startTime,
+        end_datetime: endTime,
+        method_id: methodId
     };
 
     request(`/agri/spray/${sprayId}/edit_spray_header`, {
@@ -1150,8 +1662,13 @@ function saveHeaderEdit() {
         sprayData.header.spray_date = date;
         sprayData.header.spray_week = week;
         sprayData.header.scouting = scouting;
+        sprayData.header.weather = weather;
+        sprayData.header.start_datetime = startTime;
+        sprayData.header.end_datetime = endTime;
+        sprayData.header.method_id = methodId;
         editModes.header = false;
-        renderHeader();
+        await renderHeader();
+        await renderLines();
     })
     .catch(async err => {
         await Swal.fire({
@@ -1240,119 +1757,6 @@ function handleLineQtyChange(idx) {
     recalculateMixes();
 }
 
-function recalculateMixes() {
-    sprayData = sprayData || {};
-    const sprayLines = sprayData.lines || [];
-    const existingMixLines = Array.isArray(sprayData.mixLines) ? [...sprayData.mixLines] : [];
-
-    if (!sprayLines.length) {
-        renderMix();
-        return;
-    }
-
-    const mixGroups = new Map();
-    existingMixLines.forEach(line => {
-        const mixNumber = line.mix_number != null ? Number(line.mix_number) : 1;
-        if (!mixGroups.has(mixNumber)) {
-            mixGroups.set(mixNumber, []);
-        }
-        mixGroups.get(mixNumber).push(line);
-    });
-
-    if (mixGroups.size === 0) {
-        mixGroups.set(1, []);
-    }
-
-    const updatedMixLines = [];
-    mixGroups.forEach((groupLines, mixNumber) => {
-        const water = groupLines.find(line => line.water != null)?.water ?? 0;
-        const mixHa = groupLines.find(line => line.mix_ha != null)?.mix_ha ?? 0;
-
-        const placeholderIndexMap = new Map();
-        const idMap = new Map();
-        const codeMap = new Map();
-        const usedKeys = new Set();
-
-        groupLines.forEach(line => {
-            if (typeof line.placeholder_for_line_idx === 'number') {
-                placeholderIndexMap.set(Number(line.placeholder_for_line_idx), line);
-            }
-            if (line.stock_id != null) {
-                idMap.set(`id:${line.stock_id}`, line);
-            }
-            if (line.stock_description) {
-                codeMap.set(`code:${line.stock_description}`, line);
-            }
-        });
-
-        sprayLines.forEach((line, idx) => {
-            const basis = line.dose_basis || doseBasis;
-            const qtyPerHa = typeof line.qty_per_ha === 'number' && !isNaN(line.qty_per_ha) ? line.qty_per_ha : 0;
-            const qtyPer100L = typeof line.qty_per_100l === 'number' && !isNaN(line.qty_per_100l) ? line.qty_per_100l : 0;
-            let qty = 0;
-
-            if (basis === 'PER_HA') {
-                qty = (typeof mixHa === 'number' && !isNaN(mixHa)) ? qtyPerHa * mixHa : 0;
-            } else if (basis === 'PER_100L') {
-                qty = (typeof water === 'number' && !isNaN(water)) ? (qtyPer100L / 100) * water : 0;
-            } else {
-                qty = typeof line.total_qty === 'number' && !isNaN(line.total_qty) ? line.total_qty : 0;
-            }
-
-            const existing = placeholderIndexMap.get(idx)
-                || (line.stock_id ? idMap.get(`id:${line.stock_id}`) : null)
-                || (line.stock_description ? codeMap.get(`code:${line.stock_description}`) : null);
-            const mixLine = existing ? {
-                ...existing,
-                stock_id: line.stock_id,
-                stock_description: line.stock_description,
-                active_ingredient: line.active_ingredient,
-                qty,
-                uom: line.uom || existing.uom || '',
-                placeholder_for_line_idx: idx,
-                mix_number: mixNumber,
-                water,
-                mix_ha: mixHa
-            } : {
-                stock_id: line.stock_id,
-                stock_description: line.stock_description,
-                active_ingredient: line.active_ingredient,
-                qty,
-                uom: line.uom || '',
-                mix_number: mixNumber,
-                water,
-                mix_ha: mixHa,
-                placeholder_for_line_idx: idx
-            };
-
-            if (mixLine.stock_id != null) {
-                usedKeys.add(`id:${mixLine.stock_id}`);
-            }
-            if (mixLine.stock_description) {
-                usedKeys.add(`code:${mixLine.stock_description}`);
-            }
-            updatedMixLines.push(mixLine);
-        });
-
-        // Preserve any unmapped legacy mix lines that don't correspond to current spray lines.
-        groupLines.forEach(line => {
-            const keyId = line.stock_id != null ? `id:${line.stock_id}` : null;
-            const keyCode = line.stock_description ? `code:${line.stock_description}` : null;
-            const isPlaceholder = typeof line.placeholder_for_line_idx === 'number';
-            if (isPlaceholder) return;
-            if ((keyId && usedKeys.has(keyId)) || (keyCode && usedKeys.has(keyCode))) return;
-            updatedMixLines.push({
-                ...line,
-                mix_number: mixNumber,
-                water,
-                mix_ha: mixHa
-            });
-        });
-    });
-
-    sprayData.mixLines = updatedMixLines;
-    renderMix();
-}
 
 function openExecution(executionId) {
     // Navigate to the execution view for this execution
