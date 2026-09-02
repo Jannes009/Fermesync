@@ -891,6 +891,25 @@ function setInstructionFormSaving(isSaving) {
     submitButton.textContent = isSaving ? 'Saving...' : 'Save & Finalise';
 }
 
+function validateInstructionDateRange(startDate, startTime, endDate, endTime) {
+    if (!startDate || !startTime || !endDate || !endTime) {
+        return null;
+    }
+
+    const startDateTime = new Date(`${startDate}T${startTime}`);
+    const endDateTime = new Date(`${endDate}T${endTime}`);
+
+    if (Number.isNaN(startDateTime.getTime()) || Number.isNaN(endDateTime.getTime())) {
+        return null;
+    }
+
+    if (endDateTime < startDateTime) {
+        return 'End date/time cannot be before the start date/time.';
+    }
+
+    return null;
+}
+
 async function handleInstructionSubmit(event) {
     event.preventDefault();
     const form = event.target;
@@ -904,6 +923,13 @@ async function handleInstructionSubmit(event) {
     const end_date_time = endDate && endTime ? `${endDate}T${endTime}` : '';
     const weather = document.getElementById('modal-weather').value;
     const spray_date = document.getElementById('modal-spray-date').value;
+
+    const dateRangeError = validateInstructionDateRange(startDate, startTime, endDate, endTime);
+    if (dateRangeError) {
+        setInstructionStatus(dateRangeError, 'error');
+        setInstructionFormSaving(false);
+        return;
+    }
 
     setInstructionStatus('Saving instruction...', 'info');
     setInstructionFormSaving(true);

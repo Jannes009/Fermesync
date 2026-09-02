@@ -576,6 +576,10 @@ def update_instruction(execution_id, instruction_id):
     if end_date_time:
         end_dt = datetime.strptime(end_date_time, "%Y-%m-%dT%H:%M")
 
+    if start_dt and end_dt and end_dt < start_dt:
+        conn.close()
+        return jsonify({"success": False, "message": "End date/time cannot be before the start date/time."}), 400
+
     cur.execute("""
         UPDATE agr.SprayHeader
         SET SprayHStartDateTime = ?, 
