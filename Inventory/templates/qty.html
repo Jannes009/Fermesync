@@ -39,154 +39,6 @@
   <!-- DASHBOARD GRID -->
   <!-- ===================== -->
   <div class="dashboard-grid">
-
-    <!-- ⚠️ NEEDS ATTENTION -->
-    <div class="dashboard-card attention-card collapsed">
-      <div class="card-header">
-        <div class="card-title">
-          <i class="fas fa-exclamation-triangle"></i>
-          Below Reorder Level
-        </div>
-        <div class="card-controls">
-          <div class="card-badge">{{ low_stock|length }}</div>
-          <button class="card-toggle" onclick="toggleCardCollapse(this)">Show details</button>
-        </div>
-      </div>
-      <div class="card-content">
-        {% if low_stock %}
-        <div class="attention-grid">
-          {% for item in low_stock %}
-          <div class="attention-item critical" onclick="openProductPage({{ item.StockLink }})">
-            <div class="item-header">
-              <strong class="item-code">{{ item.StockCode }}</strong>
-            </div>
-            <div class="item-desc">{{ item.StockDescription }}</div>
-            <div class="demand-metrics" style="margin-top:10px;">
-              <div class="metric metric-danger">
-                <span class="metric-label">Reorder Level</span>
-                <span class="metric-value">{{ item.ReorderLevel }}</span>
-              </div>
-              <div class="metric metric-warning">
-                <span class="metric-label">Available</span>
-                <span class="metric-value">{{ item.Available }}</span>
-              </div>
-              <div class="metric metric-success">
-                <span class="metric-label">On PO</span>
-                <span class="metric-value">{{ item.QtyOnPo }}</span>
-              </div>
-            </div>
-          </div>
-          {% endfor %}
-        </div>
-        {% else %}
-        <div class="empty-state">
-          <i class="fas fa-check-circle"></i>
-          <span>All stock levels are adequate</span>
-        </div>
-        {% endif %}
-      </div>
-    </div>
-
-    <!-- 📅 UPCOMING DEMAND -->
-    <div class="dashboard-card demand-card collapsed">
-      <div class="card-header">
-        <div>
-          <div class="card-title">
-            <i class="fas fa-calendar-alt"></i>
-            Upcoming Spray Instructions
-          </div>
-        </div>
-        <button class="card-toggle" onclick="toggleCardCollapse(this)">Show details</button>
-      </div>
-      <div class="card-content">
-        <div class="demand-container">
-          {% for group in demand_groups %}
-          <div class="demand-group collapsed">
-            <div class="demand-group-header" onclick="toggleDemandGroup(this)">
-              <div class="header-content">
-                <h3>{{ group.label }}</h3>
-                {% if group.attention_count > 0 %}
-                <div class="item-count">{{ group.attention_count }}</div>
-                {% endif %}
-              </div>
-              <div class="collapse-icon">
-                <i class="fas fa-chevron-down"></i>
-              </div>
-            </div>
-
-            <div class="demand-items">
-              <!-- Items needing attention (always visible) -->
-              {% for item in group.items_needing_attention %}
-              <div class="demand-item shortage" onclick="openProductPage({{ item.StockLink }})">
-                <div class="demand-item-header">
-                  <div class="product-info">
-                    <div class="product-code">{{ item.StockCode }}</div>
-                    <div class="product-desc">{{ item.StockDescription }}</div>
-                  </div>
-                </div>
-                <div class="demand-metrics">
-                  <div class="metric shortage">
-                    <div class="metric-value">{{ item.OpeningBalance }}</div>
-                    <div class="metric-label">Opening</div>
-                  </div>
-                  <div class="metric">
-                    <div class="metric-value">{{ item.QtyNeeded }}</div>
-                    <div class="metric-label">Needed</div>
-                  </div>
-                  <div class="metric shortage">
-                    <div class="metric-value">{{ item.ProjectedBalance }}</div>
-                    <div class="metric-label">Projected</div>
-                  </div>
-                </div>
-              </div>
-              {% endfor %}
-
-              <!-- Sufficient items (collapsible) -->
-              {% if group.sufficient_items %}
-              <div class="sufficient-items hidden">
-                {% for item in group.sufficient_items %}
-                <div class="demand-item sufficient" onclick="openProductPage({{ item.StockLink }})">
-                  <div class="demand-item-header">
-                    <div class="product-info">
-                      <div class="product-code">{{ item.StockCode }}</div>
-                      <div class="product-desc">{{ item.StockDescription }}</div>
-                    </div>
-                  </div>
-                  <div class="demand-metrics">
-                    <div class="metric">
-                      <div class="metric-value">{{ item.OpeningBalance }}</div>
-                      <div class="metric-label">Opening</div>
-                    </div>
-                    <div class="metric">
-                      <div class="metric-value">{{ item.QtyNeeded }}</div>
-                      <div class="metric-label">Needed</div>
-                    </div>
-                    <div class="metric">
-                      <div class="metric-value">{{ item.ProjectedBalance }}</div>
-                      <div class="metric-label">Projected</div>
-                    </div>
-                  </div>
-                </div>
-                {% endfor %}
-              </div>
-              <div class="show-sufficient-btn">
-                <button onclick="toggleSufficient(this)">Show Items with Sufficient Stock</button>
-              </div>
-              {% endif %}
-            </div>
-          </div>
-          {% endfor %}
-
-          {% if not demand_groups %}
-          <div class="no-demand">
-            <i class="fas fa-calendar-check"></i>
-            <p>No upcoming demand found</p>
-          </div>
-          {% endif %}
-        </div>
-      </div>
-    </div>
-
     <!-- 📦 WAREHOUSE STOCK -->
     <div class="dashboard-card stock-card">
       <div class="card-header">
@@ -285,13 +137,6 @@ function openIbt() {
   openIbtModal();
 }
 
-function toggleCardCollapse(button) {
-  const card = button.closest('.dashboard-card');
-  if (!card) return;
-  card.classList.toggle('collapsed');
-  button.textContent = card.classList.contains('collapsed') ? 'Show details' : 'Hide details';
-}
-
 let sortDirection = {};
 let activeHeader = null;
 
@@ -378,11 +223,6 @@ function openProductPage(id) {
   window.location.href = url;
 }
 
-function toggleDemandGroup(header) {
-  const group = header.closest('.demand-group');
-  group.classList.toggle('collapsed');
-}
-
 function filterStockTable() {
   const input = document.getElementById("stockSearch");
   const filter = input.value.toLowerCase();
@@ -399,19 +239,6 @@ function filterStockTable() {
     }
   });
 }
-
-function toggleSufficient(btn) {
-  const group = btn.closest('.demand-group');
-  const sufficient = group.querySelector('.sufficient-items');
-  if (sufficient.classList.contains('hidden')) {
-    sufficient.classList.remove('hidden');
-    btn.textContent = 'Hide Items with Sufficient Stock';
-  } else {
-    sufficient.classList.add('hidden');
-    btn.textContent = 'Show Items with Sufficient Stock';
-  }
-}
-
 
 function initWarehouseSelect2() {
   if (typeof $ === 'undefined' || typeof $.fn.select2 === 'undefined') {
@@ -466,9 +293,6 @@ document.addEventListener('DOMContentLoaded', function () {
 <!-- STYLING -->
 <!-- ===================== -->
 <style>
-/* ===================== */
-/* RESET & BASE */
-/* ===================== */
 * {
   box-sizing: border-box;
 }

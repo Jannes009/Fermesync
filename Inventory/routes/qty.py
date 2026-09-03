@@ -21,13 +21,9 @@ def inventory_qty():
         warehouse_id = warehouses[0]['WhseLink']
 
     # Fetch data for the template filtered by warehouse
-    low_stock = get_low_stock_items(warehouse_id)
-    demand_groups = get_upcoming_demand(warehouse_id)
     warehouse_stock = get_warehouse_stock(warehouse_id)
 
     return render_template("qty.html",
-                         low_stock=low_stock,
-                         demand_groups=demand_groups,
                          warehouse_stock=warehouse_stock,
                          warehouses=warehouses,
                          selected_warehouse=warehouse_id)
@@ -144,132 +140,4 @@ def format_qty(value, ndigits=2):
     if v.is_integer():
         return int(v)
     return round(v, ndigits)
-
-
-def get_low_stock_items(warehouse_id=None):
-    """Get items that are low on stock or need attention"""
-    conn = create_db_connection()
-    if not conn:
-        return []
-
-    try:
-        cursor = conn.cursor()
-
-        # Query for items where available stock is below reorder level
-        # This is a simplified query - adjust based on your actual database schema
-        base_sql = """
-        SELECT
-            StockLink,
-            StockCode,
-            StockDescription,
-            COALESCE(QtyOnHand, 0) as Available,
-            ReorderLevel,
-            COALESCE(QtyOnPo, 0) AS QtyOnPo,
-            COALESCE(IncompleteIssuesQty, 0) AS QtyOnIssues,
-            QtyOnPo
-        FROM stk._uvInventoryQty
-        WHERE COALESCE(QtyOnHand, 0) < ReorderLevel
-            AND ReorderLevel > 0
-        """
-
-        params = []
-        if warehouse_id is not None:
-            base_sql += "\n            AND WhseLink = ?"
-            params.append(warehouse_id)
-
-        base_sql += "\n        ORDER BY (ReorderLevel - COALESCE(QtyOnHand, 0)) DESC"
-
-        cursor.execute(base_sql, tuple(params))
-
-        columns = [column[0] for column in cursor.description]
-        results = []
-        for row in cursor.fetchall():
-            results.append(dict(zip(columns, row)))
-
-        return results
-
-    except Exception as e:
-        print(f"Error fetching low stock items: {e}")
-        return []
-    finally:
-        close_db_connection(conn)
-
-def get_upcoming_demand(warehouse_id=None):
-    """Get upcoming demand grouped by week with running balances"""
-    conn = create_db_connection()
-    if not conn:
-        return []
-
-    try:
-        cursor = conn.cursor()
-
-        # Get stock projections with product details
-        base_sql = """
-        SELECT 
-            PJN.SprayLineStkId as StockId,
-            STK.StockCode, STK.StockDescription,
-            PJN.SprayHWhseId as WhseId,
-            PJN.QtyOnPO,
-            PJN.SprayHWeek,
-            PJN.OpeningBalance,
-            PJN.QtyNeeded,
-            PJN.ProjectedBalance
-        FROM agr._uvStockProjection PJN
-        JOIN cmn._uvStockItems STK on STK.StockLink = PJN.SprayLineStkId
-        """
-
-        params = []
-        if warehouse_id is not None:
-            base_sql += "\n WHERE PJN.SprayHWhseId = ?"
-            params.append(warehouse_id)
-
-        base_sql += "\n ORDER BY PJN.SprayHWeek, PJN.SprayLineStkId"
-
-        cursor.execute(base_sql, tuple(params))
-
-        results = cursor.fetchall()
-
-        # Group by week
-        weeks = {}
-        for row in results:
-            week = row.SprayHWeek
-            if week not in weeks:
-                weeks[week] = []
-            
-            status = 'shortage' if row.ProjectedBalance < 0 else 'sufficient'
-            
-            weeks[week].append({
-                "StockLink": row.StockId,
-                "StockCode": row.StockCode,
-                "StockDescription": row.StockDescription,
-                "OpeningBalance": format_qty(row.OpeningBalance),
-                "QtyNeeded": format_qty(row.QtyNeeded),
-                "ProjectedBalance": format_qty(row.ProjectedBalance),
-                "QtyOnPO": format_qty(row.QtyOnPO),
-                "Status": status
-            })
-        
-
-        # Convert to list format with attention/sufficient separation
-        demand_groups = []
-        for week_key in sorted(weeks.keys()):
-            items = weeks[week_key]
-            items_needing_attention = [item for item in items if item["Status"] == "shortage"]
-            sufficient_items = [item for item in items if item["Status"] == "sufficient"]
-            
-            if items_needing_attention or sufficient_items:
-                demand_groups.append({
-                    "label": f"Week {week_key}",
-                    "items_needing_attention": items_needing_attention,
-                    "sufficient_items": sufficient_items,
-                    "attention_count": len(items_needing_attention),
-                    "total_count": len(items)
-                })
-        return demand_groups
-    except Exception as e:
-        print(f"Error fetching upcoming demand: {e}")
-        return []
-    finally:
-        close_db_connection(conn)
-
  
