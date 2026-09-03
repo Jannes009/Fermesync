@@ -83,10 +83,8 @@ def suggested_order_data():
                 FOR JSON PATH
             ) AS Suppliers
         FROM agr._uvMainWarehouseReordering MAIN
-
         LEFT JOIN agr.ChemStock S
             ON S.ChemStockLink = MAIN.StockLink
-
         {where_clause}
         GROUP BY MAIN.StockLink, S.ChemStockCode, S.ChemStockName, MAIN.QtyOnHand
         , MAIN.QtyOnPO, MAIN.QtyAvailable, MAIN.StockingUnitCode, MAIN.PurchasingUnitId, 

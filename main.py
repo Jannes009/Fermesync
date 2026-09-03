@@ -1,6 +1,8 @@
+from urllib import response
+
 from flask import Flask, render_template, request, redirect, session, url_for, make_response, send_from_directory, jsonify
 from flask_login import login_user, logout_user, current_user, login_required
-from Core.auth import login_manager, authenticate_user, get_user_by_username, set_user_password
+from Core.auth import login_manager, authenticate_user, get_user_by_username, set_user_password, create_db_connection
 import os
 from Core.config import DevelopmentConfig, ProductionConfig, TestingConfig
 import subprocess
@@ -70,6 +72,94 @@ def create_app():
         return {
             "onesignal_app_id": ONESIGNAL_APP_ID
         }
+
+    @app.after_request
+    def log_web_traffic(response):
+        try:
+            # ---------------------------------------------------------
+            # Get response size
+            # ---------------------------------------------------------
+            response_bytes = response.calculate_content_length()
+
+            if response_bytes is None:
+                response_bytes = 0
+
+            # ---------------------------------------------------------
+            # Get logged-in user
+            # ---------------------------------------------------------
+            user_id = None
+
+            if current_user.is_authenticated:
+                user_id = current_user.id
+
+            # ---------------------------------------------------------
+            # Get request information
+            # ---------------------------------------------------------
+            endpoint = request.endpoint
+            request_path = request.path
+
+            # ---------------------------------------------------------
+            # Get content type
+            # ---------------------------------------------------------
+            content_type = response.content_type
+
+            # ---------------------------------------------------------
+            # Get IP address
+            # ---------------------------------------------------------
+            ip_address = request.remote_addr
+
+            # ---------------------------------------------------------
+            # Get user agent
+            # ---------------------------------------------------------
+            user_agent = request.user_agent.string
+
+            # ---------------------------------------------------------
+            # Insert log record
+            # ---------------------------------------------------------
+            conn = create_db_connection()
+
+            cursor = conn.cursor()
+
+            cursor.execute("""
+                INSERT INTO dbo.WebTrafficLog
+                (
+                    UserID,
+                    RequestMethod,
+                    Endpoint,
+                    RequestPath,
+                    StatusCode,
+                    ContentType,
+                    ResponseBytes,
+                    IPAddress,
+                    UserAgent
+                )
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+            """,
+                user_id,
+                request.method,
+                endpoint,
+                request_path,
+                response.status_code,
+                content_type,
+                response_bytes,
+                ip_address,
+                user_agent
+            )
+
+            conn.commit()
+
+            cursor.close()
+            conn.close()
+
+        except Exception as e:
+            # Traffic logging must NEVER cause the actual request
+            # to fail.
+            app.logger.exception(
+                "Failed to log web traffic: %s",
+                e
+            )
+
+        return response
 
     @app.route("/")
     def index():

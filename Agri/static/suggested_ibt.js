@@ -1,9 +1,10 @@
 function initIbt(container = document) {
-    const weekSel = container.querySelector('#ibt_week');
+    const fromWeekSel = container.querySelector('#ibt_from_week');
+    const toWeekSel = container.querySelector('#ibt_to_week');
     const loadBtn = container.querySelector('#ibt_load');
     const contentDiv = container.querySelector('#ibt_content');
 
-    if (!weekSel || !loadBtn || !contentDiv) return;
+    if (!fromWeekSel || !toWeekSel || !loadBtn || !contentDiv) return;
 
     const nf = new Intl.NumberFormat(undefined, { maximumFractionDigits: 2 });
 
@@ -14,28 +15,43 @@ function initIbt(container = document) {
             const res = await request('/agri/ibt/weeks');
             const payload = await res.json();
             if (!payload.success) {
-                weekSel.innerHTML = '<option value="">Error loading weeks</option>';
+                    fromWeekSel.innerHTML = '<option value="">Error loading weeks</option>';
+                    toWeekSel.innerHTML = '<option value="">Error loading weeks</option>';
                 return;
             };
-            weekSel.innerHTML = '';
+                fromWeekSel.innerHTML = '';
+                toWeekSel.innerHTML = '';
             for (const w of payload.weeks) {
-                const o = document.createElement('option');
-                o.value = w;
-                o.textContent = w;
-                weekSel.appendChild(o);
+                    for (const select of [fromWeekSel, toWeekSel]) {
+                        const o = document.createElement('option');
+                        o.value = w;
+                        o.textContent = w;
+                        select.appendChild(o);
+                    }
             }
+                if (payload.weeks.length) {
+                    fromWeekSel.value = payload.weeks[0];
+                    toWeekSel.value = payload.weeks[0];
+                }
         } catch (e) {
             console.error('Unable to load weeks', e);
         }
     }
 
     async function loadSuggested() {
-        const week = weekSel.value;
-        if (!week) return alert('Please select a week');
+        let fromWeek = fromWeekSel.value;
+        let toWeek = toWeekSel.value;
+        if (!fromWeek || !toWeek) return alert('Please select a week range');
+        if (fromWeek > toWeek) {
+            [fromWeek, toWeek] = [toWeek, fromWeek];
+            fromWeekSel.value = fromWeek;
+            toWeekSel.value = toWeek;
+        }
         
         contentDiv.innerHTML = '<div style="padding:2rem;text-align:center;color:#6b7280">Loading suggestions...</div>';
         try {
-            const res = await request(`/agri/ibt/suggested?week=${encodeURIComponent(week)}`);
+            const query = `from_week=${encodeURIComponent(fromWeek)}&to_week=${encodeURIComponent(toWeek)}`;
+            const res = await request(`/agri/ibt/suggested?${query}`);
             const payload = await res.json();
             if (!payload.success) return (contentDiv.innerHTML = `<div style="padding:2rem;text-align:center;color:#c2410c">Error loading data: ${payload.message}</div>`);
             
@@ -56,15 +72,12 @@ function initIbt(container = document) {
                             </div>
                         </div>
                     </div>
-                    <table class="ibt-table">
+                    <div class="ibt-table-wrap"><table class="ibt-table">
                         <thead>
                             <tr>
                                 <th><input type="checkbox" class="whse-check-all" data-whse="${whse.whse_id}"></th>
                                 <th class="col-product">Product</th>
-                                <th class="col-num">Needed</th>
-                                <th class="col-num">On Hand</th>
-                                <th class="col-num">Suggested IBT</th>
-                                <th>Unit</th>
+                                <th class="col-num">IBT Qty</th>
                             </tr>
                         </thead>
                         <tbody>`;
@@ -74,18 +87,50 @@ function initIbt(container = document) {
                     const fromAttr = item.from_whse || item.FromWhseId || item.fromWhse || '';
                     const toAttr = item.to_whse || item.ToWhseId || item.toWhse || '';
                     // render qty as plain text and default checkbox checked
-                    html += `<tr data-whse-id="${whse.whse_id}" data-stock-link="${item.stock_link}" data-units-suggested="${item.units_suggested}" data-from-whse="${fromAttr}" data-from-whse-description="${(item.from_whse_description||'') }" data-to-whse="${toAttr}">
+                    html += `<tr class="ibt-item-row" data-whse-id="${whse.whse_id}" data-stock-link="${item.stock_link}" data-units-suggested="${item.units_suggested}" data-units-on-hand="${item.units_on_hand}" data-to-units-on-hand="${item.to_units_on_hand}" data-uom="${item.uom || ''}" data-from-whse="${fromAttr}" data-from-whse-description="${(item.from_whse_description||'') }" data-to-whse="${toAttr}" data-to-whse-description="${whse.whse_description || ''}">
                         <td><input type="checkbox" class="ibt-item-check" checked></td>
-                        <td class="col-product">${item.stock_description}</td>
-                        <td class="col-num">${nf.format(item.units_needed)}</td>
-                        <td class="col-num">${nf.format(item.units_on_hand)}</td>
-                        <td class="col-num">${nf.format(item.units_suggested)}</td>
-                        <td>${item.uom || ''}</td>
+                        <td class="col-product"><button class="ibt-expand" type="button" aria-expanded="false">+</button> ${item.stock_description}</td>
+                        <td class="col-num">${nf.format(item.units_suggested)}<span class="sd-hint">${item.uom || ''}</span></td>
                     </tr>`;
                 }
-                html += `</tbody></table></div>`;
+                html += `</tbody></table></div></div>`;
             }
             contentDiv.innerHTML = html;
+
+            contentDiv.querySelectorAll('.ibt-expand').forEach(button => {
+                button.addEventListener('click', async function () {
+                    const itemRow = button.closest('.ibt-item-row');
+                    const existing = itemRow.nextElementSibling;
+                    if (existing?.classList.contains('ibt-detail-row')) {
+                        const isOpen = existing.style.display !== 'none';
+                        existing.style.display = isOpen ? 'none' : '';
+                        button.textContent = isOpen ? '+' : '-';
+                        button.setAttribute('aria-expanded', String(!isOpen));
+                        return;
+                    }
+
+                    const detailRow = document.createElement('tr');
+                    detailRow.className = 'ibt-detail-row';
+                    detailRow.innerHTML = '<td colspan="3">Loading details...</td>';
+                    itemRow.parentNode.insertBefore(detailRow, itemRow.nextSibling);
+                    button.textContent = '-';
+                    button.setAttribute('aria-expanded', 'true');
+
+                    try {
+                        const stockId = itemRow.dataset.stockLink;
+                        const whseId = itemRow.dataset.toWhse;
+                        const response = await request(`/agri/ibt/suggested/detail/${encodeURIComponent(stockId)}/warehouse/${encodeURIComponent(whseId)}?from_week=${encodeURIComponent(fromWeek)}&to_week=${encodeURIComponent(toWeek)}`);
+                        const detail = await response.json();
+                        if (!detail.success) throw new Error(detail.message || 'Unable to load details');
+                        const sprayRows = detail.sprays.length
+                            ? detail.sprays.map(s => `<tr><td>${s.spray_h_no}</td><td>${s.spray_h_description || ''}</td><td class="col-num">${nf.format(s.recommended_qty)} ${s.uom || ''}</td></tr>`).join('')
+                            : '<tr><td colspan="3">No spray details found.</td></tr>';
+                        detailRow.innerHTML = `<td colspan="3"><div class="ibt-detail"><div class="ibt-on-hand"><div><div class="ibt-detail-label">On hand (${itemRow.dataset.fromWhseDescription || ''})</div><strong>${nf.format(Number(itemRow.dataset.unitsOnHand || 0))} ${itemRow.dataset.uom || ''}</strong></div><div><div class="ibt-detail-label">On hand (${itemRow.dataset.toWhseDescription || ''})</div><strong>${nf.format(Number(itemRow.dataset.toUnitsOnHand || 0))} ${itemRow.dataset.uom || ''}</strong></div></div><div class="ibt-spray-section"><div class="ibt-table-wrap"><table class="ibt-spray-table"><thead><tr><th>Spray</th><th>Description</th><th class="col-num">Qty</th></tr></thead><tbody>${sprayRows}</tbody></table></div></div></div></td>`;
+                    } catch (error) {
+                        detailRow.innerHTML = `<td colspan="3">Unable to load details: ${error.message}</td>`;
+                    }
+                });
+            });
 
             // Apply disabled state to rows with 0 qty and disable warehouse groups if all products have 0 qty
             contentDiv.querySelectorAll('.ibt-warehouse-group').forEach(group => {

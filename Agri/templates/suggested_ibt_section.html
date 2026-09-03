@@ -1,25 +1,47 @@
 <style>
-    .sd-container { padding: 16px; font-family: Inter, system-ui, -apple-system, 'Segoe UI', Roboto, Arial; color:#0f172a }
+    .sd-container { padding: 12px; font-family: Inter, system-ui, -apple-system, 'Segoe UI', Roboto, Arial; color:#0f172a }
     .sd-title { margin: 0 0 12px 0; font-size: 1.25rem; font-weight:700 }
     .sd-controls { display:flex; align-items:center; gap:8px; margin-bottom:12px; flex-wrap:wrap; }
-    .sd-input { padding:6px 10px; width:180px; border:1px solid #d1d5db; border-radius:6px; background:#fff }
+    .sd-week-filter { display:flex; align-items:center; gap:6px; }
+    .sd-input { padding:6px 10px; width:140px; border:1px solid #d1d5db; border-radius:6px; background:#fff }
     .sd-btn { padding:7px 12px; border-radius:6px; background:#0b5ed7; color:white; border:none; cursor:pointer }
     .sd-btn:disabled { background:#94a3b8 }
-    .sd-hint { color:#6b7280; font-size:0.88rem; margin-left:8px }
+    .sd-hint { color:#6b7280; font-size:0.88rem; margin-left:4px }
     .ibt-warehouse-group { margin-bottom:16px; border:1px solid #e6e9ef; border-radius:8px; overflow:hidden }
     .ibt-whse-header { background:#f8fafc; padding:12px 16px; font-weight:600; border-bottom:2px solid #eef2f7 }
-    .ibt-table-wrap { overflow:auto; max-height:50vh; border:1px solid #e6e9ef; border-radius:8px; background:#fff }
+    .ibt-table-wrap { overflow-x:auto; max-height:50vh; border:1px solid #e6e9ef; border-radius:8px; background:#fff }
     .ibt-table { width:100%; border-collapse:collapse; font-size:0.95rem }
-    .ibt-table th, .ibt-table td { padding:8px 10px; border-bottom:1px solid #f1f5f9; text-align:left }
+    .ibt-table th:first-child, .ibt-table td:first-child { width:42px; text-align:center }
+    .ibt-table th:nth-child(2), .ibt-table td:nth-child(2) { min-width:50px; width: 60%;}
+    .ibt-table th:nth-child(3), .ibt-table td:nth-child(3) { min-width:20px; }
+    .ibt-table th, .ibt-table td { padding:8px 5px; border-bottom:1px solid #f1f5f9; text-align:left }
     .col-product { width:40%; font-weight:600 }
     .col-num { white-space:nowrap; font-variant-numeric: tabular-nums; text-align:right }
-    @media (max-width:900px) { .col-product { width:50% } }
+    .ibt-expand { padding:4px 9px; border:1px solid #dbeffd; border-radius:6px; background:#eef6ff; cursor:pointer; }
+    .ibt-expand:hover { background:#dbeeff; }
+    .ibt-detail-row td { padding:10px 14px; background:#fafafa; }
+    .ibt-detail { display:flex; flex-direction:column; gap:14px; align-items:stretch; }
+    .ibt-on-hand { display:flex; justify-content:center; gap:32px; text-align:center; flex-wrap:wrap; }
+    .ibt-spray-section { min-width:0; }
+    .ibt-detail-label { color:#64748b; font-size:0.8rem; text-transform:uppercase; font-weight:600; }
+    .ibt-spray-table { width:100%; border-collapse:collapse; }
+    .ibt-spray-table th, .ibt-spray-table td { padding:6px 8px; border-bottom:1px solid #e2e8f0; text-align:left; }
+    @media (max-width:900px) {
+        .sd-container { padding:8px; }
+        .sd-controls { gap:6px; }
+        .sd-week-filter { flex:1 1 190px; justify-content:space-between; }
+        .sd-week-filter .sd-input { width:130px; }
+        .ibt-detail { grid-template-columns:1fr; }
+        .ibt-on-hand { gap:16px; }
+        .ibt-detail-row td { padding:10px 8px; }
+    }
 </style>
 <div class="sd-container">
     <h2 class="sd-title">Inter-Branch Transfer (IBT)</h2>
 
     <div class="sd-controls">
-        <label>Week: <select id="ibt_week" class="sd-input"></select></label>
+        <label class="sd-week-filter"><span class="sd-hint">From week</span><select id="ibt_from_week" class="sd-input"></select></label>
+        <label class="sd-week-filter"><span class="sd-hint">To week</span><select id="ibt_to_week" class="sd-input"></select></label>
         <button id="ibt_load" class="sd-btn">Load Suggestions</button>
         <div style="flex:1"></div>
     </div>
