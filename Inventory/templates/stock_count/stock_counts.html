@@ -352,6 +352,8 @@ body{
     }
 
     .modal-content{
+        width:min(100%, 100%);
+        max-width:100%;
         max-height:calc(100vh - 1rem);
     }
 
@@ -366,6 +368,66 @@ body{
 
     .details-meta{
         grid-template-columns:1fr;
+    }
+
+    .details-table-scroll{
+        overflow-x:visible;
+    }
+
+    .details-table{
+        min-width:0;
+        width:100%;
+        border-collapse:separate;
+        border-spacing:0 0.5rem;
+    }
+
+    .details-table thead{
+        display:none;
+    }
+
+    .details-table tbody,
+    .details-table tr,
+    .details-table td{
+        display:block;
+        width:100%;
+    }
+
+    .details-table tbody{
+        display:flex;
+        flex-direction:column;
+        gap:0.7rem;
+    }
+
+    .details-table tr{
+        background:#fff;
+        border:1px solid var(--border-color);
+        border-radius:10px;
+        padding:0.75rem;
+        box-shadow:0 2px 8px rgba(0,0,0,0.04);
+    }
+
+    .details-table td{
+        border:none;
+        padding:0.35rem 0;
+        display:flex;
+        justify-content:space-between;
+        align-items:flex-start;
+        gap:1rem;
+        text-align:left;
+    }
+
+    .details-table td::before{
+        content:attr(data-label);
+        font-weight:700;
+        color:var(--secondary-text);
+        font-size:0.72rem;
+        text-transform:uppercase;
+        letter-spacing:0.04em;
+        flex:0 0 38%;
+    }
+
+    .details-table td:last-child{
+        padding-bottom:0;
     }
 }
 
@@ -470,7 +532,6 @@ onclick="window.location.href='{{ url_for('inventory.stock_count_start') }}'">
 
 <thead>
 <tr>
-<th>Stock</th>
 <th>Description</th>
 <th>System Qty</th>
 <th>Counted Qty</th>

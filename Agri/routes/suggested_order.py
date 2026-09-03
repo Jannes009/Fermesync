@@ -15,22 +15,44 @@ def suggested_order_popup():
 @agri_bp.route('/suggested-order/data', methods=['GET'])
 @login_required
 def suggested_order_data():
-    week = request.args.get('week')
-    if not week:
-        return jsonify({'success': False, 'message': 'week parameter required'}), 400
+    legacy_week = request.args.get('week')
+    from_week = request.args.get('from_week') or None
+    to_week = request.args.get('to_week') or legacy_week
+
+    if not from_week and not to_week and not legacy_week:
+        return jsonify({'success': False, 'message': 'week or range required'}), 400
+
+    if from_week and to_week and from_week > to_week:
+        from_week, to_week = to_week, from_week
+
+    if not from_week and legacy_week and not to_week:
+        to_week = legacy_week
+
+    if not from_week and not to_week:
+        return jsonify({'success': False, 'message': 'week or range required'}), 400
+
+    clauses = []
+    params = []
+    if from_week:
+        clauses.append('MAIN.SprayHWeek >= ?')
+        params.append(from_week)
+    if to_week:
+        clauses.append('MAIN.SprayHWeek <= ?')
+        params.append(to_week)
+
+    where_clause = ' WHERE ' + ' AND '.join(clauses) if clauses else ''
+    print(where_clause, params)
 
     conn = create_db_connection()
     cur = conn.cursor()
 
     # Use main reordering view for aggregated main-warehouse quantities and purchase-unit values
-    sql = """
-    WITH LatestWeek AS
-    (
+    sql = f"""
         SELECT
             MAIN.StockLink,
             ISNULL(S.ChemStockCode, '') AS StockCode,
             ISNULL(S.ChemStockName, '') AS StockDescription,
-            ISNULL(MAIN.QtyNeeded, 0) AS TotalRequiredStocking,
+            SUM(ISNULL(MAIN.QtyNeeded, 0)) AS TotalRequiredStocking,
             ISNULL(MAIN.QtyOnHand, 0) AS MainWhQty,
             ISNULL(MAIN.QtyOnPO, 0) AS MainWhQtyOnPO,
             ISNULL(MAIN.QtyAvailable, 0) AS QtyAvailable,
@@ -40,55 +62,26 @@ def suggested_order_data():
             ISNULL(MAIN.PurchaseUnitOnHand, 0) AS PurchaseUnitOnHand,
             ISNULL(MAIN.PurchaseUnitOnPO, 0) AS PurchaseUnitOnPO,
             ISNULL(MAIN.PurchaseUnitAvailable, 0) AS PurchaseUnitAvailable,
-            ISNULL(MAIN.PurchaseUnitsNeeded, 0) AS PurchaseUnitsNeeded,
-            ISNULL(MAIN.PurchaseUnitsToOrder, 0) AS PurchaseUnitsToOrder,
-
-            MAIN.SprayHWeek,
-
-            ROW_NUMBER() OVER (
-                PARTITION BY MAIN.StockLink
-                ORDER BY MAIN.SprayHWeek DESC
-            ) AS rn
-
+            SUM(ISNULL(MAIN.PurchaseUnitsNeeded, 0)) AS PurchaseUnitsNeeded,
+            SUM(ISNULL(MAIN.PurchaseUnitsToOrder, 0)) AS PurchaseUnitsToOrder,
+            CASE WHEN EXISTS (
+                SELECT 1
+                FROM stk._uvStockLinks SL
+                WHERE SL.iStockID = MAIN.StockLink
+            ) THEN 1 ELSE 0 END AS HasStockLink
         FROM agr._uvMainWarehouseReordering MAIN
 
         LEFT JOIN agr.ChemStock S
             ON S.ChemStockLink = MAIN.StockLink
 
-        WHERE MAIN.SprayHWeek <= ?
-    )
-    SELECT
-        StockLink,
-        StockCode,
-        StockDescription,
-        TotalRequiredStocking,
-        MainWhQty,
-        MainWhQtyOnPO,
-        QtyAvailable,
-        StockingUnitCode,
-        PurchasingUnitId,
-        PurchasingUnitCode,
-        PurchaseUnitOnHand,
-        PurchaseUnitOnPO,
-        PurchaseUnitAvailable,
-        PurchaseUnitsNeeded,
-        PurchaseUnitsToOrder,
-        SprayHWeek,
-                CASE
-                WHEN EXISTS (
-                    SELECT 1
-                    FROM stk._uvStockLinks SL
-                    WHERE SL.iStockID = StockLink
-                )
-                THEN 1
-                ELSE 0
-            END AS HasStockLink
-    FROM LatestWeek
-    WHERE rn = 1
-    ORDER BY StockCode;
+        {where_clause}
+        GROUP BY MAIN.StockLink, S.ChemStockCode, S.ChemStockName, MAIN.QtyOnHand
+        , MAIN.QtyOnPO, MAIN.QtyAvailable, MAIN.StockingUnitCode, MAIN.PurchasingUnitId, 
+        MAIN.PurchasingUnitCode, MAIN.PurchaseUnitOnHand, MAIN.PurchaseUnitOnPO, MAIN.PurchaseUnitAvailable
+        ORDER BY StockDescription
     """
 
-    cur.execute(sql, (week,))
+    cur.execute(sql, params)
     rows = cur.fetchall()
     conn.close()
 
@@ -113,19 +106,39 @@ def suggested_order_data():
             'has_stock_link': bool(r.HasStockLink)
         })
 
-    return jsonify({'success': True, 'week': week, 'data': results})
+    return jsonify({'success': True, 'from_week': from_week, 'to_week': to_week, 'week': to_week or from_week, 'data': results})
 
 
 @agri_bp.route('/suggested-order/detail/<int:stock_id>', methods=['GET'])
 @login_required
 def suggested_order_detail(stock_id):
-    week = request.args.get('week')
-    if not week:
-        return jsonify({'success': False, 'message': 'week parameter required'}), 400
+    legacy_week = request.args.get('week')
+    from_week = request.args.get('from_week') or None
+    to_week = request.args.get('to_week') or legacy_week
+
+    if not from_week and not to_week and not legacy_week:
+        return jsonify({'success': False, 'message': 'week or range required'}), 400
+
+    if from_week and to_week and from_week > to_week:
+        from_week, to_week = to_week, from_week
+
+    clauses = []
+    params = []
+    if from_week:
+        clauses.append('P.SprayHWeek >= ?')
+        params.append(from_week)
+    if to_week:
+        clauses.append('P.SprayHWeek <= ?')
+        params.append(to_week)
+
+    if not clauses:
+        return jsonify({'success': False, 'message': 'week or range required'}), 400
+
+    where_clause = ' WHERE ' + ' AND '.join(clauses)
 
     conn = create_db_connection()
     cur = conn.cursor()
-    sql = """
+    sql = f"""
     WITH LatestWeek AS
     (
         SELECT
@@ -149,7 +162,7 @@ def suggested_order_detail(stock_id):
         LEFT JOIN stk._uvInventoryQty Inv
             ON Inv.WhseLink = P.SprayHWhseId
             AND Inv.StockLink = P.SprayLineStkId
-        WHERE P.SprayHWeek <= ?
+        {where_clause}
         AND P.SprayLineStkId = ?
     )
     SELECT
@@ -169,7 +182,8 @@ def suggested_order_detail(stock_id):
     ORDER BY WhseName;
         """
 
-    cur.execute(sql, (week, stock_id))
+    params.append(stock_id)
+    cur.execute(sql, tuple(params))
     rows = cur.fetchall()
     conn.close()
 
@@ -189,20 +203,40 @@ def suggested_order_detail(stock_id):
         }
         for r in rows
     ]
-    return jsonify({'success': True, 'week': week, 'stock_id': stock_id, 'warehouses': results})
+    return jsonify({'success': True, 'from_week': from_week, 'to_week': to_week, 'week': to_week or from_week, 'stock_id': stock_id, 'warehouses': results})
 
 
 @agri_bp.route('/suggested-order/detail/<int:stock_id>/warehouse/<int:whse_id>', methods=['GET'])
 @login_required
 def suggested_order_warehouse_detail(stock_id, whse_id):
-    week = request.args.get('week')
-    if not week:
-        return jsonify({'success': False, 'message': 'week parameter required'}), 400
+    legacy_week = request.args.get('week')
+    from_week = request.args.get('from_week') or None
+    to_week = request.args.get('to_week') or legacy_week
+
+    if not from_week and not to_week and not legacy_week:
+        return jsonify({'success': False, 'message': 'week or range required'}), 400
+
+    if from_week and to_week and from_week > to_week:
+        from_week, to_week = to_week, from_week
+
+    clauses = []
+    params = []
+    if from_week:
+        clauses.append('HEA.SprayHWeek >= ?')
+        params.append(from_week)
+    if to_week:
+        clauses.append('HEA.SprayHWeek <= ?')
+        params.append(to_week)
+
+    if not clauses:
+        return jsonify({'success': False, 'message': 'week or range required'}), 400
+
+    where_clause = ' AND '.join(clauses)
 
     conn = create_db_connection()
     cur = conn.cursor()
 
-    sql = """
+    sql = f"""
     Select 
 	Lin.SprayLineHeaderId,
 	HEA.SprayHNo,
@@ -226,7 +260,7 @@ def suggested_order_warehouse_detail(stock_id, whse_id):
     JOIN cmn._uvStockItems EVOSTK ON EVOSTK.StockLink = LIN.SprayLineStkId
     LEFT JOIN agr.ChemStock STK ON STK.ChemStockLink = LIN.SprayLineStkId
     LEFT JOIN cmn._uvUOM UOM ON UOM.idUnits = LIN.SprayLineUoMId
-    WHERE HEA.SprayHWeek <= ? AND LIN.SprayLineStkId = ? AND HEA.SprayHWhseId = ?
+    WHERE {where_clause} AND LIN.SprayLineStkId = ? AND HEA.SprayHWhseId = ?
     GROUP BY StockLink ,StockDescription
     ,LIN.SprayLineFunction ,Lin.SprayLineWitholdingPeriod
     ,IssLineStockLink ,cUnitCode, ProjectQty, 	Lin.SprayLineHeaderId,
@@ -234,7 +268,8 @@ def suggested_order_warehouse_detail(stock_id, whse_id):
 	HEA.SprayHDescription
     """
 
-    cur.execute(sql, (week, stock_id, whse_id))
+    params.extend([stock_id, whse_id])
+    cur.execute(sql, tuple(params))
     rows = cur.fetchall()
     conn.close()
 
@@ -249,7 +284,7 @@ def suggested_order_warehouse_detail(stock_id, whse_id):
         }
         for r in rows
     ]
-    return jsonify({'success': True, 'week': week, 'stock_id': stock_id, 'whse_id': whse_id, 'sprays': results})
+    return jsonify({'success': True, 'from_week': from_week, 'to_week': to_week, 'week': to_week or from_week, 'stock_id': stock_id, 'whse_id': whse_id, 'sprays': results})
 
 
 @agri_bp.route('/suggested-order/stock-suppliers/<int:stock_id>', methods=['GET'])
@@ -259,19 +294,13 @@ def suggested_order_stock_suppliers(stock_id):
     conn = create_db_connection()
     cur = conn.cursor()
     sql = """
-    SELECT
+    SELECT DISTINCT
         L.iDCLink AS DCLink,
         ISNULL(S.Name, '') AS Name,
-        ISNULL(L.LastInvoicePrice, ISNULL(GCST.PurchaseUnitLastGRVCost,0)) AS LastInvoicePrice,
-        ISNULL(L.bDefaultSupplier, 0) AS DefaultSupplier,
-        L.iUnitsOfMeasureID AS UnitId,
-        UOM.cUnitCode AS UnitCode
+        ISNULL(L.bDefaultSupplier, 0) AS DefaultSupplier
     FROM stk._uvStockLinks L
     LEFT JOIN cmn._uvSuppliers S ON S.DCLink = L.iDCLink
-    LEFT JOIN cmn._uvUOM UOM on UOM.idUnits = iUnitsOfMeasureID
-	LEFT JOIN cmn._uvLastGRVCost GCST on GCST.StockLink = L.iStockID and GCST.iDCLink = L.iDCLink and GCST.iUOMDefPurchaseUnitID = L.iUnitsOfMeasureID
     WHERE L.iStockID = ?
-    ORDER BY ISNULL(L.bDefaultSupplier,0) DESC, S.Name
     """
     cur.execute(sql, (stock_id,))
     rows = cur.fetchall()
@@ -280,11 +309,8 @@ def suggested_order_stock_suppliers(stock_id):
     suppliers = [{
         'dc_link': int(r.DCLink),
         'name': r.Name, 
-        'last_invoice_price': float(r.LastInvoicePrice),
         'default_supplier': bool(r.DefaultSupplier), 
-        'unit_id': int(r.UnitId) if hasattr(r, 'UnitId') and r.UnitId is not None else None,
-        'unit_code': r.UnitCode} 
-        for r in rows
+        } for r in rows
         ]
     return jsonify({'success': True, 'suppliers': suppliers})
 

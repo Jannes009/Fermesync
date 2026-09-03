@@ -410,11 +410,10 @@ async function openModal(headerId) {
 
                 modalLines.insertAdjacentHTML("beforeend", `
                     <tr class="${rowClass}">
-                        <td>${l.stock}</td>
-                        <td>${l.description || "–"}</td>
-                        <td style="text-align: right;">${l.system} ${l.unit || ""}</td>
-                        <td style="text-align: right;">${l.counted ?? "N/A"} ${l.unit || ""}</td>
-                        <td style="text-align: center;">${varianceText}</td>
+                        <td data-label="Description">${l.description || "–"}</td>
+                        <td data-label="System Qty" style="text-align: right;">${l.system} ${l.unit || ""}</td>
+                        <td data-label="Counted Qty" style="text-align: right;">${l.counted ?? "N/A"} ${l.unit || ""}</td>
+                        <td data-label="Variance" style="text-align: center;">${varianceText}</td>
                     </tr>
                 `);
             });

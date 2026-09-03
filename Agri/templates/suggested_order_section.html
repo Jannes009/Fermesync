@@ -2,6 +2,8 @@
     .sd-container { padding: 16px; font-family: Inter, system-ui, -apple-system, 'Segoe UI', Roboto, Arial; color:#0f172a }
     .sd-title { margin: 0 0 12px 0; font-size: 1.25rem; font-weight:700 }
     .sd-controls { display:flex; align-items:center; gap:8px; margin-bottom:12px; flex-wrap:wrap; }
+    .sd-week-filter { display:flex; align-items:center; gap:8px; }
+    .sd-week-filter .sd-hint { margin:0; }
     .sd-input { padding:6px 10px; width:140px; border:1px solid #d1d5db; border-radius:6px; background:#fff }
     .sd-btn { padding:7px 12px; border-radius:6px; background:#0b5ed7; color:white; border:none; cursor:pointer; box-shadow: 0 1px 0 rgba(11,94,215,0.15) }
     .sd-btn:hover { background:#0a58ca }
@@ -65,7 +67,8 @@
     <h2 class="sd-title">Order Recommendation</h2>
 
     <div class="sd-controls">
-        <select id="week" class="sd-input sd-select"></select>
+        <label class="sd-week-filter"><span class="sd-hint">From week</span><select id="from_week" class="sd-input sd-select"></select></label>
+        <label class="sd-week-filter"><span class="sd-hint">To week</span><select id="to_week" class="sd-input sd-select"></select></label>
         <label style="display:flex;align-items:center;gap:8px;margin-left:8px"><input type="checkbox" id="filter_needs_only" checked> <span class="sd-hint">Show only products needing ordering</span></label>
     </div>
 

@@ -1,6 +1,7 @@
 function initSuggestedOrder(container = document) {
-    const weekInput = container.querySelector('#week');
-    if (!weekInput) return;
+    const fromWeekInput = container.querySelector('#from_week');
+    const toWeekInput = container.querySelector('#to_week');
+    if (!fromWeekInput || !toWeekInput) return;
 
     const tbody = container.querySelector('#results tbody');
     const detailTemplate = container.querySelector('#detail-row');
@@ -24,26 +25,63 @@ function initSuggestedOrder(container = document) {
         return `${date.getUTCFullYear()}-${String(weekNo).padStart(2,'0')}`;
     }
 
-    function populateWeekSelect(before = 0, after = 2) {
-        const select = weekInput;
+    function populateWeekSelects(before = 0, after = 5) {
         const today = new Date();
-        select.innerHTML = '';
-        let index = 0;
+        const values = [];
         for (let i = -before; i <= after; i++) {
             const dt = addDays(today, i * 7);
             const val = isoWeekString(dt);
-            const opt = document.createElement('option');
-            opt.value = val;
-            opt.textContent = val;
-            select.appendChild(opt);
-            if (i === 0) index = select.options.length - 1;
+            if (!values.includes(val)) values.push(val);
         }
-        select.selectedIndex = index;
+
+        function fillSelect(select, selectedValue) {
+            select.innerHTML = '';
+            for (const val of values) {
+                const opt = document.createElement('option');
+                opt.value = val;
+                opt.textContent = val;
+                select.appendChild(opt);
+            }
+            if (selectedValue && values.includes(selectedValue)) {
+                select.value = selectedValue;
+                return;
+            }
+            select.selectedIndex = select.options.length ? 0 : -1;
+        }
+
+        fillSelect(fromWeekInput, values[0]);
+        fillSelect(toWeekInput, values[values.length - 1]);
+    }
+
+    function getSelectedRange() {
+        let fromWeek = (fromWeekInput.value || '').trim();
+        let toWeek = (toWeekInput.value || '').trim();
+        if (!fromWeek && !toWeek) {
+            return { error: 'Please select a week range' };
+        }
+        if (fromWeek && toWeek && fromWeek > toWeek) {
+            [fromWeek, toWeek] = [toWeek, fromWeek];
+            fromWeekInput.value = fromWeek;
+            toWeekInput.value = toWeek;
+        }
+        return { from_week: fromWeek || null, to_week: toWeek || null };
+    }
+
+    function buildRangeQuery() {
+        const range = getSelectedRange();
+        if (range.error) {
+            return null;
+        }
+        const params = new URLSearchParams();
+        if (range.from_week) params.set('from_week', range.from_week);
+        if (range.to_week) params.set('to_week', range.to_week);
+        return params;
     }
 
     async function loadRecommendationData() {
-        const week = weekInput.value.trim();
-        if (!week) return alert('Please enter week (YYYY-WW)');
+        const params = buildRangeQuery();
+        if (!params) return alert('Please select a week range');
+        const toWeek = toWeekInput.value.trim() || fromWeekInput.value.trim();
 
         // clear old rows immediately and show loading placeholder
         clear();
@@ -52,7 +90,7 @@ function initSuggestedOrder(container = document) {
         loadingRow.innerHTML = `<td colspan="8" style="text-align:center; padding:1.25rem; color:#6b7280;">Loading suggested order data...</td>`;
         tbody.appendChild(loadingRow);
 
-        const res = await request(`/agri/suggested-order/data?week=${encodeURIComponent(week)}`);
+        const res = await request(`/agri/suggested-order/data?${params.toString()}`);
         const payload = await res.json();
         if (!payload.success) {
             // remove loading row and show message
@@ -95,7 +133,7 @@ function initSuggestedOrder(container = document) {
             for (const s of stockSuppliers) {
                 const opt = document.createElement('option');
                 opt.value = s.dc_link;
-                opt.textContent = `${s.name} — ${s.last_invoice_price ? 'R' + nf.format(s.last_invoice_price) + ' / ' + (s.unit_code || '') : 'No price'}`;
+                opt.textContent = s.name;
                 opt.dataset.supplierName = s.name;
                 opt.dataset.price = s.last_invoice_price || 0;
                 opt.dataset.unitId = s.unit_id || '';
@@ -156,7 +194,8 @@ function initSuggestedOrder(container = document) {
                     btn.textContent = '-';
                     btn.setAttribute('aria-expanded', 'true');
                     openDetail = detailTr;
-                    const dres = await request(`/agri/suggested-order/detail/${id}?week=${encodeURIComponent(week)}`);
+                    const detailParams = buildRangeQuery();
+                    const dres = await request(`/agri/suggested-order/detail/${id}${detailParams ? `?${detailParams.toString()}` : ''}`);
                     const dpayload = await dres.json();
                     if (!dpayload.success) {
                         detailContent.innerHTML = 'Error loading details' + (dpayload.message ? ': ' + dpayload.message : '');
@@ -190,7 +229,8 @@ function initSuggestedOrder(container = document) {
                                 return;
                             }
 
-                            const sres = await request(`/agri/suggested-order/detail/${encodeURIComponent(stockLink)}/warehouse/${encodeURIComponent(whseId)}?week=${encodeURIComponent(week)}`);
+                            const sprayParams = buildRangeQuery();
+                            const sres = await request(`/agri/suggested-order/detail/${encodeURIComponent(stockLink)}/warehouse/${encodeURIComponent(whseId)}${sprayParams ? `?${sprayParams.toString()}` : ''}`);
                             const spayload = await sres.json();
                             if (!spayload.success) {
                                 alert('Error loading spray details');
@@ -421,8 +461,19 @@ function initSuggestedOrder(container = document) {
 
     document.getElementById('filter_needs_only')?.addEventListener('change', renderPreview);
 
-    weekInput.addEventListener('change', loadRecommendationData);
-    populateWeekSelect(0, 5);
+    fromWeekInput.addEventListener('change', () => {
+        if (fromWeekInput.value && toWeekInput.value && fromWeekInput.value > toWeekInput.value) {
+            toWeekInput.value = fromWeekInput.value;
+        }
+        loadRecommendationData();
+    });
+    toWeekInput.addEventListener('change', () => {
+        if (fromWeekInput.value && toWeekInput.value && fromWeekInput.value > toWeekInput.value) {
+            fromWeekInput.value = toWeekInput.value;
+        }
+        loadRecommendationData();
+    });
+    populateWeekSelects(0, 5);
     loadRecommendationData();
 }
 
