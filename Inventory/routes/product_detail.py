@@ -135,19 +135,23 @@ def load_suppliers(stock_link):
         cur.execute("""
         SELECT
             SUP.Name AS SupplierName,
-            COALESCE(LINK.LastInvoicePrice, GRV.PurchaseUnitLastGRVCost) AS Price,
-            LINK.InvDate,
-            COALESCE(LINK.iUnitsOfMeasureID, GRV.iUOMDefPurchaseUnitID) AS iUnitsOfMeasureID,
+            COALESCE(LST.fUnitPriceExcl, GRV.PurchaseUnitLastGRVCost) AS Price,
+            LST.InvDate,
+            COALESCE(LST.iUnitsOfMeasureID, GRV.iUOMDefPurchaseUnitID) AS iUnitsOfMeasureID,
             UOM.cUnitCode,
             LINK.bDefaultSupplier
+            --Select *
         FROM stk._uvStockLinks LINK
+        LEFT JOIN [stk].[_uvLastSupplierInvoicePrice] LST
+            ON LST.AccountID = LINK.iDCLink
+           AND LST.iStockCodeID = LINK.iStockID
         LEFT JOIN cmn._uvSuppliers SUP
             ON SUP.DCLink = LINK.iDCLink
         LEFT JOIN cmn._uvLastGRVCost GRV
             ON GRV.iDCLink = LINK.iDCLink
         AND GRV.StockLink = LINK.iStockID
         LEFT JOIN cmn._uvUOM UOM
-            ON UOM.idUnits = COALESCE(LINK.iUnitsOfMeasureID, GRV.iUOMDefPurchaseUnitID)
+            ON UOM.idUnits = COALESCE(LST.iUnitsOfMeasureID, GRV.iUOMDefPurchaseUnitID)
         WHERE LINK.iStockID = ?
         ORDER BY ISNULL(LINK.bDefaultSupplier, 0) DESC,
          SUP.Name;

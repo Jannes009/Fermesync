@@ -85,13 +85,17 @@ def purchase_order_stock_item_units(stock_id):
         return jsonify({'success': False, 'message': 'supplier_id parameter required'}), 400
     sql = """
     Select idUnits, cUnitCode,
-    COALESCE(LastInvoicePrice, CST.PurchaseUnitLastGRVCost, 0) AS Cost,
-	LINK.InvDate,
+    COALESCE(fUnitPriceExcl, CST.PurchaseUnitLastGRVCost, 0) AS Cost,
+	LST.InvDate,
     CASE WHEN STKUOM.PurchaseUnitId = UOM.idUnits THEN 1 ELSE 0 END AS DefaultUnit
     from [cmn].[_uvStockUnits] STKUOM
     JOIN [cmn].[_uvStockItems] STK on STK.StockLink = STKUOM.StockLink
     JOIN [cmn].[_uvUOM] UOM on UOM.iUnitCategoryID = PurchaseUnitCatId
-    LEFT JOIN [stk].[_uvStockLinks] LINK on LINK.iStockID = STKUOM.StockLink and LINK.iUnitsOfMeasureID = UOM.idUnits and LINK.iDCLink = ?
+    LEFT JOIN [stk].[_uvStockLinks] LINK on LINK.iStockID = STKUOM.StockLink and LINK.iDCLink = ?
+    LEFT JOIN [stk].[_uvLastSupplierInvoicePrice] LST
+            ON LST.AccountID = LINK.iDCLink
+           AND LST.iStockCodeID = LINK.iStockID
+           and LST.iUnitsOfMeasureID = UOM.idUnits
     LEFT JOIN [cmn].[_uvLastGRVCost] CST on CST.StockLink = STKUOM.StockLink and CST.iUOMDefPurchaseUnitID = UOM.idUnits and CST.iDCLink = ?
     WHERE STKUOM.StockLink = ?
     """

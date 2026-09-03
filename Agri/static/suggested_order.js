@@ -120,15 +120,7 @@ function initSuggestedOrder(container = document) {
             emptyOpt.value = '';
             emptyOpt.textContent = '—';
             supSelect.appendChild(emptyOpt);
-            // fetch suppliers for this stock only
-            let stockSuppliers = [];
-            try {
-                const ssres = await request(`/agri/suggested-order/stock-suppliers/${encodeURIComponent(row.stock_link)}`);
-                const sspayload = await ssres.json();
-                if (sspayload.success) stockSuppliers = sspayload.suppliers || [];
-            } catch (e) {
-                stockSuppliers = [];
-            }
+            const stockSuppliers = row.suppliers || [];
 
             for (const s of stockSuppliers) {
                 const opt = document.createElement('option');

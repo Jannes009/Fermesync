@@ -159,6 +159,45 @@ body {
     width: 100%;
     border-collapse: collapse;
     min-width: 720px;          /* forces scroll only when really needed */
+    table-layout: fixed;
+}
+
+@media (min-width: 721px) {
+    .lines-table th:nth-child(1),
+    .lines-table td:nth-child(1) { width: 25%; }
+    .lines-table th:nth-child(2),
+    .lines-table td:nth-child(2) { width: 14%; }
+    .lines-table th:nth-child(3),
+    .lines-table td:nth-child(3) { width: 15%; }
+    .lines-table th:nth-child(4),
+    .lines-table td:nth-child(4) { width: 15%; }
+    .lines-table th:nth-child(5),
+    .lines-table td:nth-child(5) { width: 10%; }
+    .lines-table th:nth-child(6),
+    .lines-table td:nth-child(6) { width: 11%; }
+    .lines-table th:nth-child(7),
+    .lines-table td:nth-child(7) { width: 5%; }
+
+    .lines-table .col-item,
+    .lines-table .col-unit,
+    .lines-table .col-qty,
+    .lines-table .col-price {
+        min-width: 0;
+    }
+
+    .lines-table .searchable-field,
+    .lines-table .select2-container {
+        width: 100% !important;
+        max-width: 100%;
+        min-width: 0;
+    }
+
+    .lines-table .select2-selection__rendered,
+    .lines-table .select2-results__option {
+        overflow: hidden;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+    }
 }
 
 .lines-table th {

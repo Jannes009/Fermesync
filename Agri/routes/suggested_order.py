@@ -1,4 +1,6 @@
-﻿from flask import render_template, request, jsonify, abort
+﻿import json
+
+from flask import render_template, request, jsonify, abort
 from flask_login import login_required, current_user
 from Core.auth import create_db_connection
 from . import agri_bp
@@ -69,6 +71,17 @@ def suggested_order_data():
                 FROM stk._uvStockLinks SL
                 WHERE SL.iStockID = MAIN.StockLink
             ) THEN 1 ELSE 0 END AS HasStockLink
+            ,(
+                SELECT
+                    L.iDCLink AS dc_link,
+                    ISNULL(SUP.Name, '') AS name,
+                    ISNULL(L.bDefaultSupplier, 0) AS default_supplier
+                FROM stk._uvStockLinks L
+                LEFT JOIN cmn._uvSuppliers SUP ON SUP.DCLink = L.iDCLink
+                WHERE L.iStockID = MAIN.StockLink
+                ORDER BY ISNULL(L.bDefaultSupplier, 0) DESC, SUP.Name
+                FOR JSON PATH
+            ) AS Suppliers
         FROM agr._uvMainWarehouseReordering MAIN
 
         LEFT JOIN agr.ChemStock S
@@ -103,7 +116,8 @@ def suggested_order_data():
             'purchase_unit_available': float(r.PurchaseUnitAvailable),
             'purchase_units_needed': float(r.PurchaseUnitsNeeded),
             'purchase_units_to_order': float(r.PurchaseUnitsToOrder),
-            'has_stock_link': bool(r.HasStockLink)
+            'has_stock_link': bool(r.HasStockLink),
+            'suppliers': json.loads(r.Suppliers or '[]')
         })
 
     return jsonify({'success': True, 'from_week': from_week, 'to_week': to_week, 'week': to_week or from_week, 'data': results})
@@ -285,34 +299,6 @@ def suggested_order_warehouse_detail(stock_id, whse_id):
         for r in rows
     ]
     return jsonify({'success': True, 'from_week': from_week, 'to_week': to_week, 'week': to_week or from_week, 'stock_id': stock_id, 'whse_id': whse_id, 'sprays': results})
-
-
-@agri_bp.route('/suggested-order/stock-suppliers/<int:stock_id>', methods=['GET'])
-@login_required
-def suggested_order_stock_suppliers(stock_id):
-    """Return suppliers linked to a specific stock item including last invoice price and default flag."""
-    conn = create_db_connection()
-    cur = conn.cursor()
-    sql = """
-    SELECT DISTINCT
-        L.iDCLink AS DCLink,
-        ISNULL(S.Name, '') AS Name,
-        ISNULL(L.bDefaultSupplier, 0) AS DefaultSupplier
-    FROM stk._uvStockLinks L
-    LEFT JOIN cmn._uvSuppliers S ON S.DCLink = L.iDCLink
-    WHERE L.iStockID = ?
-    """
-    cur.execute(sql, (stock_id,))
-    rows = cur.fetchall()
-    conn.close()
-
-    suppliers = [{
-        'dc_link': int(r.DCLink),
-        'name': r.Name, 
-        'default_supplier': bool(r.DefaultSupplier), 
-        } for r in rows
-        ]
-    return jsonify({'success': True, 'suppliers': suppliers})
 
 
 @agri_bp.route('/suggested-order/order-warehouses', methods=['GET', 'POST'])
