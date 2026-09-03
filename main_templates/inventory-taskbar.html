@@ -1259,9 +1259,9 @@ async function updateNotificationsCount() {
 }
 
 // Initial load
-document.addEventListener("DOMContentLoaded", updateNotificationsCount);
+// document.addEventListener("DOMContentLoaded", updateNotificationsCount);
 // Update periodically
-setInterval(updateNotificationsCount, 30000);
+// setInterval(updateNotificationsCount, 30000);
 
 // Connection status update
 // Connection status update
@@ -1301,7 +1301,7 @@ function updateConnectionStatus() {
 // Initial state
 document.addEventListener("DOMContentLoaded", function() {
   updateConnectionStatus();
-  updateNotificationsCount();
+  // updateNotificationsCount();
 });
 
 // React to connection changes
@@ -1315,6 +1315,6 @@ window.addEventListener("offline", function() {
 
 // Expose functions globally for other scripts
 // window.updatePendingIndicator = updatePendingIndicator;
-window.updateNotificationsCount = updateNotificationsCount;
+// window.updateNotificationsCount = updateNotificationsCount;
 
 </script>
