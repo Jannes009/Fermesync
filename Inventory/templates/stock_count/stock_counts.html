@@ -185,6 +185,44 @@ body{
 .table.clickable tbody tr.warn { background: #fff4e5; }
 .table.clickable tbody tr.danger { background: #ffe6e6; }
 
+.incomplete-progress {
+    display:flex;
+    align-items:center;
+    gap:.65rem;
+    min-width:180px;
+}
+
+.incomplete-progress-bar {
+    flex:1;
+    height:10px;
+    background:#e5e7eb;
+    border-radius:999px;
+    overflow:hidden;
+}
+
+.incomplete-progress-fill {
+    height:100%;
+    background:#10b981;
+    border-radius:inherit;
+    transition:width .2s ease;
+}
+
+.incomplete-progress-value {
+    min-width:3.5rem;
+    color:var(--primary-text);
+    font-weight:700;
+    text-align:right;
+    white-space:nowrap;
+}
+
+.incomplete-actions {
+    display:flex;
+    align-items:center;
+    justify-content:center;
+    gap:.4rem;
+    flex-wrap:wrap;
+}
+
 
 .btn-create-count{
     background:var(--button-bg);
@@ -430,6 +468,61 @@ body{
         padding-bottom:0;
     }
 }
+
+    @media(max-width:600px){
+        #incompleteTable tbody tr.in-progress {
+            display:grid;
+            grid-template-columns:1fr 1fr;
+            gap:.75rem 1rem;
+            padding:1rem;
+            margin-bottom:.75rem;
+            background:var(--container-bg);
+            border:1px solid var(--border-color);
+            border-radius:10px;
+            box-shadow:0 2px 8px rgba(0,0,0,.05);
+        }
+
+        #incompleteTable tbody tr.in-progress td {
+            display:flex;
+            flex-direction:column;
+            gap:.25rem;
+            padding:0;
+            border:0;
+        }
+
+        #incompleteTable tbody tr.in-progress td::before {
+            content:attr(data-label);
+            color:var(--secondary-text);
+            font-size:.7rem;
+            font-weight:700;
+            letter-spacing:.04em;
+            text-transform:uppercase;
+        }
+
+        #incompleteTable tbody tr.in-progress td.detail-cell {
+            display:flex;
+        }
+
+        #incompleteTable tbody tr.in-progress td:nth-child(4),
+        #incompleteTable tbody tr.in-progress td:nth-child(5) {
+            grid-column:1 / -1;
+        }
+
+        #incompleteTable .incomplete-progress {
+            width:100%;
+            min-width:0;
+        }
+
+        #incompleteTable .incomplete-actions {
+            justify-content:stretch;
+        }
+
+        #incompleteTable .incomplete-actions .btn-action-small {
+            flex:1 1 0;
+            min-width:0;
+            padding:.55rem .5rem;
+        }
+    }
 
 </style>
 

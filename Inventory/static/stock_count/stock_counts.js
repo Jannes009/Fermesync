@@ -227,7 +227,9 @@ function renderIncompleteTable(rows) {
         // systemQty represents total products to count
         const totalProducts = r.totalProducts || 0;
         const productsCountedLines = r.countedProducts || 0;
-        const progressPercent = Math.round((productsCountedLines / totalProducts) * 100);
+        const progressPercent = totalProducts > 0
+            ? Math.min(100, Math.round((productsCountedLines / totalProducts) * 100))
+            : 0;
         
         tbody.insertAdjacentHTML("beforeend", `
             <tr class="in-progress" data-header-id="${r.headerId}">
@@ -235,17 +237,15 @@ function renderIncompleteTable(rows) {
                 <td data-label="Warehouse">${r.warehouse}</td>
                 <td data-label="Shelf">${r.shelf}</td>
                 <td data-label="Progress" class="detail-cell">
-                    <div style="display: flex; align-items: center; gap: 0.5rem;">
-                        <div style="flex: 1; height: 24px; background: #e5e7eb; border-radius: 4px; overflow: hidden;">
-                            <div style="height: 100%; width: ${progressPercent}%; background: #10b981; display: flex; align-items: center; justify-content: center; font-size: 0.7rem; font-weight: 600; color: white;">
-                                ${progressPercent > 10 ? progressPercent + '%' : ''}
-                            </div>
+                    <div class="incomplete-progress" aria-label="${progressPercent}% complete">
+                        <div class="incomplete-progress-bar">
+                            <div class="incomplete-progress-fill" style="width: ${progressPercent}%;"></div>
                         </div>
-                        <span style="font-size: 0.85rem; font-weight: 600; min-width: 50px; text-align: right;">${productsCountedLines}/${totalProducts}</span>
+                        <span class="incomplete-progress-value">${productsCountedLines}/${totalProducts} (${progressPercent}%)</span>
                     </div>
                 </td>
                 <td data-label="Actions" style="text-align: center;" class="detail-cell">
-                    <div style="display: flex; gap: 4px; justify-content: center; flex-wrap: wrap;">
+                    <div class="incomplete-actions">
                         <button class="btn-action-small" onclick="continueCount(event, ${r.headerId})" title="Continue Counting">
                             <i class="fas fa-play"></i> Continue
                         </button>
@@ -258,19 +258,6 @@ function renderIncompleteTable(rows) {
         `);
     });
 
-    // mobile toggle for incomplete rows
-    tbody.querySelectorAll('tr').forEach(row => {
-        const id = row.dataset.headerId;
-        row.addEventListener('click', e => {
-            if (window.innerWidth <= 600) {
-                if (!row.classList.contains('expanded')) {
-                    row.classList.add('expanded');
-                } else {
-                    row.classList.remove('expanded');
-                }
-            }
-        });
-    });
 }
 
 function continueCount(event, headerId) {
@@ -280,6 +267,17 @@ function continueCount(event, headerId) {
 
 async function discardCount(event, headerId) {
     event.stopPropagation(); // Prevent row click
+    const confirmation = await Swal.fire({
+        icon: 'warning',
+        title: 'Discard stock count?',
+        text: 'This incomplete stock count will be permanently discarded.',
+        showCancelButton: true,
+        confirmButtonText: 'Discard',
+        cancelButtonText: 'Keep count',
+        confirmButtonColor: '#dc2626'
+    });
+    if (!confirmation.isConfirmed) return;
+
     request(`/inventory/stock-counts/discard/${headerId}`, {
         method: "POST"
     }).then(res => res.json())
