@@ -452,6 +452,10 @@ def update_responsible_person(execution_id):
             responsible_person_id,
             execution_id,
         )
+        cur.execute(
+            "UPDATE agr.SprayHeader SET SprayHModifiedAt = GETDATE() WHERE SprayHExecutionId = ?",
+            execution_id,
+        )
         conn.commit()
         conn.close()
         return jsonify({"success": True, "message": "Responsible person updated."})
@@ -586,7 +590,8 @@ def update_instruction(execution_id, instruction_id):
             SprayHEndDateTime = ?, 
             SprayHWeather = ?,
             SprayHFinalised = 1,
-            SprayHStatus = 'FINALISED'
+            SprayHStatus = 'FINALISED',
+            SprayHModifiedAt = GETDATE()
         WHERE IdSprayH = ?
     """, start_dt, end_dt, weather, instruction_id)
 
@@ -643,7 +648,7 @@ def delete_execution(execution_id):
         # Set SprayHExecutionId to null for all linked spray headers
         cur.execute("""
             UPDATE agr.SprayHeader
-            SET SprayHExecutionId = NULL
+            SET SprayHExecutionId = NULL, SprayHStatus = 'RECOMMENDED', SprayHModifiedAt = GETDATE()
             WHERE SprayHExecutionId = ?
         """, execution_id)
         

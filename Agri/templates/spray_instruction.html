@@ -77,6 +77,22 @@
     color:#b91c1c;
 }
 
+.refresh-instruction-btn{
+    padding:0.5rem 0.8rem;
+    border:1px solid #d1d5db;
+    border-radius:6px;
+    background:#fff;
+    color:#374151;
+    font-size:0.85rem;
+    font-weight:600;
+    cursor:pointer;
+}
+
+.refresh-instruction-btn:disabled{
+    opacity:0.6;
+    cursor:wait;
+}
+
 .meta-strip{
     display:flex;
     flex-wrap:wrap;
@@ -416,8 +432,15 @@ input[type="text"]:focus, input[type="date"]:focus, input[type="number"]:focus, 
 <script src="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/js/select2.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11/dist/sweetalert2.min.js"></script>
 <script>
+    window.CURRENT_USER_ID = {{ current_user.id }};
+    window.sprayOfflineReady = new Promise(resolve => {
+        window.resolveSprayOfflineReady = resolve;
+    });
+</script>
+<script type="module" src="{{ url_for('agri.static', filename='SprayRecommendation/offline.js') }}?v=60"></script>
+<script>
 
-const sprayId = {{ spray_id }};
+const sprayId = Number(window.location.pathname.match(/^\/agri\/spray\/(\d+)$/)?.[1] || {{ spray_id }});
 const canEdit = {{ 'true' if 'SPRAY_REC_EDIT' in current_user.permissions else 'false' }};
 const canCreate = {{ 'true' if 'SPRAY_REC_CREATE' in current_user.permissions else 'false' }};
 let sprayData = null;
@@ -442,29 +465,77 @@ let editModes = {
 };
 
 document.addEventListener("DOMContentLoaded", async () => {
+    if (!await loadInstructionFromStore()) return;
     await renderHeader();
     await renderLines();
-    const methodSelect = document.getElementById("method-select");
 });
 
+async function loadInstructionFromStore(force = false) {
+    try {
+        const offline = await window.sprayOfflineReady;
+        const record = force
+            ? await offline.refreshInstruction(sprayId, true)
+            : await offline.readRecommendation(sprayId);
+        if (!record?.detail) {
+            document.getElementById('spray-header').innerHTML = `
+                <div class='no-data'>
+                    <div>This spray instruction is not cached yet.</div>
+                    <button id="refresh-instruction-button" type="button" class="refresh-instruction-btn" onclick="refreshInstructionPage()">Fetch instruction</button>
+                </div>`;
+            return false;
+        }
+        sprayData = record.detail;
+        sprayData.record = record;
+        doseBasis = sprayData.header?.dose_basis || doseBasis;
+        return true;
+    } catch (error) {
+        document.getElementById('spray-header').innerHTML = `<div class='no-data'>Error loading spray instruction: ${escapeHtml(error.message)}</div>`;
+        return false;
+    }
+}
+
+async function refreshInstructionPage() {
+    const button = document.getElementById('refresh-instruction-button');
+    const originalButtonText = button?.textContent || 'Refresh';
+    if (button) {
+        button.disabled = true;
+        button.textContent = 'Refreshing...';
+    }
+    try {
+        if (await loadInstructionFromStore(true)) {
+            await renderHeader();
+            await renderLines();
+            await renderMix();
+        }
+    } finally {
+        if (button) {
+            button.disabled = false;
+            button.textContent = originalButtonText;
+        }
+    }
+}
+
+function formatRefreshTime(value) {
+    if (!value) return 'Not available';
+    const date = new Date(Number(value));
+    if (Number.isNaN(date.getTime())) return 'Not available';
+    return date.toLocaleString([], {
+        dateStyle: 'medium',
+        timeStyle: 'short'
+    });
+}
 
 async function renderHeader() {
-    const header = await fetchHeader(sprayId);
-    console.log("Fetched header:", header);
-    if (!header.success) {
-        document.getElementById("spray-header").innerHTML = `<div class='no-data'>Error loading spray header: ${header.message || 'Unknown error'}</div>`;
+    const header = sprayData?.header;
+    if (!header) {
+        document.getElementById("spray-header").innerHTML = `<div class='no-data'>Error loading spray header.</div>`;
         return;
     }
 
     const method = header.method_name;
-    const methods = await fetchMethods(sprayId);
-
-    sprayData = sprayData || {};
-    sprayData.header = header;
-    sprayData.methods = methods;
+    const methods = sprayData.methods || [];
+    const lastRefreshed = formatRefreshTime(sprayData.record?.refreshed_at);
     doseBasis = header.dose_basis;
-
-    console.log(sprayData, method);
 
     applyPageThemeColor(header.crop_theme_color);
 
@@ -484,6 +555,7 @@ async function renderHeader() {
         <div>
             <h2>Spray Instruction <span class="title-number">#${escapeHtml(header.spray_no || 'N/A')}</span></h2>
             <div class="title-meta">${escapeHtml(header.spray_description || 'No description')}</div>
+
             <div class="meta-strip">
                 <div class="meta-pill"><strong>Recommended</strong><span>${escapeHtml(header.spray_date || 'N/A')}</span></div>
                 <div class="meta-pill"><strong>Warehouse</strong><span>${escapeHtml(header.warehouse ? header.warehouse.name : 'N/A')}</span></div>
@@ -491,9 +563,13 @@ async function renderHeader() {
                 <div class="meta-pill"><strong>Weather</strong><span>${escapeHtml(header.weather || 'N/A')}</span></div>
                 <div class="meta-pill"><strong>Start</strong><span>${escapeHtml(startDate)}</span></div>
                 <div class="meta-pill"><strong>End</strong><span>${escapeHtml(endDate)}</span></div>
+                <div class="meta-pill"><strong>Last refreshed</strong><span>${escapeHtml(lastRefreshed)}</span></div>
             </div>
         </div>
-        <div class="status-badge ${statusBadgeClass}">${escapeHtml(statusText)}</div>
+        <div style="display:flex;align-items:center;gap:0.6rem;flex-wrap:wrap;justify-content:flex-end;">
+            <button id="refresh-instruction-button" type="button" class="refresh-instruction-btn" onclick="refreshInstructionPage()">Refresh</button>
+            <div class="status-badge ${statusBadgeClass}">${escapeHtml(statusText)}</div>
+        </div>
     `;
     document.getElementById("page-title").innerHTML = pageTitle;
 
@@ -942,50 +1018,15 @@ async function saveLinesEdit() {
     });
 
     editModes.lines = false;
-    sprayData.lines = await fetchLines(sprayId);
-    renderLines();
-    await renderMix(true);
+    await loadInstructionFromStore(true);
+    await renderLines();
+    await renderMix();
 }
 
 async function cancelLinesEdit() {
     editModes.lines = false;
-    sprayData.lines = await fetchLines(sprayId);
-    renderLines();
-}
-
-async function fetchHeader(sprayId) {
-    return request(`/agri/spray/${sprayId}/spray_header`)
-    .then(res => res.json())
-    .then(data => data);
-}
-
-async function fetchLines(sprayId) {
-    return request(`/agri/spray/${sprayId}/spray_lines`)
-    .then(res => res.json())
-    .then(data => data);
-}
-
-
-async function fetchMethods(sprayId) {
-    return request(`/agri/spray/${sprayId}/methods`)
-    .then(res => res.json())
-    .then(data => {
-        if (!data.success) {
-            throw new Error(data.message || 'Failed to fetch methods');
-        }
-        return data.methods || [];
-    });
-}
-
-async function fetchMixLines(sprayId) {
-    return request(`/agri/spray/${sprayId}/spray_mix_lines`)
-    .then(res => res.json())
-    .then(data => {
-        if (!data.success) {
-            throw new Error(data.message || 'Failed to fetch mix lines');
-        }
-        return data.lines;
-    });
+    await loadInstructionFromStore();
+    await renderLines();
 }
 
 async function fetchProductsOptions(sprayId) {
@@ -993,7 +1034,12 @@ async function fetchProductsOptions(sprayId) {
     .then(res => res.json())
     .then(data => {
         if (!data.success) {
-            throw new Error(data.message || 'Failed to fetch products');
+            Swal.fire({
+                icon: 'error',
+                title: 'Error fetching products',
+                text: data.message || 'Failed to fetch product options.'
+            });
+            throw new Error(data.message || 'Failed to fetch product options.');
         }
         return data.products;
     });
@@ -1237,16 +1283,10 @@ async function renderMix(forceFetch = false) {
 
     const isEditingMixInputs = editModes.projects || editModes.lines;
 
-    if (forceFetch || (!isEditingMixInputs && !sprayData.mixLines)) {
-        try {
-            const fetched = await fetchMixLines(sprayId);
-            sprayData.mixLines = Array.isArray(fetched) ? fetched : [];
-        } catch (err) {
-            console.error(err);
-            sprayData.mixLines = [];
-        }
-    } else if (isEditingMixInputs) {
+    if (isEditingMixInputs) {
         sprayData.mixLines = buildMixPlan(sprayData.header || {}, sprayData.lines || []);
+    } else if (!Array.isArray(sprayData.mixLines)) {
+        sprayData.mixLines = [];
     }
 
     const lines = sprayData.mixLines || [];
@@ -1388,9 +1428,10 @@ function saveProjectsEdit() {
         }
         await Swal.fire({ icon: 'success', title: 'Saved', text: 'Project settings saved.', timer: 1200, showConfirmButton: false });
         editModes.projects = false;
+        await loadInstructionFromStore(true);
         await renderHeader();
         await renderLines();
-        await renderMix(true);
+        await renderMix();
     })
     .catch(async function (err) {
         await Swal.fire({ icon: 'error', title: 'Network error', text: err.message });
@@ -1399,7 +1440,7 @@ function saveProjectsEdit() {
 
 function cancelProjectsEdit() {
     editModes.projects = false;
-    renderHeader();
+    loadInstructionFromStore().then(() => renderHeader());
 }
 
 function toggleHeaderWaterFields() {
@@ -1499,13 +1540,11 @@ async function renderLines() {
     if (useLocalLines) {
         lines = sprayData.lines;
     } else {
-        const linesData = await fetchLines(sprayId);
-        if (!linesData.success) {
+        if (!Array.isArray(sprayData.lines)) {
             document.getElementById("spray-lines").innerHTML =
-                `<div class='no-data'>Error loading spray lines: ${linesData.message || 'Unknown error'}</div>`;
+                `<div class='no-data'>Spray products are not available in the cached instruction.</div>`;
             return;
         }
-        sprayData.lines = linesData.lines;
         lines = sprayData.lines;
         lastPreviewDose = (sprayData.header && sprayData.header.dose_basis) || doseBasis;
     }
@@ -1667,6 +1706,7 @@ function saveHeaderEdit() {
         sprayData.header.end_datetime = endTime;
         sprayData.header.method_id = methodId;
         editModes.header = false;
+        await loadInstructionFromStore(true);
         await renderHeader();
         await renderLines();
     })
@@ -1681,7 +1721,7 @@ function saveHeaderEdit() {
 
 function cancelInlineEdit() {
     editModes.header = false;
-    renderHeader();
+    loadInstructionFromStore().then(() => renderHeader());
 }
 
 async function cancelRecommendation() {
@@ -1736,7 +1776,7 @@ function printInstruction() {
 
 function cancelHeaderEdit() {
     editModes.header = false;
-    renderHeader();
+    loadInstructionFromStore().then(() => renderHeader());
 }
 
 function handleLineQtyChange(idx) {

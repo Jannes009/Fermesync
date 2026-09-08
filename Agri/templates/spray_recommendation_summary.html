@@ -962,6 +962,7 @@
     <div class="card">
       <header class="page-header">
         <h1>Spray Recommendations</h1>
+        <button id="refreshRecommendationsButton" type="button" class="btn-secondary" title="Refresh recommendations">Refresh</button>
         {% if 'SPRAY_REC_CREATE' in current_user.permissions %}
         <a href="/agri/spray-recommendation/create" class="btn-primary" style="text-decoration:none; margin:0; white-space: nowrap;">+ New Recommendation</a>
         {% endif %}
@@ -1037,6 +1038,13 @@
 <script src="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/js/select2.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11/dist/sweetalert2.all.min.js"></script>
 <script>
+  window.CURRENT_USER_ID = {{ current_user.id }};
+  window.sprayOfflineReady = new Promise(resolve => {
+    window.resolveSprayOfflineReady = resolve;
+  });
+</script>
+<script type="module" src="{{ url_for('agri.static', filename='SprayRecommendation/spray_recommendation_summary.js') }}?v={{ filemtime('agri','SprayRecommendation/spray_recommendation_summary.js') }}"></script>
+<script>
 
 const recommendations = [];
 let sortField = 'id';
@@ -1087,21 +1095,20 @@ document.addEventListener('DOMContentLoaded', () => {
     });
 
     updateRecommendationFinalisedToggleSelection();
-    loadRecommendations();
+    loadRecommendationsFromCache();
 });
 
-async function loadRecommendations() {
+  async function loadRecommendationsFromCache() {
     const body = document.getElementById('recTableBody');
     try {
-        const response = await request('/agri/spray-recommendations');
-        const data = await response.json();
-        if (!data.success) {
-            throw new Error(data.message || 'Failed to load recommendations');
-        }
-        console.log('Loaded recommendations:', data);
-
-        recommendations.splice(0, recommendations.length, ...data.items);
-        populateFilters(data.items);
+    const offline = await window.sprayOfflineReady;
+    const records = await offline.readRecommendations();
+      recommendations.splice(0, recommendations.length, ...records.map(record => ({
+        ...record,
+        ...(record.backend || {})
+      })));
+      populateFilters(recommendations);
+      console.log('Loaded recommendations from cache:', recommendations);
         renderRecommendationsTable();
         updateSelectionModeUI();
     } catch (err) {
@@ -1111,6 +1118,39 @@ async function loadRecommendations() {
         }
     }
 }
+
+  async function refreshRecommendations() {
+    const button = document.getElementById('refreshRecommendationsButton');
+    const originalButtonText = button?.textContent || 'Refresh';
+    if (button) {
+      button.disabled = true;
+      button.textContent = 'Refreshing...';
+    }
+    try {
+      const offline = await window.sprayOfflineReady;
+      const records = await offline.refreshRecommendations();
+      recommendations.splice(0, recommendations.length, ...records.map(record => ({
+        ...record,
+        ...(record.backend || {})
+      })));
+      populateFilters(recommendations);
+      renderRecommendationsTable();
+      updateSelectionModeUI();
+    } catch (error) {
+      Swal.fire({ icon: 'error', title: 'Refresh failed', text: error.message });
+    } finally {
+      if (button) {
+        button.disabled = false;
+        button.textContent = originalButtonText;
+      }
+    }
+  }
+
+  document.getElementById('refreshRecommendationsButton')?.addEventListener('click', refreshRecommendations);
+
+  window.addEventListener('spray-recommendations-synced', () => {
+    loadRecommendationsFromCache();
+  });
 
 function populateFilters(data) {
     const farmSelect = document.getElementById('filterFarm');
@@ -1150,6 +1190,7 @@ function applyFilters() {
     const hideFinalised = document.querySelector('input[name="recommendationFinalisedFilter"][value="hide"]')?.checked ?? true;
 
     return recommendations.filter(item => {
+      console.log('Filtering item:', item);
         if (hideFinalised && item.finalised) {
             return false;
         }
@@ -1187,8 +1228,9 @@ function renderRecommendationsTable() {
     }
 
     const sorted = filtered.slice().sort(compareRecommendations);
+    console.log(sorted)
     body.innerHTML = sorted.map(rec => {
-        const selectable = !rec.execution_id;
+        const selectable = Number.isFinite(Number(rec.id)) && !rec.execution_id && !['WAITING_TO_SYNC', 'FAILED_TO_SYNC'].includes(rec.status);
         const isSelected = selectedRecommendationIds.includes(rec.id);
         const rowClass = selectionMode && !selectable ? 'disabled-row' : isSelected ? 'selected-row' : '';
         const rowOnclick = selectionMode ? '' : `onclick="goToSpray(${rec.id})"`;
@@ -1217,7 +1259,7 @@ function renderRecommendationsTable() {
     const mobileCards = document.getElementById('mobileCards');
     if (mobileCards) {
         mobileCards.innerHTML = sorted.map(rec => {
-            const selectable = !rec.execution_id;
+            const selectable = Number.isFinite(Number(rec.id)) && !rec.execution_id && !['WAITING_TO_SYNC', 'FAILED_TO_SYNC'].includes(rec.status);
             const isSelected = selectedRecommendationIds.includes(rec.id);
             const rowClass = selectionMode && !selectable ? 'disabled-row' : isSelected ? 'selected-row' : '';
             const checkboxHtml = selectionMode ? `
@@ -1375,9 +1417,14 @@ async function submitExecutionCreation() {
             throw new Error(result.message || 'Failed to create execution');
         }
 
+        const offline = await window.sprayOfflineReady;
+        if (offline) {
+          await offline.markRecommendationsScheduled(selectedRecommendationIds, result.execution_id);
+        }
+
         Swal.fire({icon: 'success', title: 'Success', text: 'Execution created successfully.'}).then(() => {
             exitSelectionMode();
-            loadRecommendations();
+            loadRecommendationsFromCache();
         });
     } catch (error) {
         console.error('Error creating execution:', error);

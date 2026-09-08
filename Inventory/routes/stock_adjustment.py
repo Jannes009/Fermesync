@@ -37,11 +37,14 @@ def adjust_stock():
                 raise ValueError(f"No stock code found for product_link={product_link}")
             
             cursor.execute("""
-                Select QtyOnHand
+                Select QtyOnHand, StockDescription, WhseName
                 from stk._uvInventoryQty
                 Where StockLink = ? AND WhseLink = ?""",
                 (product_link, warehouse_link))
-            qty_on_hand = cursor.fetchone()[0]
+            row = cursor.fetchone()
+            qty_on_hand = float(row.QtyOnHand) if row else 0.0
+            description = row.StockDescription if row else "Unknown Product"
+            whse_name = row.WhseName if row else "Unknown Warehouse"
 
             ItemInc.InventoryItem = Evo.InventoryItem(stock_code)
 
@@ -52,7 +55,7 @@ def adjust_stock():
                 delta = qty_float - float(qty_on_hand)
                 if delta == 0:
                     conn.close()
-                    return jsonify({"success": True, "message": "No change needed"})
+                    return jsonify({"success": True, "message": f"Stock quantity for {description} in warehouse {whse_name} is already {qty_on_hand}. No adjustment needed."})
                 if delta > 0:
                     ItemInc.Operation = Evo.InventoryOperation.Increase
                     ItemInc.Quantity = delta
@@ -73,7 +76,7 @@ def adjust_stock():
             ItemInc.Post()
 
             conn.close()
-            return jsonify({"success": True})
+            return jsonify({"success": True, "message": f"Stock adjusted successfully for {description} in warehouse {whse_name}. New quantity: {qty_on_hand + float(quantity)}"})
     except Exception as ex:
         print("Stock Issue Submission Error:", str(ex))
         return jsonify({"success": False, "message": str(ex)}), 500
@@ -85,7 +88,7 @@ def adjust_stock_page():
     """Render the stock adjustment page. Can be loaded as a full page."""
     if "STOCK_ADJUSTMENT" not in current_user.permissions:
         abort(403)
-    return render_template('stock_adjustment.html', embed=False)
+    return render_template('stock_adjustment.html')
 
 
 @inventory_bp.route('/adjust_stock/popup', methods=['GET'])
@@ -94,7 +97,7 @@ def adjust_stock_popup():
     """Return the page fragment suitable for embedding in a modal."""
     if "STOCK_ADJUSTMENT" not in current_user.permissions:
         abort(403)
-    return render_template('stock_adjustment.html', embed=True)
+    return render_template('stock_adjustment_fragment.html')
 
 
 @inventory_bp.route('/adjust_stock/products', methods=['GET'])

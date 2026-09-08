@@ -12,29 +12,9 @@ import math
 def create_spray_recommendation():
     if "SPRAY_REC_CREATE" not in current_user.permissions:
         abort(403)
-    conn = create_db_connection()
-    cur = conn.cursor()
-
-
-    whse_ids = tuple(current_user.warehouses or [])
-    if not whse_ids:
-        return jsonify([])
-
-    placeholders = ','.join('?' for _ in whse_ids)
-    cur.execute(f"""
-		Select WhseLink, WhseDescription 
-        from [cmn]._uvWarehouses WHSE
-		JOIN [agr].[WarehouseAttributes] ATTR on ATTR.WhAttrWhseId = WHSE.WhseLink
-        where ATTR.WhAttrWhseType = 'Chemical' and WhseLink IN ({placeholders})
-        """, whse_ids)
-    warehouses = cur.fetchall()
-
-
-    conn.close()
 
     return render_template(
-        "spray_recommendation.html",
-        warehouses=warehouses
+        "spray_recommendation.html"
     )
 
 @agri_bp.route("/spray-recommendation/methods/<int:project_id>", methods=["GET"])
@@ -71,120 +51,98 @@ def methods_for_project(project_id):
     finally:
         conn.close()
 
-@agri_bp.route("/spray-recommendation/project_defaults/<int:project_id>", methods=["GET"])
-@login_required
-def project_defaults(project_id):
-    conn = create_db_connection()
-    cur = conn.cursor()
+def _fetch_all_product_catalog(cursor, warehouse_ids):
+    placeholders = ','.join('?' for _ in warehouse_ids)
+    cursor.execute(f"""
+        SELECT
+            SW.StockID AS StockLink,
+            SI.StockCode,
+            SI.StockDescription,
+            SW.WhseID AS WhseLink,
+            STK.ChemStockStockingUnitId AS StockingUnitId,
+            STOCKUOM.cUnitCode AS StockingUnitCode,
+            STK.ChemStockPurchasingUnitId AS PurchaseUnitId,
+            PURCHASEUOM.cUnitCode AS PurchaseUnitCode,
+            ACT.ChemActIngredient,
+            CRP.StkCrpCropId AS CropId,
+            CRP.StkCrpRegNumber,
+            CRP.StkCrpWitholdingPeriodDef,
+            CRP.StkCrpFunctionDef
+        FROM cmn._uvStockWarehouse SW
+        JOIN cmn._uvStockItems SI ON SI.StockLink = SW.StockID
+        JOIN agr.ChemStock STK ON STK.ChemStockLink = SW.StockID
+        LEFT JOIN agr.ChemActiveIngredient ACT ON ACT.IdChemAct = STK.ChemStockActiveIngrId
+        LEFT JOIN agr.ChemStockCrop CRP ON CRP.StkCrpChemStockId = STK.IdChemStock
+        LEFT JOIN cmn._uvStockUnits SU ON SU.StockLink = SW.StockID
+            AND SU.PurchaseUnitId = STK.ChemStockPurchasingUnitId
+        LEFT JOIN cmn._uvUOM STOCKUOM ON STOCKUOM.idUnits = STK.ChemStockStockingUnitId
+        LEFT JOIN cmn._uvUOM PURCHASEUOM ON PURCHASEUOM.idUnits = SU.PurchaseUnitId
+        WHERE SW.WhseID IN ({placeholders})
+        ORDER BY ACT.ChemActIngredient, SI.StockDescription
+    """, tuple(warehouse_ids))
 
-    cur.execute("""
-        SELECT ProjAttrDefaultSprayMethodId, ProjAttrDefaultDose, ProjAttrDefaultWaterPerHa, ProjAttrDefaultWaterPerTank
-        FROM [agr].[ProjectAttributes]
-        WHERE [ProjAttrProjectId] = ?
-    """, (project_id,))
-    result = cur.fetchone()
-
-    conn.close()
-
-    if result:
-        return jsonify({
-            "success": True,
-            "default_spray_method_id": result.ProjAttrDefaultSprayMethodId,
-            "default_dose": result.ProjAttrDefaultDose,
-            "default_water_per_ha": result.ProjAttrDefaultWaterPerHa,
-            "default_water_per_tank": result.ProjAttrDefaultWaterPerTank
-        })
-    else:
-        return jsonify({"success": True, "default_qty_per_ha": 0})
-    
-@agri_bp.route("/fetch_products_linked_with_projects", methods=["GET"])
-@login_required
-def fetch_products_linked_with_projects():
-    project_ids_raw = request.args.get("project_ids", "")
-
-    # Require at least one project id to scope products to project crops
-    project_ids = [int(x) for x in project_ids_raw.split(',') if x.strip().isdigit()]
-    if not project_ids:
-        return jsonify({"success": False, "message": "At least one project must be selected", "products": []}), 400
-
-    conn = create_db_connection()
-    cursor = conn.cursor()
-
-    # Find distinct crop ids for the selected projects
-    # All projects must belong to the same crop (since crop is now at header level)
-    placeholders = ','.join('?' for _ in project_ids)
-    cursor.execute(f"SELECT DISTINCT ProjAttrCropId FROM agr.ProjectAttributes WHERE ProjAttrProjectId IN ({placeholders})", tuple(project_ids))
-    crop_rows = cursor.fetchall()
-    crop_ids = [r[0] for r in crop_rows if r and r[0] is not None]
-
-    if not crop_ids:
-        conn.close()
-        return jsonify({"success": False, "products": [], "message": "No crops found for selected projects"})
-
-    # Enforce: all selected projects must have the same crop
-    if len(crop_ids) > 1:
-        conn.close()
-        return jsonify({"success": False, "products": [], "message": "Selected projects must belong to the same crop"})
-
-    cursor.execute("SELECT ProjAttrWhseId FROM agr.ProjectAttributes WHERE ProjAttrProjectId IN ({})".format(placeholders), tuple(project_ids))
-    whse_rows = cursor.fetchall()
-    whse_ids = [r[0] for r in whse_rows if r and r[0] is not None]
-
-    if not whse_ids:
-        conn.close()
-        return jsonify({"success": False, "products": [], "message": "No warehouses found for selected projects"})
-
-    if len(set(whse_ids)) > 1:
-        conn.close()
-        return jsonify({"success": False, "products": [], "message": "Selected projects must belong to the same warehouse"})
-
-    # Fetch products available in the warehouse and linked to those crop
-    # Include RegNumber, WitholdingPeriod, Function from ChemStockCrop
-    sql = f"""
-    SELECT StockLink, StockCode, StockDescription,
-    WhseLink, WhseCode, WhseName, QtyOnHand
-    ,StockingUnitId, StockingUnitCode
-    ,PurchaseUnitId, PurchaseUnitCode
-    ,PurchaseUnitCatId, ACT.ChemActIngredient
-    ,CRP.StkCrpRegNumber, CRP.StkCrpWitholdingPeriodDef, CRP.StkCrpFunctionDef
-    FROM [stk]._uvInventoryQty QTY
-    JOIN [agr].[ChemStock] STK on STK.[ChemStockLink] = QTY.StockLink
-	JOIN agr.ChemStockCrop CRP on CRP.StkCrpChemStockId = STK.IdChemStock
-    JOIN [agr].[ChemActiveIngredient] ACT on ACT.IdChemAct = STK.ChemStockActiveIngrId
-    WHERE WhseLink = ?
-     AND CRP.StkCrpCropId = ?
-    ORDER BY ChemActIngredient, StockDescription
-    """
-
-    cursor.execute(sql, whse_ids[0], crop_ids[0])
-    rows = cursor.fetchall()
-    conn.close()
-
-    if not rows:
-        return jsonify({"success": False, "products": [], "message": "No products found for selected warehouse and crops"})
-
-    products_list = [
-        {
+    products = {}
+    for row in cursor.fetchall():
+        product = products.setdefault(row.StockLink, {
             "product_link": row.StockLink,
             "product_code": row.StockCode,
             "product_desc": row.StockDescription,
-            "WhseLink": row.WhseLink,
-            "WhseCode": row.WhseCode,
-            "WhseName": row.WhseName,
-            "qty_in_whse": row.QtyOnHand,
+            "warehouse_ids": [],
+            "crop_ids": [],
             "stocking_uom_id": row.StockingUnitId,
             "stocking_uom_code": row.StockingUnitCode,
             "purchase_uom_id": row.PurchaseUnitId,
             "purchase_uom_code": row.PurchaseUnitCode,
-            "uom_cat_id": row.PurchaseUnitCatId,
             "active_ingredient": row.ChemActIngredient,
-            "reg_number": row.StkCrpRegNumber,
-            "witholding_period": row.StkCrpWitholdingPeriodDef,
-            "function": row.StkCrpFunctionDef
-        }
-        for row in rows
-    ]
-    return jsonify({"success": True, "products": products_list})
+            "crop_details": []
+        })
+        if row.WhseLink not in product["warehouse_ids"]:
+            product["warehouse_ids"].append(row.WhseLink)
+        if row.CropId is not None and row.CropId not in product["crop_ids"]:
+            product["crop_ids"].append(row.CropId)
+            product["crop_details"].append({
+                "crop_id": row.CropId,
+                "reg_number": row.StkCrpRegNumber,
+                "witholding_period": row.StkCrpWitholdingPeriodDef,
+                "function": row.StkCrpFunctionDef
+            })
+    return list(products.values())
+
+@agri_bp.route("/fetch_products_for_catalog", methods=["GET"])
+@login_required
+def fetch_products_for_catalog():
+    if not current_user.warehouses:
+        return jsonify({"success": False, "message": "No warehouses available", "products": []}), 400
+    conn = create_db_connection()
+    try:
+        products = _fetch_all_product_catalog(conn.cursor(), current_user.warehouses)
+        return jsonify({"success": bool(products), "products": products, "message": None if products else "No products found for selected warehouse and crop"})
+    finally:
+        conn.close()
+
+
+@agri_bp.route("/fetch_methods_for_farms", methods=["GET"])
+@login_required
+def fetch_methods_for_farms():
+    conn = create_db_connection()
+    try:
+        cur = conn.cursor()
+        cur.execute("""
+            SELECT IdSprayMethod, SprayMethodFarmId, SprayMethodName,
+                   SprayMethodWaterPerHa, SprayMethodTankSize
+            FROM agr.SprayMethod
+            ORDER BY SprayMethodFarmId, SprayMethodName
+        """)
+        methods = [{
+            "id": row.IdSprayMethod,
+            "farm_id": row.SprayMethodFarmId,
+            "name": row.SprayMethodName,
+            "water_per_ha": row.SprayMethodWaterPerHa,
+            "tank_size": row.SprayMethodTankSize
+        } for row in cur.fetchall()]
+        return jsonify({"success": True, "methods": methods})
+    finally:
+        conn.close()
 
 
 @agri_bp.route("/fetch_projects_for_warehouse", methods=["GET"])
@@ -199,7 +157,9 @@ def fetch_projects_for_warehouse():
     if warehouse_id:
         cursor.execute("""
             SELECT DISTINCT p.ProjectLink, p.ProjectCode, pa.ProjAttrCropId, pa.ProjAttrHa,
-                   c.CropThemeColor, pa.ProjAttrBlockNo, pa.ProjAttrWhseId
+                     c.CropThemeColor, pa.ProjAttrBlockNo, pa.ProjAttrWhseId, pa.ProjAttrFarmId,
+                     pa.ProjAttrDefaultSprayMethodId, pa.ProjAttrDefaultDose,
+                     pa.ProjAttrDefaultWaterPerHa, pa.ProjAttrDefaultWaterPerTank
             FROM cmn._uvProject p
             JOIN agr.ProjectAttributes pa
                 ON pa.ProjAttrProjectId = p.ProjectLink
@@ -217,7 +177,9 @@ def fetch_projects_for_warehouse():
         placeholders = ','.join('?' for _ in whse_ids)
         cursor.execute(f"""
             SELECT DISTINCT p.ProjectLink, p.ProjectCode, pa.ProjAttrCropId, pa.ProjAttrHa,
-                   c.CropThemeColor, pa.ProjAttrBlockNo, pa.ProjAttrWhseId
+                     c.CropThemeColor, pa.ProjAttrBlockNo, pa.ProjAttrWhseId, pa.ProjAttrFarmId,
+                     pa.ProjAttrDefaultSprayMethodId, pa.ProjAttrDefaultDose,
+                     pa.ProjAttrDefaultWaterPerHa, pa.ProjAttrDefaultWaterPerTank
             FROM cmn._uvProject p
             JOIN agr.ProjectAttributes pa
                 ON pa.ProjAttrProjectId = p.ProjectLink
@@ -239,7 +201,12 @@ def fetch_projects_for_warehouse():
             "proj_attr_ha": float(row.ProjAttrHa or 0),
             "crop_theme_color": row.CropThemeColor,
             "proj_attr_block_no": getattr(row, 'ProjAttrBlockNo', None) if hasattr(row, 'ProjAttrBlockNo') else (row[5] if len(row) > 5 else None),
-            "proj_attr_whse_id": getattr(row, 'ProjAttrWhseId', None) if hasattr(row, 'ProjAttrWhseId') else (row[6] if len(row) > 6 else None)
+            "proj_attr_whse_id": getattr(row, 'ProjAttrWhseId', None) if hasattr(row, 'ProjAttrWhseId') else (row[6] if len(row) > 6 else None),
+            "proj_attr_farm_id": getattr(row, 'ProjAttrFarmId', None) if hasattr(row, 'ProjAttrFarmId') else (row[7] if len(row) > 7 else None),
+            "default_spray_method_id": getattr(row, 'ProjAttrDefaultSprayMethodId', None),
+            "default_dose": getattr(row, 'ProjAttrDefaultDose', None),
+            "default_water_per_ha": getattr(row, 'ProjAttrDefaultWaterPerHa', None),
+            "default_water_per_tank": getattr(row, 'ProjAttrDefaultWaterPerTank', None)
         }
         for row in rows
     ]
@@ -443,11 +410,12 @@ def submit_spray_recommendation():
         data = request.get_json()
 
         if not data:
+            print("No JSON payload received in request.")
             return jsonify({
                 "success": False,
                 "message": "No payload received"
             }), 400
-
+        print(data)
         projects = data.get('projects', [])
         lines = data.get('lines', [])
         mixes = data.get('mixes', [])
@@ -543,10 +511,11 @@ def submit_spray_recommendation():
                 SprayHMix,
                 SprayHCropId,
                 SprayHRequireDateTime,
-                SprayHRequireWeather
+                SprayHRequireWeather,
+                SprayHModifiedAt
             )
             VALUES (
-                ?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?
+                ?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?
             )
         """,
             spray_no,
@@ -567,7 +536,8 @@ def submit_spray_recommendation():
             mix,
             crop_id,
             1 if data.get('require_date_time', True) else 0,
-            1 if data.get('require_weather', True) else 0
+            1 if data.get('require_weather', True) else 0,
+            datetime.now()
         )
 
         cursor.execute("SELECT CAST(SCOPE_IDENTITY() AS int) AS spray_id")
@@ -714,7 +684,7 @@ def submit_spray_recommendation():
 
 
     except Exception as e:
-
+        print(f"Error occurred while submitting spray recommendation: {e}")
         if conn:
             conn.rollback()
 
@@ -766,6 +736,7 @@ def get_spray_recommendations():
         WHSE.WhseDescription AS WarehouseName,
         HEA.SprayHExecutionId,
         HEA.SprayHFinalised,
+        HEA.SprayHModifiedAt,
         BLK.ProjAttrBlockNo,
         FRM.FarmName
     FROM agr.SprayHeader HEA
@@ -813,7 +784,8 @@ def get_spray_recommendations():
             "execution_id": row.SprayHExecutionId,
             "block_no": row.ProjAttrBlockNo,
             "farm_name": row.FarmName,
-            "finalised": bool(row.SprayHFinalised)
+            "finalised": bool(row.SprayHFinalised),
+            "modified_at": row.SprayHModifiedAt.isoformat() if row.SprayHModifiedAt else None
         })
 
     conn.close()
@@ -915,12 +887,13 @@ def create_execution():
         execution_id = get_inserted_id(cur, 'agr.SprayExecution')
 
         # Link all selected spray headers to this execution in a single update
-        cur.execute(f"UPDATE agr.SprayHeader SET SprayHExecutionId = ?, SprayHStatus = 'SCHEDULED' WHERE IdSprayH IN ({placeholders})", (execution_id,) + tuple(recommendation_ids))
+        cur.execute(f"UPDATE agr.SprayHeader SET SprayHExecutionId = ?, SprayHStatus = 'SCHEDULED', SprayHModifiedAt = ? WHERE IdSprayH IN ({placeholders})", (execution_id, datetime.now()) + tuple(recommendation_ids))
 
         conn.commit()
         conn.close()
         return jsonify({"success": True, "message": "Execution created successfully", "execution_id": execution_id})
     except Exception as e:
+        print(f"Error creating execution: {e}")
         conn.rollback()
         conn.close()
         return jsonify({"success": False, "message": f"Error creating execution: {str(e)}"}), 500

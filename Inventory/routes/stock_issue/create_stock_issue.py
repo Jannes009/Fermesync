@@ -365,6 +365,12 @@ def generate_stock_issue_for_spray(execution_id, lines_payload, order_final, iss
 
         issue_lines = cursor.fetchall()
 
+        cursor.execute("""
+            UPDATE agr.SprayHeader
+            SET SprayHModifiedAt = GETDATE()
+            WHERE SprayHExecutionId = ?
+        """, (execution_id,))
+
         return jsonify({
             "success": True,
             "message": "Stock issue created.",

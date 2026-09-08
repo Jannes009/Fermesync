@@ -104,6 +104,7 @@ function initProductSelects() {
 
 let PRODUCT_OPTIONS = "";
 let PRODUCTS_DATA = {}; // Store product data for modal editing: {stock_id: {reg_number, witholding_period, function}}
+let PROJECT_DEFAULTS = {};
 
 async function updateMethods(projectId) {
     const methodSelect = $('#method_id');
@@ -117,20 +118,19 @@ async function updateMethods(projectId) {
     }
 
     try {
-        const response = await request(`/agri/spray-recommendation/methods/${encodeURIComponent(projectId)}`);
-        const data = await response.json();
-        if (!response.ok || !data.success) {
-            throw new Error(data.message || 'Failed to fetch spray methods');
-        }
-        console.log('Fetched methods for project', projectId, data.methods);
+        const offline = window.sprayOfflineReady ? await window.sprayOfflineReady : window.SprayOffline;
+        const project = document.querySelector(`#project_ids option[value="${projectId}"]`);
+        const cached = offline ? await offline.fetchMethods(project?.dataset.farmId) : null;
+        const methods = cached?.methods || [];
+        console.log('Loaded spray methods for project', projectId, methods);
         methodSelect.empty().append('<option value="">Select method</option>');
-        data.methods.forEach(method => {
+        methods.forEach(method => {
             methodSelect.append(new Option(method.name, method.id));
         });
         methodSelect.prop('disabled', false).trigger('change');
         
         // Return the methods data for the caller
-        return data.methods;
+        return methods;
     } catch (error) {
         methodSelect.empty().append('<option value="">Unable to load methods</option>');
         methodSelect.prop('disabled', true).trigger('change');
@@ -141,7 +141,7 @@ async function updateMethods(projectId) {
 }
 
 // Function to fetch products when warehouse or projects change
-async function updateProducts(projectIds) {
+async function updateProducts(projectIds, force = false) {
     // Only fetch when both a warehouse and at least one project are selected
     if (!projectIds || !projectIds.length) {
         PRODUCT_OPTIONS = '<option value=""></option>';
@@ -151,29 +151,39 @@ async function updateProducts(projectIds) {
         return;
     }
 
-    const pidParam = encodeURIComponent(projectIds.join(','));
-    const response = await request(`/agri/fetch_products_linked_with_projects?project_ids=${pidParam}`);
-    const data = await response.json();
+    const selectedProjects = projectIds.map(id => document.querySelector(`#project_ids option[value="${id}"]`)).filter(Boolean);
+    const projects = selectedProjects.map(option => ({
+        proj_attr_whse_id: option.dataset.whseId,
+        proj_attr_crop_id: option.dataset.cropId
+    }));
+    const offline = window.sprayOfflineReady ? await window.sprayOfflineReady : window.SprayOffline;
+    let data;
+
+    const result = await offline.productsForProjects(projects);
+    data = { success: result.products.length > 0, products: result.products };
+
 
     if (!data.success) {
-        Swal.fire({ icon: 'error', title: 'Error fetching products', text: data.message || 'Failed to fetch products' });
+        Swal.fire({ icon: 'error', title: 'Error fetching products', text: 'No products found' });
     } else {
         if (data.products && data.products.length > 0) {
             // Build options HTML with useful data-* attributes
             let options = '<option value=""></option>';
             PRODUCTS_DATA = {}; // Reset products data
+            const selectedCropId = selectedProjects[0]?.dataset.cropId;
             
             data.products.forEach(product => {
-                const qtyFormatted = parseFloat(product.qty_in_whse).toFixed(2);
-                options += `<option value="${product.product_link}" data-uom-id="${product.stocking_uom_id || ''}" data-purchase-uom-id="${product.purchase_uom_id || ''}" data-uom-cat="${product.uom_cat_id || ''}" data-reg-number="${product.reg_number || ''}" data-witholding-period="${product.witholding_period || ''}" data-function="${product.function || ''}">` +
-                    `${product.active_ingredient} - ${product.product_desc}(${qtyFormatted} ${product.stocking_uom_code})` +
+                const productLink = product.product_link || product.stock_id;
+                const cropDetails = (product.crop_details || []).find(detail => String(detail.crop_id) === String(selectedCropId)) || product.crop_details?.[0] || {};
+                options += `<option value="${productLink}" data-uom-id="${product.stocking_uom_id || ''}" data-purchase-uom-id="${product.purchase_uom_id || ''}" data-uom-cat="${product.uom_cat_id || ''}" data-reg-number="${product.reg_number || ''}" data-witholding-period="${product.witholding_period || ''}" data-function="${product.function || ''}">` +
+                    `${product.active_ingredient} - ${product.product_desc}` +
                     `</option>`;
                 
                 // Store product data for later reference
-                PRODUCTS_DATA[product.product_link] = {
-                    reg_number: product.reg_number || '',
-                    witholding_period: product.witholding_period || '',
-                    function: product.function || ''
+                PRODUCTS_DATA[productLink] = {
+                    reg_number: cropDetails.reg_number || product.reg_number || '',
+                    witholding_period: cropDetails.witholding_period || product.witholding_period || '',
+                    function: cropDetails.function || product.function || ''
                 };
             });
             PRODUCT_OPTIONS = options;
@@ -230,28 +240,38 @@ async function updateProducts(projectIds) {
 }
 
 
-async function updateProjects() {
+async function updateProjects(force = false, loadAllData = false) {
     const $projectSelect = $('#project_ids');
+    const selectedBeforeRefresh = $projectSelect.val() || [];
     $projectSelect.empty();
 
     try {
-        // Fetch projects for current user (server will scope by user's warehouses when warehouse_id omitted)
-        const response = await request(`/agri/fetch_projects_for_warehouse`);
-        const data = await response.json();
+        const offline = window.sprayOfflineReady ? await window.sprayOfflineReady : window.SprayOffline;
+        const data = offline
+                ? { success: true, projects: (await (loadAllData ? offline.initializeData(force) : offline.fetchProjects(force))).projects }
+            : await request(`/agri/fetch_projects_for_warehouse`).then(response => response.json());
         console.log(data)
         if (data.success === true && data.projects && data.projects.length > 0) {
             data.projects.forEach(project => {
+                PROJECT_DEFAULTS[project.project_id] = {
+                    default_spray_method_id: project.default_spray_method_id,
+                    default_dose: project.default_dose,
+                    default_water_per_ha: project.default_water_per_ha,
+                    default_water_per_tank: project.default_water_per_tank
+                };
                 const option = document.createElement('option');
                 option.value = project.project_id;
                 option.text = `${project.project_code}`;
                 option.setAttribute('data-ha', project.proj_attr_ha);
                 option.setAttribute('data-crop-id', project.proj_attr_crop_id);
+                option.setAttribute('data-farm-id', project.proj_attr_farm_id || '');
                 option.setAttribute('data-crop-theme-color', project.crop_theme_color || '');
                 if (project.proj_attr_block_no) option.setAttribute('data-block-no', project.proj_attr_block_no);
                 if (project.proj_attr_whse_id) option.setAttribute('data-whse-id', project.proj_attr_whse_id);
                 $projectSelect.append(option);
             });
-            $projectSelect.prop('disabled', false).trigger('change');
+            const restoredSelection = selectedBeforeRefresh.filter(id => data.projects.some(project => String(project.project_id) === String(id)));
+            $projectSelect.val(restoredSelection).prop('disabled', false).trigger('change');
         } else {
             const placeholder = document.createElement('option');
             placeholder.value = '';
@@ -262,8 +282,10 @@ async function updateProjects() {
         }
 
         // Clear selected projects and product options until a project is chosen
-        $projectSelect.val(null).trigger('change');
-        updateProducts([]);
+        if (!data.projects?.length) {
+            $projectSelect.val(null).trigger('change');
+            updateProducts([]);
+        }
         // Ensure submit availability reflects current state (no product lines initially)
         updateSubmitAvailability();
     } catch (error) {
@@ -1018,13 +1040,7 @@ $('#project_ids').on('change', function() {
 async function fetchAndApplyProjectDefaults(projectId) {
     if (!projectId) return;
     try {
-        const res = await request(`/agri/spray-recommendation/project_defaults/${encodeURIComponent(projectId)}`);
-        const json = await res.json();
-        if (!json.success) {
-            console.warn('No defaults returned for project', projectId, json);
-            return;
-        }
-        const defs = json.defaults || json; // support either { success, defaults:{...} } or direct object
+        let defs = PROJECT_DEFAULTS[projectId];
         console.log(defs)
         // 1) Set spray method (if present)
         if (defs.default_spray_method_id && !window.isRestoringDraft) {
@@ -1171,7 +1187,7 @@ document.addEventListener('change', function (e) {
 });
 
 // Load projects for current user on page load
-updateProjects();
+updateProjects(false, true);
 
 // Disable form submission on Enter for most inputs to avoid accidental submits
 document.getElementById('spray-form').addEventListener('keydown', function (e) {

@@ -77,6 +77,7 @@ function initStockAdjustment(container = document) {
                 productSel.innerHTML = `<option value="">Error loading products: ${payload.message}</option>`;
             }
         } catch (err) {
+            console.log('Error loading products', err);
             productSel.innerHTML = '<option value="">Error</option>';
         }
     }
@@ -280,20 +281,12 @@ function initStockAdjustment(container = document) {
     }
 
     function showResult(message, type) {
-        resultDiv.className = `sd-result ${type}`;
-        resultDiv.textContent = message;
-        // auto-clear success messages
         if (resultClearTimer) {
             clearTimeout(resultClearTimer);
             resultClearTimer = null;
         }
-        if (type === 'success') {
-            resultClearTimer = setTimeout(() => {
-                resultDiv.className = 'sd-result';
-                resultDiv.textContent = '';
-                resultClearTimer = null;
-            }, 4000);
-        }
+        resultDiv.className = `sd-result ${type}`;
+        resultDiv.textContent = message;
     }
 
     // Prefill product and warehouse from URL params if provided
