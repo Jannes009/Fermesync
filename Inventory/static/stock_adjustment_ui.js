@@ -3,6 +3,7 @@ function initStockAdjustment(container = document) {
     const productSel = (root || container).querySelector ? (root || container).querySelector('#sa_product') : null;
     const whSel = (root || container).querySelector ? (root || container).querySelector('#sa_warehouse') : null;
     const qtyInput = (root || container).querySelector ? (root || container).querySelector('#sa_quantity') : null;
+    const dateInput = (root || container).querySelector ? (root || container).querySelector('#sa_date') : null;
     const submitBtn = (root || container).querySelector ? (root || container).querySelector('#sa_submit') : null;
     const resultDiv = (root || container).querySelector ? (root || container).querySelector('#sa_result') : null;
     const qtyInfoDiv = (root || container).querySelector ? (root || container).querySelector('#sa_qty_info') : null;
@@ -20,7 +21,15 @@ function initStockAdjustment(container = document) {
     const useSelect2 = (typeof window !== 'undefined') && window.jQuery && window.jQuery.fn && window.jQuery.fn.select2;
     let resultClearTimer = null;
 
-    if (!productSel || !whSel || !qtyInput || !submitBtn || !resultDiv || !qtyInfoDiv) return;
+    if (!productSel || !whSel || !qtyInput || !dateInput || !submitBtn || !resultDiv || !qtyInfoDiv) return;
+
+    if (!dateInput.value) {
+        const today = new Date();
+        const yyyy = today.getFullYear();
+        const mm = String(today.getMonth() + 1).padStart(2, '0');
+        const dd = String(today.getDate()).padStart(2, '0');
+        dateInput.value = `${yyyy}-${mm}-${dd}`;
+    }
 
     // Unit toggle buttons
     if (unitStockingBtn) {
@@ -358,6 +367,10 @@ function initStockAdjustment(container = document) {
             showResult('Please enter a valid numeric quantity.', 'error');
             return;
         }
+        if (!dateInput.value) {
+            showResult('Please enter an adjustment date.', 'error');
+            return;
+        }
 
         // Prevent negative entries and negative resulting qtys
         const qtyNum = Number(quantity);
@@ -390,7 +403,7 @@ function initStockAdjustment(container = document) {
             const res = await request('/inventory/adjust_stock', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ product_link: Number(product), warehouse_link: warehouse, operation: operation, quantity: qtyInStockingUnits })
+                body: JSON.stringify({ product_link: Number(product), warehouse_link: warehouse, operation: operation, quantity: qtyInStockingUnits, adjustment_date: dateInput.value })
             });
             const payload = await res.json();
             if (payload.success) {

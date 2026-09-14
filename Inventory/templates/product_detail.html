@@ -813,11 +813,11 @@ body { background: var(--bg-gray); }
               <input type="text" id="filterSearch" placeholder="Search transactions..." oninput="applyHistoryFilters()">
             </div>
             <div class="filter-group">
-              <label for="filterDateFrom">Date From</label>
+              <label for="filterDateFrom">Date From(Transaction date)</label>
               <input type="date" id="filterDateFrom" onchange="onHistoryDateChange()">
             </div>
             <div class="filter-group">
-              <label for="filterDateTo">Date To</label>
+              <label for="filterDateTo">Date To(Transaction date)</label>
               <input type="date" id="filterDateTo" onchange="onHistoryDateChange()">
             </div>
             <div class="filter-group">
@@ -846,7 +846,8 @@ body { background: var(--bg-gray); }
               <thead>
                 <tr>
                   <th class="no-sort"></th>
-                  <th onclick="sortHistory(1)">Date</th>
+                  <th onclick="sortHistory(0)">Transaction Date</th>
+                  <th onclick="sortHistory(1)">Date / Time</th>
                   <th onclick="sortHistory(2)">Warehouse</th>
                   <th onclick="sortHistory(3)">Type</th>
                   <th class="text-right" onclick="sortHistory(4)">Quantity</th>
@@ -1078,7 +1079,7 @@ const pageState = {
 const transactionState = {
   all: [],
   filtered: [],
-  sortCol: 1,
+  sortCol: 0,
   sortAsc: false,
 };
 
@@ -1304,6 +1305,7 @@ function transactionMatchesFilters(txn) {
 
   if (search) {
     const haystack = [
+      txn.DTStamp,
       txn.TxDate,
       txn.WhseCode,
       txn.TrnType,
@@ -1334,7 +1336,7 @@ function sortHistory(colIndex) {
 }
 
 function sortTransactionData(rows) {
-  const keys = ['', 'TxDate', 'WhseCode', 'TrnType', 'Qty', 'Reference', 'ProjectName'];
+  const keys = ['TxDate', 'DTStamp', 'WhseCode', 'TrnType', 'Qty', 'Reference', 'ProjectName'];
   const key = keys[transactionState.sortCol];
   rows.sort((a, b) => {
     let aVal = a[key];
@@ -1376,6 +1378,7 @@ function renderTransactionRows() {
     row.innerHTML = `
       <td class="expand-cell"><button type="button" class="expand-btn"></button></td>
       <td>${formatDateForDisplay(txn.TxDate)}</td>
+      <td>${txn.DTStamp || '—'}</td>
       <td>${txn.WhseName || '—'}</td>
       <td>${txn.TrnType || '—'}</td>
       <td class="text-right">${txn.Qty}</td>

@@ -29,6 +29,14 @@ def serialize_date(value):
     return str(value)[:10]
 
 
+def serialize_datetime(value):
+    if value is None:
+        return None
+    if isinstance(value, datetime):
+        return value.strftime('%Y-%m-%d %H:%M:%S')
+    return str(value)
+
+
 def warehouse_placeholders():
     warehouses = list(current_user.warehouses or [])
     if not warehouses:
@@ -538,6 +546,7 @@ def load_transaction_history(stock_link, start_date, end_date):
             SELECT
                 TxDate,
                 TrnType,
+                DTStamp,
                 Reference,
                 cReference2,
                 ProjectName,
@@ -548,12 +557,12 @@ def load_transaction_history(stock_link, start_date, end_date):
                 QtyOnHand,
                 WhseLink,
                 WhseName
+                --Select *
             FROM cmn._uvStockTransactions
             WHERE StockLink = ?
               AND WhseLink IN ({wh_clause})
               AND TxDate >= ?
-              AND TxDate <= ?
-            ORDER BY TxDate DESC, AutoIdx DESC
+              AND TxDate <= ?;
         """, (stock_link,) + wh_params + (start_date, end_date))
         rows = [row_to_dict(cur, row) for row in cur.fetchall()]
     finally:
@@ -564,6 +573,7 @@ def load_transaction_history(stock_link, start_date, end_date):
         transactions.append({
             'TxDate': serialize_date(row.get('TxDate')),
             'TrnType': row.get('TrnType') or '',
+            'DTStamp': serialize_datetime(row.get('DTStamp')),
             'Reference': (row.get('Reference') or '').strip(),
             'SecondaryReference': (row.get('cReference2') or '').strip(),
             'OrderNumber': (row.get('cReference2') or row.get('Reference') or '').strip(),

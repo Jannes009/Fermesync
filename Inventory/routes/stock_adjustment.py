@@ -1,4 +1,6 @@
 
+from datetime import datetime
+
 from flask import request, jsonify, render_template, abort
 from Inventory.routes import inventory_bp
 from Core.auth import create_db_connection, close_db_connection
@@ -6,6 +8,7 @@ from flask_login import login_required, current_user
 from Inventory.routes.db_conversions import warehouse_link_to_code, project_code_to_link, stock_link_to_code
 from Core.sdk_connection import EvolutionConnection, EvolutionAgentNotFoundError, EvolutionConnectionError
 import Pastel.Evolution as Evo           
+from System import DateTime as NetDateTime
 from Instance.local_settings import DEFAULT_STOCK_ADJUSTMENT_PROJECT_ID
 
 @inventory_bp.route("/adjust_stock", methods=["POST"])
@@ -19,15 +22,28 @@ def adjust_stock():
     warehouse_link = data.get("warehouse_link")
     quantity = data.get("quantity")
     operation = (data.get("operation") or "add").lower()
+    adjustment_date = data.get("adjustment_date")
     print(product_link)
     if not product_link or not warehouse_link or quantity is None:
         return jsonify({"success": False, "message": "Missing required fields"}), 400
+    if not adjustment_date:
+        return jsonify({"success": False, "message": "Adjustment date is required"}), 400
+
+    try:
+        adjustment_date = datetime.strptime(adjustment_date, "%Y-%m-%d")
+    except (TypeError, ValueError):
+        return jsonify({"success": False, "message": "Adjustment date must be a valid date"}), 400
 
     try:
         with EvolutionConnection():
             ItemInc = Evo.InventoryTransaction()
 
             ItemInc.TransactionCode = Evo.TransactionCode(Evo.Module.Inventory, "ADJ")
+            ItemInc.Date = NetDateTime(
+                adjustment_date.year,
+                adjustment_date.month,
+                adjustment_date.day
+            )
 
             conn = create_db_connection()
             cursor = conn.cursor()
