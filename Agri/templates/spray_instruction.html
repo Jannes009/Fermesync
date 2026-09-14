@@ -437,15 +437,67 @@ input[type="text"]:focus, input[type="date"]:focus, input[type="number"]:focus, 
         window.resolveSprayOfflineReady = resolve;
     });
 </script>
-<script type="module" src="{{ url_for('agri.static', filename='SprayRecommendation/offline.js') }}?v=60"></script>
+<script type="module" src="{{ url_for('agri.static', filename='SprayRecommendation/offline.js') }}?v={{ filemtime('agri','SprayRecommendation/offline.js') }}"></script>
 <script>
 
-const sprayId = Number(window.location.pathname.match(/^\/agri\/spray\/(\d+)$/)?.[1] || {{ spray_id }});
+const sprayId = window.location.pathname.match(/^\/agri\/spray\/([^/]+)$/)?.[1] || {{ spray_id|tojson }};
+const isLocalRecommendation = typeof sprayId === 'string' && !/^\d+$/.test(sprayId);
 const canEdit = {{ 'true' if 'SPRAY_REC_EDIT' in current_user.permissions else 'false' }};
 const canCreate = {{ 'true' if 'SPRAY_REC_CREATE' in current_user.permissions else 'false' }};
 let sprayData = null;
 let sprayType = null;
 let doseBasis = null;
+
+function localRecommendationDetail(record) {
+    const payload = record.detail || {};
+    const applicationType = payload.application_type || 'per_ha_tank';
+    const doseBasis = applicationType === 'per_100l'
+        ? 'PER_100L'
+        : applicationType === 'per_ha_direct' ? 'PER_HA_DIRECT' : 'PER_HA';
+    const products = (payload.lines || []).map(line => ({
+        ...line,
+        stock_description: line.stock_description || `Product ${line.stock_id || ''}`.trim(),
+        active_ingredient: line.active_ingredient || '',
+        uom: line.uom || ''
+    }));
+    const mixLines = (payload.mixes || []).flatMap(mix => (mix.lines || []).map(line => ({
+        ...line,
+        stock_description: line.stock_description || `Product ${line.stock_id || ''}`.trim(),
+        uom: line.uom || '',
+        mix_number: mix.mix_number,
+        water: mix.mix_water,
+        mix_ha: mix.mix_ha
+    })));
+    return {
+        header: {
+            spray_date: payload.spray_date,
+            spray_week: payload.spray_week,
+            spray_description: payload.spray_description,
+            method_id: payload.method_id,
+            method_name: 'Not available offline',
+            spray_no: record.spray_no,
+            weather: null,
+            scouting: payload.scouting_note,
+            dose_basis: doseBasis,
+            warehouse: { id: payload.warehouse_id, name: record.warehouse_name || 'Not available offline' },
+            water_per_tank: payload.water_per_tank,
+            water_per_ha: payload.water_per_ha,
+            total_water: payload.total_water,
+            total_ha: payload.total_ha,
+            status: record.status,
+            finalised: false,
+            execution_id: null,
+            execution_finalised: false,
+            issues_exist: false,
+            crop_theme_color: null,
+            modified_at: null,
+            projects: payload.projects || []
+        },
+        lines: products,
+        mixLines,
+        methods: []
+    };
+}
 
 function escapeHtml(value) {
     if (value === null || value === undefined) return '';
@@ -470,12 +522,19 @@ document.addEventListener("DOMContentLoaded", async () => {
     await renderLines();
 });
 
-async function loadInstructionFromStore(force = false) {
+async function loadInstructionFromStore(force = false, showError = true) {
     try {
         const offline = await window.sprayOfflineReady;
-        const record = force
+        let record = force
             ? await offline.refreshInstruction(sprayId, true)
             : await offline.readRecommendation(sprayId);
+        if (!isLocalRecommendation && !force && navigator.onLine && await offline.shouldRefresh('spray', record?.refreshed_at, true)) {
+            try {
+                record = await offline.refreshInstruction(sprayId, true);
+            } catch (refreshError) {
+                console.warn('Automatic instruction refresh failed:', refreshError);
+            }
+        }
         if (!record?.detail) {
             document.getElementById('spray-header').innerHTML = `
                 <div class='no-data'>
@@ -484,12 +543,14 @@ async function loadInstructionFromStore(force = false) {
                 </div>`;
             return false;
         }
-        sprayData = record.detail;
+        sprayData = isLocalRecommendation ? localRecommendationDetail(record) : record.detail;
         sprayData.record = record;
         doseBasis = sprayData.header?.dose_basis || doseBasis;
         return true;
     } catch (error) {
-        document.getElementById('spray-header').innerHTML = `<div class='no-data'>Error loading spray instruction: ${escapeHtml(error.message)}</div>`;
+        if (showError) {
+            document.getElementById('spray-header').innerHTML = `<div class='no-data'>Error loading spray instruction: ${escapeHtml(error.message)}</div>`;
+        }
         return false;
     }
 }
@@ -502,7 +563,10 @@ async function refreshInstructionPage() {
         button.textContent = 'Refreshing...';
     }
     try {
-        if (await loadInstructionFromStore(true)) {
+        const refreshed = navigator.onLine
+            ? await loadInstructionFromStore(true)
+            : await loadInstructionFromStore(false);
+        if (refreshed) {
             await renderHeader();
             await renderLines();
             await renderMix();
@@ -672,7 +736,7 @@ async function renderHeader() {
             </div>
         `;
 
-        const canEditProjects = canEdit && !header.issues_exist && !header.finalised;
+        const canEditProjects = canEdit && !isLocalRecommendation && !header.issues_exist && !header.finalised;
 
         projectsSection = `
             <div class="section-card">
@@ -739,7 +803,7 @@ async function renderHeader() {
     if (header.execution_id) {
         actionButtons.push(`<button class="edit-btn" onclick="openExecution(${header.execution_id})">Open Execution</button>`);
     }
-    if (!editModes.header && !header.execution_id && canCreate) {
+    if (!isLocalRecommendation && !editModes.header && !header.execution_id && canCreate) {
         actionButtons.push(`<button class="cancel-btn" onclick="cancelRecommendation()">Cancel Recommendation</button>`);
     }
     if (!editModes.header && header.finalised && header.execution_finalised) {
@@ -750,7 +814,7 @@ async function renderHeader() {
         <div class="section-card">
             <div class="section-header" id="header-section-header">
                 <span>Basic Details</span>
-                ${canEdit ? `<button class="edit-btn" onclick="toggleEditMode('header')">${editModes.header ? 'Cancel' : 'Edit Details'}</button>` : ''}
+                ${canEdit && !isLocalRecommendation ? `<button class="edit-btn" onclick="toggleEditMode('header')">${editModes.header ? 'Cancel' : 'Edit Details'}</button>` : ''}
             </div>
             <div class="section-body" id="header-section-content">
                 ${headerEditBody}
@@ -1573,7 +1637,7 @@ async function renderLines() {
                 <div>
                     ${editModes.lines
                         ? `<button class="save-btn" onclick="saveLinesEdit()">Save</button><button class="cancel-btn" onclick="cancelLinesEdit()">Cancel</button><button class="add-btn" onclick="addLine()">Add Line</button>`
-                        : (sprayData.header && sprayData.header.issues_exist || !canEdit ? '' : `<button class="edit-btn" onclick="toggleEditMode('lines')">Edit</button>`)}
+                        : (isLocalRecommendation || sprayData.header && sprayData.header.issues_exist || !canEdit ? '' : `<button class="edit-btn" onclick="toggleEditMode('lines')">Edit</button>`)}
                 </div>
             </div>
             <div class="section-body">
@@ -1643,15 +1707,38 @@ async function renderLines() {
     await renderMix();
 }
 
-function toggleEditMode(section) {
+async function toggleEditMode(section) {
+    if (!editModes[section]) {
+        if (isLocalRecommendation || !navigator.onLine) {
+            await Swal.fire({
+                icon: 'info',
+                title: 'Live data required',
+                text: 'Connect to the server before editing this spray instruction.'
+            });
+            return;
+        }
+
+        try {
+            const refreshed = await loadInstructionFromStore(true, false);
+            if (!refreshed) return;
+        } catch (error) {
+            await Swal.fire({
+                icon: 'error',
+                title: 'Could not refresh instruction',
+                text: error.message
+            });
+            return;
+        }
+    }
+
     editModes[section] = !editModes[section];
     if (section === 'projects' && editModes.projects) {
         lastPreviewDose = (sprayData && sprayData.header && sprayData.header.dose_basis) || doseBasis;
     }
     if (section === 'header' || section === 'projects') {
-        renderHeader();
+        await renderHeader();
     } else if (section === 'lines') {
-        renderLines();
+        await renderLines();
     }
 }
 

@@ -1,6 +1,11 @@
 import { db } from '/main_static/offline/db.js?v=60';
 
 const CACHE_MAX_AGE = 7 * 24 * 60 * 60 * 1000;
+const DEVICE_SETTINGS_KEY = 'agri_device_settings';
+const DEFAULT_DEVICE_SETTINGS = {
+    catalog: { mode: 'auto', auto_policy: 'page_load', interval_ms: 86400000 },
+    spray: { mode: 'auto', auto_policy: 'page_load', interval_ms: 86400000 }
+};
 const userId = String(window.CURRENT_USER_ID || 'unknown');
 const readyResolver = window.resolveSprayOfflineReady;
 
@@ -8,8 +13,49 @@ function now() {
     return Date.now();
 }
 
-function isFresh(refreshedAt) {
-    return Number.isFinite(Number(refreshedAt)) && now() - Number(refreshedAt) < CACHE_MAX_AGE;
+function isFresh(refreshedAt, maxAge = CACHE_MAX_AGE) {
+    return Number.isFinite(Number(refreshedAt)) && now() - Number(refreshedAt) < maxAge;
+}
+
+function normalizeDeviceSettings(value) {
+    const settings = value || {};
+    return ['catalog', 'spray'].reduce((result, section) => {
+        const source = settings[section] || {};
+        const interval = Number(source.interval_ms);
+        result[section] = {
+            mode: source.mode === 'auto' ? 'auto' : 'manual',
+            auto_policy: source.auto_policy === 'interval' ? 'interval' : 'page_load',
+            interval_ms: Number.isFinite(interval) && interval > 0 ? interval : DEFAULT_DEVICE_SETTINGS[section].interval_ms
+        };
+        return result;
+    }, {});
+}
+
+async function readDeviceSettings() {
+    const record = await db.meta.get(DEVICE_SETTINGS_KEY);
+    const hasUserSettings = record?.user_saved === true;
+    const settings = hasUserSettings
+        ? normalizeDeviceSettings(record.value)
+        : normalizeDeviceSettings(DEFAULT_DEVICE_SETTINGS);
+    if (!hasUserSettings) {
+        await db.meta.put({ key: DEVICE_SETTINGS_KEY, value: settings, user_saved: false, updated_at: now() });
+    }
+    return settings;
+}
+
+async function saveDeviceSettings(value) {
+    const settings = normalizeDeviceSettings(value);
+    await db.meta.put({ key: DEVICE_SETTINGS_KEY, value: settings, user_saved: true, updated_at: now() });
+    return settings;
+}
+
+async function shouldRefresh(section, refreshedAt, pageLoad = false) {
+    const settings = await readDeviceSettings();
+    const policy = settings[section] || DEFAULT_DEVICE_SETTINGS[section];
+    if (policy.mode !== 'auto') return false;
+    if (!Number.isFinite(Number(refreshedAt))) return true;
+    if (policy.auto_policy === 'page_load') return pageLoad;
+    return !isFresh(refreshedAt, policy.interval_ms);
 }
 
 async function readProjects() {
@@ -19,7 +65,8 @@ async function readProjects() {
 
 async function fetchProjects(force = false) {
     const cached = await readProjects();
-    if (!force && cached && isFresh(cached.refreshed_at)) {
+    const refreshDue = await shouldRefresh('catalog', cached?.refreshed_at, true);
+    if (!force && cached && !refreshDue) {
         return { projects: cached.projects, refreshed_at: cached.refreshed_at, source: 'cache' };
     }
     if (!navigator.onLine) {
@@ -58,7 +105,8 @@ async function readProducts() {
 
 async function refreshProducts(force = false) {
     const cached = await readProducts();
-    if (!force && cached.products.length && isFresh(cached.refreshed_at)) {
+    const refreshDue = await shouldRefresh('catalog', cached.refreshed_at, true);
+    if (!force && cached.products.length && !refreshDue) {
         return { ...cached, source: 'cache' };
     }
     if (!navigator.onLine) return { ...cached, source: 'cache' };
@@ -87,7 +135,8 @@ async function readMethods() {
 async function refreshMethods(force = false) {
     const cached = await readMethods();
     const refreshedAt = cached.length ? Math.min(...cached.map(item => Number(item.refreshed_at) || 0)) : null;
-    if (!force && cached.length && isFresh(refreshedAt)) return { methods: cached, refreshed_at: refreshedAt, source: 'cache' };
+    const refreshDue = await shouldRefresh('catalog', refreshedAt, true);
+    if (!force && cached.length && !refreshDue) return { methods: cached, refreshed_at: refreshedAt, source: 'cache' };
     if (!navigator.onLine) return { methods: cached, refreshed_at: refreshedAt, source: 'cache' };
     let response;
     try {
@@ -234,7 +283,17 @@ async function readRecommendations() {
 }
 
 async function readRecommendation(id) {
-    return db.spray_recommendations.get([userId, Number(id)]);
+    const key = typeof id === 'string' && !/^\d+$/.test(id) ? id : Number(id);
+    return db.spray_recommendations.get([userId, key]);
+}
+
+async function discardRecommendation(id) {
+    const record = await readRecommendation(id);
+    if (!record || !['WAITING_TO_SYNC', 'FAILED_TO_SYNC'].includes(record.status)) {
+        throw new Error('Only recommendations waiting to sync or failed to sync can be discarded.');
+    }
+    await db.spray_recommendations.delete([userId, record.id]);
+    return record;
 }
 
 async function fetchInstructionDetails(ids) {
@@ -393,6 +452,7 @@ const api = {
     syncPending,
     readRecommendations,
     readRecommendation,
+    discardRecommendation,
     fetchInstructionDetails,
     refreshInstructions,
     refreshRecommendations,
@@ -400,6 +460,9 @@ const api = {
     recommendationRefreshTime,
     markRecommendationsScheduled,
     lastRefreshes,
+    readDeviceSettings,
+    saveDeviceSettings,
+    shouldRefresh,
     isFresh,
     cacheMaxAge: CACHE_MAX_AGE
 };

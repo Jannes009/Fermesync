@@ -1,0 +1,104 @@
+{% extends 'inventory_base.html' %}
+{% block content %}
+<style>
+  .settings-page { max-width: 980px; margin: 0 auto; padding: 1.5rem; color: var(--primary-text); }
+  .settings-header { margin-bottom: 1.25rem; }
+  .settings-header h1 { margin: 0 0 .35rem; font-size: 1.5rem; }
+  .settings-header p { margin: 0; color: var(--secondary-text); }
+  .settings-section { background: var(--container-bg); border: 1px solid var(--input-border); border-radius: 10px; padding: 1.25rem; margin-bottom: 1rem; }
+  .settings-section h2 { margin: 0 0 .3rem; font-size: 1.05rem; }
+  .settings-section > p { margin: 0 0 1rem; color: var(--secondary-text); }
+  .setting-grid { display: grid; gap: 1rem; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); }
+  .field-label { display: block; margin-bottom: .4rem; font-size: .82rem; font-weight: 700; color: var(--secondary-text); text-transform: uppercase; letter-spacing: .04em; }
+  .choice-group { display: flex; gap: .6rem; flex-wrap: wrap; }
+  .choice { display: flex; align-items: center; gap: .45rem; min-height: 40px; padding: .55rem .7rem; border: 1px solid var(--input-border); border-radius: 7px; cursor: pointer; }
+  .choice:has(input:checked) { border-color: var(--button-bg); background: color-mix(in srgb, var(--button-bg) 10%, var(--container-bg)); }
+  select { width: 100%; min-height: 40px; padding: .55rem .65rem; border: 1px solid var(--input-border); border-radius: 7px; background: var(--form-bg); color: var(--primary-text); }
+  .settings-actions { display: flex; align-items: center; gap: .8rem; margin-top: 1.25rem; }
+  .settings-actions button { padding: .6rem 1rem; border: 0; border-radius: 7px; background: var(--button-bg); color: var(--button-text); cursor: pointer; font-weight: 700; }
+  .settings-status { color: var(--secondary-text); font-size: .9rem; }
+  @media (max-width: 600px) { .settings-page { padding: 1rem .7rem; } }
+</style>
+
+<main class="settings-page">
+  <header class="settings-header">
+    <h1>Device Settings</h1>
+    <p>Choose when offline data should be refreshed on this device. These settings are stored locally in this browser.</p>
+  </header>
+
+  <form id="device-settings-form">
+    {% if "SPRAY_REC_CREATE" in current_user.permissions %}
+    <section class="settings-section">
+      <h2>Create Page</h2>
+      <p>Masterfiles used when creating a spray recommendation: projects, methods and products.</p>
+      <div class="setting-grid">
+        <div>
+          <span class="field-label">Refresh mode</span>
+          <div class="choice-group">
+            <label class="choice"><input type="radio" name="catalog-mode" value="manual"> Manual</label>
+            <label class="choice"><input type="radio" name="catalog-mode" value="auto" checked> Auto</label>
+          </div>
+        </div>
+        <div class="catalog-auto-options">
+          <label class="field-label" for="catalog-auto-policy">Auto refresh</label>
+          <select id="catalog-auto-policy">
+            <option value="page_load">Every page load</option>
+            <option value="interval">When data is older than</option>
+          </select>
+        </div>
+        <div class="catalog-interval-options">
+          <label class="field-label" for="catalog-interval">Refresh period</label>
+          <select id="catalog-interval">
+            <option value="3600000">1 hour</option>
+            <option value="86400000">1 day</option>
+            <option value="604800000">7 days</option>
+          </select>
+        </div>
+      </div>
+    </section>
+    {% endif %}
+
+    {% if "SPRAY_REC_VIEW" in current_user.permissions %}
+    <section class="settings-section">
+      <h2>Spray Recommendations and Instructions</h2>
+      <p>Recommendations and their cached instruction details shown on the spray pages.</p>
+      <div class="setting-grid">
+        <div>
+          <span class="field-label">Refresh mode</span>
+          <div class="choice-group">
+            <label class="choice"><input type="radio" name="spray-mode" value="manual"> Manual</label>
+            <label class="choice"><input type="radio" name="spray-mode" value="auto" checked> Auto</label>
+          </div>
+        </div>
+        <div class="spray-auto-options">
+          <label class="field-label" for="spray-auto-policy">Auto refresh</label>
+          <select id="spray-auto-policy">
+            <option value="page_load">Every page load</option>
+            <option value="interval">When data is older than</option>
+          </select>
+        </div>
+        <div class="spray-interval-options">
+          <label class="field-label" for="spray-interval">Refresh period</label>
+          <select id="spray-interval">
+            <option value="3600000">1 hour</option>
+            <option value="86400000">1 day</option>
+            <option value="604800000">7 days</option>
+          </select>
+        </div>
+      </div>
+    </section>
+    {% endif %}
+
+    <div class="settings-actions">
+      <button type="submit">Save device settings</button>
+      <span id="settings-status" class="settings-status" role="status"></span>
+    </div>
+  </form>
+</main>
+
+<script>
+  window.sprayOfflineReady = new Promise(resolve => { window.resolveSprayOfflineReady = resolve; });
+</script>
+<script type="module" src="{{ url_for('agri.static', filename='SprayRecommendation/offline.js') }}?v={{ filemtime('agri','SprayRecommendation/offline.js') }}"></script>
+<script type="module" src="{{ url_for('agri.static', filename='agri_settings.js') }}?v={{ filemtime('agri','agri_settings.js') }}"></script>
+{% endblock %}

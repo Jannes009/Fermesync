@@ -63,40 +63,6 @@ db.version(5).stores({
   await transaction.table('spray_methods').clear();
 });
 
-/**
- * Generic offline-first fetch helper
- */
-export async function fetchWithOffline({
-  url,
-  method = 'GET',
-  body = null,
-  store,
-  transform = d => d,
-  key = null
-}) {
-  if (navigator.onLine) {
-    const res = await fetch(url, {
-      method,
-      headers: { 'Content-Type': 'application/json' },
-      body: body ? JSON.stringify(body) : null
-    });
-
-    const data = await res.json();
-    const records = transform(data);
-
-    if (store && records) {
-      await db[store].clear();
-      await db[store].bulkPut(records);
-    }
-
-    return records;
-  }
-
-  // OFFLINE FALLBACK
-  return await db[store].toArray();
-
-}
-
 export async function generateNotification(UserId, Title, Message, EntityId, action_url = null) {
     fetch('/inventory/notifications/create_notification', {
         method: 'POST',

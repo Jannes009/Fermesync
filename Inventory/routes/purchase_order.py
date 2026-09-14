@@ -102,7 +102,7 @@ def purchase_order_stock_item_units(stock_id):
     cur.execute(sql, (supplier_id, supplier_id, stock_id))
     rows = cur.fetchall()
     conn.close()
-
+    print(supplier_id, stock_id, rows)  # Debugging line to check the values of supplier_id, stock_id, and the fetched rows
     units = [
         {
             'unit_id': int(r.idUnits),

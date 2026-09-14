@@ -50,6 +50,9 @@
       {% if "STOCK_ISSUE" in current_user.permissions %}
       <li><a href="/inventory/SDK/stock_issue_summary" class="taskbar-link">Stock Issue</a></li>
       {% endif %}
+      {% if "STOCK_ADJUSTMENT" in current_user.permissions %}
+      <li><a href="/inventory/adjust_stock" class="taskbar-link">Stock Adjustment</a></li>
+      {% endif %}
       {% set spray_exec = "SPRAY_EXEC_VIEW" in current_user.permissions %}
       {% set spray_rec = "SPRAY_REC_VIEW" in current_user.permissions %}
       {% set spray_rec_create = "SPRAY_REC_CREATE" in current_user.permissions %}
@@ -122,6 +125,9 @@
       {% endif %}
       {% if "AGR_MAIN" in current_user.permissions %}
       <a href="/agri/setup">Agri Maintanance</a>
+      {% endif %}
+      {% if "SPRAY_REC_CREATE" in current_user.permissions or "SPRAY_REC_VIEW" in current_user.permissions %}
+      <a href="/agri/settings">Device Settings</a>
       {% endif %}
       <a href="{{ url_for('logout') }}">Logout</a>
     </div>
@@ -251,6 +257,16 @@
         </a>
       </li>
       {% endif %}
+      {% if "STOCK_ADJUSTMENT" in current_user.permissions %}
+      <li class="mobile-nav-item">
+        <a href="/inventory/adjust_stock" class="mobile-nav-link">
+          <div class="mobile-nav-content">
+            <span class="mobile-nav-icon">⚖️</span>
+            <span>Stock Adjustment</span>
+          </div>
+        </a>
+      </li>
+      {% endif %}
       {% if spray_exec or spray_rec or spray_rec_create %}
       <li class="mobile-nav-item">
         {% if spray_exec and spray_rec %}
@@ -301,6 +317,9 @@
       {% endif %}
     </ul>
     <div class="mobile-nav-footer">
+      {% if "SPRAY_REC_CREATE" in current_user.permissions or "SPRAY_REC_VIEW" in current_user.permissions %}
+      <a href="/agri/settings" class="mobile-nav-footer-link">Device Settings</a>
+      {% endif %}
       {% if current_user.market_module %}
       <a href="/market/dashboard" class="mobile-nav-footer-link">Fermesync Market</a>
       {% endif %}

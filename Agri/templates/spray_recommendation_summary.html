@@ -1019,6 +1019,7 @@
                 <th data-sort="week">Week</th>
                 <th data-sort="status">Status</th>
                 <th data-sort="block_no">Block</th>
+                <th>Actions</th>
               </tr>
             </thead>
             <tbody id="recTableBody">
@@ -1043,7 +1044,7 @@
     window.resolveSprayOfflineReady = resolve;
   });
 </script>
-<script type="module" src="{{ url_for('agri.static', filename='SprayRecommendation/spray_recommendation_summary.js') }}?v={{ filemtime('agri','SprayRecommendation/spray_recommendation_summary.js') }}"></script>
+<script type="module" src="{{ url_for('agri.static', filename='SprayRecommendation/offline.js') }}?v={{ filemtime('agri','SprayRecommendation/offline.js') }}"></script>
 <script>
 
 const recommendations = [];
@@ -1060,6 +1061,17 @@ function getCreateButton() {
 
 function getSelectionSummary() {
     return document.getElementById('selectionSummary');
+}
+
+function showRecommendationsLoading() {
+  const body = document.getElementById('recTableBody');
+  const mobileCards = document.getElementById('mobileCards');
+  if (body) {
+    body.innerHTML = '<tr><td class="no-data" colspan="10">Loading spray recommendations...</td></tr>';
+  }
+  if (mobileCards) {
+    mobileCards.innerHTML = '<div class="mobile-no-data">Loading spray recommendations...</div>';
+  }
 }
 
 document.addEventListener('DOMContentLoaded', () => {
@@ -1100,17 +1112,39 @@ document.addEventListener('DOMContentLoaded', () => {
 
   async function loadRecommendationsFromCache() {
     const body = document.getElementById('recTableBody');
+    showRecommendationsLoading();
     try {
-    const offline = await window.sprayOfflineReady;
-    const records = await offline.readRecommendations();
-      recommendations.splice(0, recommendations.length, ...records.map(record => ({
-        ...record,
-        ...(record.backend || {})
-      })));
-      populateFilters(recommendations);
-      console.log('Loaded recommendations from cache:', recommendations);
+      const offline = await window.sprayOfflineReady;
+      let records = await offline.readRecommendations();
+      const refreshedAt = await offline.recommendationRefreshTime();
+
+      const renderCachedRecords = () => {
+        recommendations.splice(0, recommendations.length, ...records.map(record => ({
+          ...record,
+          ...(record.backend || {})
+        })));
+        populateFilters(recommendations);
         renderRecommendationsTable();
         updateSelectionModeUI();
+      };
+
+      if (records.length) {
+        renderCachedRecords();
+      }
+
+      if (!records.length || await offline.shouldRefresh('spray', refreshedAt, true)) {
+        try {
+          await offline.refreshRecommendations();
+          records = await offline.readRecommendations();
+          renderCachedRecords();
+        } catch (refreshError) {
+          console.warn('Automatic recommendation refresh failed:', refreshError);
+          if (!records.length && body) {
+            body.innerHTML = `<tr><td class="no-data" colspan="10">Automatic refresh failed: ${escapeHtml(refreshError.message)}</td></tr>`;
+          }
+        }
+      }
+      console.log('Loaded recommendations from cache:', recommendations);
     } catch (err) {
         console.error('Error loading recommendations:', err);
         if (body) {
@@ -1122,6 +1156,7 @@ document.addEventListener('DOMContentLoaded', () => {
   async function refreshRecommendations() {
     const button = document.getElementById('refreshRecommendationsButton');
     const originalButtonText = button?.textContent || 'Refresh';
+    showRecommendationsLoading();
     if (button) {
       button.disabled = true;
       button.textContent = 'Refreshing...';
@@ -1233,7 +1268,10 @@ function renderRecommendationsTable() {
         const selectable = Number.isFinite(Number(rec.id)) && !rec.execution_id && !['WAITING_TO_SYNC', 'FAILED_TO_SYNC'].includes(rec.status);
         const isSelected = selectedRecommendationIds.includes(rec.id);
         const rowClass = selectionMode && !selectable ? 'disabled-row' : isSelected ? 'selected-row' : '';
-        const rowOnclick = selectionMode ? '' : `onclick="goToSpray(${rec.id})"`;
+        const rowOnclick = selectionMode ? '' : `onclick="goToSpray('${escapeHtml(rec.id)}')"`;
+        const discardButton = ['WAITING_TO_SYNC', 'FAILED_TO_SYNC'].includes(rec.status)
+          ? `<button type="button" class="btn-secondary" onclick="event.stopPropagation(); discardRecommendation('${escapeHtml(rec.id)}')">Discard</button>`
+          : '';
         const checkboxHtml = selectionMode ? `
                     <input type="checkbox"
                         data-rec-id="${rec.id}"
@@ -1252,6 +1290,7 @@ function renderRecommendationsTable() {
                 <td>${escapeHtml(rec.week)}</td>
                 <td>${escapeHtml(rec.status)}</td>
                 <td>${escapeHtml(rec.block_no)}</td>
+                <td>${discardButton}</td>
             </tr>
         `;
     }).join('');
@@ -1275,8 +1314,11 @@ function renderRecommendationsTable() {
                     Select
                 </label>
             ` : '';
+            const discardButton = ['WAITING_TO_SYNC', 'FAILED_TO_SYNC'].includes(rec.status)
+              ? `<button type="button" class="btn-secondary" onclick="event.stopPropagation(); discardRecommendation('${escapeHtml(rec.id)}')">Discard</button>`
+              : '';
             return `
-                <article class="mobile-card ${rowClass}" onclick="handleMobileCardClick(event, ${rec.id})">
+              <article class="mobile-card ${rowClass}" onclick="handleMobileCardClick(event, '${escapeHtml(rec.id)}')">
                     <div class="mobile-card-header">
                         <div>
                             <div class="mobile-card-title">${escapeHtml(rec.spray_no)}</div>
@@ -1286,6 +1328,7 @@ function renderRecommendationsTable() {
                     </div>
                     <div class="mobile-card-row"><strong>Week:</strong> ${escapeHtml(rec.week)}</div>
                     <div class="mobile-card-row"><strong>Block:</strong> ${escapeHtml(rec.block_no)}</div>
+                    ${discardButton}
                     ${checkboxHtml}
                 </article>
             `;
@@ -1497,6 +1540,30 @@ function updateSortHeaders() {
 
 function goToSpray(recId) {
     window.location.href = `/agri/spray/${recId}`;
+}
+
+async function discardRecommendation(recId) {
+  const confirmation = await Swal.fire({
+    icon: 'warning',
+    title: 'Discard recommendation?',
+    text: 'This removes the local recommendation and it will not be synced.',
+    showCancelButton: true,
+    confirmButtonText: 'Discard',
+    cancelButtonText: 'Keep it'
+  });
+  if (!confirmation.isConfirmed) return;
+
+  try {
+    const offline = await window.sprayOfflineReady;
+    await offline.discardRecommendation(recId);
+    selectedRecommendationIds = selectedRecommendationIds.filter(id => String(id) !== String(recId));
+    recommendations.splice(0, recommendations.length, ...recommendations.filter(rec => String(rec.id) !== String(recId)));
+    populateFilters(recommendations);
+    renderRecommendationsTable();
+    updateSelectionModeUI();
+  } catch (error) {
+    Swal.fire({ icon: 'error', title: 'Discard failed', text: error.message });
+  }
 }
 
 </script>

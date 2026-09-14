@@ -12,6 +12,7 @@ agri_bp = Blueprint(
 from . import spray_recommendation
 from . import spray_execution
 from . import setup
+from . import settings
 from . import spray_instruction
 from . import spray_stock_issue
 from . import suggested_order

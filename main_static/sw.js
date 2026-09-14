@@ -2,7 +2,7 @@
 const IS_DEV = true;
 
 const CACHE_NAME = IS_DEV
-  ? 'fermesync-dev-v4'          // never rely on versioning
+  ? 'fermesync-dev-v9'          // never rely on versioning
   : 'fermesync-v2';          // bump ONLY on prod deploys
 
 // ------------------
@@ -14,9 +14,8 @@ const SHELL = [
   '/main_static/icons/icon-192.png',
   '/main_static/icons/icon-512.png',
   '/main_static/color-template.css',
-  '/static/color-template.css',
-  '/static/icons/LogoIcon - Copy.svg',
-  '/static/icons/HorizontalLogoAndText.svg',
+  '/main_static/icons/LogoIcon - Copy.svg',
+  '/main_static/icons/HorizontalLogoAndText.svg',
 
   // JS modules
   '/main_static/offline/db.js',
@@ -124,6 +123,12 @@ self.addEventListener('fetch', event => {
   }
 
   if (req.mode === 'navigate') {
+    event.respondWith(networkFirst(req));
+    return;
+  }
+
+  const agriStaticAsset = url.pathname.startsWith('/agri/static/');
+  if (agriStaticAsset) {
     event.respondWith(networkFirst(req));
     return;
   }

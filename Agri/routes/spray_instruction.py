@@ -305,7 +305,7 @@ def _recompute_line_quantities(dose_basis, line, total_water, total_ha):
     return line
 
 
-@agri_bp.route("/spray/<int:spray_id>")
+@agri_bp.route("/spray/<spray_id>")
 @login_required
 def spray_execution_page(spray_id):
     if "SPRAY_REC_VIEW" not in current_user.permissions:
@@ -849,8 +849,8 @@ def cancel_spray(spray_id):
             return jsonify({"success": False, "message": "Cannot cancel a spray recommendation that is already linked to an execution."}), 400
 
         cur.execute(
-            "UPDATE agr.SprayHeader SET SprayHStatus = ?, SprayHCancelled = 1, SprayHModifiedAt = GETDATE() WHERE IdSprayH = ?",
-            'CANCELLED', spray_id
+            "UPDATE agr.SprayHeader SET SprayHStatus = 'CANCELLED', SprayHCancelled = 1, SprayHFinalised = 1, SprayHModifiedAt = GETDATE() WHERE IdSprayH = ?",
+            spray_id
         )
         conn.commit()
         return jsonify({"success": True, "message": "Spray recommendation cancelled."})

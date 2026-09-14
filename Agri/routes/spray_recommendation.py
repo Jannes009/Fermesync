@@ -789,6 +789,7 @@ def get_spray_recommendations():
         })
 
     conn.close()
+    print(f"Returning {len(result)} spray recommendations for warehouses: {whse_ids}")
     return jsonify({"success": True, "items": result})
 
 @agri_bp.route("/spray-recommendation/method-water/<int:method_id>", methods=["GET"])
