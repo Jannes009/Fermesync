@@ -693,6 +693,9 @@ function recalcEverything() {
     if (sumWaterEl) sumWaterEl.textContent = totalWater.toFixed(2) + ' L';
     const stickyWaterEl2 = document.getElementById('sticky-water'); if (stickyWaterEl2) stickyWaterEl2.textContent = totalWater.toFixed(2);
 
+    syncTankFields(totalWater);
+    waterPerTank = parseFloat(document.getElementById('global_water_per_tank').value) || 0;
+
     if (!waterPerTank || totalWater <= 0) {
         const sumTanksEl = document.getElementById('sum-tanks'); if (sumTanksEl) sumTanksEl.textContent = '-';
         const stickyTanksEl2 = document.getElementById('sticky-tanks'); if (stickyTanksEl2) stickyTanksEl2.textContent = '-';
@@ -795,6 +798,7 @@ function validateSprayForm(mode, projects, lines) {
     const sprayDescription = (document.getElementById('spray_description').value || '').trim();
     const methodId = document.getElementById('method_id')?.value;
     const waterPerTank = parseFloat(document.getElementById('global_water_per_tank').value) || 0;
+    const tankCount = parseFloat(document.getElementById('global_tank_count').value) || 0;
     const waterPerHa = parseFloat(document.getElementById('global_water_per_ha').value) || 0;
 
     if (!sprayDate) {
@@ -813,8 +817,8 @@ function validateSprayForm(mode, projects, lines) {
         errors.push('Please select an application method.');
     }
     if (mode === 'per_100l') {
-        if (!waterPerTank || waterPerTank <= 0) {
-            errors.push('Please enter the water per tank.');
+        if ((!waterPerTank || waterPerTank <= 0) && (!tankCount || tankCount <= 0)) {
+            errors.push('Please enter either the water per tank or the number of tanks.');
         }
         document.querySelectorAll('#project_ids option:checked').forEach((o, idx) => {
             const rows = document.querySelectorAll('.project-row:not(.project-head)');
@@ -836,8 +840,8 @@ function validateSprayForm(mode, projects, lines) {
         if (!totalWaterInput && !waterPerHaInput) {
             errors.push('Please enter spray volume per hectare or total water.');
         }
-        if (!waterPerTank || waterPerTank <= 0) {
-            errors.push('Please enter the water per tank.');
+        if ((!waterPerTank || waterPerTank <= 0) && (!tankCount || tankCount <= 0)) {
+            errors.push('Please enter either the water per tank or the number of tanks.');
         }
     }
 
@@ -866,6 +870,25 @@ function validateSprayForm(mode, projects, lines) {
     });
 
     return errors;
+}
+
+function syncTankFields(totalWater, source = null) {
+    const waterInput = document.getElementById('global_water_per_tank');
+    const countInput = document.getElementById('global_tank_count');
+    if (!waterInput || !countInput || !totalWater || totalWater <= 0) return;
+
+    source = source || document.activeElement;
+    const water = parseFloat(waterInput.value) || 0;
+    const count = parseFloat(countInput.value) || 0;
+    if (source === countInput && count > 0) {
+        waterInput.value = (totalWater / count).toFixed(2);
+    } else if (source === waterInput && water > 0) {
+        countInput.value = Math.ceil(totalWater / water);
+    } else if (count > 0) {
+        waterInput.value = (totalWater / count).toFixed(2);
+    } else if (water > 0) {
+        countInput.value = Math.ceil(totalWater / water);
+    }
 }
 
 // Bidirectional water calculation for per_ha_tank mode (global fields)
@@ -1174,6 +1197,9 @@ document.addEventListener('input', function (e) {
         recalcEverything();
     }
     if (e.target.matches('#global_water_per_tank')) {
+        recalcEverything();
+    }
+    if (e.target.matches('#global_tank_count')) {
         recalcEverything();
     }
 });

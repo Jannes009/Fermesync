@@ -1,0 +1,16 @@
+{% extends 'inventory_base.html' %}
+{% block content %}
+<style>
+.ibt-detail-shell{max-width:1100px;margin:0 auto;padding:1.25rem}.ibt-detail-head{display:flex;justify-content:space-between;align-items:center;gap:1rem}.ibt-detail-head h1{margin:0}.ibt-panel{background:var(--container-bg);padding:1rem;border-radius:8px;margin:1rem 0;box-shadow:0 1px 6px rgba(0,0,0,.08)}.ibt-grid{display:grid;grid-template-columns:repeat(2,1fr);gap:1rem}.ibt-field{display:flex;flex-direction:column;gap:.35rem}.ibt-field label{font-weight:600;color:var(--secondary-text)}.ibt-field input,.ibt-field select{padding:.65rem;border:1px solid var(--input-border);border-radius:6px;background:var(--form-bg);font-size:1rem}.ibt-lines{display:grid;gap:.6rem}.ibt-line{display:grid;grid-template-columns:minmax(180px,2fr) minmax(130px,1fr) minmax(100px,1fr) 42px;gap:.6rem;align-items:end}.ibt-btn{border:0;border-radius:6px;padding:.65rem 1rem;cursor:pointer;font-weight:600;background:var(--button-bg);color:var(--button-text)}.ibt-btn.secondary{background:#6c757d;color:#fff}.ibt-btn.danger{background:#dc3545;color:#fff}.ibt-actions{display:flex;gap:.6rem;flex-wrap:wrap}.ibt-history{display:grid;grid-template-columns:repeat(4,1fr);gap:.75rem}.ibt-history div{background:var(--form-bg);padding:.7rem;border-radius:6px}.ibt-history small{display:block;color:var(--secondary-text)}.hidden{display:none}@media(max-width:700px){.ibt-grid,.ibt-history{grid-template-columns:1fr}.ibt-line{grid-template-columns:1fr 1fr}.ibt-line .product-field{grid-column:1/-1}}
+</style>
+<div class="ibt-detail-shell">
+  <div class="ibt-detail-head"><h1 id="page-title">IBT Detail</h1><button class="ibt-btn secondary" id="back-summary">Back</button></div>
+  <div id="message"></div>
+  <div class="ibt-panel" id="header-panel"><div class="ibt-grid"><div class="ibt-field"><label>Warehouse From</label><select id="warehouse-from"></select></div><div class="ibt-field"><label>Warehouse To</label><select id="warehouse-to"></select></div></div><div class="ibt-field" id="creation-mode-field" style="margin-top:1rem"><label>When saving</label><select id="creation-mode"></select></div></div>
+  <div class="ibt-panel"><h2>Product Lines</h2><div id="lines" class="ibt-lines"></div><button class="ibt-btn secondary" id="add-line">Add product line</button></div>
+  <div class="ibt-panel"><h2>Status History</h2><div id="history" class="ibt-history"></div></div>
+  <div class="ibt-actions" id="actions"><button class="ibt-btn" id="save">Save Request</button><button class="ibt-btn" id="approve">Approve</button><button class="ibt-btn" id="issue">Issue</button><button class="ibt-btn danger" id="reject">Reject</button><button class="ibt-btn" id="receive">Receive</button></div>
+</div>
+<script>window.IBT_PERMISSIONS={{ permissions|tojson }};</script>
+<script src="{{ url_for('inventory.static', filename='EvolutionSDK/IBT_detail.js') }}?{{ filemtime('inventory', 'EvolutionSDK/IBT_detail.js') }}"></script>
+{% endblock %}

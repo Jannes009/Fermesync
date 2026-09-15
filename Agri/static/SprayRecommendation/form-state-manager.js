@@ -80,6 +80,7 @@ const FormStateManager = (() => {
             
             // Global water fields
             global_water_per_tank: document.getElementById('global_water_per_tank')?.value || '',
+            global_tank_count: document.getElementById('global_tank_count')?.value || '',
             global_water_per_ha: document.getElementById('global_water_per_ha')?.value || '',
             global_total_water: document.getElementById('global_total_water')?.value || '',
             
@@ -221,7 +222,7 @@ const FormStateManager = (() => {
     function restoreBasicFields(state) {
         const fields = [
             'spray_date', 'spray_description', 'scouting_note', 
-            'warehouse_id', 'global_water_per_tank', 'global_water_per_ha', 'global_total_water'
+            'warehouse_id', 'global_water_per_tank', 'global_tank_count', 'global_water_per_ha', 'global_total_water'
         ];
         
         fields.forEach(fieldId => {
