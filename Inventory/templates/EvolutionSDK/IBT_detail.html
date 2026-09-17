@@ -1,16 +1,77 @@
 {% extends 'inventory_base.html' %}
 {% block content %}
 <style>
-.ibt-detail-shell{max-width:1100px;margin:0 auto;padding:1.25rem}.ibt-detail-head{display:flex;justify-content:space-between;align-items:center;gap:1rem}.ibt-detail-head h1{margin:0}.ibt-panel{background:var(--container-bg);padding:1rem;border-radius:8px;margin:1rem 0;box-shadow:0 1px 6px rgba(0,0,0,.08)}.ibt-grid{display:grid;grid-template-columns:repeat(2,1fr);gap:1rem}.ibt-field{display:flex;flex-direction:column;gap:.35rem}.ibt-field label{font-weight:600;color:var(--secondary-text)}.ibt-field input,.ibt-field select{padding:.65rem;border:1px solid var(--input-border);border-radius:6px;background:var(--form-bg);font-size:1rem}.ibt-lines{display:grid;gap:.6rem}.ibt-line{display:grid;grid-template-columns:minmax(180px,2fr) minmax(130px,1fr) minmax(100px,1fr) 42px;gap:.6rem;align-items:end}.ibt-btn{border:0;border-radius:6px;padding:.65rem 1rem;cursor:pointer;font-weight:600;background:var(--button-bg);color:var(--button-text)}.ibt-btn.secondary{background:#6c757d;color:#fff}.ibt-btn.danger{background:#dc3545;color:#fff}.ibt-actions{display:flex;gap:.6rem;flex-wrap:wrap}.ibt-history{display:grid;grid-template-columns:repeat(4,1fr);gap:.75rem}.ibt-history div{background:var(--form-bg);padding:.7rem;border-radius:6px}.ibt-history small{display:block;color:var(--secondary-text)}.hidden{display:none}@media(max-width:700px){.ibt-grid,.ibt-history{grid-template-columns:1fr}.ibt-line{grid-template-columns:1fr 1fr}.ibt-line .product-field{grid-column:1/-1}}
+.detail-shell{max-width:1000px;margin:0 auto;padding:1.25rem}.detail-head{display:flex;justify-content:space-between;align-items:center;gap:1rem}.detail-head h1{margin:0}.detail-head-actions{display:flex;gap:.6rem;align-items:center}.detail-panel{background:var(--container-bg);padding:1rem;border-radius:8px;margin:1rem 0;box-shadow:0 1px 6px rgba(0,0,0,.08)}.detail-grid{display:grid;grid-template-columns:repeat(2,1fr);gap:1rem}.detail-label{display:block;color:var(--secondary-text);font-size:.8rem;font-weight:600}.detail-value{display:block;margin-top:.2rem}.detail-line{display:grid;grid-template-columns:2fr 1fr 1fr;gap:.75rem;padding:.7rem 0;border-bottom:1px solid var(--input-border)}.detail-line:last-child{border-bottom:0}.detail-actions{display:flex;gap:.6rem;flex-wrap:wrap}.detail-btn{padding:.65rem 1rem;border:0;border-radius:6px;background:var(--button-bg);color:var(--button-text);font-weight:600;text-decoration:none;cursor:pointer}.detail-btn.secondary{background:#6c757d;color:#fff}.detail-action-menu{position:relative;display:inline-block}.detail-action-items{display:none;position:absolute;right:0;top:calc(100% + .25rem);z-index:10;min-width:9rem;padding:.25rem;background:var(--container-bg);border:1px solid var(--input-border);border-radius:6px;box-shadow:0 4px 12px rgba(0,0,0,.15)}.detail-action-menu.open .detail-action-items{display:grid}.detail-action-item{border:0;background:transparent;color:var(--primary-text);padding:.55rem .7rem;text-align:left;cursor:pointer;border-radius:4px;white-space:nowrap}.detail-action-item:hover{background:var(--form-bg)}.muted{color:var(--secondary-text)}@media(max-width:700px){.detail-grid,.detail-line{grid-template-columns:1fr}.detail-actions{flex-direction:column}.detail-head-actions{flex-wrap:wrap;justify-content:flex-end}.detail-btn{text-align:center}}@media print{.taskbar,.detail-head-actions .secondary,#actions{display:none!important}.with-fixed-taskbar{margin-top:0!important}.detail-shell{max-width:none;padding:0}.detail-panel{box-shadow:none;border:1px solid #bbb;break-inside:avoid}body{background:#fff;color:#000}.detail-label,.muted{color:#444}}
 </style>
-<div class="ibt-detail-shell">
-  <div class="ibt-detail-head"><h1 id="page-title">IBT Detail</h1><button class="ibt-btn secondary" id="back-summary">Back</button></div>
-  <div id="message"></div>
-  <div class="ibt-panel" id="header-panel"><div class="ibt-grid"><div class="ibt-field"><label>Warehouse From</label><select id="warehouse-from"></select></div><div class="ibt-field"><label>Warehouse To</label><select id="warehouse-to"></select></div></div><div class="ibt-field" id="creation-mode-field" style="margin-top:1rem"><label>When saving</label><select id="creation-mode"></select></div></div>
-  <div class="ibt-panel"><h2>Product Lines</h2><div id="lines" class="ibt-lines"></div><button class="ibt-btn secondary" id="add-line">Add product line</button></div>
-  <div class="ibt-panel"><h2>Status History</h2><div id="history" class="ibt-history"></div></div>
-  <div class="ibt-actions" id="actions"><button class="ibt-btn" id="save">Save Request</button><button class="ibt-btn" id="approve">Approve</button><button class="ibt-btn" id="issue">Issue</button><button class="ibt-btn danger" id="reject">Reject</button><button class="ibt-btn" id="receive">Receive</button></div>
+<style>
+.print-slip-header{display:none}
+@media print{
+  .detail-head{display:none!important}
+  #history{display:none!important}
+  #history-panel{display:none!important}
+  .print-slip-header{display:flex;align-items:center;justify-content:space-between;gap:1.5rem;padding:0 0 1rem;margin-bottom:1rem;border-bottom:3px solid #2b6cb0}
+  .print-slip-brand{width:180px;height:52px;object-fit:contain;object-position:left center}
+  .print-slip-uitdraai{width:150px;height:58px;object-fit:contain;object-position:right center}
+  .print-slip-title{flex:1;text-align:center;color:#2b3e51}
+  .print-slip-title h1{margin:0;font-size:1.45rem}
+  .print-slip-title p{margin:.25rem 0 0;color:#4a5568;font-size:.85rem}
+  .detail-panel{background:#fff;border:1px solid #cbd5e1!important;border-radius:4px!important;padding:.8rem!important;margin:.75rem 0!important}
+  .detail-panel h2{color:#2b6cb0;font-size:1rem;margin:.1rem 0 .6rem;border-bottom:1px solid #cbd5e1;padding-bottom:.35rem}
+  .detail-line{grid-template-columns:2fr 1fr!important;padding:.55rem 0;border-bottom:1px solid #e2e8f0}
+  .detail-line span:nth-child(3){display:none}
+  .detail-label{color:#4a5568}
+  .detail-shell{font-size:.9rem}
+  .print-slip-header + #message{display:none!important}
+}
+</style>
+<div class="print-slip-header" aria-hidden="true">
+  <img class="print-slip-brand" src="{{ url_for('static', filename='icons/HorizontalLogoAndText.svg') }}" alt="Fermesync">
+  <div class="print-slip-title"><h1 id="print-slip-number"></h1></div>
+  <img class="print-slip-uitdraai" src="{{ url_for('static', filename='icons/UitdraaiLogo.jpeg') }}" alt="Uitdraai">
 </div>
+<div class="detail-shell"><div class="detail-head"><h1 id="title">IBT Detail</h1><div class="detail-head-actions"><button id="print-btn" class="detail-btn" type="button" hidden><i class="fas fa-print" aria-hidden="true"></i> Print picking slip</button><a class="detail-btn secondary" href="/inventory/SDK/IBT">Back</a></div></div><div id="message" class="detail-panel muted">Loading...</div><div id="detail" hidden><div class="detail-panel"><div class="detail-grid"><div><span class="detail-label">From</span><span id="from" class="detail-value"></span></div><div><span class="detail-label">To</span><span id="to" class="detail-value"></span></div><div><span class="detail-label">Status</span><span id="status" class="detail-value"></span></div><div><span class="detail-label">Requested</span><span id="requested" class="detail-value"></span></div></div></div><div class="detail-panel"><h2>Products</h2><div id="lines"></div></div><div id="history-panel" class="detail-panel"><h2>History</h2><div id="history" class="detail-grid"></div></div><div id="actions" class="detail-actions"></div></div></div>
 <script>window.IBT_PERMISSIONS={{ permissions|tojson }};</script>
-<script src="{{ url_for('inventory.static', filename='EvolutionSDK/IBT_detail.js') }}?{{ filemtime('inventory', 'EvolutionSDK/IBT_detail.js') }}"></script>
+<script>
+(() => {
+  const id = new URLSearchParams(location.search).get('ibt_no') || new URLSearchParams(location.search).get('ibt_id');
+  const permissions = window.IBT_PERMISSIONS || [];
+  const allowed = name => permissions.includes(`IBT_${name}`);
+  const message = document.getElementById('message');
+  const esc = value => String(value ?? '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+  const date = value => value ? new Date(value).toLocaleString() : '—';
+  const load = async () => {
+    if (!id) throw new Error('No IBT was selected.');
+    const response = await request(`/inventory/ibt/detail/${encodeURIComponent(id)}`);
+    const data = await response.json();
+    if (!response.ok || !data.success) throw new Error(data.message || 'Unable to load IBT.');
+    const ibt = data.ibt;
+    document.getElementById('title').textContent = `IBT ${ibt.number}`;
+    document.getElementById('print-slip-number').textContent = `IBT ${ibt.number}`;
+    document.getElementById('from').textContent = ibt.warehouse_from.name;
+    document.getElementById('to').textContent = ibt.warehouse_to.name;
+    document.getElementById('status').textContent = ibt.status;
+    document.getElementById('requested').textContent = date(ibt.request_timestamp);
+    const printButton = document.getElementById('print-btn');
+    printButton.hidden = ibt.status !== 'APPROVED' && ibt.status !== 'ISSUED';
+    printButton.addEventListener('click', () => window.print());
+    document.getElementById('lines').innerHTML = data.lines.map(line => `<div class="detail-line"><span>${esc(line.product_desc || line.product_id)}</span><span>Qty: ${line.qty ?? '—'} ${esc(line.stocking_unit_code || '—')}</span><span>Received: ${line.qty_received ?? '—'} | Variance: ${line.qty_variance ?? '—'}</span></div>`).join('');
+    document.getElementById('history').innerHTML = `<div><span class="detail-label">Requested</span>${date(ibt.request_timestamp)}<br>${esc(ibt.request_user || '—')}</div><div><span class="detail-label">Approved</span>${date(ibt.approval_timestamp)}<br>${esc(ibt.approval_user || '—')}</div><div><span class="detail-label">Qty</span>${date(ibt.dispatch_timestamp)}<br>${esc(ibt.dispatch_user || '—')}</div><div><span class="detail-label">Received</span>${date(ibt.receive_timestamp)}<br>${esc(ibt.receive_user || '—')}</div><div><span class="detail-label">Rejected</span>${date(ibt.rejection_timestamp)}<br>${esc(ibt.rejection_user || '—')}</div><div><span class="detail-label">Reason</span>${esc(ibt.rejection_reason || '—')}</div>`;
+    const actions = [];
+    const reviewUrl = `/inventory/SDK/IBT_issue?ibt_no=${encodeURIComponent(ibt.number)}&step=3`;
+    if ((ibt.status === 'REQUESTED' || ibt.status === 'REJECTED') && allowed('REQUEST')) actions.push(['Edit', reviewUrl]);
+    if (ibt.status === 'REQUESTED' && allowed('APPROVE')) actions.push(['Approve', reviewUrl]);
+    if (ibt.status === 'REQUESTED' && allowed('REJECT')) actions.push(['Reject', reviewUrl]);
+    if (ibt.status === 'APPROVED' && allowed('APPROVE')) actions.push(['Edit', reviewUrl]);
+    if (ibt.status === 'APPROVED' && allowed('ISSUE')) actions.push(['Issue stock', reviewUrl]);
+    if (ibt.status === 'ISSUED' && allowed('RECEIVE')) actions.push(['Receive', `/inventory/SDK/IBT_receive?ibt_no=${encodeURIComponent(ibt.number)}`]);
+    document.getElementById('actions').innerHTML = actions.length ? `<button type="button" class="detail-btn" data-href="${actions[0][1]}">${actions.map(([label]) => esc(label)).join(' / ')}</button>` : '';
+    document.getElementById('actions').innerHTML = actions.length ? `<button type="button" class="detail-btn" data-href="${actions[0][1]}">${actions.map(([label]) => esc(label)).join(' / ')}</button>` : '';
+    const actionButton = document.querySelector('#actions [data-href]');
+    if (actionButton) actionButton.addEventListener('click', () => { window.location.href = actionButton.dataset.href; });
+    message.hidden = true;
+    document.getElementById('detail').hidden = false;
+  };
+  load().catch(error => {message.textContent=error.message;});
+})();
+</script>
 {% endblock %}

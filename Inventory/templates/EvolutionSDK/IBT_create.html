@@ -74,43 +74,30 @@ select:focus, input:focus, input[list]:focus {
 }
 
 /* ---------------- Buttons ---------------- */
-.btn-primary {
-  width: 100%;
-  background: var(--button-bg);
-  color: var(--button-text);
+.btn {
   border: none;
-  padding: 12px 16px;
-  border-radius: 8px;
-  font-size: 1rem;
-  margin-top: 1.5rem;
+  width: 100%;
+  border-radius: 6px;
+  padding: 10px 16px;
+  font-size: 0.95rem;
   cursor: pointer;
   font-weight: 600;
   transition: background 0.2s, transform 0.1s;
+  margin-top: 1rem;
+}
+.btn-primary {
+  background: var(--button-bg);
+  color: var(--button-text);
 }
 
 .btn-secondary {
   background: #6c757d;
   color: white;
-  border: none;
-  padding: 10px 16px;
-  border-radius: 6px;
-  font-size: 0.9rem;
-  cursor: pointer;
-  font-weight: 500;
-  transition: background 0.2s, transform 0.1s;
-  margin-top: 1rem;
 }
 
 .btn-danger {
   background: #e74c3c;
   color: white;
-  border: none;
-  padding: 4px 8px;
-  border-radius: 4px;
-  font-size: 0.75rem;
-  cursor: pointer;
-  transition: background 0.2s;
-  line-height: 1;
 }
 
 .btn-primary:hover { background: var(--button-hover); }
@@ -239,8 +226,7 @@ button:active { transform: scale(0.98); }
 
 #ibt-lines-container { margin-top: 20px; }
 
-#add-line-btn,
-#step-2-next-btn { margin-top: 20px; }
+#add-line-btn { margin-top: 20px; }
 
 /* ---------------- Section Animation ---------------- */
 #ibt-step-2, #ibt-step-3 {
@@ -904,7 +890,7 @@ button:active { transform: scale(0.98); }
           <label>Warehouse To</label>
           <select id="wh-to"></select>
 
-          <button type="button" id="ibt-step-1-next" class="btn-primary">Next: Select Products</button>
+          <button type="button" id="ibt-step-1-next" class="btn btn-primary">Next: Select Products</button>
         </section>
 
         <!-- STEP 2 — LINES -->
@@ -930,8 +916,8 @@ button:active { transform: scale(0.98); }
             </div>
 
             <div class="button-group">
-                <button id="step-2-back-btn" type="button" class="btn-secondary">← Back</button>
-                <button id="step-2-next-btn" type="button" class="btn-primary">Review →</button>
+                <button id="step-2-back-btn" type="button" class="btn btn-secondary">← Back</button>
+                <button id="step-2-next-btn" type="button" class="btn btn-primary">Review IBT →</button>
             </div>
         </div>
 
@@ -941,8 +927,12 @@ button:active { transform: scale(0.98); }
             <div id="ibt-summary"></div>
             
             <div class="button-group">
-                <button id="step-3-back-btn" type="button" class="btn-secondary">← Back to Products</button>
-                <button type="button" id="ibt-submit" class="btn-primary">Submit IBT</button>
+                <button id="step-3-back-btn" type="button" class="btn btn-secondary">Edit</button>
+                <button type="button" id="ibt-submit" class="btn btn-primary">Submit Request</button>
+              <button type="button" id="ibt-approve" class="btn btn-primary hidden">Approve IBT</button>
+              <button type="button" id="ibt-approve-issue" class="btn btn-primary hidden">Approve &amp; Issue stock</button>
+              <button type="button" id="ibt-reject" class="btn btn-danger hidden">Reject IBT</button>
+              <button type="button" id="ibt-issue" class="btn btn-primary hidden">Issue IBT</button>
             </div>
         </section>
 
@@ -950,5 +940,6 @@ button:active { transform: scale(0.98); }
     </div>
   </div>
 </div>
-<script src="{{ url_for('inventory.static', filename='EvolutionSDK/IBT.js') }}?{{ filemtime('inventory', 'EvolutionSDK/IBT.js') }}"></script>
+<script>window.IBT_PERMISSIONS={{ current_user.permissions|tojson }};</script>
+<script src="{{ url_for('inventory.static', filename='EvolutionSDK/IBT_create.js') }}?{{ filemtime('inventory', 'EvolutionSDK/IBT_create.js') }}"></script>
 {% endblock %}

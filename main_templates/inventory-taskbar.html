@@ -16,7 +16,9 @@
   <!-- Desktop Navigation -->
   <nav class="desktop-nav">
     <ul>
-      {% set ibt_dispatch = "IBT_DISPATCH" in current_user.permissions %}
+      {% set ibt_view = "IBT_VIEW" in current_user.permissions %}
+      {% set ibt_approve = "IBT_APPROVE" in current_user.permissions %}
+      {% set ibt_issue = "IBT_ISSUE" in current_user.permissions %}
       {% set ibt_receive = "IBT_RECEIVE" in current_user.permissions %}
       {% if "PO_CREATE" in current_user.permissions %}
       <li><a href="/inventory/create_purchase_order" class="taskbar-link">Purchase Order</a></li>
@@ -24,22 +26,8 @@
       {% if "GRV_CREATE" in current_user.permissions %}
       <li><a href="/inventory/grv" class="taskbar-link">GRV</a></li>
       {% endif %}
-      {% if ibt_dispatch or ibt_receive %}
-      <li class="dropdown-parent">
-        {% if ibt_dispatch and ibt_receive %}
-          <a href="#" class="taskbar-link">IBT <span>▼</span></a>
-        {% elif ibt_dispatch %}
-          <a href="/inventory/SDK/IBT_issue" class="taskbar-link">IBT</a>
-        {% else %}
-          <a href="/inventory/SDK/IBT_receive" class="taskbar-link">IBT</a>
-        {% endif %}
-        {% if ibt_dispatch and ibt_receive %}
-        <ul class="dropdown-menu">
-          <li><a href="/inventory/SDK/IBT_issue" class="dropdown-item">Issue</a></li>
-          <li><a href="/inventory/SDK/IBT_receive" class="dropdown-item">Receive</a></li>
-        </ul>
-        {% endif %}
-      </li>
+      {% if ibt_view or ibt_request or ibt_approve or ibt_issue or ibt_receive %}
+      <li><a href="/inventory/SDK/IBT" class="taskbar-link">IBT</a></li>
       {% endif %}
       {% if "WHSE_TRANSFER" in current_user.permissions %}
       <li><a href="/inventory/warehouse-transfer" class="taskbar-link">Warehouse Transfer</a></li>
@@ -75,8 +63,8 @@
           <li><a href="/agri/spray-executions-summary" class="dropdown-item">Executions</a></li>
           <li><a href="/agri/spray-recommendations-summary" class="dropdown-item">Recommendations</a></li>
         </ul>
-        {% endif %}
       </li>
+      {% endif %}
       {% endif %}
       {% if "WHSE_QTYS" in current_user.permissions %}
       <li><a href="/inventory/qty" class="taskbar-link">Stock Qty's</a></li>
@@ -174,7 +162,10 @@
 
     
     <ul class="mobile-nav-list">
-      {% set ibt_dispatch = "IBT_DISPATCH" in current_user.permissions %}
+      {% set ibt_view = "IBT_VIEW" in current_user.permissions %}
+      {% set ibt_request = "IBT_REQUEST" in current_user.permissions %}
+      {% set ibt_approve = "IBT_APPROVE" in current_user.permissions %}
+      {% set ibt_issue = "IBT_ISSUE" in current_user.permissions %}
       {% set ibt_receive = "IBT_RECEIVE" in current_user.permissions %}
       {% if "PO_CREATE" in current_user.permissions %}
       <li class="mobile-nav-item">
@@ -196,35 +187,14 @@
         </a>
       </li>
       {% endif %}
-      {% if ibt_dispatch or ibt_receive %}
+      {% if ibt_view or ibt_request or ibt_approve or ibt_issue or ibt_receive %}
       <li class="mobile-nav-item">
-        {% if ibt_dispatch and ibt_receive %}
-        <a href="#" class="mobile-nav-link">
-          <div class="mobile-nav-content">
-            <span class="mobile-nav-icon">🔁</span>
-            <span>Inter-branch Transfer</span>
-          </div>
-          <span class="mobile-nav-chevron">›</span>
-        </a>
-        <ul class="mobile-submenu">
-          <li><a href="/inventory/SDK/IBT_issue" class="mobile-submenu-link">Issue</a></li>
-          <li><a href="/inventory/SDK/IBT_receive" class="mobile-submenu-link">Receive</a></li>
-        </ul>
-        {% elif ibt_dispatch %}
-        <a href="/inventory/SDK/IBT_issue" class="mobile-nav-link">
+        <a href="/inventory/SDK/IBT" class="mobile-nav-link">
           <div class="mobile-nav-content">
             <span class="mobile-nav-icon">🔁</span>
             <span>Inter-branch Transfer</span>
           </div>
         </a>
-        {% else %}
-        <a href="/inventory/SDK/IBT_receive" class="mobile-nav-link">
-          <div class="mobile-nav-content">
-            <span class="mobile-nav-icon">🔁</span>
-            <span>Inter-branch Transfer</span>
-          </div>
-        </a>
-        {% endif %}
       </li>
       {% endif %}
       {% if "WHSE_TRANSFER" in current_user.permissions %}

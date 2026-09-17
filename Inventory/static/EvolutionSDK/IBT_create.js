@@ -3,6 +3,9 @@ let lineIndex = 0;
 let products = [];
 let selectedProducts = new Set();
 let currentUnitMode = "purchasing";
+let editIbtId = null;
+let currentIbtStatus = null;
+let ibtWarehousesRequest = Promise.resolve();
 
 // Promise that resolves when warehouse selects are populated
 window.__ibtWarehousesLoaded = new Promise((res) => { window.__resolveIbtWarehouses = res; });
@@ -45,11 +48,11 @@ document.addEventListener("DOMContentLoaded", async () => {
             return;
         }
 
-        try {
+        ibtWarehousesRequest = (async () => {
             const res = await request(`/inventory/fetch_whses_with_same_type?whse_id=${encodeURIComponent(fromId)}`);
             const data = await res.json();
             if (!data.success) {
-                return Swal.fire('Error', data.message || 'Failed to fetch matching warehouses.', 'error');
+                throw new Error(data.message || 'Failed to fetch matching warehouses.');
             }
 
             const warehousesSameType = data.warehouses || [];
@@ -73,11 +76,12 @@ document.addEventListener("DOMContentLoaded", async () => {
                 allowClear: false,
                 width: '100%'
             });
-
-        } catch (err) {
+        })().catch(err => {
             console.error('Error fetching same-type warehouses', err);
             Swal.fire('Error', 'Failed to fetch matching warehouses.', 'error');
-        }
+            throw err;
+        });
+        await ibtWarehousesRequest;
     });
 
 
@@ -298,53 +302,80 @@ document.addEventListener("DOMContentLoaded", async () => {
     });
 
     // --- Submit IBT ---
-    document.getElementById("ibt-submit").addEventListener("click", async () => {
-        const payload = {
-            WarehouseFrom: $('#wh-from').val(),
-            WarehouseTo: $('#wh-to').val(),
-            Lines: ibtLines.map(line => ({
-                ProductId: line.product_id,
-                QtyIssued: line.stock_qty,
-                UoMId: line.stocking_uom_id
-            }))
-        };
-
-        const res = await request("/inventory/submit_ibt", {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify(payload)
-        });
-
-        const data = await res.json();
-
-        if (!data.success) {
-            Swal.fire({
-                icon: "error",
-                title: "Error creating IBT",
-                text: data.message
-            });
+    const submitIbt = async (action = "request") => {
+        if (editIbtId && !["REQUESTED", "REJECTED"].includes(currentIbtStatus)) {
             return;
         }
+        if (editIbtId && action !== "request") {
+            return transitionExistingIbt(action);
+        }
+        const payload = {
+            from_warehouse_id: $('#wh-from').val(),
+            to_warehouse_id: $('#wh-to').val(),
+            lines: ibtLines.map(line => ({
+                product_id: line.product_id,
+                qty: line.stock_qty ?? line.qty
+            }))
+        };
+        if (!editIbtId) payload.action = action;
 
-        Swal.fire({
-            icon: "success",
-            title: "IBT Created",
-            text: "IBT Number: " + data.ibtNumber
-        }).then(() => { 
-            document.getElementById("ibt-step-3").classList.add("hidden");
-            // Show step 1
-            document.getElementById("ibt-step-1").classList.remove("hidden");
+        const endpoint = editIbtId ? `/inventory/ibt/${encodeURIComponent(editIbtId)}/update` : "/inventory/ibt/create";
+        showWorkflowBusy("Submitting IBT...");
+        try {
+            const res = await request(endpoint, {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify(payload)
+            });
+            const data = await res.json();
+            if (!res.ok || !data.success) throw new Error(data.message || "Unable to save the IBT.");
+            Swal.close();
+            const ibtNumber = data.ibt_number || editIbtId;
+            await Swal.fire({
+                icon: "success",
+                title: action === "approve_issue" ? "IBT Approved and Issued" : action === "approve" ? "IBT Approved" : "IBT Request Submitted",
+                text: "IBT Number: " + ibtNumber
+            });
+            window.location.href = `/inventory/SDK/IBT_detail?ibt_no=${encodeURIComponent(ibtNumber)}`;
+        } finally {
+            Swal.close();
+        }
+    };
 
-            // Reset form fields
-            document.getElementById("wh-from").value = "";
-            document.getElementById("wh-to").value = "";
-            $('#wh-from, #wh-to').trigger('change'); // refresh Select2
-            document.getElementById("ibt-lines-container").innerHTML = "";
-            ibtLines = [];
-            selectedProducts = new Set();
-            lineIndex = 0;
-        });
+    document.getElementById("ibt-submit").addEventListener("click", () => submitIbt("request").catch(showWorkflowError));
+
+    const transitionExistingIbt = async (action) => {
+        if (!editIbtId) return;
+        const body = action === "reject"
+            ? { reason: window.prompt("Rejection reason") || "" }
+            : undefined;
+        showWorkflowBusy(`${action[0].toUpperCase()}${action.slice(1)} IBT...`);
+        try {
+            const res = await request(`/inventory/ibt/${encodeURIComponent(editIbtId)}/${action}`, {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: body ? JSON.stringify(body) : undefined
+            });
+            const data = await res.json();
+            if (!res.ok || !data.success) throw new Error(data.message || `Unable to ${action} IBT.`);
+            window.location.href = `/inventory/SDK/IBT_detail?ibt_no=${encodeURIComponent(editIbtId)}`;
+        } finally {
+            Swal.close();
+        }
+    };
+
+    document.getElementById("ibt-approve").addEventListener("click", () => {
+        const action = editIbtId ? transitionExistingIbt("approve") : submitIbt("approve");
+        action.catch(showWorkflowError);
     });
+    document.getElementById("ibt-reject").addEventListener("click", () => transitionExistingIbt("reject").catch(showWorkflowError));
+    document.getElementById("ibt-issue").addEventListener("click", () => transitionExistingIbt("issue").catch(showWorkflowError));
+    document.getElementById("ibt-approve-issue").addEventListener("click", () => {
+        if (editIbtId) return;
+        submitIbt("approve_issue").catch(showWorkflowError);
+    });
+
+    configureExistingActions();
 
     // --- Back Button from Step 2 to Step 1 ---
     document.getElementById("step-2-back-btn").addEventListener("click", () => {
@@ -352,12 +383,115 @@ document.addEventListener("DOMContentLoaded", async () => {
         document.getElementById("ibt-step-1").classList.remove("hidden");
     });
 
-    // --- Back Button from Step 3 to Step 2 ---
-    document.getElementById("step-3-back-btn").addEventListener("click", () => {
+    // --- Edit or return from Step 3 ---
+    document.getElementById("step-3-back-btn").addEventListener("click", async () => {
+        if (editIbtId && !isExistingEditable()) {
+            return;
+        }
+        if (editIbtId && !document.querySelector('.ibt-line')) {
+            try {
+                await loadExistingLinesForEdit();
+            } catch (error) {
+                return showWorkflowError(error);
+            }
+        }
         document.getElementById("ibt-step-3").classList.add("hidden");
         document.getElementById("ibt-step-2").classList.remove("hidden");
     });
 });
+
+function showWorkflowError(error) {
+    Swal.fire("IBT action failed", error.message || "Unable to complete the action.", "error");
+}
+
+function showWorkflowBusy(title = "Working...") {
+    Swal.fire({
+        title,
+        text: "Please wait while the IBT is processed.",
+        allowOutsideClick: false,
+        allowEscapeKey: false,
+        didOpen: () => Swal.showLoading()
+    });
+}
+
+function configureExistingActions() {
+    const permissions = window.IBT_PERMISSIONS || [];
+    const allowed = permission => permissions.includes(`IBT_${permission}`);
+    const isExisting = Boolean(editIbtId);
+    const editable = isExistingEditable();
+    const canRequest = !isExisting && allowed("REQUEST");
+    const canApprove = allowed("APPROVE") && (!isExisting || currentIbtStatus === "REQUESTED");
+    const canReject = isExisting && currentIbtStatus === "REQUESTED" && allowed("REJECT");
+    const canIssue = isExisting && currentIbtStatus === "APPROVED" && allowed("ISSUE");
+    const canApproveIssue = !isExisting && allowed("APPROVE") && allowed("ISSUE");
+    const submit = document.getElementById("ibt-submit");
+    submit.classList.toggle("hidden", isExisting ? !editable : !canRequest);
+    submit.textContent = currentIbtStatus === "REJECTED" ? "Resubmit Request" : "Submit Request";
+    console.log("Existing:", isExisting, "Editable:", editable, "Can Request:", canRequest, "Can Approve:", canApprove, "Can Reject:", canReject, "Can Issue:", canIssue, "Can Approve & Issue:", canApproveIssue);
+    document.getElementById("ibt-approve").classList.toggle("hidden", !canApprove);
+    document.getElementById("ibt-reject").classList.toggle("hidden", !canReject);
+    document.getElementById("ibt-issue").classList.toggle("hidden", !canIssue);
+    document.getElementById("ibt-approve-issue").classList.toggle("hidden", !canApproveIssue);
+    const editButton = document.getElementById("step-3-back-btn");
+    editButton.textContent = isExisting ? "Edit" : "Back to Products";
+    editButton.classList.toggle("hidden", isExisting && !editable);
+}
+
+function syncUnitModeButtons() {
+    document.querySelectorAll(".unit-mode-btn[data-global-unit-mode]").forEach((btn) => {
+        btn.classList.toggle("active", btn.dataset.globalUnitMode === currentUnitMode);
+    });
+}
+
+function isExistingEditable() {
+    const permissions = window.IBT_PERMISSIONS || [];
+    const allowed = permission => permissions.includes(`IBT_${permission}`);
+    if (!editIbtId) return false;
+    if (["REQUESTED", "REJECTED"].includes(currentIbtStatus)) {
+        return allowed("REQUEST");
+    }
+    return currentIbtStatus === "APPROVED" && allowed("APPROVE");
+}
+
+async function loadExistingLinesForEdit() {
+    const detailRes = await request(`/inventory/ibt/detail/${encodeURIComponent(editIbtId)}`);
+    const detailData = await detailRes.json();
+    if (!detailRes.ok || !detailData.success) {
+        throw new Error(detailData.message || "Unable to load IBT lines.");
+    }
+    const productsRes = await request('/inventory/fetch_products_in_both_whses', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+            whse_from_id: String(detailData.ibt.warehouse_from.id),
+            whse_to_id: String(detailData.ibt.warehouse_to.id)
+        })
+    });
+    const productsData = await productsRes.json();
+    if (!productsRes.ok || !productsData.success) {
+        throw new Error(productsData.message || "Unable to load products.");
+    }
+    products = productsData.products || [];
+    document.getElementById('ibt-lines-container').innerHTML = '';
+    lineIndex = 0;
+    selectedProducts = new Set();
+    ibtLines = [];
+    currentUnitMode = "stocking";
+    syncUnitModeButtons();
+    for (const line of detailData.lines) {
+        addIbtLine();
+        const selectId = `product-select-${lineIndex}`;
+        const select = document.getElementById(selectId);
+        $(select).val(String(line.product_id)).trigger('change');
+        const lineDiv = document.getElementById(`ibt-line-${lineIndex}`);
+        lineDiv.dataset.selectedProductId = String(line.product_id);
+        lineDiv.dataset.unitMode = "stocking";
+        lineDiv.dataset.conversionFactor = getLineConversionFactor(lineDiv);
+        lineDiv.querySelector('.qty-input').value = String(line.qty || 0);
+        selectedProducts.add(String(line.product_id));
+        updateStockQtyDisplay(lineDiv);
+    }
+}
 
 // Helper: read query param
 function getQueryParam(name) {
@@ -369,9 +503,67 @@ function getQueryParam(name) {
 document.addEventListener('DOMContentLoaded', async () => {
     // Support both URL prefill (legacy) and sessionStorage (preferred for large payloads)
     const prefillRawUrl = getQueryParam('prefill');
+    editIbtId = getQueryParam('ibt_no') || getQueryParam('ibt_id');
     const returnTo = getQueryParam('return_to');
     const prefillRawSession = (!prefillRawUrl && returnTo) ? sessionStorage.getItem('ibt_prefill') : null;
     const prefillRaw = prefillRawUrl || prefillRawSession;
+    const reviewStep = getQueryParam('step') === '3';
+    if (editIbtId && !prefillRaw) {
+        try {
+            if (window.__ibtWarehousesLoaded) await window.__ibtWarehousesLoaded;
+            const detailRes = await request(`/inventory/ibt/detail/${encodeURIComponent(editIbtId)}`);
+            const detailData = await detailRes.json();
+            console.log(detailData)
+            if (!detailRes.ok || !detailData.success) throw new Error(detailData.message || 'Unable to load IBT.');
+            currentIbtStatus = detailData.ibt.status;
+            $('#wh-from').val(String(detailData.ibt.warehouse_from.id)).trigger('change');
+            await new Promise(resolve => setTimeout(resolve, 100));
+            $('#wh-to').val(String(detailData.ibt.warehouse_to.id)).trigger('change');
+            const productsRes = await request('/inventory/fetch_products_in_both_whses', { method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({whse_from_id:String(detailData.ibt.warehouse_from.id), whse_to_id:String(detailData.ibt.warehouse_to.id)}) });
+            const productsData = await productsRes.json();
+            if (!productsRes.ok || !productsData.success) throw new Error(productsData.message || 'Unable to load products.');
+            products = productsData.products || [];
+            document.getElementById('ibt-lines-container').innerHTML = '';
+            lineIndex = 0;
+            selectedProducts = new Set();
+            ibtLines = [];
+            currentUnitMode = "stocking";
+            syncUnitModeButtons();
+            for (const line of detailData.lines) {
+                addIbtLine();
+                const selectId = `product-select-${lineIndex}`;
+                $(`#${selectId}`).val(String(line.product_id)).trigger('change');
+                const lineDiv = document.getElementById(`ibt-line-${lineIndex}`);
+                lineDiv.dataset.selectedProductId = String(line.product_id);
+                lineDiv.dataset.unitMode = "stocking";
+                lineDiv.dataset.conversionFactor = getLineConversionFactor(lineDiv);
+                lineDiv.querySelector('.qty-input').value = String(line.qty || 0);
+                selectedProducts.add(String(line.product_id));
+                updateStockQtyDisplay(lineDiv);
+            }
+            document.getElementById('ibt-step-1').classList.add('hidden');
+            if (reviewStep) {
+                ibtLines = detailData.lines.map(line => ({
+                    product_id: String(line.product_id),
+                    product_desc: line.product_desc || String(line.product_id),
+                    qty: Number(line.qty) || 0,
+                    stock_qty: Number(line.qty) || 0,
+                    productText: line.product_desc || String(line.product_id),
+                    display_unit_code: line.stocking_unit_code || ''
+                }));
+                renderSummaryUltraCompact();
+                document.getElementById('ibt-step-2').classList.add('hidden');
+                document.getElementById('ibt-step-3').classList.remove('hidden');
+            } else {
+                document.getElementById('ibt-step-2').classList.remove('hidden');
+            }
+            configureExistingActions();
+        } catch (error) {
+            console.error('Failed to load IBT for editing:', error);
+            Swal.fire('Unable to edit IBT', error.message, 'error');
+        }
+        return;
+    }
     if (!prefillRaw) {
         if (!prefillRawUrl && !returnTo) {
             sessionStorage.removeItem('ibt_prefill');
@@ -394,6 +586,7 @@ document.addEventListener('DOMContentLoaded', async () => {
         if (prefill.from_whse) {
             $('#wh-from').val(String(prefill.from_whse)).trigger('change');
         }
+        await ibtWarehousesRequest;
         if (prefill.to_whse) {
             $('#wh-to').val(String(prefill.to_whse)).trigger('change');
         }
@@ -431,10 +624,12 @@ document.addEventListener('DOMContentLoaded', async () => {
             }
             const thisLineDiv = document.getElementById(`ibt-line-${thisIndex}`);
             if (thisLineDiv) {
+                console.log(`Prefilling line ${thisIndex} with product ${selectVal} and qty ${ln.qty || ln.Qty || ln.units_suggested || 0}`);
                 // Manually update UOM labels since select2:select event may not fire during prefill
                 const selected = $(`#${selectId}`).find(':selected').data();
                 const uomCode = selected.purchasing_unit_code || '';
                 const stockUnitCode = selected.stocking_unit_code || '';
+                thisLineDiv.dataset.conversionFactor = Number(selected.conversion_factor) || getLineConversionFactor(thisLineDiv);
                 thisLineDiv.querySelector('.stock-unit').textContent = uomCode;
                 thisLineDiv.querySelector('.stock-unit-code').textContent = stockUnitCode;
 
@@ -528,25 +723,76 @@ function refreshProductOptionLabels() {
     });
 }
 
+function getLineProductData(lineDiv) {
+    const select = lineDiv?.querySelector(".product-select");
+    if (!select) return null;
+
+    const selectedData = ($(select).select2("data") || [])[0];
+    if (selectedData && selectedData.id) {
+        return selectedData;
+    }
+
+    const $selected = $(select).find("option:selected");
+    if ($selected.length && $selected.val()) {
+        return {
+            id: $selected.val(),
+            product_desc: $selected.data("product_desc"),
+            qty: $selected.data("qty"),
+            purchasing_unit_code: $selected.data("purchasing_unit_code"),
+            purchasing_unit_id: $selected.data("purchasing_unit_id"),
+            stocking_unit_code: $selected.data("stocking_unit_code"),
+            stocking_unit_id: $selected.data("stocking_unit_id"),
+            conversion_factor: $selected.data("conversion_factor")
+        };
+    }
+
+    const productId = lineDiv.dataset.selectedProductId;
+    if (!productId) return null;
+    return products.find(p => String(p.product_id) === String(productId)) || null;
+}
+
+function getLineConversionFactor(lineDiv) {
+    const productData = getLineProductData(lineDiv);
+    const factor = Number(
+        productData?.conversion_factor ??
+        lineDiv?.dataset?.conversionFactor ??
+        1
+    );
+    return factor > 0 ? factor : 1;
+}
+
 function setGlobalUnitMode(newMode) {
-    if (currentUnitMode === newMode) {
+    if (newMode !== "purchasing" && newMode !== "stocking") {
         return;
     }
 
+    if (currentUnitMode === newMode) {
+        syncUnitModeButtons();
+        return;
+    }
+
+    const previousMode = currentUnitMode;
     currentUnitMode = newMode;
-    document.querySelectorAll(".unit-mode-btn[data-global-unit-mode]").forEach((btn) => {
-        btn.classList.toggle("active", btn.dataset.globalUnitMode === newMode);
-    });
+    syncUnitModeButtons();
 
     document.querySelectorAll(".ibt-line").forEach((lineDiv) => {
         const qtyInput = lineDiv.querySelector(".qty-input");
         const currentQty = Number(qtyInput?.value) || 0;
-        const currentMode = lineDiv.dataset.unitMode || "purchasing";
-        const conversionFactor = Number(lineDiv.dataset.conversionFactor || 1);
-        if (currentMode !== newMode) {
-            qtyInput.value = convertQtyBetweenUnits(currentQty, conversionFactor, currentMode, newMode);
+        const currentMode = lineDiv.dataset.unitMode || previousMode || "purchasing";
+        const conversionFactor = getLineConversionFactor(lineDiv);
+
+        // Convert the typed qty into the new unit so the stocking-unit total stays unchanged.
+        if (qtyInput && currentMode !== newMode) {
+            qtyInput.value = convertQtyBetweenUnits(
+                currentQty,
+                conversionFactor,
+                currentMode,
+                newMode
+            );
         }
+
         lineDiv.dataset.unitMode = newMode;
+        lineDiv.dataset.conversionFactor = conversionFactor;
         updateStockQtyDisplay(lineDiv);
     });
 
@@ -671,6 +917,18 @@ function populateSelect(selectId, lineDiv) {
         templateSelection: state => state.id ? state.text : state.text
     });
 
+    options.forEach((opt) => {
+        $sel.find(`option[value="${opt.id}"]`).data({
+            product_desc: opt.product_desc,
+            qty: opt.qty,
+            purchasing_unit_code: opt.purchasing_unit_code,
+            purchasing_unit_id: opt.purchasing_unit_id,
+            stocking_unit_code: opt.stocking_unit_code,
+            stocking_unit_id: opt.stocking_unit_id,
+            conversion_factor: opt.conversion_factor
+        });
+    });
+
     $sel.on("select2:open", function () {
     const $container = $sel.next(".select2-container");
     const controlWidth = $container.outerWidth();   // width when closed
@@ -684,18 +942,15 @@ function populateSelect(selectId, lineDiv) {
     });
 });
 
-    $sel.off("select2:select").on("select2:select", function (e) {
-        const data = e.params.data;             // ← rich object, not .data()
-        const val = data.id;
+    const applySelectedProduct = (data) => {
+        if (!data || !data.id) return;
+
+        const val = String(data.id);
         const previousSelection = lineDiv.dataset.selectedProductId || "";
         const conversionFactor = Number(data.conversion_factor) || 1;
 
         if (previousSelection && previousSelection !== val) {
             selectedProducts.delete(previousSelection);
-        }
-
-        if (selectedProducts.has(val) && previousSelection !== val) {
-            // optional toast...
         }
 
         if (val) selectedProducts.add(val);
@@ -706,38 +961,52 @@ function populateSelect(selectId, lineDiv) {
             ? data.stocking_unit_code
             : data.purchasing_unit_code) || "—";
 
-        lineDiv.querySelector(".stock-unit").textContent = unitCode;
+        const unitLabel = lineDiv.querySelector(".stock-unit");
+        if (unitLabel) unitLabel.textContent = unitCode || "—";
         updateStockQtyDisplay(lineDiv);
         syncSelectOptionsState();
+    };
+
+    $sel.off("select2:select").on("select2:select", function (e) {
+        applySelectedProduct(e.params.data);
+    });
+
+    $sel.off("change.ibtUnit").on("change.ibtUnit", function () {
+        applySelectedProduct(($(this).select2("data") || [])[0]);
     });
 }
 
 function updateStockQtyDisplay(lineDiv) {
-    const select = lineDiv.querySelector(".product-select");
     const qtyInput = lineDiv.querySelector(".qty-input");
     const stockQtyValue = lineDiv.querySelector(".stock-qty-value");
     const stockUnitCode = lineDiv.querySelector(".stock-unit-code");
 
-    const selectedData = $(select).select2("data")[0];
+    const selectedData = getLineProductData(lineDiv);
     if (!selectedData || !selectedData.id) {
-        stockQtyValue.textContent = "0";
-        stockUnitCode.textContent = "—";
+        if (stockQtyValue) stockQtyValue.textContent = "0";
+        if (stockUnitCode) stockUnitCode.textContent = "—";
         return;
     }
 
-    const conversionFactor = Number(selectedData.conversion_factor) || 1;
-    const qty = Number(qtyInput.value) || 0;
+    const conversionFactor = getLineConversionFactor(lineDiv);
+    const qty = Number(qtyInput?.value) || 0;
     const unitMode = lineDiv.dataset.unitMode || currentUnitMode;
     const displayUnitCode = unitMode === "purchasing"
         ? (selectedData.purchasing_unit_code || "—")
         : (selectedData.stocking_unit_code || "—");
-    const equivalentQty = unitMode === "purchasing"
+
+    // The "total" is always the stocking-unit quantity. Switching unit mode
+    // converts the entered qty so this total stays the same.
+    const stockingTotal = unitMode === "purchasing"
         ? roundTo2(qty * conversionFactor)
         : roundTo2(qty);
 
-    lineDiv.querySelector(".stock-unit").textContent = displayUnitCode;
-    stockQtyValue.textContent = equivalentQty.toLocaleString(undefined, { maximumFractionDigits: 2 });
-    stockUnitCode.textContent = selectedData.stocking_unit_code || "—";
+    const unitLabel = lineDiv.querySelector(".stock-unit");
+    if (unitLabel) unitLabel.textContent = displayUnitCode;
+    if (stockQtyValue) {
+        stockQtyValue.textContent = stockingTotal.toLocaleString(undefined, { maximumFractionDigits: 2 });
+    }
+    if (stockUnitCode) stockUnitCode.textContent = selectedData.stocking_unit_code || "—";
 }
 
 // Prompt user to open the stock adjustment modal if they have permission.

@@ -81,6 +81,8 @@
     .toggle-option input:checked + label { background:var(--button-bg); color:var(--button-text); border-color: rgba(0,0,0,0.08); }
     .toggle-option label:hover { transform: translateY(-1px); }
     .unit-toggle span { color:var(--secondary-text); font-size:0.85rem; }
+    .unit-summary { display:flex; gap:8px; flex-wrap:wrap; margin-top:8px; color:var(--secondary-text); font-size:0.8rem; }
+    .unit-summary span { background:#f8f9fa; border-radius:5px; padding:4px 8px; }
     .qty-issued { display:inline-flex; align-items:center; gap:6px; background:#e8f4fd; padding:4px 8px; border-radius:5px; font-weight:600; font-size:0.8rem; min-width:70px; text-align:center; }
     .qty-issued span { color:var(--secondary-text); font-size:0.8rem; font-weight:500; }
 
@@ -138,7 +140,7 @@
         <div>
           <h1 id="detail-view-title">IBT Details</h1>
         </div>
-        <button type="button" id="back-to-list" class="btn-secondary">Back</button>
+        <button type="button" onclick="window.history.back()" class="btn-secondary">Back</button>
       </header>
       <div id="ibt-detail-container"><div class="loading">Loading details...</div></div>
       <div class="acceptance-row">
@@ -158,17 +160,10 @@ document.addEventListener("DOMContentLoaded", async () => {
 
     await loadIbtList();
 
-    const initialIbt = new URLSearchParams(window.location.search).get('ibt_id') || new URLSearchParams(window.location.search).get('ibt_number');
+    const initialIbt = new URLSearchParams(window.location.search).get('ibt_no') || new URLSearchParams(window.location.search).get('ibt_number') || new URLSearchParams(window.location.search).get('ibt_no');
     if (initialIbt) {
         loadIbtDetail(initialIbt);
     }
-
-    document.getElementById("back-to-list").addEventListener("click", async () => {
-        document.getElementById("ibt-detail-view").classList.add("hidden");
-        document.getElementById("ibt-list-view").classList.remove("hidden");
-        history.replaceState(null, "", window.location.pathname);
-        await loadIbtList();
-    });
 
     document.getElementById("submit-receipt").addEventListener("click", submitReceipt);
 });
@@ -199,7 +194,7 @@ async function loadIbtList() {
         let html = '<div class="ibt-list">';
         ibts.forEach((ibt) => {
             html += `
-                <div class="ibt-item" data-ibt-id="${ibt.ibt_id || ibt.ibt_number}" data-ibt-number="${ibt.ibt_number}">
+                <div class="ibt-item" data-ibt-number="${ibt.ibt_number}">
                     <div class="ibt-number">${ibt.ibt_number}</div>
                     <div class="ibt-description">${ibt.description || '—'}</div>
                     <div class="ibt-details">
@@ -213,21 +208,21 @@ async function loadIbtList() {
 
         container.querySelectorAll('.ibt-item').forEach(el => {
             el.addEventListener('click', function() {
-                const ibtId = this.getAttribute('data-ibt-id') || this.getAttribute('data-ibt-number');
-                loadIbtDetail(ibtId);
+                const ibtNo = this.getAttribute('data-ibt-number');
+                loadIbtDetail(ibtNo);
             });
         });
     }
 
-    async function loadIbtDetail(ibt_id) {
-        currentIbt = ibt_id;
+    async function loadIbtDetail(ibt_no) {
+        currentIbt = ibt_no;
         document.getElementById("ibt-list-view").classList.add("hidden");
         document.getElementById("ibt-detail-view").classList.remove("hidden");
         const container = document.getElementById("ibt-detail-container");
         container.innerHTML = '<div class="loading">Loading...</div>';
 
         try {
-            const res = await request(`/inventory/display_ibt?ibt_id=${encodeURIComponent(ibt_id)}`);
+            const res = await request(`/inventory/display_ibt?ibt_no=${encodeURIComponent(ibt_no)}`);
             const data = await res.json();
             if (!data.success) {
                 container.innerHTML = `<div class="empty-state"><h3>Error</h3><p>${data.message || 'Failed to load details.'}</p></div>`;
@@ -235,7 +230,7 @@ async function loadIbtList() {
             }
             displayIbtDetail(data.ibt_details);
             setupUnitToggle();
-            history.replaceState(null, "", `?ibt_id=${encodeURIComponent(ibt_id)}`);
+            history.replaceState(null, "", `?ibt_no=${encodeURIComponent(ibt_no)}`);
         } catch (err) {
             container.innerHTML = `<div class="empty-state"><h3>Error</h3><p>Failed to load details.</p></div>`;
         }
@@ -287,6 +282,10 @@ async function loadIbtList() {
                             <span id="variance-label-${i}">Variance: 0 ${line.stocking_unit_code || ''}</span>
                         </div>
                     </div>
+                    <div class="unit-summary">
+                        <span>Stocking: ${line.stocking_unit_code || '—'}</span>
+                        <span>Purchasing: ${line.purchasing_unit_code || '—'}</span>
+                    </div>
                 </div>`;
         });
         html += `</div>`;
@@ -298,11 +297,19 @@ async function loadIbtList() {
         const radios = document.querySelectorAll('input[name="unit_mode"]');
         radios.forEach(radio => {
             radio.addEventListener('change', (event) => {
+                const previousMode = currentUnitMode;
                 currentUnitMode = event.target.value;
                 document.querySelectorAll('.product-line').forEach(line => {
                     const i = line.dataset.line;
                     const input = document.querySelector(`.qty-received[data-line="${i}"]`);
-                    if (input) input.dataset.prev = input.value;
+                    const factor = Number(line.dataset.conversionFactor) || 1;
+                    if (input && input.value !== '') {
+                        const quantity = Number(input.value) || 0;
+                        input.value = previousMode === 'stocking'
+                            ? (quantity / factor).toFixed(2)
+                            : (quantity * factor).toFixed(2);
+                        input.dataset.prev = input.value;
+                    }
                     updateQty(i);
                     updateIssuedDisplay(line);
                 });
@@ -321,7 +328,7 @@ async function loadIbtList() {
                 const issuedStocking = Number(lineEl.dataset.issuedStocking) || 0;
                 const conversionFactor = Number(lineEl.dataset.conversionFactor) || 1;
                 const issuedPurchasing = Number(lineEl.dataset.issuedStocking / conversionFactor) || 0;
-                const expectedStock = Math.round(issuedStocking);
+                const expectedStock = issuedStocking;
                 const maxAllowed = (currentUnitMode === 'stocking') ? expectedStock : issuedPurchasing;
 
                 const raw = input.value;
@@ -374,7 +381,7 @@ async function loadIbtList() {
         if (!lineEl || !receivedInput) return;
         const issuedStocking = Number(lineEl.dataset.issuedStocking) || 0;
         const conversionFactor = Number(lineEl.dataset.conversionFactor) || 1;
-        const issuedPurchasing = Math.round(issuedStocking / conversionFactor);
+        const issuedPurchasing = Math.round((issuedStocking / conversionFactor) * 100) / 100;
         const raw = receivedInput.value;
         const receivedNum = isNaN(parseFloat(raw)) ? 0 : parseFloat(raw);
         const receivedLabel = document.getElementById(`received-label-${i}`);
@@ -431,7 +438,7 @@ async function loadIbtList() {
 
     async function submitReceipt() {
         const lines = document.querySelectorAll('.product-line');
-        const payload = { ibt_id: currentIbt, ibt_number: currentIbt, lines: [] };
+        const payload = { ibt_no: currentIbt, ibt_number: currentIbt, lines: [] };
         const varianceLines = [];
 
         lines.forEach(line => {
@@ -452,7 +459,7 @@ async function loadIbtList() {
             if (currentUnitMode === 'stocking') {
                 // Already in stocking units, submit directly
                 qtyReceived = received;
-                qtyVariance = Math.round(issuedStocking - received);
+                qtyVariance = Math.round((issuedStocking - received) * 100) / 100;
                 displayIssued = issuedStocking;
                 displayReceived = received;
                 displayVariance = qtyVariance;
