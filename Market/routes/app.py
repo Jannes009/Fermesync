@@ -58,7 +58,7 @@ def get_sales():
     current_group = None
     
     for row in sales_rows:
-        # pypyodbc returns a list of values, so we need to access by index
+        # pyodbc returns a list of values, so we need to access by index
         delnote_no = row[0]  # DelNoteNo
         del_date = row[1]    # DelDate
         agent = row[2]       # Agent

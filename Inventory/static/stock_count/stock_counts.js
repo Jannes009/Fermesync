@@ -1,366 +1,362 @@
-// Store all data in memory
-let allHistoryData = [];
+let allOverviewData = { warehouses: [], incomplete: [] };
+
+const STATUS_LOOKUP = {
+    recent: { label: "Recently counted", className: "status-recent" },
+    due: { label: "Due", className: "status-due" },
+    overdue: { label: "Overdue", className: "status-overdue" },
+    never: { label: "Never counted", className: "status-never" }
+};
+
+const OVERVIEW_COLLAPSE_KEY = "stock-count-overview-collapsed";
+
+function getStoredCollapseState(storageKey) {
+    try {
+        return JSON.parse(localStorage.getItem(storageKey) || "{}");
+    } catch (err) {
+        return {};
+    }
+}
+
+function setStoredCollapseState(storageKey, itemKey, isCollapsed) {
+    const state = getStoredCollapseState(storageKey);
+    state[itemKey] = isCollapsed;
+    localStorage.setItem(storageKey, JSON.stringify(state));
+}
+
+function bindCollapseToggle(button, panel, storageKey, itemKey) {
+    const update = () => {
+        const isCollapsed = getStoredCollapseState(storageKey)[itemKey] === true;
+        panel.hidden = isCollapsed;
+        button.setAttribute("aria-expanded", String(!isCollapsed));
+        const icon = button.querySelector(".collapse-icon");
+        icon?.classList.toggle("fa-chevron-down", !isCollapsed);
+        icon?.classList.toggle("fa-chevron-right", isCollapsed);
+    };
+
+    update();
+    button.addEventListener("click", () => {
+        setStoredCollapseState(storageKey, itemKey, !panel.hidden);
+        update();
+    });
+}
 
 document.addEventListener("DOMContentLoaded", () => {
-    loadHistory();
-    loadFilters();
-
-    // Add event listeners for filtering (history only)
-    document.querySelectorAll(
-        "#warehouseFilter, #shelfFilter, #fromDate, #toDate, #varianceOnly"
-    ).forEach(el => el.addEventListener("change", filterHistory));
+    bindOverviewControls();
+    loadOverview();
 });
 
-// Collapsible toggle behaviour (enhance arrow visibility + state)
-document.querySelectorAll(".stock-card.collapsible .toggle")
-  .forEach(header => {
-    header.addEventListener("click", () => {
-      const card = header.closest(".stock-card");
-      card.classList.toggle("open");
+function bindOverviewControls() {
+    document.getElementById("shelfSearch")?.addEventListener("input", renderOverview);
+    document.getElementById("warehouseOverviewFilter")?.addEventListener("change", renderOverview);
+    document.getElementById("needCountOnly")?.addEventListener("change", renderOverview);
+}
 
-      // Optional: remember state
-      const key = card.dataset.section;
-      if (key) {
-        localStorage.setItem(`stockcard_${key}`, card.classList.contains("open"));
-      }
+function bindModalCloseHandlers() {
+    document.addEventListener("click", (e) => {
+        const countModal = document.getElementById("countModal");
+        const shelfModal = document.getElementById("shelfModal");
+
+        if (countModal && e.target === countModal) {
+            closeModal();
+        }
+        if (shelfModal && e.target === shelfModal) {
+            closeShelfModal();
+        }
     });
-  });
-
-// Restore state on load (ensure open/closed from storage)
-document.querySelectorAll(".stock-card.collapsible").forEach(card => {
-  const key = card.dataset.section;
-  if (!key) return;
-  const open = localStorage.getItem(`stockcard_${key}`);
-  if (open === "false") card.classList.remove("open");
-  else if (open === "true") card.classList.add("open");
-});
-
-// --------------------------
-// Filters modal controls
-// --------------------------
-function openFilterModal() {
-    const fm = document.getElementById("filterModal");
-    if (!fm) return;
-    fm.classList.remove("hidden");
-    fm.setAttribute("aria-hidden", "false");
 }
 
-function closeFilterModal() {
-    const fm = document.getElementById("filterModal");
-    if (!fm) return;
-    fm.classList.add("hidden");
-    fm.setAttribute("aria-hidden", "true");
-}
-
-// Apply filters and close modal
-function applyAndCloseFilters() {
-    // trigger existing change handlers and filterHistory
-    document.getElementById("warehouseFilter")?.dispatchEvent(new Event('change'));
-    document.getElementById("shelfFilter")?.dispatchEvent(new Event('change'));
-    document.getElementById("fromDate")?.dispatchEvent(new Event('change'));
-    document.getElementById("toDate")?.dispatchEvent(new Event('change'));
-    document.getElementById("varianceOnly")?.dispatchEvent(new Event('change'));
-    filterHistory();
-    closeFilterModal();
-}
-
-// Close modal when clicking outside
-document.addEventListener("click", (e) => {
-    const scheduleModal = document.getElementById("scheduleModal");
-    const countModal = document.getElementById("countModal");
-    const filterModal = document.getElementById("filterModal");
-    
-    if (scheduleModal && e.target === scheduleModal) {
-        closeScheduleModal();
-    }
-    if (countModal && e.target === countModal) {
-        closeModal();
-    }
-    if (filterModal && e.target === filterModal) {
-        closeFilterModal();
-    }
-});
-
-// Restore state on load
-document.querySelectorAll(".stock-card.collapsible").forEach(card => {
-  const key = card.dataset.section;
-  if (!key) return;
-  const open = localStorage.getItem(`stockcard_${key}`);
-  if (open === "false") card.classList.remove("open");
-});
-
-
-function getFilters() {
+function getOverviewFilters() {
     return {
-        warehouse: document.getElementById("warehouseFilter")?.value || "",
-        shelf: document.getElementById("shelfFilter")?.value || "",
-        from: document.getElementById("fromDate")?.value || "",
-        to: document.getElementById("toDate")?.value || "",
-        varianceOnly: document.getElementById("varianceOnly")?.checked || false
+        search: document.getElementById("shelfSearch")?.value.trim().toLowerCase() || "",
+        warehouse: document.getElementById("warehouseOverviewFilter")?.value || "all",
+        needCountOnly: document.getElementById("needCountOnly")?.checked || false
     };
 }
 
-function applyFilters(rows, filters) {
-    return rows.filter(r => {
-        // Warehouse filter
-        if (filters.warehouse && r.warehouse !== filters.warehouse) return false;
-
-        // Shelf filter
-        if (filters.shelf && r.shelf !== filters.shelf) return false;
-
-        // Date range filters
-        if (filters.from) {
-            const fromDate = new Date(filters.from);
-            const rowDate = new Date(r.date);
-            if (rowDate < fromDate) return false;
-        }
-
-        if (filters.to) {
-            const toDate = new Date(filters.to);
-            const rowDate = new Date(r.date);
-            if (rowDate > toDate) return false;
-        }
-
-        // Variance only filter
-        if (filters.varianceOnly && r.variance === 0) return false;
-
-        return true;
-    });
+function getStatusMeta(status) {
+    return STATUS_LOOKUP[status] || STATUS_LOOKUP.recent;
 }
 
-function filterHistory() {
-    const filters = getFilters();
-    // Filter to only completed counts before applying other filters
-    const completedOnly = allHistoryData.filter(r => !r.canContinue);
-    const filteredRows = applyFilters(completedOnly, filters);
-    renderHistoryTable(filteredRows);
+function getDateTone(lastCount) {
+    if (!lastCount) return "date-grey";
+
+    const dateValue = new Date(lastCount + "T00:00:00");
+    if (Number.isNaN(dateValue.getTime())) return "date-grey";
+
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    const diffDays = Math.floor((today - dateValue) / 86400000);
+
+    if (diffDays <= 14) return "date-green";
+    if (diffDays <= 30) return "date-yellow";
+    return "date-red";
 }
 
-function getVarianceCategory(variance, systemQty) {
-    if (variance === 0) return "clean";
-    
-    const variancePercent = Math.abs(variance / systemQty) * 100;
-    
-    // Slight variance: < 5%
-    if (variancePercent < 5) return "slight";
-    
-    // Big variance: >= 5%
-    return "big";
-}
+function renderIncompleteSection(rows) {
+    const container = document.getElementById("incompleteContainer");
+    if (!container) return;
 
-// Update renderHistoryTable to only show completed counts
-function renderHistoryTable(rows) {
-    const tbody = document.querySelector("#historyTable tbody");
-    tbody.innerHTML = "";
-
-    // Filter to only completed counts
-    const completedRows = rows.filter(r => !r.canContinue);
-
-    if (completedRows.length === 0) {
-        tbody.insertAdjacentHTML("beforeend", `
-            <tr>
-                <td colspan="6" style="text-align: center; padding: 2rem; color: var(--secondary-text);">
-                    <i class="fas fa-inbox"></i> No completed stock counts found
-                </td>
-            </tr>
-        `);
+    if (!rows || rows.length === 0) {
+        container.innerHTML = '<div class="incomplete-empty"><i class="fas fa-check-circle"></i> No incomplete stock counts</div>';
         return;
     }
 
-    completedRows.forEach(r => {
-        tbody.insertAdjacentHTML("beforeend", `
-            <tr data-header-id="${r.headerId}" style="cursor: pointer;">
-                <td data-label="Warehouse">${r.warehouse}</td>
-                <td data-label="Shelf">${r.shelf}</td>
-                <td data-label="Username">${r.username || "N/A"}</td>
-                <td data-label="Date">${r.date}</td>
-                <td data-label="Products Counted">${r.countedProducts}/${r.totalProducts}</td>
-                <td data-label="Avg Variance">${formatVariance(r.avgVariancePct)}</td>
-            </tr>
-        `);
-    });
-
-    // attach mobile listeners
-    tbody.querySelectorAll('tr').forEach(row => {
-        const id = row.dataset.headerId;
-        row.addEventListener('click', e => {
-            if (window.innerWidth <= 600) {
-                if (!row.classList.contains('expanded')) {
-                    row.classList.add('expanded');
-                } else {
-                    openModal(id);
-                }
-            } else {
-                openModal(id);
-            }
-        });
-    });
-}
-
-function formatVariance(value) {
-    return value === null || value === undefined ? "N/A" : `${Number(value).toFixed(1)}%`;
-}
-
-// New function to render incomplete counts
-function renderIncompleteTable(rows) {
-    const tbody = document.querySelector("#incompleteTable tbody");
-    tbody.innerHTML = "";
-
-    // Filter to only incomplete counts
-    const incompleteRows = rows.filter(r => r.canContinue);
-
-    if (incompleteRows.length === 0) {
-        tbody.insertAdjacentHTML("beforeend", `
-            <tr>
-                <td colspan="4" style="text-align: center; padding: 2rem; color: var(--secondary-text);">
-                    <i class="fas fa-check-circle"></i> No incomplete counts
-                </td>
-            </tr>
-        `);
-        return;
-    }
-
-    incompleteRows.forEach(r => {
-        console.log(r)
-        // Progress is based on number of products counted vs total products
-        // countedQty represents products with counted qty
-        // systemQty represents total products to count
-        const totalProducts = r.totalProducts || 0;
-        const productsCountedLines = r.countedProducts || 0;
-        const progressPercent = totalProducts > 0
-            ? Math.min(100, Math.round((productsCountedLines / totalProducts) * 100))
-            : 0;
-        
-        tbody.insertAdjacentHTML("beforeend", `
-            <tr class="in-progress" data-header-id="${r.headerId}">
-                <td data-label="Date Started">${r.date}</td>
-                <td data-label="Warehouse">${r.warehouse}</td>
-                <td data-label="Shelf">${r.shelf}</td>
-                <td data-label="Progress" class="detail-cell">
-                    <div class="incomplete-progress" aria-label="${progressPercent}% complete">
-                        <div class="incomplete-progress-bar">
-                            <div class="incomplete-progress-fill" style="width: ${progressPercent}%;"></div>
-                        </div>
-                        <span class="incomplete-progress-value">${productsCountedLines}/${totalProducts} (${progressPercent}%)</span>
+    container.innerHTML = `
+        <div class="incomplete-heading">${rows.length} incomplete stock count${rows.length === 1 ? "" : "s"}</div>
+        ${rows.map(item => {
+            const progress = item.progressPercent || 0;
+            return `
+                <div class="incomplete-row">
+                    <div class="incomplete-details">
+                        <span>${item.warehouse} · ${item.shelf}</span>
+                        <small>${item.countedProducts}/${item.totalProducts} products</small>
                     </div>
-                </td>
-                <td data-label="Actions" style="text-align: center;" class="detail-cell">
-                    <div class="incomplete-actions">
-                        <button class="btn-action-small" onclick="continueCount(event, ${r.headerId})" title="Continue Counting">
+                    <div class="incomplete-progress-wrap">
+                        <div class="incomplete-progress" aria-label="${progress}% complete">
+                            <div class="incomplete-progress-bar">
+                                <div class="incomplete-progress-fill" style="width:${progress}%"></div>
+                            </div>
+                        </div>
+                        <button class="btn-action-small" onclick="continueCount(event, ${item.headerId})">
                             <i class="fas fa-play"></i> Continue
                         </button>
-                        <button class="btn-action-small danger" onclick="discardCount(event, ${r.headerId})" title="Discard This Count">
-                            <i class="fas fa-trash"></i> Discard
-                        </button>
                     </div>
-                </td>
-            </tr>
-        `);
-    });
-
+                </div>
+            `;
+        }).join("")}
+    `;
 }
 
-function continueCount(event, headerId) {
-    event.stopPropagation();
-    window.location.href = `/inventory/stock-counts/${headerId}`;
-}   
+function renderOverview() {
+    const filters = getOverviewFilters();
 
-async function discardCount(event, headerId) {
-    event.stopPropagation(); // Prevent row click
-    const confirmation = await Swal.fire({
-        icon: 'warning',
-        title: 'Discard stock count?',
-        text: 'This incomplete stock count will be permanently discarded.',
-        showCancelButton: true,
-        confirmButtonText: 'Discard',
-        cancelButtonText: 'Keep count',
-        confirmButtonColor: '#dc2626'
-    });
-    if (!confirmation.isConfirmed) return;
-
-    request(`/inventory/stock-counts/discard/${headerId}`, {
-        method: "POST"
-    }).then(res => res.json())
-    .then(data => {
-        if (data.success) {
-            Swal.fire({
-                icon: 'success',
-                title: 'Discarded',
-                text: 'Stock count discarded.'
-            });
-            loadHistory();
-        } else {
-            Swal.fire({
-                icon: 'error',
-                title: 'Discard Failed',
-                text: data.message || 'Unknown error'
-            });
-        }
-    }).catch(err => {
-        console.error("Error discarding stock count:", err);
-        Swal.fire({
-            icon: 'error',
-            title: 'Network Error',
-            text: 'Error discarding stock count.'
+    const visibleWarehouses = (allOverviewData.warehouses || []).map(warehouse => {
+        const visibleShelves = (warehouse.shelves || []).filter(shelf => {
+            const text = `${warehouse.code} ${warehouse.description || ""} ${shelf.name}`.toLowerCase();
+            if (filters.search && !text.includes(filters.search)) return false;
+            if (filters.warehouse !== "all" && warehouse.code !== filters.warehouse) return false;
+            if (filters.needCountOnly) {
+                const daysSince = shelf.daysSince;
+                if (daysSince === null || daysSince === undefined) return true;
+                if (daysSince <= 14) return false;
+            }
+            return true;
         });
+
+        return { ...warehouse, shelves: visibleShelves };
+    }).filter(warehouse => warehouse.shelves.length > 0);
+
+    const overviewContainer = document.getElementById("warehouseOverview");
+    if (!overviewContainer) return;
+
+    if (visibleWarehouses.length === 0) {
+        overviewContainer.innerHTML = `
+            <div class="no-results">
+                <i class="fas fa-filter"></i>
+                No shelves match the current filters.
+            </div>
+        `;
+        return;
     }
-    );
+
+    overviewContainer.innerHTML = visibleWarehouses.map(warehouse => `
+        <div class="warehouse-section" data-warehouse-section="${warehouse.id}">
+            <button class="warehouse-header collapse-toggle" type="button" aria-controls="warehouse-panel-${warehouse.id}">
+                <span class="warehouse-title">
+                    <h3>${warehouse.description || warehouse.code}</h3>
+                    <span>${warehouse.shelves.length} shelf${warehouse.shelves.length === 1 ? "" : "s"}</span>
+                </span>
+                <i class="fas fa-chevron-down collapse-icon" aria-hidden="true"></i>
+            </button>
+            <div id="warehouse-panel-${warehouse.id}" class="warehouse-panel">
+                <div class="warehouse-table-wrap">
+                    <table class="table overview-table">
+                        <thead>
+                            <tr>
+                                <th>Shelf</th>
+                                <th>Last counted</th>
+                                <th>Products linked</th>
+                                <th>Actions</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            ${warehouse.shelves.map(shelf => {
+                                const tone = getDateTone(shelf.lastCount);
+                                return `
+                                    <tr class="overview-row" data-warehouse-id="${warehouse.id}" data-category-id="${shelf.id}">
+                                        <td data-label="Shelf"><strong>${shelf.name}</strong></td>
+                                        <td data-label="Last counted"><span class="date-badge ${tone}">${shelf.lastCount || "Never"}</span></td>
+                                        <td data-label="Products linked">${shelf.productCount ?? 0}</td>
+                                        <td data-label="Actions" class="overview-actions">
+                                            <button class="btn-action-small secondary" data-open-shelf="${warehouse.id}|${shelf.id}">View</button>
+                                            <button class="btn-action-small primary" data-start-count="${warehouse.id}|${shelf.id}">Start count</button>
+                                        </td>
+                                    </tr>
+                                `;
+                            }).join("")}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    `).join("");
+
+    document.querySelectorAll(".warehouse-section").forEach(section => {
+        bindCollapseToggle(
+            section.querySelector(".warehouse-header"),
+            section.querySelector(".warehouse-panel"),
+            OVERVIEW_COLLAPSE_KEY,
+            section.dataset.warehouseSection
+        );
+    });
+
+    document.querySelectorAll("[data-start-count]").forEach(button => {
+        button.addEventListener("click", (event) => {
+            event.stopPropagation();
+            const [warehouseId, categoryId] = button.dataset.startCount.split("|");
+            window.location.href = `/inventory/start_stock_count?warehouse=${warehouseId}&category=${categoryId}`;
+        });
+    });
+
+    document.querySelectorAll("[data-open-shelf]").forEach(button => {
+        button.addEventListener("click", (event) => {
+            event.stopPropagation();
+            const [warehouseId, categoryId] = button.dataset.openShelf.split("|");
+            window.location.href = `/inventory/stock-counts/shelf/${warehouseId}/${categoryId}`;
+        });
+    });
+
+    document.querySelectorAll(".overview-row").forEach(row => {
+        row.addEventListener("click", (event) => {
+            if (event.target.closest("button")) return;
+            const warehouseId = Number(row.dataset.warehouseId);
+            const categoryId = Number(row.dataset.categoryId);
+            window.location.href = `/inventory/stock-counts/shelf/${warehouseId}/${categoryId}`;
+        });
+    });
 }
 
-
-
-function startCountFromSchedule(shelfName) {
-    window.location.href = `/inventory/start_stock_count?category=${encodeURIComponent(shelfName)}`;
-}
-
-// Close modal when clicking outside
-document.addEventListener("click", (e) => {
-    const scheduleModal = document.getElementById("scheduleModal");
-    const countModal = document.getElementById("countModal");
-    
-    if (scheduleModal && e.target === scheduleModal) {
-        closeScheduleModal();
-    }
-    if (countModal && e.target === countModal) {
-        closeModal();
-    }
-});
-
-// Update loadHistory to render both tables
-async function loadHistory() {
+async function loadOverview() {
     try {
-        const res = await request("/inventory/stock-counts/history");
+        const res = await request("/inventory/stock-counts/overview");
+        const data = await res.json();
+
+        if (!data.success) {
+            const overviewContainer = document.getElementById("warehouseOverview");
+            if (overviewContainer) {
+                overviewContainer.innerHTML = `<div class="no-results"><i class="fas fa-exclamation-circle"></i> ${data.message || "Failed to load stock counts."}</div>`;
+            }
+            return;
+        }
+
+        allOverviewData = {
+            warehouses: data.warehouses || [],
+            incomplete: data.incomplete || []
+        };
+
+        renderIncompleteSection(allOverviewData.incomplete);
+        renderOverview();
+        populateOverviewFilters();
+    } catch (err) {
+        console.error("Error loading stock count overview:", err);
+        const overviewContainer = document.getElementById("warehouseOverview");
+        if (overviewContainer) {
+            overviewContainer.innerHTML = '<div class="no-results"><i class="fas fa-exclamation-circle"></i> Error loading stock counts</div>';
+        }
+    }
+}
+
+function populateOverviewFilters() {
+    const warehouseSelect = document.getElementById("warehouseOverviewFilter");
+    if (!warehouseSelect) return;
+
+    const currentValue = warehouseSelect.value || "all";
+    const seen = new Set();
+    warehouseSelect.innerHTML = '<option value="all">All warehouses</option>';
+
+    (allOverviewData.warehouses || []).forEach(warehouse => {
+        if (!seen.has(warehouse.code)) {
+            seen.add(warehouse.code);
+            const option = document.createElement("option");
+            option.value = warehouse.code;
+            option.textContent = warehouse.description || warehouse.code;
+            if (warehouse.code === currentValue) option.selected = true;
+            warehouseSelect.appendChild(option);
+        }
+    });
+}
+
+async function openShelfModal(warehouseId, categoryId) {
+    try {
+        const res = await request(`/inventory/stock-counts/shelf/${warehouseId}/${categoryId}`);
         const data = await res.json();
         if (!data.success) {
-            const tbody = document.querySelector("#historyTable tbody");
-            tbody.innerHTML = `
+            Swal.fire("Error", data.message || "Failed to load shelf details.", "error");
+            return;
+        }
+
+        const modal = document.getElementById("shelfModal");
+        const title = document.getElementById("shelfModalTitle");
+        const status = document.getElementById("shelfStatus");
+        const lastCount = document.getElementById("shelfLastCount");
+        const nextDue = document.getElementById("shelfNextDue");
+        const historyTbody = document.getElementById("shelfHistoryTableBody");
+        const startButton = document.getElementById("shelfStartCountButton");
+
+        title.textContent = `${data.category.name} — ${data.warehouse.code}`;
+        status.textContent = data.statusLabel || "—";
+        status.className = `status-pill ${getStatusMeta(data.status).className}`;
+        lastCount.textContent = data.lastCount || "Never";
+        nextDue.textContent = data.nextDue || "—";
+
+        startButton.onclick = () => {
+            window.location.href = `/inventory/start_stock_count?warehouse=${warehouseId}&category=${categoryId}`;
+        };
+
+        if (!data.history || data.history.length === 0) {
+            historyTbody.innerHTML = `
                 <tr>
-                    <td colspan="7" style="text-align: center; padding: 1.5rem; color: var(--secondary-text);">
-                        <i class="fas fa-exclamation-circle"></i> ${data.message || 'Failed to load history.'}
+                    <td colspan="4" style="text-align: center; padding: 1.5rem; color: var(--secondary-text);">
+                        No completed counts yet for this shelf.
                     </td>
                 </tr>
             `;
-            return;
+        } else {
+            historyTbody.innerHTML = data.history.map(item => `
+                <tr class="history-row" data-header-id="${item.headerId}" style="cursor:pointer;">
+                    <td>${item.date}</td>
+                    <td>${item.user || "N/A"}</td>
+                    <td>${item.totalProducts || 0}</td>
+                    <td>${item.avgVariancePct === null || item.avgVariancePct === undefined ? "N/A" : `${Number(item.avgVariancePct).toFixed(1)}%`}</td>
+                </tr>
+            `).join("");
+
+            historyTbody.querySelectorAll(".history-row").forEach(row => {
+                row.addEventListener("click", () => openModal(Number(row.dataset.headerId)));
+            });
         }
-        allHistoryData = data.schedules || [];
-        
-        // Render both incomplete and completed tables
-        renderIncompleteTable(allHistoryData);
-        filterHistory(); // Apply filters to history table
+
+        modal.classList.remove("hidden");
     } catch (err) {
-        console.error("Error loading history:", err);
-        const tbody = document.querySelector("#historyTable tbody");
-        tbody.innerHTML = `
-            <tr>
-                <td colspan="7" style="text-align: center; padding: 1.5rem; color: #dc2626;">
-                    <i class="fas fa-exclamation-circle"></i> Error loading stock counts
-                </td>
-            </tr>
-        `;
+        console.error("Error loading shelf detail:", err);
+        Swal.fire({
+            icon: "error",
+            title: "Load Error",
+            text: "Unable to load shelf detail."
+        });
     }
 }
 
-// Update openModal to show variance category
+function closeShelfModal() {
+    const modal = document.getElementById("shelfModal");
+    if (modal) modal.classList.add("hidden");
+}
+
+function continueCount(event, headerId) {
+    if (event) event.stopPropagation();
+    window.location.href = `/inventory/stock-counts/${headerId}`;
+}
+
 async function openModal(headerId) {
     try {
         const res = await request(`/inventory/stock_count_details/${headerId}`);
@@ -382,90 +378,51 @@ async function openModal(headerId) {
         if (data.lines.length === 0) {
             modalLines.insertAdjacentHTML("beforeend", `
                 <tr>
-                    <td colspan="5" style="text-align: center; padding: 1.5rem; color: var(--secondary-text);">
-                        No line items found
-                    </td>
+                    <td colspan="5" style="text-align:center; padding:1.5rem; color: var(--secondary-text);">No line items found</td>
                 </tr>
             `);
         } else {
-            data.lines.forEach(l => {
-                const varianceCategory = getVarianceCategory(l.variance, l.system);
-                let varianceText = '';
-                let rowClass = '';
+            data.lines.forEach(line => {
+                const variance = line.variance ?? 0;
+                const systemQty = Number(line.system) || 0;
+                const variancePercent = systemQty === 0 ? 0 : (Math.abs(variance) / systemQty) * 100;
+                let varianceText = "<span style=\"color:#10b981;\"><i class=\"fas fa-check\"></i> OK</span>";
+                let rowClass = "ok";
 
-                if (varianceCategory === "clean") {
-                    varianceText = '<span style="color: #10b981;"><i class="fas fa-check"></i> OK</span>';
-                    rowClass = "ok";
-                } else if (varianceCategory === "slight") {
-                    const percent = l.system ? ((Math.abs(l.variance) / l.system) * 100).toFixed(1) : "N/A";
-                    varianceText = `<span style="color: #b45309;"><i class="fas fa-exclamation"></i> ${l.variance} (${percent}%)</span>`;
-                    rowClass = "warn";
-                } else {
-                    const percent = l.system ? ((Math.abs(l.variance) / l.system) * 100).toFixed(1) : "N/A";
-                    varianceText = `<span style="color: #991b1b;"><i class="fas fa-times"></i> ${l.variance} (${percent}%)</span>`;
-                    rowClass = "warn";
+                if (variance !== 0) {
+                    if (variancePercent < 5) {
+                        varianceText = `<span style="color:#b45309;"><i class="fas fa-exclamation"></i> ${variance} (${variancePercent.toFixed(1)}%)</span>`;
+                        rowClass = "warn";
+                    } else {
+                        varianceText = `<span style="color:#991b1b;"><i class="fas fa-times"></i> ${variance} (${variancePercent.toFixed(1)}%)</span>`;
+                        rowClass = "warn";
+                    }
                 }
 
                 modalLines.insertAdjacentHTML("beforeend", `
                     <tr class="${rowClass}">
-                        <td data-label="Description">${l.description || "–"}</td>
-                        <td data-label="System Qty" style="text-align: right;">${l.system} ${l.unit || ""}</td>
-                        <td data-label="Counted Qty" style="text-align: right;">${l.counted ?? "N/A"} ${l.unit || ""}</td>
-                        <td data-label="Variance" style="text-align: center;">${varianceText}</td>
+                        <td data-label="Description">${line.description || "–"}</td>
+                        <td data-label="System Qty" style="text-align:right;">${line.system} ${line.unit || ""}</td>
+                        <td data-label="Counted Qty" style="text-align:right;">${line.counted ?? "N/A"} ${line.unit || ""}</td>
+                        <td data-label="Variance" style="text-align:center;">${varianceText}</td>
                     </tr>
                 `);
             });
         }
 
         document.getElementById("countModal").classList.remove("hidden");
+        closeShelfModal();
     } catch (err) {
         console.error("Error loading count details:", err);
         Swal.fire({
-            icon: 'error',
-            title: 'Load Error',
-            text: 'Error loading count details'
+            icon: "error",
+            title: "Load Error",
+            text: "Error loading count details."
         });
     }
 }
 
 function closeModal() {
-    document.getElementById("countModal").classList.add("hidden");
-}
-
-async function loadFilters() {
-    try {
-        const warehouseFilter = document.getElementById("warehouseFilter");
-        const shelfFilter = document.getElementById("shelfFilter");
-
-        if (!warehouseFilter || !shelfFilter) return;
-
-        const res = await request("/inventory/stock-counts/filters");
-        const data = await res.json();
-        if (data.success !== true) {
-            warehouseFilter.insertAdjacentHTML("beforeend", `<option value="">Error loading warehouses</option>`);
-            shelfFilter.insertAdjacentHTML("beforeend", `<option value="">Error loading shelves</option>`);
-            return;
-        }
-
-
-        // Add warehouse options
-        data.warehouses.forEach(w => {
-            warehouseFilter.insertAdjacentHTML("beforeend", `<option value="${w}">${w}</option>`);
-        });
-
-        // Add shelf/category options
-        data.shelves.forEach(s => {
-            shelfFilter.insertAdjacentHTML("beforeend", `<option value="${s}">${s}</option>`);
-        });
-    } catch (err) {
-        console.warn("Error loading filters:", err);
-    }
-}
-
-// Close modal when clicking outside
-document.addEventListener("click", (e) => {
     const modal = document.getElementById("countModal");
-    if (modal && e.target === modal) {
-        closeModal();
-    }
-});
+    if (modal) modal.classList.add("hidden");
+}

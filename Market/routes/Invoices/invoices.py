@@ -1,5 +1,4 @@
 ﻿from flask import render_template, request, jsonify
-import pypyodbc as odbc
 from Core.auth import create_db_connection, close_db_connection
 from Market.routes.db_functions import agent_code_to_agent_name, get_stock_name, get_invoice_id, del_note_number_to_del_id
 

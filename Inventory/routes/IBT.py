@@ -395,6 +395,10 @@ def update_ibt_request(ibt_no):
     from_id = payload.get('from_warehouse_id')
     to_id = payload.get('to_warehouse_id')
     lines = payload.get('lines', [])
+    if not from_id or not to_id:
+        return jsonify({"success": False, "message": "Both source and destination warehouses are required."}), 400
+    if str(from_id) == str(to_id):
+        return jsonify({"success": False, "message": "Source and destination warehouses must be different."}), 400
     try:
         conn = create_db_connection()
         cursor = conn.cursor()

@@ -1,0 +1,434 @@
+{% extends "inventory_base.html" %}
+{% block content %}
+<style>
+    body {
+        background: var(--primary-bg);
+        color: var(--primary-text);
+    }
+
+    .page-shell {
+        max-width: 1200px;
+        margin: 0 auto;
+        padding: 1.5rem 1rem 2rem;
+    }
+
+    .page-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        gap: 1rem;
+        margin-bottom: 1.25rem;
+        flex-wrap: wrap;
+    }
+
+    .page-header h1 {
+        margin: 0;
+        font-size: 1.5rem;
+        color: var(--logo-color);
+    }
+
+    .card {
+        background: var(--container-bg);
+        border-radius: 12px;
+        box-shadow: 0 4px 18px rgba(0,0,0,0.08);
+        border: 1px solid var(--border-color);
+        padding: 1rem 1.1rem;
+        margin-bottom: 1.25rem;
+    }
+
+    .details-grid {
+        display: grid;
+        grid-template-columns: repeat(3, minmax(0, 1fr));
+        gap: .9rem;
+    }
+
+    .detail-box {
+        background: rgba(0,0,0,0.02);
+        border: 1px solid var(--border-color);
+        border-radius: 10px;
+        padding: .75rem .8rem;
+    }
+
+    .detail-box span {
+        display: block;
+        font-size: .72rem;
+        font-weight: 700;
+        color: var(--secondary-text);
+        text-transform: uppercase;
+        letter-spacing: .04em;
+        margin-bottom: .25rem;
+    }
+
+    .date-badge {
+        display: inline-block;
+        padding: .32rem .7rem;
+        border-radius: 999px;
+        font-size: .8rem;
+        font-weight: 700;
+        white-space: nowrap;
+    }
+
+    .date-green { background: #dcfce7; color: #166534; }
+    .date-yellow { background: #fef3c7; color: #92400e; }
+    .date-red { background: #fee2e2; color: #991b1b; }
+    .date-grey { background: #e5e7eb; color: #374151; }
+
+    .meta-actions {
+        display: flex;
+        justify-content: flex-end;
+        margin-top: 1rem;
+    }
+
+    .btn {
+        border: none;
+        border-radius: 8px;
+        padding: .65rem 1rem;
+        font-weight: 600;
+        cursor: pointer;
+        display: inline-flex;
+        align-items: center;
+        gap: .45rem;
+        text-decoration: none;
+    }
+
+    .btn-primary {
+        background: var(--button-bg);
+        color: var(--button-text);
+    }
+
+    .btn-secondary {
+        background: #e5e7eb;
+        color: #111827;
+    }
+
+    .section-title {
+        margin: 0 0 .8rem;
+        font-size: 1.1rem;
+    }
+
+    .section-toggle {
+        width: 100%;
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        border: none;
+        padding: 0;
+        background: transparent;
+        color: inherit;
+        text-align: left;
+        cursor: pointer;
+    }
+
+    .section-toggle .collapse-icon {
+        color: var(--secondary-text);
+    }
+
+    .modal {
+        position: fixed;
+        inset: 0;
+        background: rgba(0,0,0,.45);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        padding: 1rem;
+        z-index: 1000;
+    }
+
+    .modal.hidden {
+        display: none;
+    }
+
+    .modal-content {
+        background: var(--container-bg);
+        width: min(100%, 860px);
+        max-height: calc(100vh - 2rem);
+        border-radius: 12px;
+        box-shadow: 0 20px 50px rgba(0,0,0,.2);
+        display: flex;
+        flex-direction: column;
+        overflow: hidden;
+    }
+
+    .details-modal-header,
+    .details-modal-footer {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        padding: 1rem 1.2rem;
+        border-bottom: 1px solid var(--border-color);
+    }
+
+    .details-modal-footer {
+        border-top: 1px solid var(--border-color);
+        border-bottom: none;
+        justify-content: flex-end;
+    }
+
+    .details-modal-header h3 {
+        margin: 0;
+        font-size: 1.15rem;
+    }
+
+    .details-modal-body {
+        padding: 1rem 1.2rem;
+        overflow-y: auto;
+    }
+
+    .details-meta {
+        display: grid;
+        grid-template-columns: repeat(3, minmax(0, 1fr));
+        gap: .8rem;
+        margin-bottom: 1rem;
+    }
+
+    .details-meta div {
+        background: rgba(0,0,0,.02);
+        border: 1px solid var(--border-color);
+        border-radius: 8px;
+        padding: .7rem .8rem;
+        display: flex;
+        flex-direction: column;
+        gap: .2rem;
+    }
+
+    .details-meta span {
+        color: var(--secondary-text);
+        font-size: .72rem;
+        text-transform: uppercase;
+        letter-spacing: .04em;
+        font-weight: 700;
+    }
+
+    .btn-action-small {
+        background: var(--button-bg);
+        color: var(--button-text);
+        border: none;
+        border-radius: 8px;
+        padding: .4rem .8rem;
+        font-size: .8rem;
+        font-weight: 600;
+        cursor: pointer;
+    }
+
+    .btn-action-small.secondary {
+        background: #e5e7eb;
+        color: #111827;
+    }
+
+    .table-wrap {
+        overflow-x: auto;
+    }
+
+    table {
+        width: 100%;
+        border-collapse: collapse;
+    }
+
+    th, td {
+        padding: .8rem .9rem;
+        border-bottom: 1px solid var(--border-color);
+        text-align: left;
+        vertical-align: top;
+    }
+
+    th {
+        background: var(--table-header-bg);
+        color: var(--table-header-text);
+        font-size: .78rem;
+        text-transform: uppercase;
+        letter-spacing: .04em;
+    }
+
+    .history-row:hover {
+        background: var(--table-row-hover);
+    }
+
+    .product-table td:nth-child(2) {
+        text-align: right;
+    }
+
+    .history-table td:nth-child(4) {
+        text-align: right;
+    }
+
+    .muted {
+        color: var(--secondary-text);
+    }
+
+    @media (max-width: 760px) {
+        .details-grid {
+            grid-template-columns: 1fr 1fr;
+        }
+    }
+
+    @media (max-width: 520px) {
+        .details-grid {
+            grid-template-columns: 1fr;
+        }
+    }
+</style>
+
+<div class="page-shell">
+    <div class="page-header">
+        <h1>{{ warehouse.code }} - {{ category.name }}</h1>
+        <a class="btn btn-secondary" href="{{ url_for('inventory.stock_counts') }}">
+            <i class="fas fa-arrow-left"></i> Back to overview
+        </a>
+    </div>
+
+    <div class="card">
+        <div class="details-grid">
+            <div class="detail-box">
+                <span>Warehouse</span>
+                <strong>{{ warehouse.description or warehouse.code }}</strong>
+            </div>
+            <div class="detail-box">
+                <span>Products linked</span>
+                <strong>{{ product_count }}</strong>
+            </div>
+            <div class="detail-box">
+                <span>Last counted</span>
+                <strong class="date-badge {{ last_count_tone or 'date-grey' }}">{{ last_count or 'Never' }}</strong>
+            </div>
+        </div>
+
+        <div class="meta-actions">
+            <a class="btn btn-primary" href="{{ url_for('inventory.stock_count_start') }}?warehouse={{ warehouse.id }}&category={{ category.id }}">
+                <i class="fas fa-plus"></i> Start Stock Count
+            </a>
+        </div>
+    </div>
+
+    <div class="card">
+        <button class="section-toggle" type="button" aria-controls="linked-products-panel">
+            <h2 class="section-title">Products linked to this shelf</h2>
+            <i class="fas fa-chevron-down collapse-icon" aria-hidden="true"></i>
+        </button>
+        <div id="linked-products-panel" class="collapsible-panel">
+          <div class="table-wrap">
+            <table class="product-table">
+                <thead>
+                    <tr>
+                        <th>Product</th>
+                        <th>System qty</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% if products %}
+                        {% for product in products %}
+                            <tr>
+                                <td>{{ product.description }}</td>
+                                <td>{{ product.system_qty }}{% if product.unit_code %} {{ product.unit_code }}{% endif %}</td>
+                            </tr>
+                        {% endfor %}
+                    {% else %}
+                        <tr>
+                            <td colspan="2" class="muted">No products are currently linked to this shelf.</td>
+                        </tr>
+                    {% endif %}
+                </tbody>
+            </table>
+                    </div>
+        </div>
+    </div>
+
+    <div class="card">
+                <button class="section-toggle" type="button" aria-controls="count-history-panel">
+                        <h2 class="section-title">Count history</h2>
+                        <i class="fas fa-chevron-down collapse-icon" aria-hidden="true"></i>
+                </button>
+                <div id="count-history-panel" class="collapsible-panel">
+                    <div class="table-wrap">
+            <table class="history-table">
+                <thead>
+                    <tr>
+                        <th>Date</th>
+                        <th>User</th>
+                        <th>Total products</th>
+                        <th>Avg variance</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% if history %}
+                        {% for item in history %}
+                            <tr class="history-row" data-header-id="{{ item.headerId }}" style="cursor: pointer;">
+                                <td>{{ item.date }}</td>
+                                <td>{{ item.user or 'N/A' }}</td>
+                                <td>{{ item.totalProducts or 0 }}</td>
+                                <td>
+                                    {% if item.avgVariancePct is not none %}
+                                        {{ '%.1f' % item.avgVariancePct }}%
+                                    {% else %}
+                                        N/A
+                                    {% endif %}
+                                </td>
+                            </tr>
+                        {% endfor %}
+                    {% else %}
+                        <tr>
+                            <td colspan="4" class="muted">No completed counts yet for this shelf.</td>
+                        </tr>
+                    {% endif %}
+                </tbody>
+            </table>
+                    </div>
+        </div>
+    </div>
+</div>
+
+<div id="countModal" class="modal hidden">
+    <div class="modal-content" role="dialog" aria-modal="true" aria-labelledby="modalTitle">
+        <div class="details-modal-header">
+            <h3 id="modalTitle">Stock Count Details</h3>
+        </div>
+
+        <div class="details-modal-body">
+            <div class="details-meta" aria-label="Stock count summary">
+                <div><span>Username</span><strong id="modalUsername">N/A</strong></div>
+                <div><span>Start time</span><strong id="modalStartTime">N/A</strong></div>
+                <div><span>End time</span><strong id="modalEndTime">N/A</strong></div>
+            </div>
+            <div class="history-table-wrap">
+                <table class="table history-table">
+                    <thead>
+                        <tr>
+                            <th>Description</th>
+                            <th>System Qty</th>
+                            <th>Counted Qty</th>
+                            <th>Variance</th>
+                        </tr>
+                    </thead>
+                    <tbody id="modalLines"></tbody>
+                </table>
+            </div>
+        </div>
+
+        <div class="details-modal-footer">
+            <button onclick="closeModal()" class="btn-action-small secondary">
+                <i class="fas fa-times"></i> Close
+            </button>
+        </div>
+    </div>
+</div>
+
+<script src="{{ url_for('inventory.static', filename='stock_count/stock_counts.js') }}?{{ filemtime('inventory', 'stock_count/stock_counts.js') }}"></script>
+<script>
+    document.addEventListener("DOMContentLoaded", () => {
+        const detailStorageKey = "stock-count-shelf-collapsed-{{ warehouse.id }}-{{ category.id }}";
+        document.querySelectorAll(".section-toggle").forEach((button) => {
+            const panel = document.getElementById(button.getAttribute("aria-controls"));
+            bindCollapseToggle(button, panel, detailStorageKey, button.getAttribute("aria-controls"));
+        });
+
+        bindModalCloseHandlers();
+        document.querySelectorAll(".history-row[data-header-id]").forEach((row) => {
+            row.addEventListener("click", () => {
+                const headerId = Number(row.dataset.headerId);
+                if (!Number.isNaN(headerId)) {
+                    openModal(headerId);
+                }
+            });
+        });
+    });
+</script>
+{% endblock %}

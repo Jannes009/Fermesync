@@ -275,13 +275,6 @@ def finalise_stock_count(header_id):
                 InvCountStatus = 'FINALISED'
             WHERE InvCountHeaderId = ?
         """, (header_id,))
-        cursor.execute("""
-            UPDATE [stk].[InventoryCountSchedule]
-            SET LastCountDate = GETDATE()
-            WHERE WhseId = (SELECT InvCountWhseId FROM [stk].InventoryCountHeaders WHERE InvCountHeaderId = ?)
-                AND CategoryId = (SELECT InvCountCatId FROM [stk].InventoryCountHeaders WHERE InvCountHeaderId = ?)
-        """, (header_id, header_id))
-
         conn.commit()
 
         return jsonify({"success": True})

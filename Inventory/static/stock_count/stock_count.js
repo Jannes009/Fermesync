@@ -275,9 +275,12 @@ async function loadWarehouses() {
             }).on('change', onWarehouseChanged);
         }
 
+        return true;
+
     } catch (err) {
         select.innerHTML = "<option>Error loading</option>";
         Swal.fire("Error", "Failed to load warehouses", "error");
+        return false;
     }
 }
 
@@ -303,7 +306,7 @@ async function onWarehouseChanged() {
         if (!data.success) {
             catSelect.innerHTML = "<option>Error loading</option>";
             Swal.fire("Error", data.error || "Failed to load categories", "error");
-            return;
+                return false;
         }
 
         const { categories: cats = [] } = data;
@@ -327,8 +330,10 @@ async function onWarehouseChanged() {
         });
 
         catSelect.disabled = false;
+            return true;
     } catch (err) {
         catSelect.innerHTML = "<option>Error loading</option>";
+            return false;
     }
 }
 

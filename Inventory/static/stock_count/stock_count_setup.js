@@ -1,15 +1,19 @@
 
-function init() {
+async function init() {
     const urlParams = new URLSearchParams(window.location.search);
     const preWarehouse = urlParams.get("warehouse");
     const preCategory = urlParams.get("category");
 
-    loadWarehouses();
-    if (preWarehouse) {
-        $('#warehouse-select').val(preWarehouse).trigger('change');
-    }
-    if (preCategory) {
-        $('#category-select').val(preCategory).trigger('change');
+    const warehousesLoaded = await loadWarehouses();
+    if (warehousesLoaded && preWarehouse) {
+        $('#warehouse-select').val(preWarehouse).trigger('change.select2');
+        await onWarehouseChanged();
+
+        if (preCategory) {
+            $('#category-select').val(preCategory).trigger('change.select2');
+            selectedCategory = preCategory;
+            updateStep1NextButton();
+        }
     }
 
     if (sessionId) {

@@ -303,15 +303,22 @@ document.addEventListener("DOMContentLoaded", async () => {
 
     // --- Submit IBT ---
     const submitIbt = async (action = "request") => {
-        if (editIbtId && !["REQUESTED", "REJECTED"].includes(currentIbtStatus)) {
-            return;
-        }
         if (editIbtId && action !== "request") {
             return transitionExistingIbt(action);
         }
+        const fromWarehouseId = $('#wh-from').val();
+        const toWarehouseId = $('#wh-to').val();
+        if (!fromWarehouseId || !toWarehouseId) {
+            Swal.fire("Missing Warehouses", "Please select both the source and destination warehouses before submitting the IBT.", "warning");
+            return;
+        }
+        if (fromWarehouseId === toWarehouseId) {
+            Swal.fire("Invalid Warehouses", "The source and destination warehouses must be different.", "warning");
+            return;
+        }
         const payload = {
-            from_warehouse_id: $('#wh-from').val(),
-            to_warehouse_id: $('#wh-to').val(),
+            from_warehouse_id: fromWarehouseId,
+            to_warehouse_id: toWarehouseId,
             lines: ibtLines.map(line => ({
                 product_id: line.product_id,
                 qty: line.stock_qty ?? line.qty
@@ -331,9 +338,15 @@ document.addEventListener("DOMContentLoaded", async () => {
             if (!res.ok || !data.success) throw new Error(data.message || "Unable to save the IBT.");
             Swal.close();
             const ibtNumber = data.ibt_number || editIbtId;
+            const updateApprovedIbt = editIbtId && currentIbtStatus === "APPROVED";
+            const successTitle = action === "approve_issue"
+                ? "IBT Approved and Issued"
+                : action === "approve" || updateApprovedIbt
+                    ? "IBT Approved"
+                    : "IBT Request Submitted";
             await Swal.fire({
                 icon: "success",
-                title: action === "approve_issue" ? "IBT Approved and Issued" : action === "approve" ? "IBT Approved" : "IBT Request Submitted",
+                title: successTitle,
                 text: "IBT Number: " + ibtNumber
             });
             window.location.href = `/inventory/SDK/IBT_detail?ibt_no=${encodeURIComponent(ibtNumber)}`;
@@ -426,7 +439,11 @@ function configureExistingActions() {
     const canApproveIssue = !isExisting && allowed("APPROVE") && allowed("ISSUE");
     const submit = document.getElementById("ibt-submit");
     submit.classList.toggle("hidden", isExisting ? !editable : !canRequest);
-    submit.textContent = currentIbtStatus === "REJECTED" ? "Resubmit Request" : "Submit Request";
+    submit.textContent = currentIbtStatus === "APPROVED"
+        ? "Approve IBT"
+        : currentIbtStatus === "REJECTED"
+            ? "Resubmit Request"
+            : "Submit Request";
     console.log("Existing:", isExisting, "Editable:", editable, "Can Request:", canRequest, "Can Approve:", canApprove, "Can Reject:", canReject, "Can Issue:", canIssue, "Can Approve & Issue:", canApproveIssue);
     document.getElementById("ibt-approve").classList.toggle("hidden", !canApprove);
     document.getElementById("ibt-reject").classList.toggle("hidden", !canReject);
@@ -517,8 +534,12 @@ document.addEventListener('DOMContentLoaded', async () => {
             if (!detailRes.ok || !detailData.success) throw new Error(detailData.message || 'Unable to load IBT.');
             currentIbtStatus = detailData.ibt.status;
             $('#wh-from').val(String(detailData.ibt.warehouse_from.id)).trigger('change');
-            await new Promise(resolve => setTimeout(resolve, 100));
-            $('#wh-to').val(String(detailData.ibt.warehouse_to.id)).trigger('change');
+            await ibtWarehousesRequest;
+            const destinationId = String(detailData.ibt.warehouse_to.id);
+            if (!$('#wh-to').find(`option[value="${destinationId}"]`).length) {
+                throw new Error('The destination warehouse is not available for the selected source warehouse.');
+            }
+            $('#wh-to').val(destinationId).trigger('change.select2');
             const productsRes = await request('/inventory/fetch_products_in_both_whses', { method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({whse_from_id:String(detailData.ibt.warehouse_from.id), whse_to_id:String(detailData.ibt.warehouse_to.id)}) });
             const productsData = await productsRes.json();
             if (!productsRes.ok || !productsData.success) throw new Error(productsData.message || 'Unable to load products.');

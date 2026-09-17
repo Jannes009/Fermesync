@@ -5,9 +5,9 @@ from Market.routes.db_functions import (
     get_production_unit_codes, get_market_codes,
     get_transporter_codes
 )
-from pypyodbc import IntegrityError
+from pyodbc import IntegrityError
 from Market.routes.db_functions import get_products
-import pypyodbc as odbc
+import pyodbc as odbc
 
 from Market.routes import market_bp
 

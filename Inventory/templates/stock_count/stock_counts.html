@@ -3,651 +3,616 @@
 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
 
 <style>
-
-/* =========================
-   PAGE BASE
-========================= */
-
-body{
-    background:var(--primary-bg);
-    color:var(--primary-text);
-    font-size:.95rem;
+body {
+    background: var(--primary-bg);
+    color: var(--primary-text);
+    font-size: .95rem;
 }
 
-.main-content{
-    padding:2rem 0;
+.main-content {
+    padding: 2rem 0;
 }
 
-.container-wide{
-    max-width:1200px;
-    margin:auto;
-    padding:0 1rem;
+.container-wide {
+    max-width: 1200px;
+    margin: auto;
+    padding: 0 1rem;
 }
 
-/* =========================
-   PAGE HEADER
-========================= */
-
-.page-header{
-    display:flex;
-    justify-content:space-between;
-    align-items:center;
-    margin-bottom:2rem;
-    flex-wrap:wrap;
-    gap:1rem;
+.page-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 1.5rem;
+    gap: 1rem;
+    flex-wrap: wrap;
 }
 
-.page-header h1{
-    font-size:1.5rem;
-    color:var(--logo-color);
+.page-header h1 {
+    font-size: 1.5rem;
+    color: var(--logo-color);
+    margin: 0;
 }
 
-/* =========================
-   CARD
-========================= */
-
-.stock-card{
-    background:var(--container-bg);
-    border-radius:12px;
-    box-shadow:0 4px 18px rgba(0,0,0,.08);
-    padding:1.4rem;
-    margin-bottom:1.5rem;
-    transition:.25s;
+.toolbar {
+    display: flex;
+    gap: .75rem;
+    flex-wrap: wrap;
+    align-items: center;
+    margin-bottom: 1.25rem;
+    padding: 1rem 1.1rem;
+    background: var(--container-bg);
+    border-radius: 12px;
+    box-shadow: 0 4px 18px rgba(0,0,0,.08);
 }
 
-.stock-card.collapsible .section-title{
-    cursor:pointer;
-    display:flex;
-    justify-content:space-between;
-    align-items:center;
+.search-box {
+    flex: 1 1 260px;
 }
 
-.stock-card .arrow{
-    transition:.25s;
+.search-box input,
+.toolbar select {
+    width: 100%;
+    padding: .7rem .85rem;
+    border: 1px solid var(--border-color);
+    border-radius: 8px;
+    background: var(--secondary-bg, #fff);
+    color: var(--primary-text);
 }
 
-.stock-card.open .arrow{
-    transform:rotate(180deg);
+.search-box input:focus,
+.toolbar select:focus {
+    outline: 2px solid rgba(16, 185, 129, .25);
+    border-color: var(--button-bg);
 }
 
-.card-body{
-    margin-top:1rem;
+.filter-field {
+    min-width: 140px;
 }
 
-.stock-card:not(.open) .card-body{
-    display:none;
+.checkbox-inline {
+    display: flex;
+    align-items: center;
+    gap: .5rem;
+    white-space: nowrap;
+    font-weight: 600;
+    color: var(--secondary-text);
 }
 
-/* =========================
-   TABLE
-========================= */
-
-.table{
-    width:100%;
-    border-collapse:collapse;
+.btn-create-count,
+.btn-action-small {
+    background: var(--button-bg);
+    color: var(--button-text);
+    border: none;
+    border-radius: 8px;
+    padding: .65rem 1rem;
+    font-weight: 600;
+    cursor: pointer;
+    transition: opacity .2s ease;
 }
 
-.table th,
-.table td{
-    padding:.7rem .9rem;
-    border-bottom:1px solid var(--border-color);
+.btn-action-small {
+    padding: .4rem .8rem;
+    font-size: .8rem;
 }
 
-.table th{
-    background:var(--table-header-bg);
-    color:var(--table-header-text);
+.btn-action-small.secondary {
+    background: #e5e7eb;
+    color: #111827;
 }
 
-.table.clickable tbody tr{
-    cursor:pointer;
+.btn-action-small.primary {
+    background: var(--button-bg);
+    color: var(--button-text);
 }
 
-.table.clickable tbody tr:hover{
-    background:var(--table-row-hover);
+.incomplete-alert {
+    background: var(--container-bg);
+    border-radius: 12px;
+    box-shadow: 0 4px 18px rgba(0,0,0,.08);
+    padding: 1rem 1.15rem;
+    margin-bottom: 1.5rem;
 }
 
-/* =========================
-   MOBILE TABLE
-========================= */
-
-@media(max-width:600px){
-
-.table thead{
-    display:none;
+.incomplete-empty {
+    color: var(--secondary-text);
+    padding: .8rem 0;
+    font-weight: 600;
 }
 
-.table tbody tr{
-    display:block;
-    border:1px solid var(--border-color);
-    border-radius:8px;
-    padding:10px;
-    margin-bottom:10px;
-    position:relative;
+.incomplete-heading {
+    font-size: .78rem;
+    text-transform: uppercase;
+    letter-spacing: .06em;
+    font-weight: 700;
+    color: var(--secondary-text);
+    margin-bottom: .85rem;
 }
 
-/* hide additional details until expanded */
-.table td.detail-cell{ display:none; }
-.table tr.expanded td.detail-cell{ display:block; }
-
-/* arrow indicator */
-.mobile-arrow{
-    font-size:0.9rem;
-    margin-left:6px;
-    transition: transform .2s ease;
-    display:inline-block;
-}
-.table tr.expanded .mobile-arrow{ transform:rotate(90deg); }
-
-.table td{
-    display:block;
-    padding:3px 0;
+.incomplete-row {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: 1rem;
+    padding: .8rem 0;
+    border-top: 1px solid var(--border-color);
 }
 
-.table td::before{
-    content:attr(data-label) ": ";
-    font-weight:600;
+.incomplete-row:first-child {
+    border-top: none;
 }
 
+.incomplete-details {
+    display: flex;
+    flex-direction: column;
+    gap: .2rem;
 }
 
-/* =========================
-   BADGES
-========================= */
-
-.badge{
-    padding:.25rem .7rem;
-    border-radius:999px;
-    font-size:.8rem;
-    font-weight:600;
+.incomplete-details span {
+    font-weight: 700;
 }
 
-.badge-clean{
-    background:#d1fae5;
-    color:#065f46;
+.incomplete-details small {
+    color: var(--secondary-text);
 }
 
-.badge-warn{
-    background:#fed7aa;
-    color:#92400e;
+.incomplete-progress-wrap {
+    display: flex;
+    align-items: center;
+    gap: .75rem;
+    min-width: 280px;
 }
-
-.badge-danger{
-    background:#fecaca;
-    color:#991b1b;
-}
-
-/* =========================
-   BUTTONS
-========================= */
-
-/* color-coded history rows based on status badges */
-.table.clickable tbody tr.ok { background: #e6ffed; }
-.table.clickable tbody tr.warn { background: #fff4e5; }
-.table.clickable tbody tr.danger { background: #ffe6e6; }
 
 .incomplete-progress {
-    display:flex;
-    align-items:center;
-    gap:.65rem;
-    min-width:180px;
+    flex: 1;
+    min-width: 120px;
 }
 
 .incomplete-progress-bar {
-    flex:1;
-    height:10px;
-    background:#e5e7eb;
-    border-radius:999px;
-    overflow:hidden;
+    width: 100%;
+    height: 10px;
+    border-radius: 999px;
+    background: #e5e7eb;
+    overflow: hidden;
 }
 
 .incomplete-progress-fill {
-    height:100%;
-    background:#10b981;
-    border-radius:inherit;
-    transition:width .2s ease;
+    height: 100%;
+    background: linear-gradient(90deg, #10b981, #34d399);
+    border-radius: inherit;
 }
 
-.incomplete-progress-value {
-    min-width:3.5rem;
-    color:var(--primary-text);
-    font-weight:700;
-    text-align:right;
-    white-space:nowrap;
+.warehouse-section {
+    background: var(--container-bg);
+    border-radius: 12px;
+    box-shadow: 0 4px 18px rgba(0,0,0,.08);
+    padding: 0;
+    margin-bottom: 1.4rem;
+    overflow: hidden;
 }
 
-.incomplete-actions {
-    display:flex;
-    align-items:center;
-    justify-content:center;
-    gap:.4rem;
-    flex-wrap:wrap;
+.warehouse-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: .9rem 1rem;
+    border-bottom: 1px solid var(--border-color);
+    background: rgba(0,0,0,.02);
 }
 
-
-.btn-create-count{
-    background:var(--button-bg);
-    color:var(--button-text);
-    border:none;
-    padding:.65rem 1.4rem;
-    border-radius:6px;
-    font-weight:600;
-    cursor:pointer;
+.warehouse-header h3 {
+    margin: 0;
+    font-size: 1.05rem;
 }
 
-.btn-action-small{
-    background:var(--button-bg);
-    color:var(--button-text);
-    border:none;
-    padding:.35rem .8rem;
-    border-radius:6px;
-    font-size:.8rem;
-    cursor:pointer;
+.warehouse-header span {
+    color: var(--secondary-text);
+    font-size: .8rem;
+    font-weight: 700;
 }
 
-.btn-action-small.danger{
-    background:#dc2626;
+.collapse-toggle {
+    width: 100%;
+    border: none;
+    padding: .9rem 1rem;
+    background: rgba(0,0,0,.02);
+    color: inherit;
+    text-align: left;
+    cursor: pointer;
 }
 
-/* =========================
-   MODAL
-========================= */
-
-.modal{
-    position:fixed;
-    inset:0;
-    background:rgba(0,0,0,.45);
-    display:flex;
-    align-items:center;
-    justify-content:center;
-    padding:1rem;
-    overflow-y:auto;
-    z-index:1000;
+.warehouse-title {
+    display: flex;
+    align-items: center;
+    gap: .75rem;
 }
 
-/* schedule modal form tweaks */
-#scheduleModal .form-group {
-    display:flex;
-    flex-direction:column;
-    margin-bottom:1rem;
-}
-#scheduleModal label {
-    margin-bottom:.25rem;
-    font-weight:600;
-}
-#scheduleModal select,
-#scheduleModal input[type="number"] {
-    padding:.5rem .75rem;
-    border:1px solid var(--border-color);
-    border-radius:6px;
-    width:100%;
-    box-sizing:border-box;
-}
-#scheduleModal .modal-content {
-    max-width:500px; /* narrower than other modals */
+.warehouse-title span {
+    color: var(--secondary-text);
+    font-size: .8rem;
+    font-weight: 700;
 }
 
-.modal.hidden{
-    display:none;
+.collapse-icon {
+    color: var(--secondary-text);
 }
 
-.modal-content{
-    background:var(--container-bg);
-    width:min(100%, 900px);
-    max-width:800px;
-    max-height:calc(100vh - 2rem);
-    border:1px solid var(--border-color);
-    border-radius:10px;
-    box-shadow:0 18px 50px rgba(0,0,0,.2);
-    display:flex;
-    flex-direction:column;
-    overflow:hidden;
+.overview-actions {
+    display: flex;
+    gap: .45rem;
+    flex-wrap: wrap;
+}
+
+.date-badge {
+    display: inline-block;
+    padding: .32rem .7rem;
+    border-radius: 999px;
+    font-size: .8rem;
+    font-weight: 700;
+    white-space: nowrap;
+}
+
+.date-green { background: #dcfce7; color: #166534; }
+.date-yellow { background: #fef3c7; color: #92400e; }
+.date-red { background: #fee2e2; color: #991b1b; }
+.date-grey { background: #e5e7eb; color: #374151; }
+
+.warehouse-table-wrap {
+    overflow-x: auto;
+}
+
+.table {
+    width: 100%;
+    border-collapse: collapse;
+}
+
+.table th,
+.table td {
+    padding: .8rem .9rem;
+    border-bottom: 1px solid var(--border-color);
+    text-align: left;
+}
+
+.table th {
+    background: var(--table-header-bg);
+    color: var(--table-header-text);
+    font-size: .8rem;
+    text-transform: uppercase;
+    letter-spacing: .03em;
+}
+
+.status-pill {
+    display: inline-flex;
+    align-items: center;
+    gap: .45rem;
+    padding: .32rem .7rem;
+    border-radius: 999px;
+    font-size: .8rem;
+    font-weight: 700;
+    white-space: nowrap;
+}
+
+.status-dot {
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+    display: inline-block;
+}
+
+.status-recent {
+    background: #dcfce7;
+    color: #166534;
+}
+
+.status-recent .status-dot {
+    background: #22c55e;
+}
+
+.status-due {
+    background: #fef3c7;
+    color: #92400e;
+}
+
+.status-due .status-dot {
+    background: #f59e0b;
+}
+
+.status-overdue {
+    background: #fee2e2;
+    color: #991b1b;
+}
+
+.status-overdue .status-dot {
+    background: #ef4444;
+}
+
+.status-never {
+    background: #e5e7eb;
+    color: #374151;
+}
+
+.status-never .status-dot {
+    background: #6b7280;
+}
+
+.no-results {
+    padding: 2rem 1rem;
+    text-align: center;
+    color: var(--secondary-text);
+    background: var(--container-bg);
+    border-radius: 12px;
+    box-shadow: 0 4px 18px rgba(0,0,0,.08);
+}
+
+@media (max-width: 720px) {
+    .toolbar {
+        flex-direction: column;
+        align-items: stretch;
+    }
+
+    .search-box,
+    .filter-field,
+    .checkbox-inline {
+        width: 100%;
+    }
+
+    .incomplete-row {
+        flex-direction: column;
+        align-items: flex-start;
+    }
+
+    .incomplete-progress-wrap {
+        width: 100%;
+        min-width: unset;
+    }
+
+    .table thead {
+        display: none;
+    }
+
+    .table tbody tr {
+        display: block;
+        border-bottom: 1px solid var(--border-color);
+        padding: .6rem 0;
+    }
+
+    .table td {
+        display: block;
+        border: none;
+        padding: .2rem 0;
+    }
+
+    .table td::before {
+        content: attr(data-label) ": ";
+        font-weight: 700;
+        color: var(--secondary-text);
+        display: inline-block;
+        width: 40%;
+    }
+}
+
+.modal {
+    position: fixed;
+    inset: 0;
+    background: rgba(0,0,0,.45);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 1rem;
+    z-index: 1000;
+}
+
+.modal.hidden {
+    display: none;
+}
+
+.modal-content {
+    background: var(--container-bg);
+    width: min(100%, 860px);
+    max-height: calc(100vh - 2rem);
+    border-radius: 12px;
+    box-shadow: 0 20px 50px rgba(0,0,0,.2);
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
 }
 
 .details-modal-header,
-.details-modal-footer{
-    display:flex;
-    align-items:center;
-    justify-content:space-between;
-    gap:1rem;
-    flex-shrink:0;
-    padding:1rem 1.25rem;
+.details-modal-footer {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 1rem 1.2rem;
+    border-bottom: 1px solid var(--border-color);
 }
 
-.details-modal-header{
-    border-bottom:1px solid var(--border-color);
-    background:var(--table-header-bg);
+.details-modal-footer {
+    border-top: 1px solid var(--border-color);
+    border-bottom: none;
+    justify-content: flex-end;
 }
 
-.details-modal-header h3{
-    margin:0;
-    color:var(--primary-text);
-    font-size:1.1rem;
-    line-height:1.35;
+.details-modal-header h3 {
+    margin: 0;
+    font-size: 1.15rem;
 }
 
-.details-meta{
-    display:grid;
-    grid-template-columns:repeat(3, 1fr);
-    gap:.75rem;
-    padding:1rem 0 0;
+.details-modal-body {
+    padding: 1rem 1.2rem;
+    overflow-y: auto;
 }
 
-.details-meta div{
-    display:flex;
-    flex-direction:column;
-    gap:.2rem;
-    padding:.7rem .8rem;
-    background:var(--table-header-bg);
-    border:1px solid var(--border-color);
-    border-radius:6px;
+.details-meta {
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: .8rem;
+    margin-bottom: 1rem;
 }
 
-.details-meta span{
-    color:var(--secondary-text);
-    font-size:.75rem;
-    font-weight:600;
-    text-transform:uppercase;
+.details-meta div {
+    background: rgba(0,0,0,.02);
+    border: 1px solid var(--border-color);
+    border-radius: 8px;
+    padding: .7rem .8rem;
+    display: flex;
+    flex-direction: column;
+    gap: .2rem;
 }
 
-.details-meta strong{
-    color:var(--primary-text);
-    font-size:.85rem;
-    overflow-wrap:anywhere;
+.details-meta span {
+    color: var(--secondary-text);
+    font-size: .72rem;
+    text-transform: uppercase;
+    letter-spacing: .04em;
+    font-weight: 700;
 }
 
-.details-modal-body{
-    min-height:0;
-    overflow:auto;
-    padding:0 1.25rem;
+.shelf-actions {
+    display: flex;
+    justify-content: flex-end;
+    margin: .75rem 0 1rem;
 }
 
-.details-table{
-    min-width:600px;
-    margin:1rem 0;
+.history-table-wrap {
+    overflow-x: auto;
 }
 
-.details-table th{
-    position:sticky;
-    top:0;
-    z-index:1;
+.history-table {
+    width: 100%;
+    border-collapse: collapse;
 }
 
-.details-modal-footer{
-    justify-content:flex-end;
-    border-top:1px solid var(--border-color);
+.history-table th,
+.history-table td {
+    padding: .7rem .8rem;
+    border-bottom: 1px solid var(--border-color);
+    text-align: left;
 }
 
-.modal-close{
-    display:inline-flex;
-    align-items:center;
-    gap:.4rem;
+.history-table th {
+    background: var(--table-header-bg);
+    color: var(--table-header-text);
+    font-size: .75rem;
+    text-transform: uppercase;
 }
-
-@media(max-width:600px){
-    .modal{
-        align-items:flex-start;
-        padding:.5rem;
-    }
-
-    .modal-content{
-        width:min(100%, 100%);
-        max-width:100%;
-        max-height:calc(100vh - 1rem);
-    }
-
-    .details-modal-header,
-    .details-modal-footer{
-        padding:.85rem 1rem;
-    }
-
-    .details-modal-body{
-        padding:0 .75rem;
-    }
-
-    .details-meta{
-        grid-template-columns:1fr;
-    }
-
-    .details-table-scroll{
-        overflow-x:visible;
-    }
-
-    .details-table{
-        min-width:0;
-        width:100%;
-        border-collapse:separate;
-        border-spacing:0 0.5rem;
-    }
-
-    .details-table thead{
-        display:none;
-    }
-
-    .details-table tbody,
-    .details-table tr,
-    .details-table td{
-        display:block;
-        width:100%;
-    }
-
-    .details-table tbody{
-        display:flex;
-        flex-direction:column;
-        gap:0.7rem;
-    }
-
-    .details-table tr{
-        background:#fff;
-        border:1px solid var(--border-color);
-        border-radius:10px;
-        padding:0.75rem;
-        box-shadow:0 2px 8px rgba(0,0,0,0.04);
-    }
-
-    .details-table td{
-        border:none;
-        padding:0.35rem 0;
-        display:flex;
-        justify-content:space-between;
-        align-items:flex-start;
-        gap:1rem;
-        text-align:left;
-    }
-
-    .details-table td::before{
-        content:attr(data-label);
-        font-weight:700;
-        color:var(--secondary-text);
-        font-size:0.72rem;
-        text-transform:uppercase;
-        letter-spacing:0.04em;
-        flex:0 0 38%;
-    }
-
-    .details-table td:last-child{
-        padding-bottom:0;
-    }
-}
-
-    @media(max-width:600px){
-        #incompleteTable tbody tr.in-progress {
-            display:grid;
-            grid-template-columns:1fr 1fr;
-            gap:.75rem 1rem;
-            padding:1rem;
-            margin-bottom:.75rem;
-            background:var(--container-bg);
-            border:1px solid var(--border-color);
-            border-radius:10px;
-            box-shadow:0 2px 8px rgba(0,0,0,.05);
-        }
-
-        #incompleteTable tbody tr.in-progress td {
-            display:flex;
-            flex-direction:column;
-            gap:.25rem;
-            padding:0;
-            border:0;
-        }
-
-        #incompleteTable tbody tr.in-progress td::before {
-            content:attr(data-label);
-            color:var(--secondary-text);
-            font-size:.7rem;
-            font-weight:700;
-            letter-spacing:.04em;
-            text-transform:uppercase;
-        }
-
-        #incompleteTable tbody tr.in-progress td.detail-cell {
-            display:flex;
-        }
-
-        #incompleteTable tbody tr.in-progress td:nth-child(4),
-        #incompleteTable tbody tr.in-progress td:nth-child(5) {
-            grid-column:1 / -1;
-        }
-
-        #incompleteTable .incomplete-progress {
-            width:100%;
-            min-width:0;
-        }
-
-        #incompleteTable .incomplete-actions {
-            justify-content:stretch;
-        }
-
-        #incompleteTable .incomplete-actions .btn-action-small {
-            flex:1 1 0;
-            min-width:0;
-            padding:.55rem .5rem;
-        }
-    }
 
 </style>
 
-
 <div class="main-content with-fixed-taskbar">
-<div class="container-wide">
+    <div class="container-wide">
+        <div class="page-header">
+            <h1><i class="fas fa-box-check"></i> Stock Counts</h1>
+            <button class="btn-create-count" onclick="window.location.href='{{ url_for('inventory.stock_count_start') }}'">
+                <i class="fas fa-plus"></i> Start Stock Count
+            </button>
+        </div>
 
-<div class="page-header">
-<h1><i class="fas fa-box-check"></i> Stock Counts</h1>
+        <div class="incomplete-alert">
+            <div id="incompleteContainer"></div>
+        </div>
 
-<button class="btn-create-count"
-onclick="window.location.href='{{ url_for('inventory.stock_count_start') }}'">
-<i class="fas fa-plus"></i> Start Stock Count
-</button>
+        <div class="toolbar">
+            <div class="search-box">
+                <input id="shelfSearch" type="search" placeholder="Search warehouse or shelf..." aria-label="Search shelves">
+            </div>
+            <div class="filter-field">
+                <select id="warehouseOverviewFilter" aria-label="Warehouse filter">
+                    <option value="all">Warehouse: All</option>
+                </select>
+            </div>
+            <label class="checkbox-inline">
+                <input id="needCountOnly" type="checkbox">
+                Show only shelves requiring counting
+            </label>
+        </div>
 
+        <div id="warehouseOverview"></div>
+    </div>
 </div>
 
+<div id="shelfModal" class="modal hidden">
+    <div class="modal-content" role="dialog" aria-modal="true" aria-labelledby="shelfModalTitle">
+        <div class="details-modal-header">
+            <h3 id="shelfModalTitle">Shelf Details</h3>
+            <button class="btn-action-small secondary" onclick="closeShelfModal()">
+                <i class="fas fa-times"></i> Close
+            </button>
+        </div>
 
-<!-- Scheduling and due/overdue sections removed to simplify page -->
+        <div class="details-modal-body">
+            <div class="details-meta">
+                <div>
+                    <span>Last counted</span>
+                    <strong id="shelfLastCount">N/A</strong>
+                </div>
+                <div>
+                    <span>Next due</span>
+                    <strong id="shelfNextDue">N/A</strong>
+                </div>
+                <div>
+                    <span>Status</span>
+                    <strong id="shelfStatus" class="status-pill status-never">Never counted</strong>
+                </div>
+            </div>
 
+            <div class="shelf-actions">
+                <button id="shelfStartCountButton" class="btn-action-small">
+                    <i class="fas fa-plus"></i> Start Stock Count
+                </button>
+            </div>
 
-<!-- INCOMPLETE -->
-
-<div class="stock-card collapsible open" data-section="incomplete">
-
-<div class="section-title toggle">
-<div><i class="fas fa-hourglass-half"></i> Incomplete Counts</div>
-<i class="fas fa-chevron-down arrow"></i>
+            <h4>Count history</h4>
+            <div class="history-table-wrap">
+                <table class="history-table">
+                    <thead>
+                        <tr>
+                            <th>Date</th>
+                            <th>User</th>
+                            <th>Products</th>
+                            <th>Avg variance</th>
+                        </tr>
+                    </thead>
+                    <tbody id="shelfHistoryTableBody"></tbody>
+                </table>
+            </div>
+        </div>
+    </div>
 </div>
-
-<div class="card-body">
-
-<table class="table" id="incompleteTable">
-<thead>
-<tr>
-<th>Date</th>
-<th>Warehouse</th>
-<th>Shelf</th>
-<th>Progress</th>
-<th></th>
-</tr>
-</thead>
-<tbody></tbody>
-</table>
-
-</div>
-</div>
-
-
-<!-- HISTORY -->
-
-<div class="stock-card collapsible open" data-section="history">
-
-<div class="section-title toggle">
-<div><i class="fas fa-history"></i> History</div>
-<i class="fas fa-chevron-down arrow"></i>
-</div>
-
-<div class="card-body">
-
-<table class="table clickable" id="historyTable">
-<thead>
-<tr>
-    <th>Warehouse</th>
-    <th>Shelf</th>
-    <th>Username</th>
-    <th>Date</th>
-    <th>Products Counted</th>
-    <th>Avg Variance</th>
-</tr>
-</thead>
-<tbody></tbody>
-</table>
-
-</div>
-</div>
-
-</div>
-</div>
-
-
-<!-- DETAILS MODAL -->
 
 <div id="countModal" class="modal hidden">
+    <div class="modal-content" role="dialog" aria-modal="true" aria-labelledby="modalTitle">
+        <div class="details-modal-header">
+            <h3 id="modalTitle">Stock Count Details</h3>
+        </div>
 
-<div class="modal-content" role="dialog" aria-modal="true" aria-labelledby="modalTitle">
+        <div class="details-modal-body">
+            <div class="details-meta" aria-label="Stock count summary">
+                <div><span>Username</span><strong id="modalUsername">N/A</strong></div>
+                <div><span>Start time</span><strong id="modalStartTime">N/A</strong></div>
+                <div><span>End time</span><strong id="modalEndTime">N/A</strong></div>
+            </div>
+            <div class="history-table-wrap">
+                <table class="table history-table">
+                    <thead>
+                        <tr>
+                            <th>Description</th>
+                            <th>System Qty</th>
+                            <th>Counted Qty</th>
+                            <th>Variance</th>
+                        </tr>
+                    </thead>
+                    <tbody id="modalLines"></tbody>
+                </table>
+            </div>
+        </div>
 
-<div class="details-modal-header">
-<h3 id="modalTitle">Stock Count Details</h3>
+        <div class="details-modal-footer">
+            <button onclick="closeModal()" class="btn-action-small secondary">
+                <i class="fas fa-times"></i> Close
+            </button>
+        </div>
+    </div>
 </div>
-
-<div class="details-modal-body">
-<div class="details-meta" aria-label="Stock count summary">
-<div><span>Username</span><strong id="modalUsername">N/A</strong></div>
-<div><span>Start time</span><strong id="modalStartTime">N/A</strong></div>
-<div><span>End time</span><strong id="modalEndTime">N/A</strong></div>
-</div>
-<div class="details-table-scroll">
-<table class="table details-table">
-
-<thead>
-<tr>
-<th>Description</th>
-<th>System Qty</th>
-<th>Counted Qty</th>
-<th>Variance</th>
-</tr>
-</thead>
-
-<tbody id="modalLines"></tbody>
-
-</table>
-</div>
-</div>
-
-<div class="details-modal-footer">
-<button onclick="closeModal()" class="btn-action-small">
-<i class="fas fa-times"></i> Close
-</button>
-</div>
-
-</div>
-</div>
-
 
 <script src="{{ url_for('inventory.static', filename='stock_count/stock_counts.js') }}?{{ filemtime('inventory', 'stock_count/stock_counts.js') }}"></script>
-
 {% endblock %}
