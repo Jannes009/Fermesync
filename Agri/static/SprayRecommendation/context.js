@@ -95,6 +95,7 @@ function renderContextTimeline() {
     const showSelectedOnly = contextState.ingredientView === 'selected';
     const searchTerm = contextSearchTerm();
     const ingredients = new Map();
+    console.log(contextState.items, selectedIngredients, showSelectedOnly, searchTerm);
     contextState.items.forEach(item => {
         const ingredientKey = item.active_ingredient || '__unspecified__';
         if (showSelectedOnly && !selectedIngredients.has(item.active_ingredient || '')) return;
@@ -173,7 +174,6 @@ function renderContextTimeline() {
 async function updateContextDataset() {
     const projectIds = selectedProjectIds();
     const projectKey = projectIds.join(',');
-    console.log(projectIds, projectKey, contextState.projectKey, contextState.loaded);
     if (!projectIds.length) {
         contextState.items = [];
         contextState.availableWeeks = [];
@@ -307,11 +307,9 @@ document.querySelectorAll('input[name="context-ingredient-view"]').forEach(radio
 
 contextSearch?.addEventListener('input', renderContextTimeline);
 
-document.addEventListener('change', event => {
-    if (event.target.matches('.product-select')) {
-        syncIngredientViewDefault();
-        renderContextTimeline();
-    }
+$(document).on('change', '.product-select', () => {
+    syncIngredientViewDefault();
+    renderContextTimeline();
 });
 
 document.addEventListener('spray-draft-restored', () => {

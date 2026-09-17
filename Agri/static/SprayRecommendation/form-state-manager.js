@@ -50,12 +50,6 @@ const FormStateManager = (() => {
         } else if (document.querySelector('meta[name="user-id"]')) {
             currentUser = document.querySelector('meta[name="user-id"]').content;
         }
-        
-        if (currentUser) {
-            console.log('[FormStateManager] Current user:', currentUser);
-        } else {
-            console.warn('[FormStateManager] Could not detect current user ID');
-        }
     }
 
     /**
@@ -131,7 +125,7 @@ const FormStateManager = (() => {
     function saveToLocalStorage(state) {
         try {
             localStorage.setItem(getStorageKey(), JSON.stringify(state));
-            console.log('[FormStateManager] Draft saved to localStorage');
+
         } catch (err) {
             console.warn('[FormStateManager] Failed to save draft:', err);
         }
@@ -158,14 +152,12 @@ const FormStateManager = (() => {
 
         // Check user match
         if (state.user_id && state.user_id !== currentUser) {
-            console.log('[FormStateManager] Draft belongs to different user, discarding');
             return false;
         }
 
         // Check age
         const draftAge = Date.now() - new Date(state.timestamp).getTime();
         if (draftAge > MAX_DRAFT_AGE) {
-            console.log('[FormStateManager] Draft is older than 24 hours, discarding');
             return false;
         }
 
@@ -255,8 +247,6 @@ const FormStateManager = (() => {
         if (requireWeather && state.require_weather !== undefined) {
             requireWeather.checked = state.require_weather;
         }
-
-        console.log('[FormStateManager] Basic fields restored');
     }
 
     /**
@@ -303,7 +293,6 @@ const FormStateManager = (() => {
      */
     async function restoreComplexState(state) {
     window.isRestoringDraft = true;
-    console.log('[FormStateManager] Starting complex state restoration...');
 
     try {
         // 1) Restore projects. This should trigger updateProducts().
@@ -331,7 +320,6 @@ const FormStateManager = (() => {
                     
                     if (savedMethodExists) {
                         $(methodSelect).val(String(state.method_id)).trigger('change');
-                        console.log('[FormStateManager] Method restored:', state.method_id);
                     } else {
                         console.warn('[FormStateManager] Saved method not available:', state.method_id);
                     }
@@ -398,7 +386,6 @@ const FormStateManager = (() => {
 
         draftWasRestored = true;
         document.dispatchEvent(new CustomEvent('spray-draft-restored'));
-        console.log('[FormStateManager] Complex state restoration complete');
     } finally {
         window.isRestoringDraft = false;
     }
@@ -412,7 +399,6 @@ const FormStateManager = (() => {
      * - Restore state with proper async ordering
      */
     async function init() {
-        console.log('[FormStateManager] Initializing...');
 
         // Detect current user
         detectCurrentUser();
@@ -420,7 +406,6 @@ const FormStateManager = (() => {
         // Load and validate draft
         const savedState = loadFromLocalStorage();
         if (!isValidDraft(savedState)) {
-            console.log('[FormStateManager] No valid draft found');
             setupAutoSave();
             return;
         }
@@ -428,13 +413,10 @@ const FormStateManager = (() => {
         // Show recovery prompt
         const shouldRestore = await showRecoveryPrompt(savedState);
         if (!shouldRestore) {
-            console.log('[FormStateManager] User chose to start fresh');
             clear();
             setupAutoSave();
             return;
         }
-
-        console.log('[FormStateManager] User chose to restore draft');
 
         // Restore basic fields immediately
         restoreBasicFields(savedState);
@@ -477,8 +459,6 @@ const FormStateManager = (() => {
         document.querySelectorAll('#require_date_time, #require_weather').forEach(toggle => {
             toggle.addEventListener('change', scheduleAutoSave);
         });
-
-        console.log('[FormStateManager] Auto-save listeners attached');
     }
 
     /**
@@ -493,7 +473,6 @@ const FormStateManager = (() => {
 
         try {
             localStorage.removeItem(getStorageKey());
-            console.log('[FormStateManager] Draft cleared');
         } catch (err) {
             console.warn('[FormStateManager] Failed to clear draft:', err);
         }
