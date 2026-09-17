@@ -657,6 +657,25 @@
         flex-wrap:wrap; 
         flex-shrink: 0;
     }
+    .context-week-filter {
+        display:flex;
+        align-items:center;
+        gap:6px;
+    }
+    .context-week-filter label {
+        color:#475569;
+        font-size:.82rem;
+        white-space:nowrap;
+    }
+    .context-week-filter select {
+        width:auto;
+        min-width:92px;
+        padding:8px 10px;
+        border:1px solid var(--line);
+        border-radius:8px;
+        background:#fff;
+        font-size:.85rem;
+    }
     .context-chip-group { 
         display:flex; 
         gap:6px; 
@@ -735,6 +754,16 @@
         padding:14px; 
         background:#fff;
         transition: all 0.15s ease;
+    }
+    .context-ingredient-group {
+        display: flex;
+        flex-direction: column;
+        gap: 8px;
+    }
+    .context-ingredient-title {
+        margin: 8px 0 0;
+        color: #0f172a;
+        font-size: .95rem;
     }
     .context-card:hover {
         border-color: var(--accent);
@@ -1057,60 +1086,13 @@
                     </button>
                 </div>
                 <div class="context-toolbar">
-                    <div style="flex:1; min-width:0">
-                        <div style="font-size:0.82rem; color:#475569; margin-bottom:6px">Showing</div>
-                        <div id="context-active-chips" class="context-chip-group"></div>
+                    <div class="context-week-filter">
+                        <label for="context-start-week">From week</label>
+                        <select id="context-start-week"></select>
                     </div>
-                    <button type="button" class="btn ghost" id="context-add-filter-btn">+ Filter</button>
-                </div>
-                <div id="context-filter-panel" class="context-filter-panel hidden">
-                    <div class="context-filter-summary">Filter the loaded issue history by project, product, type, active ingredient, or crop.</div>
-                    <div class="filter-row">
-                        <div>
-                            <label for="filter-project">Project</label>
-                            <select id="filter-project" multiple size="3"></select>
-                        </div>
-                        <div>
-                            <label for="filter-product">Product</label>
-                            <select id="filter-product" multiple size="3"></select>
-                        </div>
-                    </div>
-                    <div class="filter-row">
-                        <div>
-                            <label for="filter-type">Type</label>
-                            <select id="filter-type" multiple size="3"></select>
-                        </div>
-                        <div>
-                            <label for="filter-active-ingredient">Active Ingredient</label>
-                            <select id="filter-active-ingredient" multiple size="3"></select>
-                        </div>
-                    </div>
-                    <div class="filter-row">
-                        <div>
-                            <label for="filter-crop">Crop</label>
-                            <select id="filter-crop" multiple size="3"></select>
-                        </div>
-                    </div>
-                    <div class="filter-row">
-                        <div style="grid-column: span 2;">
-                            <label for="filter-search">Search</label>
-                            <input id="filter-search" type="text" placeholder="Search issue, product, project, notes">
-                        </div>
-                    </div>
-                    <div class="filter-row">
-                        <div style="grid-column: span 2;">
-                            <label for="filter-range">Date Range</label>
-                            <select id="filter-range">
-                                <option value="1">30 days</option>
-                                <option value="6" selected>6 months</option>
-                                <option value="12">1 year</option>
-                                <option value="0">All time</option>
-                            </select>
-                        </div>
-                    </div>
-                    <div class="context-filter-actions">
-                        <button type="button" class="btn ghost" id="context-clear-filters-btn">Clear all</button>
-                        <button type="button" class="btn" id="context-apply-filters-btn">Apply filters</button>
+                    <div class="context-week-filter">
+                        <label for="context-end-week">To week</label>
+                        <select id="context-end-week"></select>
                     </div>
                 </div>
                 <div id="context-stats" class="context-stats"></div>

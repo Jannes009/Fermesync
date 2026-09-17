@@ -1,324 +1,209 @@
-
-/* ================== CONTEXT SHEET (CLIENT-SIDE FILTERING & CHIP UI) ================== */
-// Replace previous context fetch + render logic with client-side filtering and Gmail-like chips.
-// Backend now returns a dataset (last year / warehouse ) and a simple filters object.
-
 let contextState = {
     items: [],
-    filteredItems: [],
-    activeFilters: {
-        projects: new Set(),
-        products: new Set(),
-        active_ingredients: new Set(),
-        types: new Set(),
-        ranges: new Set() // e.g. "last_year", "last_6_months"
-    },
     expanded: false,
-    monthsBack: 12,
+    availableWeeks: [],
+    startWeek: null,
+    endWeek: null,
+    projectKey: '',
+    loading: false
 };
 
 const contextSheet = document.getElementById('context-sheet');
 const contextHandle = document.getElementById('context-handle');
 const contextClose = document.getElementById('context-close');
-const contextBody = document.getElementById('context-body');
 
-contextHandle.addEventListener('click', () => {
-    contextState.expanded = !contextState.expanded;
-    contextSheet.classList.toggle('open', contextState.expanded);
-    contextHandle.setAttribute('aria-expanded', contextState.expanded);
-});
-
-contextClose.addEventListener('click', () => {
-    contextState.expanded = false;
-    contextSheet.classList.remove('open');
-    contextHandle.setAttribute('aria-expanded', false);
-});
-
-function normalizeLookupItems(list) {
-    if (!list) return [];
-
-    if (Array.isArray(list)) {
-        return list.map(item => {
-            if (item && typeof item === 'object') {
-                const id = item.id ?? item.value ?? item.ProjectId ?? item.StockId ?? item.active_ingredient_id ?? item.crop_id ?? item;
-                const name = item.name ?? item.label ?? item.ProjectName ?? item.StockDescription ?? item.ChemActIngredient ?? item.CropDescription ?? String(item);
-                return { id: String(id), name: String(name) };
-            }
-            return { id: String(item), name: String(item) };
-        });
-    }
-
-    if (typeof list === 'object') {
-        return Object.entries(list).map(([key, value]) => ({ id: String(key), name: String(value) }));
-    }
-
-    return [{ id: String(list), name: String(list) }];
+function escapeContextText(value) {
+    return String(value ?? '').replace(/[&<>'"]/g, character => ({
+        '&': '&amp;', '<': '&lt;', '>': '&gt;', "'": '&#39;', '"': '&quot;'
+    }[character]));
 }
 
-function getFilterValueFromItem(item, category) {
-    switch (category) {
-        case 'projects':
-            return String(item.project_id ?? item.ProjectId ?? item.ProjectLink ?? '');
-        case 'products':
-            return String(item.stock_id ?? item.StockId ?? item.SprayLineStkId ?? '');
-        case 'active_ingredients':
-            return String(item.active_ingredient_id ?? item.IdChemAct ?? item.active_ingredient ?? item.ChemActIngredient ?? '');
-        case 'types':
-            return String(item.type ?? item.StkCrpType ?? '');
-        default:
-            return String('');
-    }
-}
+function populateWeekFilters(weeks = contextState.availableWeeks) {
+    const startSelect = document.getElementById('context-start-week');
+    const endSelect = document.getElementById('context-end-week');
+    if (!startSelect || !endSelect) return;
 
-// Render filter chips from dataset lookups (safe no-op if container missing)
-function renderFilterChipsFromDataset(lookups) {
-    const container = document.getElementById('context-active-chips');
-    if (!container) return;
-    container.innerHTML = '';
-
-    const categories = [
-        { key: 'projects', label: 'Projects' },
-        { key: 'products', label: 'Products' },
-        { key: 'active_ingredients', label: 'Active Ingredients' },
-        { key: 'types', label: 'Types' }
-    ];
-
-    let any = false;
-    categories.forEach(cat => {
-        const items = normalizeLookupItems(lookups[cat.key]);
-        items.forEach(item => {
-            any = true;
-
-            const btn = document.createElement('button');
-            btn.type = 'button';
-            btn.className = 'context-chip';
-            btn.dataset.filterCategory = cat.key;
-            btn.dataset.filterValue = item.id;
-            btn.textContent = item.name;
-
-            if (contextState.activeFilters[cat.key]?.has(item.id)) {
-                btn.classList.add('active');
-            }
-
-            btn.addEventListener('click', function () {
-                const category = this.dataset.filterCategory;
-                const value = this.dataset.filterValue;
-                const set = contextState.activeFilters[category] || new Set();
-                if (set.has(value)) {
-                    set.delete(value);
-                    this.classList.remove('active');
-                } else {
-                    set.add(value);
-                    this.classList.add('active');
-                }
-                contextState.activeFilters[category] = set;
-                applyContextFilters();
-            });
-
-            container.appendChild(btn);
-        });
+    [startSelect, endSelect].forEach(select => {
+        select.innerHTML = '';
+        weeks.forEach(week => select.appendChild(new Option(week, week)));
     });
-
-    if (!any) {
-        container.innerHTML = '<span class="context-chip">No filters</span>';
+    if (weeks.length) {
+        contextState.startWeek = weeks.includes(contextState.startWeek) ? contextState.startWeek : weeks[0];
+        contextState.endWeek = weeks.includes(contextState.endWeek) ? contextState.endWeek : weeks[weeks.length - 1];
+        startSelect.value = contextState.startWeek;
+        endSelect.value = contextState.endWeek;
     }
 }
 
-// Apply active filters to the context dataset and re-render
-function applyContextFilters() {
-    // We receive grouped items from the backend (by date). For filtering
-    // flatten entries into `flatItems`, apply filters, then regroup by date
-    if (!contextState.flatItems) return;
-
-    const flat = contextState.flatItems.slice();
-
-    const filteredFlat = flat.filter(it => {
-        // projects
-        const pset = contextState.activeFilters.projects;
-        console.log('Filtering item', it, 'against projects', pset);
-        if (pset && pset.size) {
-            const projId = getFilterValueFromItem(it, 'projects');
-            if (!projId || !pset.has(projId)) return false;
-        }
-
-        // products
-        const prset = contextState.activeFilters.products;
-        if (prset && prset.size) {
-            const stock = getFilterValueFromItem(it, 'products');
-            if (!stock || !prset.has(stock)) return false;
-        }
-
-        // active_ingredients
-        const aiset = contextState.activeFilters.active_ingredients;
-        if (aiset && aiset.size) {
-            const ai = getFilterValueFromItem(it, 'active_ingredients');
-            if (!ai || !aiset.has(ai)) return false;
-        }
-
-        // types
-        const tset = contextState.activeFilters.types;
-        if (tset && tset.size) {
-            const ty = getFilterValueFromItem(it, 'types');
-            if (!ty || !tset.has(ty)) return false;
-        }
-
-        return true;
-    });
-
-    // regroup by _date into array of {date, entries}
-    const grouped = {};
-    filteredFlat.forEach(it => {
-        grouped[it._date] = grouped[it._date] || [];
-        grouped[it._date].push(it);
-    });
-
-    const groupedArr = Object.keys(grouped).sort((a,b) => b.localeCompare(a)).map(d => ({ date: d, entries: grouped[d] }));
-    contextState.filteredItems = groupedArr;
-
-    renderContextStats();
-    renderContextTimeline();
+function selectedProjectIds() {
+    return ($('#project_ids').val() || []).map(value => String(value)).filter(Boolean);
 }
 
-// Render summary stat cards for the context sheet
 function renderContextStats() {
     const container = document.getElementById('context-stats');
     if (!container) return;
-
-    // contextState.filteredItems is grouped by date; compute totals from flattened view
-    const groups = contextState.filteredItems || [];
-    const flat = [];
-    groups.forEach(g => (g.entries || []).forEach(e => flat.push(e)));
-
-    const total = flat.length;
-    const projects = new Set();
-    const products = new Set();
-    flat.forEach(it => {
-        if (it.project_id || it.ProjectId) projects.add(String(it.project_id || it.ProjectId));
-        if (it.stock_id || it.StockId) products.add(String(it.stock_id || it.StockId));
-    });
-
+    const products = new Set(contextState.items.map(item => String(item.stock_id)));
+    const ingredients = new Set(contextState.items.map(item => item.active_ingredient || 'Unspecified'));
+    const total = contextState.items.reduce((sum, item) => sum + Number(item.total_qty || 0), 0);
     container.innerHTML = `
-        <div class="context-stat"><strong>${total}</strong>Records</div>
-        <div class="context-stat"><strong>${projects.size}</strong>Projects</div>
+        <div class="context-stat"><strong>${ingredients.size}</strong>Active ingredients</div>
         <div class="context-stat"><strong>${products.size}</strong>Products</div>
+        <div class="context-stat"><strong>${contextState.items.length}</strong>Weekly records</div>
     `;
 }
 
-// Render the timeline list of context items
 function renderContextTimeline() {
     const container = document.getElementById('context-timeline');
     if (!container) return;
-
-    const groups = contextState.filteredItems || [];
-    if (!groups.length) {
-        container.innerHTML = '<div class="context-empty">No history for the selected filters.</div>';
+    if (contextState.loading) {
+        container.innerHTML = '<div class="context-empty">Loading product history...</div>';
+        return;
+    }
+    if (!contextState.items.length) {
+        container.innerHTML = '<div class="context-empty">No product history for the selected projects and weeks.</div>';
         return;
     }
 
+    const ingredients = new Map();
+    contextState.items.forEach(item => {
+        const ingredientKey = item.active_ingredient || '__unspecified__';
+        if (!ingredients.has(ingredientKey)) {
+            ingredients.set(ingredientKey, {
+                name: item.active_ingredient || 'Unspecified active ingredient',
+                products: new Map()
+            });
+        }
+        const ingredient = ingredients.get(ingredientKey);
+        const productKey = String(item.stock_id);
+        if (!ingredient.products.has(productKey)) {
+            ingredient.products.set(productKey, {
+                    name: item.stock_description || 'Unnamed product',
+                    uom: item.uom || '',
+                    total: 0,
+                    records: []
+                });
+        }
+        const product = ingredient.products.get(productKey);
+        product.total += Number(item.total_qty || 0);
+        product.records.push(item);
+    });
+
     container.innerHTML = '';
+    ingredients.forEach(ingredient => {
+        const section = document.createElement('section');
+        section.className = 'context-ingredient-group';
+        section.innerHTML = `<h4 class="context-ingredient-title">${escapeContextText(ingredient.name)}</h4>`;
 
-    // each group is {date, entries: [...]}
-    groups.forEach(group => {
-        const header = document.createElement('div');
-        header.style.fontWeight = '700';
-        header.style.margin = '8px 0';
-        header.textContent = group.date;
-        container.appendChild(header);
-
-        (group.entries || []).forEach(it => {
-            const project = it.project_name || it.ProjectName || '';
-            const desc = it.stock_description || it.StockDescription || '';
-            const qtyRec = (it.qty_recommended != null) ? it.qty_recommended : (it.QtyRecommended != null ? it.QtyRecommended : '-');
-            const qtyIss = (it.qty_issued != null) ? it.qty_issued : (it.QtyIssued != null ? it.QtyIssued : '-');
-
+        ingredient.products.forEach(product => {
+            product.records.sort((left, right) => String(left.spray_week).localeCompare(String(right.spray_week)));
             const card = document.createElement('details');
             card.className = 'context-card';
-
-            const summary = document.createElement('summary');
-            summary.style.display = 'flex';
-            summary.style.justifyContent = 'space-between';
-            summary.style.alignItems = 'center';
-
-            const left = document.createElement('div');
-            left.style.minWidth = '0';
-            left.innerHTML = `<div class="context-title">${project}</div><div class="context-meta">${desc}</div>`;
-
-            const right = document.createElement('div');
-            right.style.textAlign = 'right';
-            right.innerHTML = `<div class="context-date">${group.date}</div><div class="context-meta">Rec: ${qtyRec} ${it.uom || ''} • Iss: ${qtyIss} ${it.uom || ''}</div>`;
-
-            summary.appendChild(left);
-            summary.appendChild(right);
-            card.appendChild(summary);
-
-            const expanded = document.createElement('div');
-            expanded.className = 'context-expanded';
-            const colLeft = document.createElement('div');
-            colLeft.className = 'context-expanded-col';
-            colLeft.innerHTML = '<strong>Active Ingredient</strong>';
-            const colRight = document.createElement('div');
-            colRight.className = 'context-expanded-col';
-            colRight.innerHTML = '<strong>Details</strong>';
-
-            const prodRow = document.createElement('div');
-            prodRow.className = 'context-line-item';
-            prodRow.innerHTML = `<div class="context-line-name">${it.active_ingredient || ''}</div><div class="context-line-qty">Rec: ${qtyRec} ${it.uom || ''}</div>`;
-            colLeft.appendChild(prodRow);
-
-            const detailsRow = document.createElement('div');
-            detailsRow.className = 'context-line-item';
-            detailsRow.innerHTML = `<div class="context-line-name">Type: ${it.type || it.StkCrpType || ''}</div><div class="context-line-qty">Crop: ${it.crop_description || it.CropDescription || ''}</div>`;
-            colRight.appendChild(detailsRow);
-
-            expanded.appendChild(colLeft);
-            expanded.appendChild(colRight);
-            card.appendChild(expanded);
-
-            container.appendChild(card);
+            card.innerHTML = `
+                <summary>
+                    <div class="context-card-header">
+                        <div class="context-title">${escapeContextText(product.name)}</div>
+                        <div class="context-meta">${product.records.length} week${product.records.length === 1 ? '' : 's'}</div>
+                    </div>
+                    <div class="context-product-total">${product.total.toFixed(2)} ${escapeContextText(product.uom)}</div>
+                </summary>
+                <div class="context-expanded"></div>
+            `;
+            const details = card.querySelector('.context-expanded');
+            product.records.forEach(record => {
+                const row = document.createElement('div');
+                row.className = 'context-line-item';
+                row.innerHTML = `
+                    <div>
+                        <strong>${escapeContextText(record.spray_week)}</strong>
+                        <div class="context-meta">${escapeContextText(record.project_name || `Project ${record.project_id}`)}</div>
+                        <div class="context-meta">${escapeContextText(record.description || 'No description')}</div>
+                    </div>
+                    <div class="context-line-qty">${Number(record.total_qty || 0).toFixed(2)} ${escapeContextText(record.uom || '')}</div>
+                `;
+                details.appendChild(row);
+            });
+            section.appendChild(card);
         });
+        container.appendChild(section);
     });
 }
 
 async function updateContextDataset() {
-    const selectedIds = $('#project_ids').val() || [];
-    const projectId = selectedIds.length === 1 ? selectedIds[0] : null;
-    const option = $(`#project_ids option[value="${projectId}"]`);
-    const warehouseId = option.attr('data-whse-id');
-    // use jQuery to read Select2 value reliably
-    const rangeMonths = $('#filter-range').val() || '6';
-    if (!warehouseId || String(warehouseId).trim() === '') {
-        document.getElementById('context-timeline').innerHTML = '<div class="context-empty">Select a project to view recent spray context.</div>';
-        document.getElementById('context-stats').innerHTML = '';
+    const projectIds = selectedProjectIds();
+    const projectKey = projectIds.join(',');
+    if (!projectIds.length) {
+        contextState.items = [];
+        contextState.availableWeeks = [];
+        contextState.startWeek = null;
+        contextState.endWeek = null;
+        contextState.projectKey = '';
+        populateWeekFilters();
+        renderContextStats();
+        renderContextTimeline();
         return;
     }
-    const params = new URLSearchParams();
-    params.set('warehouse_id', warehouseId);
-    if (rangeMonths !== '0') {
-        const months = parseInt(rangeMonths, 10) || 6;
-        const startDate = new Date();
-        startDate.setMonth(startDate.getMonth() - months);
-        params.set('start_date', startDate.toISOString().slice(0, 10));
+    if (!contextState.expanded) return;
+    if (contextState.projectKey !== projectKey) {
+        contextState.projectKey = projectKey;
+        contextState.availableWeeks = [];
+        contextState.startWeek = null;
+        contextState.endWeek = null;
+        populateWeekFilters();
     }
-    const res = await request(`/agri/spray-recommendation/context?${params.toString()}`);
-    const data = await res.json();
 
-    if (!data.success) {
-        document.getElementById('context-timeline').innerHTML = `<div class="context-empty">Error fetching context: ${data.message || 'Unknown error'}</div>`;
-        document.getElementById('context-stats').innerHTML = '';
-        return;
-    }
-    contextState.items = data.items || [];
-    contextState.lookups = data.lookups || {};
-    contextState.suggestions = data.suggestions || {};
-
-    // flatten entries with date for filtering
-    const flat = [];
-    contextState.items.forEach(g => (g.entries || []).forEach(e => flat.push(Object.assign({ _date: g.date }, e))));
-    contextState.flatItems = flat;
-
-    // initial grouped filtered = backend grouping
-    contextState.filteredItems = contextState.items.slice();
-    renderFilterChipsFromDataset(data.lookups || {});
-    renderContextStats();
+    contextState.loading = true;
     renderContextTimeline();
+    const params = new URLSearchParams({
+        ...(contextState.startWeek ? { start_week: contextState.startWeek } : {}),
+        ...(contextState.endWeek ? { end_week: contextState.endWeek } : {})
+    });
+    projectIds.forEach(projectId => params.append('project_id', projectId));
+
+    try {
+        const response = await request(`/agri/spray-recommendation/context?${params.toString()}`);
+        const data = await response.json();
+        if (!data.success) throw new Error(data.message || 'Unable to fetch product history');
+        contextState.availableWeeks = data.available_weeks || [];
+        populateWeekFilters();
+        contextState.items = data.items || [];
+    } catch (error) {
+        contextState.items = [];
+        const container = document.getElementById('context-timeline');
+        if (container) container.innerHTML = `<div class="context-empty">${escapeContextText(error.message)}</div>`;
+    } finally {
+        contextState.loading = false;
+        renderContextStats();
+        renderContextTimeline();
+    }
 }
+
+contextHandle?.addEventListener('click', () => {
+    contextState.expanded = !contextState.expanded;
+    contextSheet.classList.toggle('open', contextState.expanded);
+    contextHandle.setAttribute('aria-expanded', String(contextState.expanded));
+    if (contextState.expanded) updateContextDataset();
+});
+
+contextClose?.addEventListener('click', () => {
+    contextState.expanded = false;
+    contextSheet.classList.remove('open');
+    contextHandle.setAttribute('aria-expanded', 'false');
+});
+
+populateWeekFilters();
+['context-start-week', 'context-end-week'].forEach(id => {
+    document.getElementById(id)?.addEventListener('change', event => {
+        const value = event.target.value;
+        if (id === 'context-start-week') contextState.startWeek = value;
+        if (id === 'context-end-week') contextState.endWeek = value;
+        if (contextState.startWeek > contextState.endWeek) {
+            if (id === 'context-start-week') contextState.endWeek = contextState.startWeek;
+            else contextState.startWeek = contextState.endWeek;
+            populateWeekFilters(contextState.availableWeeks);
+        }
+        updateContextDataset();
+    });
+});
+
+renderContextStats();
+renderContextTimeline();
