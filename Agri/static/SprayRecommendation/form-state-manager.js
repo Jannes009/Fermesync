@@ -280,6 +280,23 @@ const FormStateManager = (() => {
         });
     }
 
+    function waitForProjectsLoaded(projectIds, timeoutMs = 5000) {
+        return new Promise((resolve) => {
+            const start = Date.now();
+            const timer = setInterval(() => {
+                const availableIds = new Set(
+                    Array.from(document.querySelectorAll('#project_ids option')).map(option => String(option.value))
+                );
+                const projectsReady = projectIds.every(projectId => availableIds.has(String(projectId)));
+
+                if (projectsReady || Date.now() - start > timeoutMs) {
+                    clearInterval(timer);
+                    resolve(projectsReady);
+                }
+            }, 100);
+        });
+    }
+
     /**
      * Restore complex state (projects, products, water configs)
      * This now waits for product data to be loaded before adding product lines.
@@ -380,6 +397,7 @@ const FormStateManager = (() => {
         }
 
         draftWasRestored = true;
+        document.dispatchEvent(new CustomEvent('spray-draft-restored'));
         console.log('[FormStateManager] Complex state restoration complete');
     } finally {
         window.isRestoringDraft = false;
@@ -421,25 +439,15 @@ const FormStateManager = (() => {
         // Restore basic fields immediately
         restoreBasicFields(savedState);
 
-        // Restore complex state after async project/product loading
-        // We wait for updateProjects() to complete by listening for project_ids to populate
-        const projectSelectWatcher = setInterval(() => {
-            const $projectSelect = $('#project_ids');
-            if ($projectSelect.find('option').length > 0) {
-                clearInterval(projectSelectWatcher);
-                restoreComplexState(savedState).then(() => {
-                    setupAutoSave();
-                });
+        // Restore complex state only after every saved project exists as an option.
+        waitForProjectsLoaded(savedState.project_ids || []).then(projectsReady => {
+            if (!projectsReady) {
+                console.warn('[FormStateManager] Saved projects were not available before restore timeout');
             }
-        }, 100);
-
-        // Safety timeout: if projects never load, proceed anyway
-        setTimeout(() => {
-            clearInterval(projectSelectWatcher);
-            if (!draftWasRestored) {
-                setupAutoSave();
-            }
-        }, 5000);
+            return restoreComplexState(savedState);
+        }).then(() => {
+            setupAutoSave();
+        });
     }
 
     /**

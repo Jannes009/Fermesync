@@ -1,9 +1,9 @@
 
-const IS_DEV = true;
+const IS_DEV = false;
 
 const CACHE_NAME = IS_DEV
-  ? 'fermesync-dev-v9'          // never rely on versioning
-  : 'fermesync-v2';          // bump ONLY on prod deploys
+  ? 'fermesync-dev-v1'          // never rely on versioning
+  : 'fermesync-v3';          // bump ONLY on prod deploys
 
 // ------------------
 // Static app shell

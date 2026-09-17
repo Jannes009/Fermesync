@@ -5,12 +5,26 @@ let contextState = {
     startWeek: null,
     endWeek: null,
     projectKey: '',
-    loading: false
+    loading: false,
+    loaded: false,
+    ingredientView: null,
+    hadSelectedProducts: false
 };
 
 const contextSheet = document.getElementById('context-sheet');
 const contextHandle = document.getElementById('context-handle');
 const contextClose = document.getElementById('context-close');
+const contextSearch = document.getElementById('context-search');
+let contextDrag = null;
+let suppressContextClick = false;
+
+function setContextHeight(height) {
+    const minHeight = 52;
+    const maxHeight = Math.min(window.innerHeight * 0.92, 900);
+    const clampedHeight = Math.max(minHeight, Math.min(maxHeight, height));
+    contextSheet.style.height = `${clampedHeight}px`;
+    return clampedHeight;
+}
 
 function escapeContextText(value) {
     return String(value ?? '').replace(/[&<>'"]/g, character => ({
@@ -39,17 +53,29 @@ function selectedProjectIds() {
     return ($('#project_ids').val() || []).map(value => String(value)).filter(Boolean);
 }
 
-function renderContextStats() {
-    const container = document.getElementById('context-stats');
-    if (!container) return;
-    const products = new Set(contextState.items.map(item => String(item.stock_id)));
-    const ingredients = new Set(contextState.items.map(item => item.active_ingredient || 'Unspecified'));
-    const total = contextState.items.reduce((sum, item) => sum + Number(item.total_qty || 0), 0);
-    container.innerHTML = `
-        <div class="context-stat"><strong>${ingredients.size}</strong>Active ingredients</div>
-        <div class="context-stat"><strong>${products.size}</strong>Products</div>
-        <div class="context-stat"><strong>${contextState.items.length}</strong>Weekly records</div>
-    `;
+function selectedActiveIngredients() {
+    const ingredients = new Set();
+    document.querySelectorAll('.product-select').forEach(select => {
+        const option = select.selectedOptions[0];
+        if (!option || !select.value) return;
+        const ingredient = option.textContent.split(' - ', 1)[0].trim();
+        if (ingredient) ingredients.add(ingredient);
+    });
+    return ingredients;
+}
+
+function syncIngredientViewDefault() {
+    const hasSelectedProducts = selectedActiveIngredients().size > 0;
+    if (contextState.ingredientView === null || contextState.hadSelectedProducts !== hasSelectedProducts) {
+        contextState.ingredientView = hasSelectedProducts ? 'selected' : 'all';
+        const radio = document.querySelector(`input[name="context-ingredient-view"][value="${contextState.ingredientView}"]`);
+        if (radio) radio.checked = true;
+    }
+    contextState.hadSelectedProducts = hasSelectedProducts;
+}
+
+function contextSearchTerm() {
+    return String(contextSearch?.value || '').trim().toLocaleLowerCase();
 }
 
 function renderContextTimeline() {
@@ -64,12 +90,20 @@ function renderContextTimeline() {
         return;
     }
 
+    syncIngredientViewDefault();
+    const selectedIngredients = selectedActiveIngredients();
+    const showSelectedOnly = contextState.ingredientView === 'selected';
+    const searchTerm = contextSearchTerm();
     const ingredients = new Map();
     contextState.items.forEach(item => {
         const ingredientKey = item.active_ingredient || '__unspecified__';
+        if (showSelectedOnly && !selectedIngredients.has(item.active_ingredient || '')) return;
+        const ingredientName = item.active_ingredient || 'Unspecified active ingredient';
+        const productName = item.stock_description || 'Unnamed product';
+        if (searchTerm && !`${ingredientName} ${productName}`.toLocaleLowerCase().includes(searchTerm)) return;
         if (!ingredients.has(ingredientKey)) {
             ingredients.set(ingredientKey, {
-                name: item.active_ingredient || 'Unspecified active ingredient',
+                name: ingredientName,
                 products: new Map()
             });
         }
@@ -77,7 +111,7 @@ function renderContextTimeline() {
         const productKey = String(item.stock_id);
         if (!ingredient.products.has(productKey)) {
             ingredient.products.set(productKey, {
-                    name: item.stock_description || 'Unnamed product',
+                    name: productName,
                     uom: item.uom || '',
                     total: 0,
                     records: []
@@ -89,6 +123,14 @@ function renderContextTimeline() {
     });
 
     container.innerHTML = '';
+    if (!ingredients.size) {
+        container.innerHTML = searchTerm
+            ? '<div class="context-empty">No history matches your search.</div>'
+            : showSelectedOnly
+                ? '<div class="context-empty">Select a product to view its active ingredient history.</div>'
+                : '<div class="context-empty">No product history for the selected projects and weeks.</div>';
+        return;
+    }
     ingredients.forEach(ingredient => {
         const section = document.createElement('section');
         section.className = 'context-ingredient-group';
@@ -131,24 +173,30 @@ function renderContextTimeline() {
 async function updateContextDataset() {
     const projectIds = selectedProjectIds();
     const projectKey = projectIds.join(',');
+    console.log(projectIds, projectKey, contextState.projectKey, contextState.loaded);
     if (!projectIds.length) {
         contextState.items = [];
         contextState.availableWeeks = [];
         contextState.startWeek = null;
         contextState.endWeek = null;
         contextState.projectKey = '';
+        contextState.loaded = false;
         populateWeekFilters();
-        renderContextStats();
         renderContextTimeline();
         return;
     }
     if (!contextState.expanded) return;
     if (contextState.projectKey !== projectKey) {
         contextState.projectKey = projectKey;
+        contextState.loaded = false;
         contextState.availableWeeks = [];
         contextState.startWeek = null;
         contextState.endWeek = null;
         populateWeekFilters();
+    }
+    if (contextState.loaded) {
+        renderContextTimeline();
+        return;
     }
 
     contextState.loading = true;
@@ -166,28 +214,72 @@ async function updateContextDataset() {
         contextState.availableWeeks = data.available_weeks || [];
         populateWeekFilters();
         contextState.items = data.items || [];
+        contextState.loaded = true;
     } catch (error) {
         contextState.items = [];
+        contextState.loaded = false;
         const container = document.getElementById('context-timeline');
         if (container) container.innerHTML = `<div class="context-empty">${escapeContextText(error.message)}</div>`;
     } finally {
         contextState.loading = false;
-        renderContextStats();
         renderContextTimeline();
     }
 }
 
 contextHandle?.addEventListener('click', () => {
+    if (suppressContextClick) {
+        suppressContextClick = false;
+        return;
+    }
+    contextSheet.style.height = '';
     contextState.expanded = !contextState.expanded;
     contextSheet.classList.toggle('open', contextState.expanded);
     contextHandle.setAttribute('aria-expanded', String(contextState.expanded));
     if (contextState.expanded) updateContextDataset();
 });
 
+contextHandle?.addEventListener('pointerdown', event => {
+    contextDrag = {
+        pointerId: event.pointerId,
+        startY: event.clientY,
+        startHeight: contextSheet.getBoundingClientRect().height,
+        moved: false
+    };
+    contextSheet.classList.add('dragging');
+    contextHandle.setPointerCapture?.(event.pointerId);
+});
+
+contextHandle?.addEventListener('pointermove', event => {
+    if (!contextDrag || event.pointerId !== contextDrag.pointerId) return;
+    const delta = event.clientY - contextDrag.startY;
+    if (Math.abs(delta) < 4) return;
+    contextDrag.moved = true;
+    setContextHeight(contextDrag.startHeight - delta);
+});
+
+function finishContextDrag() {
+    if (!contextDrag) return;
+    if (contextDrag.moved) {
+        const height = contextSheet.getBoundingClientRect().height;
+        const open = height > 52;
+        contextState.expanded = open;
+        contextSheet.classList.toggle('open', open);
+        contextHandle.setAttribute('aria-expanded', String(open));
+        suppressContextClick = true;
+    }
+    contextSheet.classList.remove('dragging');
+    contextDrag = null;
+}
+
+contextHandle?.addEventListener('pointerup', finishContextDrag);
+contextHandle?.addEventListener('pointercancel', finishContextDrag);
+
 contextClose?.addEventListener('click', () => {
     contextState.expanded = false;
     contextSheet.classList.remove('open');
+    contextSheet.classList.remove('dragging');
     contextHandle.setAttribute('aria-expanded', 'false');
+    contextSheet.style.height = '';
 });
 
 populateWeekFilters();
@@ -201,9 +293,34 @@ populateWeekFilters();
             else contextState.startWeek = contextState.endWeek;
             populateWeekFilters(contextState.availableWeeks);
         }
+        contextState.loaded = false;
         updateContextDataset();
     });
 });
 
-renderContextStats();
+document.querySelectorAll('input[name="context-ingredient-view"]').forEach(radio => {
+    radio.addEventListener('change', event => {
+        contextState.ingredientView = event.target.value;
+        renderContextTimeline();
+    });
+});
+
+contextSearch?.addEventListener('input', renderContextTimeline);
+
+document.addEventListener('change', event => {
+    if (event.target.matches('.product-select')) {
+        syncIngredientViewDefault();
+        renderContextTimeline();
+    }
+});
+
+document.addEventListener('spray-draft-restored', () => {
+    contextState.projectKey = '';
+    contextState.loaded = false;
+    contextState.availableWeeks = [];
+    contextState.startWeek = null;
+    contextState.endWeek = null;
+    updateContextDataset();
+});
+
 renderContextTimeline();
