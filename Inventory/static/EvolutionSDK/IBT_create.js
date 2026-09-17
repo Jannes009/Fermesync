@@ -2,7 +2,7 @@ let ibtLines = [];
 let lineIndex = 0;  
 let products = [];
 let selectedProducts = new Set();
-let currentUnitMode = "purchasing";
+let currentUnitMode = "stocking";
 let editIbtId = null;
 let currentIbtStatus = null;
 let ibtWarehousesRequest = Promise.resolve();
@@ -629,6 +629,8 @@ document.addEventListener('DOMContentLoaded', async () => {
         document.getElementById('ibt-lines-container').innerHTML = '';
         selectedProducts = new Set();
         ibtLines = [];
+        currentUnitMode = "stocking";
+        syncUnitModeButtons();
 
         // Add a line for each prefill line
         for (const ln of (prefill.lines || [])) {
@@ -648,15 +650,16 @@ document.addEventListener('DOMContentLoaded', async () => {
                 console.log(`Prefilling line ${thisIndex} with product ${selectVal} and qty ${ln.qty || ln.Qty || ln.units_suggested || 0}`);
                 // Manually update UOM labels since select2:select event may not fire during prefill
                 const selected = $(`#${selectId}`).find(':selected').data();
-                const uomCode = selected.purchasing_unit_code || '';
                 const stockUnitCode = selected.stocking_unit_code || '';
                 thisLineDiv.dataset.conversionFactor = Number(selected.conversion_factor) || getLineConversionFactor(thisLineDiv);
-                thisLineDiv.querySelector('.stock-unit').textContent = uomCode;
+                thisLineDiv.querySelector('.stock-unit').textContent = stockUnitCode;
                 thisLineDiv.querySelector('.stock-unit-code').textContent = stockUnitCode;
 
                 const qtyInput = thisLineDiv.querySelector('.qty-input');
                 if (qtyInput) {
-                    qtyInput.value = String(ln.qty || ln.Qty || ln.units_suggested || 0);
+                    const purchasingQty = Number(ln.qty || ln.Qty || ln.units_suggested || 0);
+                    const conversionFactor = Number(selected.conversion_factor) || 1;
+                    qtyInput.value = String(roundTo2(purchasingQty * conversionFactor));
                     updateStockQtyDisplay(thisLineDiv);
                 }
             }
