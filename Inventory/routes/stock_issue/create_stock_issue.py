@@ -68,11 +68,62 @@ def get_next_document_number(cursor, document_type):
     return getattr(row, 'DocumentNumber', row[0])
 
 
+def validate_stock_issue_costs(cursor, lines_payload):
+    product_ids = []
+    for line in lines_payload or []:
+        product_id = line.get("product_link")
+        if product_id is None or str(product_id).strip() == "":
+            raise ValueError("Every stock issue line must have a product.")
+        try:
+            product_id = int(product_id)
+        except (TypeError, ValueError):
+            raise ValueError(f"Invalid product link: {product_id}")
+        if product_id not in product_ids:
+            product_ids.append(product_id)
+
+    if not product_ids:
+        raise ValueError("At least one stock issue line is required.")
+
+    placeholders = ",".join("?" for _ in product_ids)
+    cursor.execute(f"""
+        SELECT
+            SI.StockLink,
+            SI.StockDescription,
+            SC.AverageCost
+        FROM cmn._uvStockItems SI
+        LEFT JOIN cmn._uvStockCosts SC
+            ON SC.StockID = SI.StockLink
+        WHERE SI.StockLink IN ({placeholders})
+    """, tuple(product_ids))
+
+    costs_by_product = {}
+    for row in cursor.fetchall():
+        stock_link = getattr(row, "StockLink", row[0])
+        description = getattr(row, "StockDescription", row[1])
+        average_cost = getattr(row, "AverageCost", row[2])
+        costs_by_product[int(stock_link)] = (description, average_cost)
+
+    invalid_products = []
+    for product_id in product_ids:
+        description, average_cost = costs_by_product.get(product_id, (None, None))
+        if average_cost is None or float(average_cost) <= 0:
+            invalid_products.append(description or str(product_id))
+
+    if invalid_products:
+        product_list = ", ".join(invalid_products)
+        raise ValueError(
+            "Stock issue blocked: every product must have an average cost greater than 0. "
+            f"Update the cost and retry: {product_list}"
+        )
+
+
 def generate_stock_issue_for_projects(project_ids, warehouse_id, lines_payload, order_final, issue_date=None):
     conn = create_db_connection()
     cursor = conn.cursor()
 
     try:
+        validate_stock_issue_costs(cursor, lines_payload)
+
         # =========================
         # Create issue header
         # =========================
@@ -237,6 +288,8 @@ def generate_stock_issue_for_spray(execution_id, lines_payload, order_final, iss
             WHERE EXE.IdSprExec = ?
         """, (execution_id,))
         warehouse_id = cursor.fetchone()[0]
+
+        validate_stock_issue_costs(cursor, lines_payload)
 
         # =====================================
         # Create issue header
