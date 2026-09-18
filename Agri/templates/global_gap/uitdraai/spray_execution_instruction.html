@@ -340,7 +340,7 @@
                 <td colspan="2" class="mix-name">
                     💧 {{ mix_key.split('-')[-1] if '-' in mix_key else mix_key }} · {{ mix.water }} L water · {{ mix.ha }} ha
                     {% if mix.ha and mix.ha > 0 %}
-                        · {{ (mix.water / mix.ha)|round(1) }} L/ha
+                        · {{ (mix.water / mix.ha)|round(2) }} L/ha
                     {% endif %}
                 </td>
              </tr>
@@ -354,7 +354,7 @@
                     <span style="font-size:0.65rem; background:#f1f5f9; padding:2px 6px; border-radius:20px; margin-left:8px;">PHI: {{ line.withholding_period }}</span>
                     {% endif %}
                 </td>
-                <td class="qty">{{ "%.1f"|format(line.qty) }} {{ line.uom }}</td>
+                <td class="qty">{{ "%.2f"|format(line.qty) }} {{ line.uom }}</td>
             </tr>
             {% endfor %}
         </table>
@@ -365,7 +365,7 @@
         <div style="padding: 0.6rem 1.2rem 1rem 1.2rem; background:#fefefe; border-top:1px solid #eef2f8; font-size:0.7rem; color:#456e8c;">
             <span style="font-weight:600;">📍 Projects:</span> 
             {% for proj in spray.projects[:3] %}
-                {{ proj.code }} ({{ "%.1f"|format(proj.ha) }} ha) {% if not loop.last %}|{% endif %}
+                {{ proj.code }} ({{ "%.2f"|format(proj.ha) }} ha) {% if not loop.last %}|{% endif %}
             {% endfor %}
             {% if spray.projects|length > 3 %} +{{ spray.projects|length - 3 }} more{% endif %}
         </div>
@@ -393,7 +393,7 @@
                 <td><strong>{{ req.description }}</strong> 
                     {% if req.ingredient %}<div style="font-size:0.6rem; color:#4e6f8c;">{{ req.ingredient }}</div>{% endif %}
                 </td>
-                <td>{{ "%.1f"|format(req.min_qty) }} {{ req.uom }}</td>
+                <td>{{ "%.2f"|format(req.min_qty) }} {{ req.uom }}</td>
                 <td class="input-cell"></td>
                 <td class="formula">−</td>
                 <td class="input-cell"></td>
