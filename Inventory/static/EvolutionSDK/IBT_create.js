@@ -316,6 +316,9 @@ document.addEventListener("DOMContentLoaded", async () => {
             Swal.fire("Invalid Warehouses", "The source and destination warehouses must be different.", "warning");
             return;
         }
+        if (!(await confirmWholePurchasingQuantities())) {
+            return;
+        }
         const payload = {
             from_warehouse_id: fromWarehouseId,
             to_warehouse_id: toWarehouseId,
@@ -359,6 +362,9 @@ document.addEventListener("DOMContentLoaded", async () => {
 
     const transitionExistingIbt = async (action) => {
         if (!editIbtId) return;
+        if (!(await confirmWholePurchasingQuantities())) {
+            return;
+        }
         const body = action === "reject"
             ? { reason: window.prompt("Rejection reason") || "" }
             : undefined;
@@ -425,6 +431,37 @@ function showWorkflowBusy(title = "Working...") {
         allowEscapeKey: false,
         didOpen: () => Swal.showLoading()
     });
+}
+
+async function confirmWholePurchasingQuantities() {
+    const fractionalLines = ibtLines.filter(line => {
+        const purchasingQty = line.selected_unit_mode === "stocking"
+            ? Number(line.stock_qty ?? line.qty) / (Number(line.conversion_factor) || 1)
+            : Number(line.qty);
+        return Math.abs(purchasingQty - Math.round(purchasingQty)) > 0.000001;
+    });
+
+    if (!fractionalLines.length) return true;
+
+    const details = fractionalLines.map(line => {
+        const purchasingQty = line.selected_unit_mode === "stocking"
+            ? Number(line.stock_qty ?? line.qty) / (Number(line.conversion_factor) || 1)
+            : Number(line.qty);
+        const productName = line.product_desc || (line.productText || "").split(" (In:")[0];
+        return `<li>${productName}: ${purchasingQty.toLocaleString(undefined, { maximumFractionDigits: 4 })} ${line.uom_code || "purchasing units"}</li>`;
+    }).join("");
+
+    const result = await Swal.fire({
+        icon: "warning",
+        title: "Fractional purchasing quantities",
+        html: `<p>These quantities are not whole purchasing units:</p><ul style="text-align:left; margin:0; padding-left:1.2rem;">${details}</ul><p>Half a purchasing unit may mean sending part of a can or bag. Continue anyway?</p>`,
+        showCancelButton: true,
+        confirmButtonText: "Continue",
+        cancelButtonText: "Go back",
+        confirmButtonColor: "#d97706"
+    });
+
+    return result.isConfirmed;
 }
 
 function configureExistingActions() {

@@ -346,7 +346,7 @@ body {
 
 @media (max-width: 720px) {
     .toolbar {
-        flex-direction: column;
+        flex-direction: row;
         align-items: stretch;
     }
 
@@ -372,14 +372,23 @@ body {
 
     .table tbody tr {
         display: block;
-        border-bottom: 1px solid var(--border-color);
-        padding: .6rem 0;
+        margin: .75rem 0;
+        padding: .8rem .9rem;
+        border: 1px solid var(--border-color);
+        border-radius: 10px;
+        background: var(--container-bg);
+        box-shadow: 0 2px 8px rgba(0,0,0,.05);
     }
 
     .table td {
-        display: block;
+        display: grid;
+        grid-template-columns: minmax(7rem, 40%) minmax(0, 1fr);
+        align-items: center;
+        gap: .65rem;
         border: none;
-        padding: .2rem 0;
+        padding: .45rem 0;
+        text-align: left !important;
+        min-width: 0;
     }
 
     .table td::before {
@@ -387,7 +396,61 @@ body {
         font-weight: 700;
         color: var(--secondary-text);
         display: inline-block;
-        width: 40%;
+        width: auto;
+        font-size: .78rem;
+    }
+
+    .overview-table tbody tr {
+        cursor: pointer;
+    }
+
+    .overview-table td:first-child {
+        padding-top: .1rem;
+    }
+
+    .overview-table td:first-child strong {
+        font-size: 1rem;
+    }
+
+    .overview-table .overview-actions {
+        display: flex;
+        justify-content: flex-start;
+        align-items: center;
+        flex-wrap: wrap;
+        gap: .5rem;
+        padding-top: .7rem;
+        border-top: 1px solid var(--border-color);
+        margin-top: .35rem;
+    }
+
+    .overview-table .overview-actions::before {
+        content: "Actions";
+        flex: 0 0 100%;
+        color: var(--secondary-text);
+        font-size: .78rem;
+        font-weight: 700;
+    }
+
+    .history-table td {
+        grid-template-columns: minmax(6.5rem, 38%) minmax(0, 1fr);
+    }
+
+    .history-table td:nth-child(1)::before { content: "Date"; }
+    .history-table td:nth-child(2)::before { content: "User"; }
+    .history-table td:nth-child(3)::before { content: "Products"; }
+    .history-table td:nth-child(4)::before { content: "Avg variance"; }
+
+    .details-meta {
+        grid-template-columns: 1fr;
+        gap: .55rem;
+    }
+
+    .details-meta div {
+        display: grid;
+        grid-template-columns: minmax(7rem, 40%) minmax(0, 1fr);
+        align-items: center;
+        gap: .65rem;
+    }
     }
 }
 
