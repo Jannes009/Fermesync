@@ -30,11 +30,15 @@
   <img class="print-slip-uitdraai" src="{{ url_for('static', filename='icons/UitdraaiLogo.jpeg') }}" alt="Uitdraai">
 </div>
 <div class="detail-shell"><div class="detail-head"><h1 id="title">IBT Detail</h1><div class="detail-head-actions"><button id="print-btn" class="detail-btn" type="button" hidden><i class="fas fa-print" aria-hidden="true"></i> Print picking slip</button><a class="detail-btn secondary" href="/inventory/SDK/IBT">Back</a></div></div><div id="message" class="detail-panel muted">Loading...</div><div id="detail" hidden><div class="detail-panel"><div class="detail-grid"><div><span class="detail-label">From</span><span id="from" class="detail-value"></span></div><div><span class="detail-label">To</span><span id="to" class="detail-value"></span></div><div><span class="detail-label">Status</span><span id="status" class="detail-value"></span></div><div><span class="detail-label">Requested</span><span id="requested" class="detail-value"></span></div></div></div><div class="detail-panel"><h2>Products</h2><div id="lines"></div></div><div id="history-panel" class="detail-panel"><h2>History</h2><div id="history" class="detail-grid"></div></div><div id="actions" class="detail-actions"></div></div></div>
-<script>window.IBT_PERMISSIONS={{ permissions|tojson }};</script>
+<script>
+window.IBT_PERMISSIONS={{ permissions|tojson }};
+window.IBT_WAREHOUSES={{ current_user.warehouses|tojson }};
+</script>
 <script>
 (() => {
   const id = new URLSearchParams(location.search).get('ibt_no') || new URLSearchParams(location.search).get('ibt_id');
   const permissions = window.IBT_PERMISSIONS || [];
+  const userWarehouses = new Set((window.IBT_WAREHOUSES || []).map(value => String(value)));
   const allowed = name => permissions.includes(`IBT_${name}`);
   const message = document.getElementById('message');
   const esc = value => String(value ?? '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
@@ -45,6 +49,8 @@
     const data = await response.json();
     if (!response.ok || !data.success) throw new Error(data.message || 'Unable to load IBT.');
     const ibt = data.ibt;
+    const ownsSource = userWarehouses.has(String(ibt.warehouse_from.id));
+    const ownsDestination = userWarehouses.has(String(ibt.warehouse_to.id));
     document.getElementById('title').textContent = `IBT ${ibt.number}`;
     document.getElementById('print-slip-number').textContent = `IBT ${ibt.number}`;
     document.getElementById('from').textContent = ibt.warehouse_from.name;
@@ -58,12 +64,12 @@
     document.getElementById('history').innerHTML = `<div><span class="detail-label">Requested</span>${date(ibt.request_timestamp)}<br>${esc(ibt.request_user || '—')}</div><div><span class="detail-label">Approved</span>${date(ibt.approval_timestamp)}<br>${esc(ibt.approval_user || '—')}</div><div><span class="detail-label">Qty</span>${date(ibt.dispatch_timestamp)}<br>${esc(ibt.dispatch_user || '—')}</div><div><span class="detail-label">Received</span>${date(ibt.receive_timestamp)}<br>${esc(ibt.receive_user || '—')}</div><div><span class="detail-label">Rejected</span>${date(ibt.rejection_timestamp)}<br>${esc(ibt.rejection_user || '—')}</div><div><span class="detail-label">Reason</span>${esc(ibt.rejection_reason || '—')}</div>`;
     const actions = [];
     const reviewUrl = `/inventory/SDK/IBT_issue?ibt_no=${encodeURIComponent(ibt.number)}&step=3`;
-    if ((ibt.status === 'REQUESTED' || ibt.status === 'REJECTED') && allowed('REQUEST')) actions.push(['Edit', reviewUrl]);
+    if ((ibt.status === 'REQUESTED' || ibt.status === 'REJECTED') && allowed('REQUEST') && ownsSource) actions.push(['Edit', reviewUrl]);
     if (ibt.status === 'REQUESTED' && allowed('APPROVE')) actions.push(['Approve', reviewUrl]);
     if (ibt.status === 'REQUESTED' && allowed('REJECT')) actions.push(['Reject', reviewUrl]);
-    if (ibt.status === 'APPROVED' && allowed('APPROVE')) actions.push(['Edit', reviewUrl]);
-    if (ibt.status === 'APPROVED' && allowed('ISSUE')) actions.push(['Issue stock', reviewUrl]);
-    if (ibt.status === 'ISSUED' && allowed('RECEIVE')) actions.push(['Receive', `/inventory/SDK/IBT_receive?ibt_no=${encodeURIComponent(ibt.number)}`]);
+    if (ibt.status === 'APPROVED' && allowed('APPROVE') && ownsSource) actions.push(['Edit', reviewUrl]);
+    if (ibt.status === 'APPROVED' && allowed('ISSUE') && ownsSource) actions.push(['Issue stock', reviewUrl]);
+    if (ibt.status === 'ISSUED' && allowed('RECEIVE') && ownsDestination) actions.push(['Receive', `/inventory/SDK/IBT_receive?ibt_no=${encodeURIComponent(ibt.number)}`]);
     document.getElementById('actions').innerHTML = actions.length ? `<button type="button" class="detail-btn" data-href="${actions[0][1]}">${actions.map(([label]) => esc(label)).join(' / ')}</button>` : '';
     document.getElementById('actions').innerHTML = actions.length ? `<button type="button" class="detail-btn" data-href="${actions[0][1]}">${actions.map(([label]) => esc(label)).join(' / ')}</button>` : '';
     const actionButton = document.querySelector('#actions [data-href]');

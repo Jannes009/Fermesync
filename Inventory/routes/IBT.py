@@ -14,33 +14,12 @@ def IBT_issue():
     _require_requisition_access()
     return render_template('EvolutionSDK/IBT_create.html')
 
-
-@inventory_bp.route("/SDK/fetch_all_warehouses") 
-@login_required
-def fetch_all_warehouses():
-    _require_ibt_visibility()
-    try:
-        conn = create_db_connection() 
-        cursor = conn.cursor() 
-        query = f""" 
-        Select WhseLink, WhseCode, WhseDescription
-        from cmn.[_uvWarehouses] 
-        """ 
-        cursor.execute(query) 
-        warehouses = [ 
-            {"id": row[0], "code": row[1], "name": row[2]} 
-            for row in cursor.fetchall() ] 
-        conn.close() 
-        return jsonify({"success": True, "warehouses": warehouses})
-    except Exception as e:
-        print("Error fetching warehouses:", str(e))
-        return jsonify({"success": False, "message": str(e)}), 500
-
 @inventory_bp.route("/fetch_whses_with_same_type", methods=["GET"])
 @login_required
 def fetch_whses_with_same_type():
     _require_requisition_access()
     whse_id = request.args.get("whse_id")
+    _require_user_warehouse(whse_id)
     try:
         conn = create_db_connection()
         cursor = conn.cursor()
@@ -70,6 +49,7 @@ def fetch_products_in_both_whses():
     _require_requisition_access()
     whse_from_id = request.json.get("whse_from_id")
     whse_to_id = request.json.get("whse_to_id")
+    _require_user_warehouse(whse_from_id)
     try:
         print(whse_from_id, whse_to_id)
         conn = create_db_connection()
@@ -139,38 +119,25 @@ def _require_requisition_access():
 
 
 def _user_warehouse_ids():
-    return tuple(current_user.warehouses or [])
+    return [warehouse_id for warehouse_id in (current_user.warehouses or []) if warehouse_id is not None]
 
 
-def _require_user_source_warehouse(warehouse_id):
-    if warehouse_id not in _user_warehouse_ids():
+def _require_user_warehouse(warehouse_id):
+    if str(warehouse_id) not in {str(value) for value in _user_warehouse_ids()}:
         abort(403)
 
 
-def _require_user_ibt_access(ibt_no, destination_only=False):
-    warehouse_ids = _user_warehouse_ids()
-    if not warehouse_ids:
-        abort(403)
-
-    placeholders = ','.join('?' for _ in warehouse_ids)
-    endpoint_column = 'ToWhseLink' if destination_only else 'FromWhseLink OR ToWhseLink'
-    conn = create_db_connection()
-    cursor = conn.cursor()
-    try:
-        cursor.execute(f"""
-            SELECT TOP 1 1
-            FROM stk._uvIBTSummary
-            WHERE cIBTNumber = ?
-              AND ({endpoint_column}) IN ({placeholders})
-        """, (ibt_no, *warehouse_ids))
-        if not cursor.fetchone():
-            abort(403)
-    finally:
-        close_db_connection(conn, cursor)
+def _user_has_warehouse(warehouse_id):
+    return str(warehouse_id) in {str(value) for value in _user_warehouse_ids()}
 
 
-def _evolution_workflow_status(status_id):
-    return 'ISSUED' if int(status_id or 0) == 1 else 'APPROVED'
+def _get_ibt_route(cursor, ibt_no):
+    cursor.execute("""
+        SELECT TOP 1 FromWhseLink, ToWhseLink
+        FROM stk._uvIBTSummary
+        WHERE cIBTNumber = ?
+    """, (ibt_no,))
+    return cursor.fetchone()
 
 
 def _ensure_local_ibt(cursor, ibt_no):
@@ -208,25 +175,33 @@ def ibt_detail_page():
 @login_required
 def list_ibts():
     _require_ibt_visibility()
+    warehouses = _user_warehouse_ids()
+    if not warehouses:
+        return jsonify({"success": True, "ibts": []})
     conn = create_db_connection()
     cursor = conn.cursor()
     try:
         conn.commit()
-        cursor.execute("""
+        placeholders = ','.join(['?'] * len(warehouses))
+        cursor.execute(f"""
             SELECT H.IdIBT, S.cIBTNumber IBTNo,
                    COALESCE(H.IBTWorkflowStatus,
                        CASE WHEN MAX(S.StatusID) = 1 THEN 'ISSUED' ELSE 'APPROVED' END) IBTWorkflowStatus,
                      MIN(S.FromWhseName) FromWhseName,
                      MIN(S.ToWhseName) ToWhseName,
+                     MIN(S.FromWhseLink) FromWhseLink,
+                     MIN(S.ToWhseLink) ToWhseLink,
                      COUNT(DISTINCT S.IDWhseIBTLines) LineCount,
                      H.IBTRequestTimeStamp
               FROM stk._uvIBTSummary S
                   LEFT JOIN stk.IBT H on H.IBTNo = S.cIBTNumber
+                  Where S.FromWhseLink in ({placeholders}) or S.ToWhseLink in ({placeholders})
               GROUP BY H.IdIBT, S.cIBTNumber, H.IBTWorkflowStatus, H.IBTRequestTimeStamp
             ORDER BY H.IBTRequestTimeStamp DESC, S.cIBTNumber DESC
-        """)
+        """, warehouses + warehouses)
         rows = [{"id": row.IdIBT, "number": row.IBTNo, "status": row.IBTWorkflowStatus,
-                "warehouse_from": row.FromWhseName, "warehouse_to": row.ToWhseName,
+            "warehouse_from": row.FromWhseName, "warehouse_to": row.ToWhseName,
+            "warehouse_from_id": row.FromWhseLink, "warehouse_to_id": row.ToWhseLink,
                 "line_count": row.LineCount,
                 "request_timestamp": row.IBTRequestTimeStamp}
                 for row in cursor.fetchall()]
@@ -245,6 +220,9 @@ def get_ibt_detail(ibt_no):
     conn = create_db_connection()
     cursor = conn.cursor()
     try:
+        route = _get_ibt_route(cursor, ibt_no)
+        if not route or not (_user_has_warehouse(route.FromWhseLink) or _user_has_warehouse(route.ToWhseLink)):
+            return jsonify({"success": False, "message": "IBT not found."}), 404
         cursor.execute("""
             SELECT H.IdIBT, S.cIBTNumber IBTNo,
                 COALESCE(H.IBTWorkflowStatus,
@@ -314,10 +292,14 @@ def get_ibt_detail(ibt_no):
 @login_required
 def approved_ibts():
     _require_permission('IBT_ISSUE')
+    warehouses = _user_warehouse_ids()
+    if not warehouses:
+        return jsonify({"success": True, "ibts": []})
     conn = create_db_connection()
     cursor = conn.cursor()
     try:
-        cursor.execute("""
+        placeholders = ','.join(['?'] * len(warehouses))
+        cursor.execute(f"""
             SELECT H.IdIBT, H.IBTNo, H.IBTWorkflowStatus,
                    H.IBTRequestUserId, H.IBTRequestTimeStamp,
                    H.IBTApprovalUserId, H.IBTApprovalTimeStamp,
@@ -328,8 +310,11 @@ def approved_ibts():
                      MIN(S.FromWhseName) FromWhseName,
                      MIN(S.ToWhseName) ToWhseName,
                      COUNT(DISTINCT S.IDWhseIBTLines) + COUNT(DISTINCT S.IDWhseIBTLines) LineCount
+                     ,MIN(S.FromWhseLink) FromWhseLink
+                     ,MIN(S.ToWhseLink) ToWhseLink
             FROM stk.IBT H
                  LEFT JOIN stk._uvIBTSummary S on S.cIBTNumber = H.IBTNo
+              WHERE S.FromWhseLink IN ({placeholders})
             GROUP BY H.IdIBT, H.IBTNo, H.IBTWorkflowStatus,
                      H.IBTRequestUserId, H.IBTRequestTimeStamp,
                      H.IBTApprovalUserId, H.IBTApprovalTimeStamp,
@@ -338,10 +323,11 @@ def approved_ibts():
                      H.IBTDispatchTimeStamp, H.IBTReceiveUserId,
                      H.IBTReceiveTimeStamp
             ORDER BY H.IBTRequestTimeStamp DESC
-        """)
+        """, warehouses)
         return jsonify({"success": True, "ibts": [
             {"id": row.IdIBT, "number": row.IBTNo, "warehouse_from": row.FromWhseName,
-             "warehouse_to": row.ToWhseName, "line_count": row.LineCount}
+             "warehouse_to": row.ToWhseName, "warehouse_from_id": row.FromWhseLink,
+             "warehouse_to_id": row.ToWhseLink, "line_count": row.LineCount}
             for row in cursor.fetchall()
         ]})
     finally:
@@ -370,6 +356,7 @@ def create_ibt_request():
         return jsonify({"success": False, "message": "Both source and destination warehouses must be specified."}), 400
     if not lines:
         return jsonify({"success": False, "message": "At least one product line must be specified."}), 400
+    _require_user_warehouse(from_id)
     try:
         print(from_id, to_id, lines)
         with EvolutionConnection():
@@ -430,6 +417,7 @@ def update_ibt_request(ibt_no):
         return jsonify({"success": False, "message": "Both source and destination warehouses are required."}), 400
     if str(from_id) == str(to_id):
         return jsonify({"success": False, "message": "Source and destination warehouses must be different."}), 400
+    _require_user_warehouse(from_id)
     try:
         conn = create_db_connection()
         cursor = conn.cursor()
@@ -502,6 +490,12 @@ def transition_ibt(ibt_no, action):
             _ensure_local_ibt(cursor, ibt_no)
             cursor.execute("SELECT IBTNo, IBTWorkflowStatus FROM [stk].[IBT] WHERE IBTNo=?", (ibt_no,))
             row = cursor.fetchone()
+        route = _get_ibt_route(cursor, ibt_no)
+        if not route:
+            return jsonify({"success": False, "message": "IBT not found."}), 404
+        required_warehouse = route.FromWhseLink if action == "issue" else route.ToWhseLink if action == "receive" else None
+        if required_warehouse is not None and not _user_has_warehouse(required_warehouse):
+            return jsonify({"success": False, "message": "You are not authorized for this IBT warehouse."}), 403
         expected = {"approve": "REQUESTED", "reject": "REQUESTED", "issue": "APPROVED", "receive": "ISSUED"}[action]
         target = {"approve": "APPROVED", "reject": "REJECTED", "issue": "ISSUED", "receive": "RECEIVED"}[action]
         if row.IBTWorkflowStatus != expected:
@@ -589,6 +583,11 @@ def display_ibt():
 
         conn = create_db_connection()
         cursor = conn.cursor()
+        route = _get_ibt_route(cursor, ibt_no)
+        if not route:
+            return jsonify({"success": False, "message": "IBT not found."}), 404
+        if not _user_has_warehouse(route.ToWhseLink):
+            return jsonify({"success": False, "message": "You are not authorized to receive this IBT."}), 403
 
         cursor.execute("""
         Select 
@@ -633,6 +632,12 @@ def submit_ibt_receive():
     try:
         data = request.get_json()
         ibt_no = data.get("ibt_no") or data.get("ibt_number") or data.get("ibt_id")
+        conn = create_db_connection()
+        cursor = conn.cursor()
+        route = _get_ibt_route(cursor, ibt_no)
+        close_db_connection(conn, cursor)
+        if not route or not _user_has_warehouse(route.ToWhseLink):
+            return jsonify({"success": False, "message": "You are not authorized to receive this IBT."}), 403
 
         with EvolutionConnection():
             ibt = Evo.WarehouseIBT(str(ibt_no))

@@ -9,6 +9,9 @@
   <div style="display:flex;gap:.75rem;margin-bottom:1rem;align-items:center;flex-wrap:wrap"><select id="status-filter" class="ibt-filter"><option value="">All statuses</option><option>REQUESTED</option><option>APPROVED</option><option>ISSUED</option><option>RECEIVED</option><option>REJECTED</option></select><label class="ibt-received-toggle" for="show-received"><input type="checkbox" id="show-received"><span class="ibt-slider" aria-hidden="true"></span><span>Show received IBTs</span></label><button class="ibt-btn secondary" id="refresh-ibt">Refresh</button></div>
   <div id="ibt-list">Loading...</div>
 </div>
-<script>window.IBT_PERMISSIONS={{ permissions|tojson }};</script>
+<script>
+window.IBT_PERMISSIONS={{ permissions|tojson }};
+window.IBT_WAREHOUSES={{ current_user.warehouses|tojson }};
+</script>
 <script src="{{ url_for('inventory.static', filename='EvolutionSDK/IBT_summary.js') }}?{{ filemtime('inventory', 'EvolutionSDK/IBT_summary.js') }}"></script>
 {% endblock %}

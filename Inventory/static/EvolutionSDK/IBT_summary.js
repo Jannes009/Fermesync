@@ -1,18 +1,21 @@
 const ibtStatusLabels = { REQUESTED: 'Request', APPROVED: 'Approved', ISSUED: 'Issued', RECEIVED: 'Received', REJECTED: 'Rejected' };
 const ibtPermissions = window.IBT_PERMISSIONS || [];
+const ibtWarehouses = new Set((window.IBT_WAREHOUSES || []).map(value => String(value)));
 const esc = value => String(value ?? '').replace(/[&<>"']/g, char => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[char]));
 
 function actionMarkup(ibt) {
     const number = encodeURIComponent(ibt.number);
     const can = permission => ibtPermissions.includes(`IBT_${permission}`);
+    const ownsSource = ibtWarehouses.has(String(ibt.warehouse_from_id));
+    const ownsDestination = ibtWarehouses.has(String(ibt.warehouse_to_id));
     const wizard = `/inventory/SDK/IBT_issue?ibt_no=${number}&step=3`;
     const actions = [];
-    if ((ibt.status === 'REQUESTED' || ibt.status === 'REJECTED') && can('REQUEST')) actions.push(['Edit', wizard]);
+    if ((ibt.status === 'REQUESTED' || ibt.status === 'REJECTED') && can('REQUEST') && ownsSource) actions.push(['Edit', wizard]);
     if (ibt.status === 'REQUESTED' && can('APPROVE')) actions.push(['Approve', wizard]);
     if (ibt.status === 'REQUESTED' && can('REJECT')) actions.push(['Reject', wizard]);
-    if (ibt.status === 'APPROVED' && can('APPROVE')) actions.push(['Edit', wizard]);
-    if (ibt.status === 'APPROVED' && can('ISSUE')) actions.push(['Issue stock', wizard]);
-    if (ibt.status === 'ISSUED' && can('RECEIVE')) actions.push(['Receive', `/inventory/SDK/IBT_receive?ibt_no=${number}`]);
+    if (ibt.status === 'APPROVED' && can('APPROVE') && ownsSource) actions.push(['Edit', wizard]);
+    if (ibt.status === 'APPROVED' && can('ISSUE') && ownsSource) actions.push(['Issue stock', wizard]);
+    if (ibt.status === 'ISSUED' && can('RECEIVE') && ownsDestination) actions.push(['Receive', `/inventory/SDK/IBT_receive?ibt_no=${number}`]);
     if (!actions.length) return '—';
     const labels = actions.map(([label]) => label).join(' / ');
     return `<button type="button" class="ibt-action-button" data-href="${actions[0][1]}">${esc(labels)}</button>`;

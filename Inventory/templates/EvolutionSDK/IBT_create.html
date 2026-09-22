@@ -935,6 +935,9 @@ button:active { transform: scale(0.98); }
     </div>
   </div>
 </div>
-<script>window.IBT_PERMISSIONS={{ current_user.permissions|tojson }};</script>
+<script>
+window.IBT_PERMISSIONS={{ current_user.permissions|tojson }};
+window.IBT_WAREHOUSES={{ current_user.warehouses|tojson }};
+</script>
 <script src="{{ url_for('inventory.static', filename='EvolutionSDK/IBT_create.js') }}?{{ filemtime('inventory', 'EvolutionSDK/IBT_create.js') }}"></script>
 {% endblock %}

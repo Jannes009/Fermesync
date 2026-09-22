@@ -5,6 +5,7 @@ let selectedProducts = new Set();
 let currentUnitMode = "stocking";
 let editIbtId = null;
 let currentIbtStatus = null;
+let currentIbtRoute = null;
 let ibtWarehousesRequest = Promise.resolve();
 
 // Promise that resolves when warehouse selects are populated
@@ -466,16 +467,18 @@ async function confirmWholePurchasingQuantities() {
 
 function configureExistingActions() {
     const permissions = window.IBT_PERMISSIONS || [];
+    const userWarehouses = new Set((window.IBT_WAREHOUSES || []).map(value => String(value)));
     const allowed = permission => permissions.includes(`IBT_${permission}`);
     const isExisting = Boolean(editIbtId);
+    const ownsSource = !isExisting || (currentIbtRoute && userWarehouses.has(String(currentIbtRoute.fromId)));
     const editable = isExistingEditable();
     const canRequest = !isExisting && allowed("REQUEST");
     const canApprove = allowed("APPROVE") && (!isExisting || currentIbtStatus === "REQUESTED");
     const canReject = isExisting && currentIbtStatus === "REQUESTED" && allowed("REJECT");
-    const canIssue = isExisting && currentIbtStatus === "APPROVED" && allowed("ISSUE");
+    const canIssue = isExisting && currentIbtStatus === "APPROVED" && allowed("ISSUE") && ownsSource;
     const canApproveIssue = !isExisting && allowed("APPROVE") && allowed("ISSUE");
     const submit = document.getElementById("ibt-submit");
-    submit.classList.toggle("hidden", isExisting ? !editable : !canRequest);
+    submit.classList.toggle("hidden", isExisting ? !(editable && ownsSource) : !canRequest);
     submit.textContent = currentIbtStatus === "APPROVED"
         ? "Approve IBT"
         : currentIbtStatus === "REJECTED"
@@ -570,6 +573,10 @@ document.addEventListener('DOMContentLoaded', async () => {
             console.log(detailData)
             if (!detailRes.ok || !detailData.success) throw new Error(detailData.message || 'Unable to load IBT.');
             currentIbtStatus = detailData.ibt.status;
+            currentIbtRoute = {
+                fromId: detailData.ibt.warehouse_from.id,
+                toId: detailData.ibt.warehouse_to.id
+            };
             $('#wh-from').val(String(detailData.ibt.warehouse_from.id)).trigger('change');
             await ibtWarehousesRequest;
             const destinationId = String(detailData.ibt.warehouse_to.id);
