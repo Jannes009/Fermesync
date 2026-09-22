@@ -85,7 +85,7 @@ def purchase_order_stock_item_units(stock_id):
         return jsonify({'success': False, 'message': 'supplier_id parameter required'}), 400
     sql = """
     Select idUnits, cUnitCode,
-    COALESCE(fUnitPriceExcl, CSTP.PurchaseUnitLastGRVCost, CSTS.LastGrvCostStocking, 0) AS Cost,
+    COALESCE(fUnitPriceExcl, CSTP.PurchaseUnitLastGRVCost, CSTS.LastGrvCostStocking, CST.LastGrvCost, 0) AS Cost,
 	LST.InvDate,
     CASE WHEN STKUOM.PurchaseUnitId = UOM.idUnits THEN 1 ELSE 0 END AS DefaultUnit
     from [cmn].[_uvStockUnits] STKUOM
@@ -104,6 +104,9 @@ def purchase_order_stock_item_units(stock_id):
         on CSTS.StockLink = STKUOM.StockLink 
         and CSTS.iUOMStockingUnitID = UOM.idUnits 
         and CSTS.iDCLink = ?
+    LEFT JOIN cmn._uvStockCosts CST 
+    on CST.StockID = STKUOM.StockLink 
+    and STKUOM.StockingUnitId = UOM.idUnits
     WHERE STKUOM.StockLink = ?
     """
     cur.execute(sql, (supplier_id, supplier_id, supplier_id, stock_id))

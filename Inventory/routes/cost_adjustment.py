@@ -119,9 +119,10 @@ def adjust_cost():
     try:
         cursor = conn.cursor()
         cursor.execute("""
-            SELECT SI.StockLink, SI.StockDescription, SC.AverageCost
+            SELECT TOP 1 SI.StockLink, SI.StockDescription, SC.AverageCost, COALESCE(SW.WhseID, 0) WhseId
             FROM cmn._uvStockItems SI
             LEFT JOIN cmn._uvStockCosts SC ON SC.StockID = SI.StockLink
+            LEFT JOIN cmn._uvStockWarehouse SW on SW.StockID = SI.StockLink
             WHERE SI.StockLink = ?
         """, (product_link,))
         row = cursor.fetchone()
@@ -129,6 +130,7 @@ def adjust_cost():
             return jsonify({"success": False, "message": "Product not found"}), 404
         description = row.StockDescription
         old_cost = float(row.AverageCost) if row.AverageCost is not None else None
+        whse_id = row.WhseId
     finally:
         close_db_connection(conn)
 
@@ -139,9 +141,9 @@ def adjust_cost():
             stock_cost.Operation = Evo.InventoryOperation.CostAdjustment
             stock_cost.InventoryItem = Evo.InventoryItem(product_link)
             stock_cost.UnitCost = new_cost
-            stock_cost.Reference = f"Fermesync {description} Cost Adjustment"
-            # stock_cost.Warehouse = Evo.Warehouse(-1)  # Default warehouse, adjust as needed
-            stock_cost.Description = f"Adjusted cost from {old_cost if old_cost is not None else 'N/A'} to {new_cost}";
+            stock_cost.Description = f"Fermesync {description} Cost Adjustment"
+            stock_cost.Warehouse = Evo.Warehouse(int(whse_id))  # Use the fetched warehouse ID
+            stock_cost.Reference = f"Adjusted cost from {old_cost if old_cost is not None else 'N/A'} to {new_cost}";
             stock_cost.Post()
 
         return jsonify({
