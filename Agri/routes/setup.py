@@ -1,7 +1,35 @@
+from datetime import date, datetime
+
 from flask import render_template, request, redirect, url_for, jsonify
 from flask_login import login_required, current_user
 from Core.auth import create_db_connection
 from . import agri_bp
+
+
+def format_setup_date(value):
+    """Format database date values regardless of the ODBC driver's return type."""
+    if value is None:
+        return ""
+    if isinstance(value, datetime):
+        return value.strftime("%Y-%m-%d")
+    if isinstance(value, date):
+        return value.strftime("%Y-%m-%d")
+    if isinstance(value, str):
+        cleaned = value.strip()
+        if not cleaned:
+            return ""
+        for parser in (datetime.fromisoformat,):
+            try:
+                return parser(cleaned).strftime("%Y-%m-%d")
+            except ValueError:
+                continue
+        for pattern in ("%Y-%m-%d", "%Y/%m/%d", "%d/%m/%Y", "%m/%d/%Y"):
+            try:
+                return datetime.strptime(cleaned, pattern).strftime("%Y-%m-%d")
+            except ValueError:
+                continue
+        return cleaned
+    return str(value)
 
 
 @agri_bp.route("/setup", methods=["GET"])
@@ -134,7 +162,8 @@ def setup():
         projects=projects,
         spray_projects=spray_projects,
         people=people,
-        people_farms=people_farms
+        people_farms=people_farms,
+        format_setup_date=format_setup_date
     )
 
 # =========================

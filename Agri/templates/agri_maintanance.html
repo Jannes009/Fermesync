@@ -176,7 +176,7 @@
                 </thead>
                 <tbody>
                   {% for pa in spray_projects %}
-                  <tr class="main-row" data-entity="project_attr" data-id="{{ pa.IdProjAttr }}" data-project-id="{{ pa.ProjAttrProjectId }}" data-farm-id="{{ pa.ProjAttrFarmId }}" data-whse-id="{{ pa.ProjAttrWhseId }}" data-whse-name="{{ pa.ProjAttrWhseName }}" data-crop-id="{{ pa.ProjAttrCropId }}" data-variety-id="{{ pa.ProjAttrVarietyId }}" data-ha="{{ pa.ProjAttrHa }}" data-plant-date="{{ pa.ProjAttrPlantDate.strftime('%Y-%m-%d') if pa.ProjAttrPlantDate else '' }}" data-harvest-date="{{ pa.ProjAttrHarvestDate.strftime('%Y-%m-%d') if pa.ProjAttrHarvestDate else '' }}" data-petal-fall-date="{{ pa.ProjAttr80PercPetalFallDate.strftime('%Y-%m-%d') if pa.ProjAttr80PercPetalFallDate else '' }}" data-project-manager="{{ pa.ProjAttrProjectManager }}" data-agriculturist="{{ pa.ProjAttrAgriculturist }}" data-block-no="{{ pa.ProjAttrBlockNo }}" data-default-spray-method-id="{{ pa.ProjAttrDefaultSprayMethodId or '' }}" data-default-dose="{{ pa.ProjAttrDefaultDose or '' }}" data-default-water-per-ha="{{ pa.ProjAttrDefaultWaterPerHa or '' }}" data-default-water-per-tank="{{ pa.ProjAttrDefaultWaterPerTank or '' }}">
+                  <tr class="main-row" data-entity="project_attr" data-id="{{ pa.IdProjAttr }}" data-project-id="{{ pa.ProjAttrProjectId }}" data-farm-id="{{ pa.ProjAttrFarmId }}" data-whse-id="{{ pa.ProjAttrWhseId }}" data-whse-name="{{ pa.ProjAttrWhseName }}" data-crop-id="{{ pa.ProjAttrCropId }}" data-variety-id="{{ pa.ProjAttrVarietyId }}" data-ha="{{ pa.ProjAttrHa }}" data-plant-date="{{ format_setup_date(pa.ProjAttrPlantDate) }}" data-harvest-date="{{ format_setup_date(pa.ProjAttrHarvestDate) }}" data-petal-fall-date="{{ format_setup_date(pa.ProjAttr80PercPetalFallDate) }}" data-project-manager="{{ pa.ProjAttrProjectManager }}" data-agriculturist="{{ pa.ProjAttrAgriculturist }}" data-block-no="{{ pa.ProjAttrBlockNo }}" data-default-spray-method-id="{{ pa.ProjAttrDefaultSprayMethodId or '' }}" data-default-dose="{{ pa.ProjAttrDefaultDose or '' }}" data-default-water-per-ha="{{ pa.ProjAttrDefaultWaterPerHa or '' }}" data-default-water-per-tank="{{ pa.ProjAttrDefaultWaterPerTank or '' }}">
                     <td>{{ pa.ProjectName }}</td>
                     <td>{{ pa.ProjAttrFarmName }}</td>
                     <td>{{ pa.CropCode }}</td>
@@ -191,9 +191,9 @@
                   <tr class="expand-row" data-parent-id="{{ pa.IdProjAttr }}" style="display:none;">
                     <td colspan="7">
                       <div style="display:flex; gap:24px;">
-                        <div><strong>Plant Date:</strong> {{ pa.ProjAttrPlantDate.strftime('%Y-%m-%d') if pa.ProjAttrPlantDate else '' }}</div>
-                        <div><strong>Harvest Date:</strong> {{ pa.ProjAttrHarvestDate.strftime('%Y-%m-%d') if pa.ProjAttrHarvestDate else '' }}</div>
-                        <div><strong>80% Petal Fall:</strong> {{ pa.ProjAttr80PercPetalFallDate.strftime('%Y-%m-%d') if pa.ProjAttr80PercPetalFallDate else '' }}</div>
+                        <div><strong>Plant Date:</strong> {{ format_setup_date(pa.ProjAttrPlantDate) }}</div>
+                        <div><strong>Harvest Date:</strong> {{ format_setup_date(pa.ProjAttrHarvestDate) }}</div>
+                        <div><strong>80% Petal Fall:</strong> {{ format_setup_date(pa.ProjAttr80PercPetalFallDate) }}</div>
                         <div><strong>Manager:</strong> {{ pa.ProjAttrProjectManager }}</div>
                         <div><strong>Agriculturist:</strong> {{ pa.ProjAttrAgriculturist }}</div>
                         <div><strong>Block:</strong> {{ pa.ProjAttrBlockNo }}</div>
