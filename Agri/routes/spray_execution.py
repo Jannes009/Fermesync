@@ -42,6 +42,7 @@ def spray_executions_summary():
             HEA.IdSprayH,
             HEA.SprayHNo,
             HEA.SprayHDescription,
+            HEA.SprayHWeek,
             HEA.SprayHWhseId,
             People.PersonName,
             EXE.SprExecFinalised,
@@ -71,6 +72,7 @@ def spray_executions_summary():
                 "farm_names": [],
                 "block_numbers": [],
                 "descriptions": [],
+                "weeks": [],
                 "spray_nos": []
             }
 
@@ -78,6 +80,10 @@ def spray_executions_summary():
             description = (row.SprayHDescription or '').strip()
             if description:
                 executions[exec_id]["descriptions"].append(description)
+
+            week = (row.SprayHWeek or '').strip()
+            if week:
+                executions[exec_id]["weeks"].append(week)
 
             block_no = row.SprayPBlockNo
             if block_no not in (None, ''):
@@ -92,8 +98,8 @@ def spray_executions_summary():
                 executions[exec_id]["spray_nos"].append(spray_no)
 
     execution_rows = []
-    all_farms = []
     all_blocks = []
+    all_weeks = []
     for execution in executions.values():
         unique_descriptions = []
         for description in execution["descriptions"]:
@@ -105,12 +111,17 @@ def spray_executions_summary():
             if spray_no and spray_no not in unique_spray_nos:
                 unique_spray_nos.append(spray_no)
 
+        unique_weeks = []
+        for week in execution["weeks"]:
+            if week and week not in unique_weeks:
+                unique_weeks.append(week)
+                if week not in all_weeks:
+                    all_weeks.append(week)
+
         unique_farms = []
         for farm_name in execution["farm_names"]:
             if farm_name and farm_name not in unique_farms:
                 unique_farms.append(farm_name)
-                if farm_name not in all_farms:
-                    all_farms.append(farm_name)
 
         unique_blocks = []
         for block_no in execution["block_numbers"]:
@@ -130,13 +141,14 @@ def spray_executions_summary():
             "block_text": ', '.join(unique_blocks) if unique_blocks else '-',
             "description": ', '.join(unique_descriptions) if unique_descriptions else '-',
             "spray_no": ', '.join(unique_spray_nos) if unique_spray_nos else '-',
+            "week_text": ', '.join(unique_weeks) if unique_weeks else '-',
             "recommendations_count": len(unique_descriptions)
         })
 
     conn.close()
     return render_template("spray_execution_summary.html",
                            executions=execution_rows,
-                            farm_filter_options=sorted(all_farms, key=str.lower),
+                            week_filter_options=sorted(all_weeks, key=str.lower),
                             block_filter_options=sorted(all_blocks, key=str.lower),)
 
 

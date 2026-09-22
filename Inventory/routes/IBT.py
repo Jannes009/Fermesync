@@ -138,6 +138,37 @@ def _require_requisition_access():
         abort(403)
 
 
+def _user_warehouse_ids():
+    return tuple(current_user.warehouses or [])
+
+
+def _require_user_source_warehouse(warehouse_id):
+    if warehouse_id not in _user_warehouse_ids():
+        abort(403)
+
+
+def _require_user_ibt_access(ibt_no, destination_only=False):
+    warehouse_ids = _user_warehouse_ids()
+    if not warehouse_ids:
+        abort(403)
+
+    placeholders = ','.join('?' for _ in warehouse_ids)
+    endpoint_column = 'ToWhseLink' if destination_only else 'FromWhseLink OR ToWhseLink'
+    conn = create_db_connection()
+    cursor = conn.cursor()
+    try:
+        cursor.execute(f"""
+            SELECT TOP 1 1
+            FROM stk._uvIBTSummary
+            WHERE cIBTNumber = ?
+              AND ({endpoint_column}) IN ({placeholders})
+        """, (ibt_no, *warehouse_ids))
+        if not cursor.fetchone():
+            abort(403)
+    finally:
+        close_db_connection(conn, cursor)
+
+
 def _evolution_workflow_status(status_id):
     return 'ISSUED' if int(status_id or 0) == 1 else 'APPROVED'
 

@@ -85,7 +85,7 @@ def purchase_order_stock_item_units(stock_id):
         return jsonify({'success': False, 'message': 'supplier_id parameter required'}), 400
     sql = """
     Select idUnits, cUnitCode,
-    COALESCE(fUnitPriceExcl, CST.PurchaseUnitLastGRVCost, 0) AS Cost,
+    COALESCE(fUnitPriceExcl, CSTP.PurchaseUnitLastGRVCost, CSTS.LastGrvCostStocking, 0) AS Cost,
 	LST.InvDate,
     CASE WHEN STKUOM.PurchaseUnitId = UOM.idUnits THEN 1 ELSE 0 END AS DefaultUnit
     from [cmn].[_uvStockUnits] STKUOM
@@ -96,10 +96,17 @@ def purchase_order_stock_item_units(stock_id):
             ON LST.AccountID = LINK.iDCLink
            AND LST.iStockCodeID = LINK.iStockID
            and LST.iUnitsOfMeasureID = UOM.idUnits
-    LEFT JOIN [cmn].[_uvLastGRVCost] CST on CST.StockLink = STKUOM.StockLink and CST.iUOMDefPurchaseUnitID = UOM.idUnits and CST.iDCLink = ?
+    LEFT JOIN [cmn].[_uvLastGRVCost] CSTP
+        on CSTP.StockLink = STKUOM.StockLink 
+        and CSTP.iUOMDefPurchaseUnitID = UOM.idUnits 
+        and CSTP.iDCLink = ?
+    LEFT JOIN [cmn].[_uvLastGRVCost] CSTS
+        on CSTS.StockLink = STKUOM.StockLink 
+        and CSTS.iUOMStockingUnitID = UOM.idUnits 
+        and CSTS.iDCLink = ?
     WHERE STKUOM.StockLink = ?
     """
-    cur.execute(sql, (supplier_id, supplier_id, stock_id))
+    cur.execute(sql, (supplier_id, supplier_id, supplier_id, stock_id))
     rows = cur.fetchall()
     conn.close()
     print(supplier_id, stock_id, rows)  # Debugging line to check the values of supplier_id, stock_id, and the fetched rows

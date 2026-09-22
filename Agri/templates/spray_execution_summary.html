@@ -94,11 +94,11 @@
     <div class="toolbar">
       <div class="filters">
         <div class="filter-field">
-          <label for="farmFilter">Farm</label>
-          <select id="farmFilter">
-            <option value="">All farms</option>
-            {% for farm_name in farm_filter_options %}
-              <option value="{{ farm_name }}">{{ farm_name }}</option>
+          <label for="weekFilter">Week</label>
+          <select id="weekFilter">
+            <option value="">All weeks</option>
+            {% for week in week_filter_options %}
+              <option value="{{ week }}">{{ week }}</option>
             {% endfor %}
           </select>
         </div>
@@ -146,7 +146,7 @@
                 data-href="/agri/execution/{{ exe.id }}"
                 data-execution-id="{{ exe.id }}"
                 data-finalised="{{ 'true' if exe.finalised else 'false' }}"
-                data-farm="{{ exe.farm_name_text|e }}"
+                data-week="{{ exe.week_text|e }}"
                 data-block="{{ exe.block_text|e }}"
                 data-description="{{ exe.description|e }}">
               <td>{{ exe.spray_no }}</td>
@@ -167,7 +167,7 @@
 </div>
 
 <script>
-const farmFilter = document.getElementById('farmFilter');
+const weekFilter = document.getElementById('weekFilter');
 const blockFilter = document.getElementById('blockFilter');
 const finalisedOptions = document.querySelectorAll('input[name="finalisedFilter"]');
 
@@ -179,19 +179,19 @@ function updateToggleSelection() {
 }
 
 function applyExecutionFilters() {
-  const farmValue = farmFilter ? farmFilter.value : '';
+  const weekValue = weekFilter ? weekFilter.value : '';
   const blockValue = blockFilter ? blockFilter.value : '';
   const hideFinalised = document.querySelector('input[name="finalisedFilter"][value="hide"]')?.checked ?? true;
 
   document.querySelectorAll('.execution-row').forEach(row => {
-    const rowFarm = (row.dataset.farm || '').toLowerCase();
+    const rowWeek = (row.dataset.week || '').toLowerCase();
     const rowBlock = (row.dataset.block || '').toLowerCase();
     const rowFinalised = row.dataset.finalised === 'true';
-    const matchesFarm = !farmValue || rowFarm.includes(farmValue.toLowerCase());
+    const matchesWeek = !weekValue || rowWeek.includes(weekValue.toLowerCase());
     const matchesBlock = !blockValue || rowBlock.includes(blockValue.toLowerCase());
     const matchesFinalised = !hideFinalised || !rowFinalised;
 
-    row.style.display = matchesFarm && matchesBlock && matchesFinalised ? '' : 'none';
+    row.style.display = matchesWeek && matchesBlock && matchesFinalised ? '' : 'none';
   });
 }
 
@@ -212,8 +212,8 @@ finalisedOptions.forEach(option => {
   });
 });
 
-if (farmFilter) {
-  farmFilter.addEventListener('change', applyExecutionFilters);
+if (weekFilter) {
+  weekFilter.addEventListener('change', applyExecutionFilters);
 }
 
 if (blockFilter) {

@@ -983,9 +983,9 @@
 
     <div class="toolbar-filters">
       <div class="filter-field">
-        <label for="filterFarm">Farm</label>
-        <select id="filterFarm">
-          <option value="">All farms</option>
+        <label for="filterWeek">Week</label>
+        <select id="filterWeek">
+          <option value="">All weeks</option>
         </select>
       </div>
       <div class="filter-field">
@@ -1075,13 +1075,13 @@ function showRecommendationsLoading() {
 }
 
 document.addEventListener('DOMContentLoaded', () => {
-    const farmSelect = document.getElementById('filterFarm');
+    const weekSelect = document.getElementById('filterWeek');
     const blockSelect = document.getElementById('filterBlock');
     const recommendationFinalisedOptions = document.querySelectorAll('input[name="recommendationFinalisedFilter"]');
     const createButton = getCreateButton();
 
-    if (farmSelect) {
-        farmSelect.addEventListener('change', renderRecommendationsTable);
+    if (weekSelect) {
+      weekSelect.addEventListener('change', renderRecommendationsTable);
     }
     if (blockSelect) {
         blockSelect.addEventListener('change', renderRecommendationsTable);
@@ -1188,14 +1188,14 @@ document.addEventListener('DOMContentLoaded', () => {
   });
 
 function populateFilters(data) {
-    const farmSelect = document.getElementById('filterFarm');
+    const weekSelect = document.getElementById('filterWeek');
     const blockSelect = document.getElementById('filterBlock');
 
-    if (!farmSelect || !blockSelect) {
+    if (!weekSelect || !blockSelect) {
         return;
     }
 
-    const farms = Array.from(new Set(data.map(item => item.farm_name || '').filter(Boolean))).sort();
+    const weeks = Array.from(new Set(data.map(item => item.week || '').filter(Boolean))).sort();
     const blocks = Array.from(new Set((data
         .map(item => item.block_no || '')
         .join(',')
@@ -1203,8 +1203,8 @@ function populateFilters(data) {
         .map(value => value.trim())
         .filter(Boolean)))).sort();
 
-    farmSelect.innerHTML = '<option value="">All farms</option>' + farms.map(farm => `
-        <option value="${farm}">${farm}</option>`).join('');
+    weekSelect.innerHTML = '<option value="">All weeks</option>' + weeks.map(week => `
+      <option value="${week}">${week}</option>`).join('');
 
     blockSelect.innerHTML = '<option value="">All blocks</option>' + blocks.map(block => `
         <option value="${block}">${block}</option>`).join('');
@@ -1220,7 +1220,7 @@ function updateRecommendationFinalisedToggleSelection() {
 }
 
 function applyFilters() {
-    const selectedFarm = document.getElementById('filterFarm')?.value || '';
+    const selectedWeek = document.getElementById('filterWeek')?.value || '';
     const selectedBlock = document.getElementById('filterBlock')?.value || '';
     const hideFinalised = document.querySelector('input[name="recommendationFinalisedFilter"][value="hide"]')?.checked ?? true;
 
@@ -1229,7 +1229,7 @@ function applyFilters() {
         if (hideFinalised && item.finalised) {
             return false;
         }
-        if (selectedFarm && item.farm_name !== selectedFarm) {
+        if (selectedWeek && item.week !== selectedWeek) {
             return false;
         }
 
