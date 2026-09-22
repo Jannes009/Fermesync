@@ -20,6 +20,7 @@ from .stock_issue import create_stock_issue
 from . import Barcode
 from . import offline
 from . import stock_adjustment
+from . import cost_adjustment
 from . import warehouse_transfer
 from . import qty
 from . import product_detail

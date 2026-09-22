@@ -41,6 +41,9 @@
       {% if "STOCK_ADJUSTMENT" in current_user.permissions %}
       <li><a href="/inventory/adjust_stock" class="taskbar-link">Stock Adjustment</a></li>
       {% endif %}
+      {% if "COST_ADJUSTMENT" in current_user.permissions %}
+      <li><a href="/inventory/adjust_cost" class="taskbar-link">Cost Adjustment</a></li>
+      {% endif %}
       {% set spray_exec = "SPRAY_EXEC_VIEW" in current_user.permissions %}
       {% set spray_rec = "SPRAY_REC_VIEW" in current_user.permissions %}
       {% set spray_rec_create = "SPRAY_REC_CREATE" in current_user.permissions %}
@@ -233,6 +236,14 @@
           <div class="mobile-nav-content">
             <span class="mobile-nav-icon">⚖️</span>
             <span>Stock Adjustment</span>
+          </div>
+        </a>
+      </li>
+      <li class="mobile-nav-item">
+        <a href="/inventory/adjust_cost" class="mobile-nav-link">
+          <div class="mobile-nav-content">
+            <span class="mobile-nav-icon">💲</span>
+            <span>Cost Adjustment</span>
           </div>
         </a>
       </li>
