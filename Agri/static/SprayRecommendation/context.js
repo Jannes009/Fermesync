@@ -154,7 +154,6 @@ function renderContextTimeline() {
                 <summary>
                     <div class="context-card-header">
                         <div class="context-title">${escapeContextText(product.name)}</div>
-                        <div class="context-meta">${product.records.length} week${product.records.length === 1 ? '' : 's'}</div>
                     </div>
                     <div class="context-product-total">${product.total.toFixed(2)} ${escapeContextText(product.uom)}</div>
                 </summary>
