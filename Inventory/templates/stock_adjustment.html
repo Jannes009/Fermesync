@@ -1,8 +1,8 @@
 {% extends 'inventory_base.html' %}
 
 {% block content %}
-<link rel="stylesheet" href="{{ url_for('inventory.static', filename='css/stock_adjustment.css') }}">
-<script src="{{ url_for('inventory.static', filename='stock_adjustment_ui.js') }}"></script>
+<link rel="stylesheet" href="{{ url_for('inventory.static', filename='css/stock_adjustment.css') }}?{{ filemtime('inventory', 'css/stock_adjustment.css') }}">
+<script src="{{ url_for('inventory.static', filename='stock_adjustment_ui.js') }}?{{ filemtime('inventory', 'stock_adjustment_ui.js') }}"></script>
 
 {% include 'stock_adjustment_fragment.html' %}
 

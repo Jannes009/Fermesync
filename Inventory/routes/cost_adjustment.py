@@ -72,9 +72,14 @@ def adjust_cost_current():
     try:
         cursor = conn.cursor()
         cursor.execute("""
-            SELECT SI.StockLink, SI.StockDescription, SC.AverageCost
+            SELECT TOP 1
+                SI.StockLink,
+                SI.StockDescription,
+                SC.AverageCost,
+                CONV.StockingUnitCode
             FROM cmn._uvStockItems SI
             LEFT JOIN cmn._uvStockCosts SC ON SC.StockID = SI.StockLink
+            LEFT JOIN cmn._uvStockUnitConversion CONV ON CONV.StockLink = SI.StockLink
             WHERE SI.StockLink = ?
         """, (product_link,))
         row = cursor.fetchone()
@@ -86,6 +91,7 @@ def adjust_cost_current():
             "product_link": int(row.StockLink),
             "description": row.StockDescription,
             "average_cost": float(row.AverageCost) if row.AverageCost is not None else None,
+            "stocking_unit_code": row.StockingUnitCode or "",
         })
     except Exception as ex:
         print("Error fetching current cost:", str(ex))

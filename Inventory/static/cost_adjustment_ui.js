@@ -4,6 +4,8 @@ function initCostAdjustment(container = document) {
     const productSel = scope.querySelector ? scope.querySelector('#ca_product') : null;
     const costInput = scope.querySelector ? scope.querySelector('#ca_cost') : null;
     const currentCost = scope.querySelector ? scope.querySelector('#ca_current_cost') : null;
+    const currentCostLabel = scope.querySelector ? scope.querySelector('#ca_current_cost_label') : null;
+    const newCostLabel = scope.querySelector ? scope.querySelector('#ca_new_cost_label') : null;
     const submitBtn = scope.querySelector ? scope.querySelector('#ca_submit') : null;
     const resultDiv = scope.querySelector ? scope.querySelector('#ca_result') : null;
     const useSelect2 = typeof window !== 'undefined' && window.jQuery && window.jQuery.fn && window.jQuery.fn.select2;
@@ -26,9 +28,16 @@ function initCostAdjustment(container = document) {
 
     function resetCostFields() {
         currentCost.textContent = '—';
+        setStockingUnit('');
         costInput.value = '';
         costInput.disabled = true;
         submitBtn.disabled = true;
+    }
+
+    function setStockingUnit(unit) {
+        const suffix = unit ? ` (per ${unit})` : '';
+        if (currentCostLabel) currentCostLabel.textContent = `Current Cost${suffix}`;
+        if (newCostLabel) newCostLabel.textContent = `New Cost${suffix}`;
     }
 
     async function loadProducts() {
@@ -65,6 +74,7 @@ function initCostAdjustment(container = document) {
             const payload = await response.json();
             if (!payload.success) throw new Error(payload.message || 'Error loading cost');
 
+            setStockingUnit(payload.stocking_unit_code || '');
             currentCost.textContent = payload.average_cost === null ? 'Not set' : Number(payload.average_cost).toFixed(4);
             costInput.value = payload.average_cost === null ? '' : payload.average_cost;
             costInput.disabled = false;
