@@ -6,6 +6,7 @@ let contextState = {
     endWeek: null,
     projectKey: '',
     loading: false,
+    error: null,
     loaded: false,
     ingredientView: null,
     hadSelectedProducts: false
@@ -78,6 +79,10 @@ function contextSearchTerm() {
     return String(contextSearch?.value || '').trim().toLocaleLowerCase();
 }
 
+function contextRetryMarkup() {
+    return '<button type="button" class="btn ghost context-retry" id="context-retry">Retry</button>';
+}
+
 function renderContextTimeline() {
     const container = document.getElementById('context-timeline');
     if (!container) return;
@@ -85,8 +90,12 @@ function renderContextTimeline() {
         container.innerHTML = '<div class="context-empty">Loading product history...</div>';
         return;
     }
+    if (contextState.error) {
+        container.innerHTML = `<div class="context-empty context-error" role="alert">Unable to load product history.<br>${escapeContextText(contextState.error)}<br>${contextRetryMarkup()}</div>`;
+        return;
+    }
     if (!contextState.items.length) {
-        container.innerHTML = '<div class="context-empty">No product history for the selected projects and weeks.</div>';
+        container.innerHTML = `<div class="context-empty">No product history for the selected projects and weeks.<br>${contextRetryMarkup()}</div>`;
         return;
     }
 
@@ -180,6 +189,7 @@ async function updateContextDataset() {
         contextState.startWeek = null;
         contextState.endWeek = null;
         contextState.projectKey = '';
+        contextState.error = null;
         contextState.loaded = false;
         populateWeekFilters();
         renderContextTimeline();
@@ -192,6 +202,7 @@ async function updateContextDataset() {
         contextState.availableWeeks = [];
         contextState.startWeek = null;
         contextState.endWeek = null;
+        contextState.error = null;
         populateWeekFilters();
     }
     if (contextState.loaded) {
@@ -200,6 +211,7 @@ async function updateContextDataset() {
     }
 
     contextState.loading = true;
+    contextState.error = null;
     renderContextTimeline();
     const params = new URLSearchParams({
         ...(contextState.startWeek ? { start_week: contextState.startWeek } : {}),
@@ -210,16 +222,18 @@ async function updateContextDataset() {
     try {
         const response = await request(`/agri/spray-recommendation/context?${params.toString()}`);
         const data = await response.json();
-        if (!data.success) throw new Error(data.message || 'Unable to fetch product history');
+        if (!response.ok || !data.success) {
+            throw new Error(data.message || `Unable to fetch product history (HTTP ${response.status})`);
+        }
         contextState.availableWeeks = data.available_weeks || [];
         populateWeekFilters();
         contextState.items = data.items || [];
+        contextState.error = null;
         contextState.loaded = true;
     } catch (error) {
         contextState.items = [];
+        contextState.error = error instanceof Error ? error.message : String(error);
         contextState.loaded = false;
-        const container = document.getElementById('context-timeline');
-        if (container) container.innerHTML = `<div class="context-empty">${escapeContextText(error.message)}</div>`;
     } finally {
         contextState.loading = false;
         renderContextTimeline();
@@ -306,6 +320,12 @@ document.querySelectorAll('input[name="context-ingredient-view"]').forEach(radio
 });
 
 contextSearch?.addEventListener('input', renderContextTimeline);
+
+document.addEventListener('click', event => {
+    if (!event.target.closest('#context-retry')) return;
+    contextState.loaded = false;
+    updateContextDataset();
+});
 
 $(document).on('change', '.product-select', () => {
     syncIngredientViewDefault();
