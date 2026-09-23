@@ -249,6 +249,7 @@ contextHandle?.addEventListener('click', () => {
     contextState.expanded = !contextState.expanded;
     contextSheet.classList.toggle('open', contextState.expanded);
     contextHandle.setAttribute('aria-expanded', String(contextState.expanded));
+    console.log(contextState.expanded, contextState.loaded);
     if (contextState.expanded) updateContextDataset();
 });
 
@@ -279,6 +280,7 @@ function finishContextDrag() {
         contextState.expanded = open;
         contextSheet.classList.toggle('open', open);
         contextHandle.setAttribute('aria-expanded', String(open));
+        if (open) updateContextDataset();
         suppressContextClick = true;
     }
     contextSheet.classList.remove('dragging');
