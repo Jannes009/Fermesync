@@ -8,21 +8,185 @@ import Pastel.Evolution as Evo
 from datetime import datetime
 from System import DateTime
 
+def _can_view_grv_history():
+    return "GRV_HIST" in (current_user.permissions or [])
+
+
 @inventory_bp.route("/grv")
 @login_required
 def grv_summary():
     return render_template(
-        "EvolutionSDK/grv_summary.html"
+        "EvolutionSDK/grv_summary.html",
+        can_view_history=_can_view_grv_history()
     )
 
 
 @inventory_bp.route("/grv/<po_number>")
 @login_required
-def grv_details(po_number):
+def grv_receive(po_number):
     return render_template(
-        "EvolutionSDK/grv_details.html",
+        "EvolutionSDK/grv_receive.html",
         po_number=po_number
     )
+
+
+@inventory_bp.route("/grv/history", methods=["GET"])
+@login_required
+def grv_history():
+    if not _can_view_grv_history():
+        abort(403)
+
+    warehouses = list(current_user.warehouses or [])
+    if not warehouses:
+        return jsonify({"success": True, "orders": []})
+
+    start_date = request.args.get("start_date")
+    end_date = request.args.get("end_date")
+    state = request.args.get("state")
+    warehouse_placeholders = ",".join(["?"] * len(warehouses))
+    query = f"""
+         SELECT OrderNum, MAX(OrderDate), MAX(SupplierName), MAX(SupplierAccount),
+             MAX(WarehouseName), MAX(Description), MAX(OrdTotIncl), MAX(DocState), MAX(DocStateText)
+        FROM [stk]._uvPurchaseOrders
+        WHERE iWarehouseID IN ({warehouse_placeholders})
+    """
+    params = list(warehouses)
+    if start_date:
+        query += " AND OrderDate >= ?"
+        params.append(start_date)
+    if end_date:
+        query += " AND OrderDate < DATEADD(day, 1, ?)"
+        params.append(end_date)
+    if state:
+        try:
+            params.append(int(state))
+        except ValueError:
+            return jsonify({"success": False, "error": "Invalid order state"}), 400
+        query += " AND DocState = ?"
+    query += " GROUP BY OrderNum ORDER BY MAX(OrderDate) DESC, OrderNum DESC"
+
+    conn = None
+    try:
+        conn = create_db_connection()
+        cursor = conn.cursor()
+        cursor.execute(query, params)
+        orders = [
+            {
+                "order_num": row[0],
+                "order_date": row[1].isoformat() if row[1] else None,
+                "supplier_name": row[2],
+                "supplier_account": row[3],
+                "warehouse_name": row[4],
+                "description": row[5],
+                "order_total": float(row[6] or 0),
+                "state": int(row[7]) if row[7] is not None else 0,
+                "state_text": row[8]
+            }
+            for row in cursor.fetchall()
+        ]
+        return jsonify({"success": True, "orders": orders})
+    except Exception as e:
+        return jsonify({"success": False, "error": str(e)}), 500
+    finally:
+        if conn:
+            conn.close()
+
+
+@inventory_bp.route("/grv/history/<po_number>", methods=["GET"])
+@login_required
+def grv_history_detail_page(po_number):
+    if not _can_view_grv_history():
+        abort(403)
+
+    return render_template(
+        "EvolutionSDK/grv_history_detail.html",
+        po_number=po_number
+    )
+
+
+@inventory_bp.route("/grv/history/<po_number>/data", methods=["GET"])
+@login_required
+def grv_history_detail(po_number):
+    if not _can_view_grv_history():
+        abort(403)
+
+    warehouses = list(current_user.warehouses or [])
+    if not warehouses:
+        return jsonify({"success": False, "error": "Purchase order not found"}), 404
+
+    warehouse_placeholders = ",".join(["?"] * len(warehouses))
+    query = f"""
+         SELECT OrderNum, OrderDate, SupplierName, SupplierAccount, Description,
+               OrdTotIncl, DocState, DocStateText, cDescription, fQuantity,
+             fQtyProcessed, UnitCode, fUnitPriceIncl, WarehouseName, GrvNumber
+        FROM [stk]._uvPurchaseOrders
+        WHERE OrderNum = ? AND iWarehouseID IN ({warehouse_placeholders})
+        ORDER BY iLineID
+    """
+    conn = None
+    try:
+        conn = create_db_connection()
+        cursor = conn.cursor()
+        cursor.execute(query, [po_number] + warehouses)
+        rows = cursor.fetchall()
+        if not rows:
+            return jsonify({"success": False, "error": "Purchase order not found"}), 404
+
+        header = rows[0]
+        cursor.execute(f"""
+                SELECT WhseName, Description_1, TxDate, DTStamp, Reference,
+                                UserName, Qty, UNIT.StockingUnitCode UnitCode, UnitCost, ProjectCode
+                FROM cmn._uvStockTransactions TRN
+                JOIN [cmn].[_uvStockUnits] UNIT on UNIT.StockLink = TRN.StockLink
+                WHERE WhseLink IN ({warehouse_placeholders}) and Order_No = ?
+                ORDER BY TxDate DESC, DTStamp DESC
+        """, warehouses + [po_number])
+        transaction_rows = cursor.fetchall()
+
+        return jsonify({
+            "success": True,
+            "order": {
+                "order_num": header[0],
+                "order_date": header[1].isoformat() if header[1] else None,
+                "supplier_name": header[2],
+                "supplier_account": header[3],
+                "description": header[4],
+                "order_total": float(header[5] or 0),
+                "state": int(header[6]) if header[6] is not None else 0,
+                "state_text": header[7],
+                "lines": [
+                    {
+                        "description": row[8],
+                        "quantity": float(row[9] or 0),
+                        "processed": float(row[10] or 0),
+                        "unit_code": row[11],
+                        "unit_price": float(row[12] or 0),
+                        "warehouse_name": row[13]
+                    }
+                    for row in rows
+                ],
+                "transactions": [
+                    {
+                        "warehouse_name": row[0],
+                        "description": row[1],
+                        "tx_date": row[2].isoformat() if row[2] else None,
+                        "timestamp": row[3].isoformat() if row[3] else None,
+                        "reference": row[4],
+                        "user_name": row[5],
+                        "quantity": float(row[6] or 0),
+                        "unit_code": row[7],
+                        "unit_cost": float(row[8] or 0),
+                        "project_code": row[9]
+                    }
+                    for row in transaction_rows
+                ]
+            }
+        })
+    except Exception as e:
+        return jsonify({"success": False, "error": str(e)}), 500
+    finally:
+        if conn:
+            conn.close()
 
 
 

@@ -160,6 +160,29 @@
       font-weight: 700;
       white-space: nowrap;
     }
+    .status-badge { display: inline-block; padding: 4px 9px; border: 1px solid transparent; border-radius: 5px; font-size: 0.8rem; font-weight: 700; white-space: nowrap; }
+    .status-unknown { color: #475467; background: #f2f4f7; border-color: #d0d5dd; }
+    .status-unprocessed { color: #854a0e; background: #fff7d6; border-color: #f5d66b; }
+    .status-quote { color: #175cd3; background: #eff8ff; border-color: #b2ddff; }
+    .status-partial { color: #b54708; background: #fff4e5; border-color: #fedf89; }
+    .status-archived { color: #067647; background: #ecfdf3; border-color: #abefc6; }
+    .status-template { color: #0e7090; background: #ecfdff; border-color: #a5f0fc; }
+    .status-contract { color: #5925dc; background: #f4f3ff; border-color: #d9d6fe; }
+    .status-cancelled { color: #b42318; background: #fef3f2; border-color: #fecdca; }
+    .status-ready { color: #067647; background: #ecfdf3; border-color: #abefc6; }
+    .tab-list { display: flex; gap: 8px; border-bottom: 1px solid var(--input-border); margin: 1rem 0; }
+    .tab-button { border: 0; border-bottom: 3px solid transparent; background: transparent; color: var(--secondary-text); padding: 10px 16px; font: inherit; font-weight: 700; cursor: pointer; }
+    .tab-button[aria-selected="true"] { color: var(--primary-text); border-bottom-color: var(--button-bg); }
+    .history-filters { display: grid; grid-template-columns: repeat(4, minmax(150px, 1fr)); gap: 12px; margin: 1rem 0; }
+    .history-filters label { display: block; margin-bottom: 5px; font-weight: 600; color: var(--secondary-text); }
+    .history-filters input, .history-filters select { width: 100%; padding: 10px; border: 1px solid var(--input-border); border-radius: 6px; background: var(--form-bg); color: var(--primary-text); }
+    #historyTableWrapper { overflow-x: auto; }
+    #historyTable { width: 100%; min-width: 720px; border-collapse: collapse; }
+    #historyTable th, #historyTable td { padding: 10px; text-align: left; border-bottom: 1px solid var(--input-border); }
+    #historyTable th { background: var(--form-bg); color: var(--secondary-text); white-space: nowrap; }
+    #historyTable tbody tr { cursor: pointer; }
+    #historyTable tbody tr:hover, #historyTable tbody tr[aria-selected="true"] { background: var(--muted-bg); }
+    .history-empty { color: var(--secondary-text); padding: 16px 8px; }
 
     @media (max-width: 480px) {
       .wrap { padding: 0.75rem; }
@@ -170,6 +193,9 @@
         padding: 10px 8px;
         font-size: 0.85rem;
       }
+    }
+    @media (max-width: 800px) {
+      .history-filters { grid-template-columns: repeat(2, minmax(0, 1fr)); }
     }
     /* Prevent iPhone input zoom */
 input, select, textarea, .select2-container--default .select2-selection--single {
@@ -186,9 +212,17 @@ input, select, textarea, .select2-container--default .select2-selection--single 
   <div class="wrap">
     <div class="card">
       <header>
-        <h1>Create GRV</h1>
+        <h1>GRV</h1>
       </header>
 
+      <div class="tab-list" role="tablist" aria-label="GRV views">
+        <button id="receiveTab" class="tab-button" type="button" role="tab" aria-controls="receivePanel" aria-selected="true">Receive</button>
+        {% if can_view_history %}
+        <button id="historyTab" class="tab-button" type="button" role="tab" aria-controls="historyPanel" aria-selected="false">History</button>
+        {% endif %}
+      </div>
+
+      <section id="receivePanel" role="tabpanel" aria-labelledby="receiveTab">
       <div class="form-group">
         <label for="poSearch">Search POs</label>
         <input id="poSearch" type="search" placeholder="Search PO number, supplier, description or total...">
@@ -213,11 +247,55 @@ input, select, textarea, .select2-container--default .select2-selection--single 
           </tbody>
         </table>
       </div>
+      </section>
+
+      {% if can_view_history %}
+      <section id="historyPanel" role="tabpanel" aria-labelledby="historyTab" hidden>
+        <div class="history-filters">
+          <div>
+            <label for="historySearch">Search history</label>
+            <input id="historySearch" type="search" placeholder="Search any history field">
+          </div>
+          <div>
+            <label for="historyStartDate">From</label>
+            <input id="historyStartDate" type="date">
+          </div>
+          <div>
+            <label for="historyEndDate">To</label>
+            <input id="historyEndDate" type="date">
+          </div>
+          <div>
+            <label for="historyState">Status</label>
+            <select id="historyState">
+              <option value="">All statuses</option>
+              <option value="0">Unknown</option>
+              <option value="1">Unprocessed</option>
+              <option value="2">Quote</option>
+              <option value="3">Partial Processed</option>
+              <option value="4">Archived</option>
+              <option value="5">Template</option>
+              <option value="6">Contract Template</option>
+              <option value="7">Cancelled orders</option>
+            </select>
+          </div>
+        </div>
+        <div class="history-layout">
+          <div id="historyTableWrapper">
+            <table id="historyTable">
+              <thead>
+                <tr><th>PO Number</th><th>Date</th><th>Supplier</th><th>Warehouse</th><th>Description</th><th>Total Incl</th><th>Status</th></tr>
+              </thead>
+              <tbody id="historyTableBody"><tr><td class="history-empty" colspan="7">Select History to load orders.</td></tr></tbody>
+            </table>
+          </div>
+        </div>
+      </section>
+      {% endif %}
 
     </div>
   </div>
 </div>
 
-<script src="{{ url_for('inventory.static', filename='EvolutionSDK/GRV_summary.js') }}"></script>
+<script src="{{ url_for('inventory.static', filename='EvolutionSDK/GRV_summary.js') }}?{{ filemtime('inventory', 'EvolutionSDK/GRV_summary.js') }}"></script>
 
 {% endblock %}

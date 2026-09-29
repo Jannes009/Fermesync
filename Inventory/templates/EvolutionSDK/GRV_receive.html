@@ -108,6 +108,7 @@
       color: #495057;
       text-align: center;
     }
+    .qty-unit { margin-left: 3px; color: var(--secondary-text); font-size: 0.78em; font-weight: 500; }
 
     /* Recount Card */
     .recount-card {
@@ -355,7 +356,7 @@
   <script 
   type="module"
   src="{{ url_for('inventory.static', 
-  filename='EvolutionSDK/GRV_details.js') }}?{{ filemtime('inventory', 'EvolutionSDK/GRV_details.js') }}">
+  filename='EvolutionSDK/GRV_receive.js') }}?{{ filemtime('inventory', 'EvolutionSDK/GRV_receive.js') }}">
 </script>
 
 {% endblock %}

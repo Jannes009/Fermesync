@@ -27,7 +27,23 @@ function formatUOM(uom) {
 // Helper function to get UOM display with space
 function getUOMDisplay(uom) {
     const formatted = formatUOM(uom);
-    return formatted ? ` ${formatted}` : "";
+    return formatted ? `<small class="qty-unit">${formatted}</small>` : "";
+}
+
+function formatCurrency(value) {
+    const amount = Number(value);
+    if (!Number.isFinite(amount)) return '';
+    return new Intl.NumberFormat('en-ZA', {
+        style: 'currency',
+        currency: 'ZAR',
+        minimumFractionDigits: 2,
+        maximumFractionDigits: 2
+    }).format(amount);
+}
+
+function formatQuantity(value) {
+    const amount = Number(value);
+    return Number.isFinite(amount) ? amount.toLocaleString('en-ZA', { maximumFractionDigits: 2 }) : '';
 }
 
 // ---------------- PO LINES ----------------
@@ -57,7 +73,7 @@ async function loadPOLines(poNumber) {
         row.innerHTML = `
             <strong>${line.StockDesc}</strong>
             <div>
-                Ordered Qty: ${line.QtyOutstanding}${uomDisplay} @ R${line.Price}
+                Ordered Qty: ${formatQuantity(line.QtyOutstanding)} ${uomDisplay} @ ${formatCurrency(line.Price)}
             </div>
             <div>
                 Confirm Qty:
