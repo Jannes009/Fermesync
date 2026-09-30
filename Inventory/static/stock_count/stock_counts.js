@@ -117,9 +117,14 @@ function renderIncompleteSection(rows) {
                                 <div class="incomplete-progress-fill" style="width:${progress}%"></div>
                             </div>
                         </div>
-                        <button class="btn-action-small" onclick="continueCount(event, ${item.headerId})">
-                            <i class="fas fa-play"></i> Continue
-                        </button>
+                        <div class="incomplete-actions">
+                            <button class="btn-action-small danger" onclick="discardCount(event, ${item.headerId})">
+                                <i class="fas fa-trash-alt" aria-hidden="true"></i> Discard
+                            </button>
+                            <button class="btn-action-small" onclick="continueCount(event, ${item.headerId})">
+                                <i class="fas fa-play" aria-hidden="true"></i> Continue
+                            </button>
+                        </div>
                     </div>
                 </div>
             `;
@@ -355,6 +360,35 @@ function closeShelfModal() {
 function continueCount(event, headerId) {
     if (event) event.stopPropagation();
     window.location.href = `/inventory/stock-counts/${headerId}`;
+}
+
+async function discardCount(event, headerId) {
+    event?.stopPropagation();
+    const confirmation = await Swal.fire({
+        icon: "warning",
+        title: "Discard this stock count?",
+        text: "This draft will be marked as discarded and can no longer be continued.",
+        showCancelButton: true,
+        confirmButtonText: "Discard count",
+        cancelButtonText: "Keep count",
+        confirmButtonColor: "#b42318",
+        reverseButtons: true
+    });
+    if (!confirmation.isConfirmed) return;
+
+    try {
+        const response = await request(`/inventory/stock-counts/discard/${headerId}`, { method: "POST" });
+        const data = await response.json();
+        if (!data.success) {
+            await Swal.fire("Unable to discard", data.message || "The stock count could not be discarded.", "error");
+            return;
+        }
+
+        await loadOverview();
+        await Swal.fire("Discarded", "The incomplete stock count has been discarded.", "success");
+    } catch (error) {
+        await Swal.fire("Unable to discard", "A network or server error occurred.", "error");
+    }
 }
 
 async function openModal(headerId) {
