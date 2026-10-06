@@ -1,4 +1,6 @@
 
+let returnSubmissionInProgress = false;
+
 document.addEventListener("DOMContentLoaded", async () => {
     const list = document.getElementById("incomplete-issues-list");
     if (list) {
@@ -50,7 +52,7 @@ function renderIssues(issues) {
       <p><b>Date:</b> ${issue.IssueTimeStamp}</p>
       <p><b>Warehouse:</b> ${issue.WhseDescription}</p>
       <button class="btn-primary"
-        onclick="startReturnWizard('${issue.IssueId}')">
+        onclick="startReturnWizard('${issue.IssueId}', this)">
         Process Return →
       </button>
     `;
@@ -85,7 +87,7 @@ async function fetchIssueLines(issueId) {
   }
 }
 
-async function startReturnWizard(issueId) {
+async function startReturnWizard(issueId, sourceButton = null) {
     // STEP 1: FETCH ISSUE LINES
     let products = await fetchIssueLines(issueId);
     if (!products.length) {
@@ -116,7 +118,7 @@ async function startReturnWizard(issueId) {
                                        class="return-qty-input" 
                                        min="0" 
                                        max="${p.qty_issued}"
-                                       placeholder="0"
+                                       placeholder="Return Qty"
                                        step="0.01">
                             </td>
                             <td class="prod-uom">${p.uom_code || p.stocking_uom_code || ""}</td>
@@ -270,7 +272,7 @@ async function startReturnWizard(issueId) {
             backBtn.onclick = async () => {
                 // Close current modal and reopen the quantity entry step
                 Swal.close();
-                await startReturnWizard(issueId);
+                await startReturnWizard(issueId, sourceButton);
             };
             
             const footer = document.querySelector('.swal2-actions');
@@ -281,8 +283,15 @@ async function startReturnWizard(issueId) {
     });
 
     if (!confirmResult.isConfirmed) return;
+    if (returnSubmissionInProgress) return;
 
     // STEP 4: SUBMIT TO BACKEND
+    returnSubmissionInProgress = true;
+    const originalButtonHtml = sourceButton?.innerHTML;
+    if (sourceButton) {
+        sourceButton.disabled = true;
+        sourceButton.innerHTML = '<i class="fas fa-spinner fa-spin" aria-hidden="true"></i> Processing...';
+    }
     let loadingVisible = false;
     try {
         const payload = {
@@ -308,7 +317,7 @@ async function startReturnWizard(issueId) {
         const submitRes = await submit.json();
 
         if (!submitRes.success) {
-            Swal.fire("Error", submitRes.message || "Return failed with no message from server.", "error");
+            await Swal.fire("Error", submitRes.message || "Return failed with no message from server.", "error");
             return;
         }
 
@@ -318,15 +327,11 @@ async function startReturnWizard(issueId) {
             loadingVisible = false;
         }
 
-        if (submitRes.success) {
-            Swal.fire("Success", "Return processed successfully!", "success");
-            if (window.onStockIssueReturnSuccess) {
-                window.onStockIssueReturnSuccess();
-            } else {
-                loadIncompleteIssues();
-            }
+        await Swal.fire("Success", "Return processed successfully!", "success");
+        if (window.onStockIssueReturnSuccess) {
+            await window.onStockIssueReturnSuccess();
         } else {
-            Swal.fire("Error", submitRes.message || "Return failed with no message from server.", "error");
+            await loadIncompleteIssues();
         }
 
     } catch (err) {
@@ -335,7 +340,13 @@ async function startReturnWizard(issueId) {
             loadingVisible = false;
         }
         console.error("Error while processing return:", err);
-        Swal.fire("Error", `Failed to process return: ${err.message}`, "error");
+        await Swal.fire("Error", `Failed to process return: ${err.message}`, "error");
+    } finally {
+        returnSubmissionInProgress = false;
+        if (sourceButton?.isConnected) {
+            sourceButton.disabled = false;
+            sourceButton.innerHTML = originalButtonHtml;
+        }
     }
 }
 

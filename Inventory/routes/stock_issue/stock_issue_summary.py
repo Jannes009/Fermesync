@@ -7,6 +7,7 @@ from flask_login import login_required, current_user
 from Inventory.routes.db_conversions import warehouse_code_to_link, project_code_to_link, stock_link_to_code
 from datetime import datetime
 from System import DateTime as NetDateTime
+from .spray_issue_validation import validate_spray_execution_quantities
 
 from Core.sdk_connection import EvolutionConnection, EvolutionAgentNotFoundError, EvolutionConnectionError
 import Pastel.Evolution as Evo
@@ -244,17 +245,26 @@ def process_return():
         # Check already finalised
         # =====================================
         cursor.execute("""
-            SELECT IssFinalised
+            SELECT IssFinalised, IssSprayExecutionId
             FROM stk.IssueHeader
             WHERE IdIssue = ?
         """, (issue_id,))
-        order_finalised = int(cursor.fetchone()[0]) > 0
+        issue_header = cursor.fetchone()
+        if not issue_header:
+            return jsonify({"success": False, "message": "Stock issue not found."}), 404
+        order_finalised = int(issue_header[0] or 0) > 0
 
         if order_finalised:
             return jsonify({
                 "success": False,
                 "message": "This issue was already finalised. Please refresh page."
             })
+
+        execution_id = issue_header[1]
+        if execution_id is not None:
+            validate_spray_execution_quantities(
+                cursor, execution_id, lines, "qty_returned", -1
+            )
 
         # =====================================
         # Finalise header

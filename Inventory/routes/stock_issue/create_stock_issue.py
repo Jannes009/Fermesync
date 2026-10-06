@@ -7,6 +7,7 @@ from flask_login import login_required, current_user
 from Inventory.routes.db_conversions import warehouse_code_to_link, project_code_to_link, stock_link_to_code
 from datetime import datetime
 from .stock_issue_summary import submit_stock_issue
+from .spray_issue_validation import validate_spray_execution_quantities
 
 @inventory_bp.route("/SDK/stock_issue_wizard", methods=["GET"])
 @login_required
@@ -288,6 +289,11 @@ def generate_stock_issue_for_spray(execution_id, lines_payload, order_final, iss
             WHERE EXE.IdSprExec = ?
         """, (execution_id,))
         warehouse_id = cursor.fetchone()[0]
+
+        if order_final:
+            validate_spray_execution_quantities(
+                cursor, execution_id, lines_payload, "qty_to_issue", 1
+            )
 
         validate_stock_issue_costs(cursor, lines_payload)
 

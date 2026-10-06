@@ -634,57 +634,64 @@ async function promptStockAdjustment(stockLink, warehouseLink, unit = 'stocking'
 }
 
 async function submitIssue() {
-  // const clientIssueId = crypto.randomUUID();
-  const result = await Swal.fire({
-    title: 'Finalize Order',
-    text: 'Could products be returned later?',
-    icon: 'question',
-    showDenyButton: true,
-    confirmButtonText: 'Yes, returns possible',
-    denyButtonText: 'No, final issue only',
-    reverseButtons: true,
-    customClass: { confirmButton: 'btn-success', denyButton: 'btn-danger' }
-  });
-  if (result.isDismissed) return;
-  const orderFinal = result.isDenied === true;
+  const createButton = document.getElementById('create-issue');
+  if (!createButton || createButton.disabled) return;
+  const originalButtonText = createButton.textContent;
+  createButton.disabled = true;
+  createButton.textContent = 'Submitting...';
+  let issueCreated = false;
 
-  const res = await request("/inventory/SDK/create_stock_issue", {
-  method: "POST",
-  headers: { "Content-Type": "application/json" },
-  body: JSON.stringify({
-      warehouse: selectedWarehouse,
-      issue_mode: issueMode,
-      projects: issueMode === "project" ? selectedProject : null,
-      spray_id: issueMode === "spray" ? selectedSpray : null,
-      order_final: orderFinal,
-      created_at: (selectedIssueDate ? new Date(selectedIssueDate).toISOString() : new Date().toISOString()),
-      lines: lines.map(l => ({
-        product_link: l.product_link,
-        product_code: l.product_code,
-        uom_id: l.uom_id,
-        uom_code: l.uom_code,
-        qty_to_issue: l.qty_issued,
-        project: l.project
-      }))
-    })
+  try {
+    const result = await Swal.fire({
+      title: 'Finalize Order',
+      text: 'Could products be returned later?',
+      icon: 'question',
+      showDenyButton: true,
+      confirmButtonText: 'Yes, returns possible',
+      denyButtonText: 'No, final issue only',
+      reverseButtons: true,
+      customClass: { confirmButton: 'btn-success', denyButton: 'btn-danger' }
     });
+    if (result.isDismissed) return;
+    const orderFinal = result.isDenied === true;
 
-    const data = await res.json();
+    const response = await request("/inventory/SDK/create_stock_issue", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        warehouse: selectedWarehouse,
+        issue_mode: issueMode,
+        projects: issueMode === "project" ? selectedProject : null,
+        spray_id: issueMode === "spray" ? selectedSpray : null,
+        order_final: orderFinal,
+        created_at: (selectedIssueDate ? new Date(selectedIssueDate).toISOString() : new Date().toISOString()),
+        lines: lines.map(line => ({
+          product_link: line.product_link,
+          product_code: line.product_code,
+          uom_id: line.uom_id,
+          uom_code: line.uom_code,
+          qty_to_issue: line.qty_issued,
+          project: line.project
+        }))
+      })
+    });
+    const data = await response.json();
 
-    if (!res.ok || data.success !== true) {
-    await Swal.fire(
-        "Error",
-        data.message || "Stock issue failed",
-        "error"
-    );
-    return;
+    if (!response.ok || data.success !== true) {
+      await Swal.fire("Error", data.message || "Stock issue failed", "error");
+      return;
     }
+
+    issueCreated = true;
     const issueNo = data.issue_no ? `Issue ${data.issue_no}` : `Issue #${data.issue_id}`;
     await Swal.fire("Success", `${issueNo} created`, "success");
-    if (window.nextUrl) {
-        window.location.href = window.nextUrl;
-    } else {
-        window.location.href = '/inventory/SDK/stock_issue_summary';
+    window.location.href = window.nextUrl || '/inventory/SDK/stock_issue_summary';
+  } catch (error) {
+    await Swal.fire("Error", error.message || "Stock issue failed", "error");
+  } finally {
+    if (!issueCreated) {
+      createButton.disabled = false;
+      createButton.textContent = originalButtonText;
     }
-
+  }
 }
