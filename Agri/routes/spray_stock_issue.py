@@ -48,13 +48,14 @@ def fetch_spray_products():
                         ,SUM( LIN.IssLineQtyIssued-ISNULL(LIN.IssLineQtyReceived,0)) ExecutionNettIssued
                     from stk.IssueHeader HEA
                     JOIN stk.IssueLines LIN on LIN.IssLineIssueId = HEA.IdIssue
+                    WHERE HEA.IssCancelled = 0 AND HEA.IssSprayExecutionId = ?
                     GROUP BY 
                         HEA.IssSprayExecutionId
                         ,IssLineStockLink
                     )QTY on QTY.QTYIssSprayExecutionId = REQ.SprayHExecutionId and QTY.QTYIssLineStockLink = REQ.StockId
             Where SprayHExecutionId = ?
             Group by WhseId, StockId, QtyAvailable, UoMId, ExecutionNettIssued
-        """, (execution_id,))
+        """, (execution_id, execution_id))
         rows = cursor.fetchall()
 
         conn.close()

@@ -62,6 +62,16 @@
   table { width: 100%; border-collapse: collapse; min-width: 940px; }
   th, td { padding: 12px 14px; border-bottom: 1px solid var(--input-border); text-align: left; font-size: 0.95rem; }
   th { background: var(--form-bg); color: var(--secondary-text); font-weight: 700; }
+  .sort-button {
+    display: flex; align-items: center; justify-content: space-between; gap: 0.5rem;
+    width: 100%; padding: 12px 14px; border: 0; background: transparent;
+    color: inherit; font: inherit; text-align: left; cursor: pointer;
+  }
+  th { padding: 0; }
+  .sort-button::after { content: "\2195"; opacity: 0.5; }
+  th[aria-sort="ascending"] .sort-button::after { content: "\25B2"; opacity: 1; }
+  th[aria-sort="descending"] .sort-button::after { content: "\25BC"; opacity: 1; }
+  .sort-button:focus-visible { outline: 2px solid var(--button-bg, #0d6efd); outline-offset: -2px; }
   tbody tr.execution-row { transition: background 0.15s ease; cursor: pointer; }
   tbody tr.execution-row:hover { background: var(--form-bg); }
   .muted { color: var(--secondary-text); }
@@ -131,13 +141,13 @@
       <table>
         <thead>
           <tr>
-            <th>Spray No/s</th>
-            <th>Description</th>
-            <th>Date</th>
-            <th>Responsible</th>
-            <th>Farm</th>
-            <th>Block</th>
-            <th>Finalised</th>
+            <th scope="col" data-sort-type="text" aria-sort="none"><button class="sort-button" type="button">Spray No/s</button></th>
+            <th scope="col" data-sort-type="text" aria-sort="none"><button class="sort-button" type="button">Description</button></th>
+            <th scope="col" data-sort-type="date" aria-sort="none"><button class="sort-button" type="button">Date</button></th>
+            <th scope="col" data-sort-type="text" aria-sort="none"><button class="sort-button" type="button">Responsible</button></th>
+            <th scope="col" data-sort-type="percentage" aria-sort="none"><button class="sort-button" type="button">% Diff (Issued vs Rec.)</button></th>
+            <th scope="col" data-sort-type="text" aria-sort="none"><button class="sort-button" type="button">Block</button></th>
+            <th scope="col" data-sort-type="finalised" aria-sort="none"><button class="sort-button" type="button">Finalised</button></th>
           </tr>
         </thead>
         <tbody id="executionTableBody">
@@ -155,7 +165,7 @@
               </td>
               <td>{{ exe.date }}</td>
               <td>{{ exe.responsible_person }}</td>
-              <td>{{ exe.farm_name_text }}</td>
+              <td>{{ exe.qty_percent_diff }}</td>
               <td>{{ exe.block_text }}</td>
               <td><span class="status-pill {% if exe.finalised %}status-finalised{% else %}status-draft{% endif %}">{% if exe.finalised %}Yes{% else %}No{% endif %}</span></td>
             </tr>
@@ -169,7 +179,49 @@
 <script>
 const weekFilter = document.getElementById('weekFilter');
 const blockFilter = document.getElementById('blockFilter');
+const executionTableBody = document.getElementById('executionTableBody');
 const finalisedOptions = document.querySelectorAll('input[name="finalisedFilter"]');
+const sortCollator = new Intl.Collator(undefined, { numeric: true, sensitivity: 'base' });
+
+function sortExecutionRows(header) {
+  const headers = Array.from(header.parentElement.children);
+  const columnIndex = headers.indexOf(header);
+  const direction = header.dataset.sortDirection === 'ascending' ? 'descending' : 'ascending';
+  const sortDirection = direction === 'ascending' ? 1 : -1;
+  const sortType = header.dataset.sortType;
+
+  headers.forEach(cell => {
+    cell.setAttribute('aria-sort', 'none');
+    delete cell.dataset.sortDirection;
+  });
+  header.setAttribute('aria-sort', direction);
+  header.dataset.sortDirection = direction;
+
+  const rows = Array.from(executionTableBody.querySelectorAll('.execution-row'));
+  rows.sort((left, right) => {
+    const leftText = left.cells[columnIndex].textContent.trim();
+    const rightText = right.cells[columnIndex].textContent.trim();
+    if (sortType === 'percentage' && (!leftText || !rightText)) {
+      return leftText ? -1 : rightText ? 1 : 0;
+    }
+
+    let comparison;
+    if (sortType === 'percentage') {
+      comparison = Number.parseFloat(leftText) - Number.parseFloat(rightText);
+    } else if (sortType === 'finalised') {
+      comparison = Number(left.dataset.finalised === 'true') - Number(right.dataset.finalised === 'true');
+    } else {
+      comparison = sortCollator.compare(leftText, rightText);
+    }
+    return comparison * sortDirection;
+  });
+
+  rows.forEach(row => executionTableBody.appendChild(row));
+}
+
+document.querySelectorAll('thead .sort-button').forEach(button => {
+  button.addEventListener('click', () => sortExecutionRows(button.closest('th')));
+});
 
 function updateToggleSelection() {
   finalisedOptions.forEach(option => {

@@ -599,6 +599,42 @@
     border-bottom: none;
   }
 
+  .movement-issue-cancelled {
+    background: #fde8e6;
+  }
+
+  .movement-issue-cancelled:hover {
+    background: #fbd7d3 !important;
+  }
+
+  .movement-issue-cancelled td {
+    color: #76251f;
+  }
+
+  .issue-cancelled-badge {
+    display: inline-block;
+    margin-left: 0.4rem;
+    padding: 0.2rem 0.45rem;
+    border: 1px solid #d58e87;
+    border-radius: 4px;
+    color: #76251f;
+    background: #fff7f6;
+    font-size: 0.72rem;
+    font-weight: 700;
+    white-space: nowrap;
+  }
+
+  .btn-view-issue {
+    display: inline-block;
+    margin-right: 0.4rem;
+    padding: 0.4rem 0.65rem;
+    border: 1px solid var(--button-bg);
+    border-radius: 4px;
+    color: var(--button-bg);
+    text-decoration: none;
+    white-space: nowrap;
+  }
+
   .movement-detail-value {
     color: var(--primary-text);
     font-weight: 600;
@@ -687,7 +723,7 @@
     <!-- Stock Movements -->
     <div class="card">
       <h2 class="section-title">Stock Movements</h2>
-      {% if not execution.finalised and 'STOCK_ISSUE' in current_user.permissions %}
+      {% if not execution.finalised and 'STOCK_ISSUE_CREATE' in current_user.permissions %}
       <div style="margin-bottom: 1rem;">
         <a href="/inventory/SDK/stock_issue_wizard?execution_id={{ execution.id }}&step=2&next_url={{ request.path|urlencode }}" class="btn-primary">Issue Stock</a>
       </div>
@@ -721,6 +757,7 @@
                 <thead>
                   <tr>
                     <th>Issue ID</th>
+                    <th>Status</th>
                     <th>Qty Out</th>
                     <th>Qty In</th>
                     <th>Nett</th>
@@ -732,8 +769,15 @@
                 </thead>
                 <tbody>
                   {% for detail in movement.details %}
-                  <tr class="movement-detail-row">
+                  <tr class="movement-detail-row{% if detail.issue_cancelled %} movement-issue-cancelled{% endif %}">
                     <td>{{ detail.issue_id or '-' }}</td>
+                    <td>
+                      {% if detail.issue_cancelled %}
+                        <span class="issue-cancelled-badge">Cancelled</span>
+                      {% else %}
+                        Active
+                      {% endif %}
+                    </td>
                     <td class="movement-detail-value">{{ detail.qty_out_display }} {{ movement.unit_code }}</td>
                     <td class="movement-detail-value">{{ detail.qty_in_display }} {{ movement.unit_code }}</td>
                     <td class="movement-detail-value">{{ detail.qty_finalised_nett_display }} {{ movement.unit_code }}</td>
@@ -741,9 +785,12 @@
                     <td>{{ detail.time_issued_display }}</td>
                     <td>{{ detail.time_finalised_display }}</td>
                     <td>
-                      {% if detail.qty_unfinalised and 'STOCK_ISSUE' in current_user.permissions %}
+                      {% if detail.issue_id and ('STOCK_ISSUE_VIEW' in current_user.permissions or 'STOCK_ISSUE_CANCEL' in current_user.permissions) %}
+                        <a class="btn-view-issue" href="/inventory/SDK/stock_issue_details/{{ detail.issue_id }}">View</a>
+                      {% endif %}
+                      {% if detail.qty_unfinalised and not detail.issue_cancelled and 'STOCK_ISSUE_CREATE' in current_user.permissions %}
                         <button type="button" class="btn-success" onclick="startReturnWizard({{ detail.issue_id }})">Return</button>
-                      {% else %}
+                      {% elif not detail.issue_id or 'STOCK_ISSUE_CREATE' not in current_user.permissions %}
                         —
                       {% endif %}
                     </td>

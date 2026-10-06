@@ -1,0 +1,110 @@
+{% extends 'inventory_base.html' %}
+{% block content %}
+<style>
+    .issue-detail-wrap { max-width: 1180px; margin: 0 auto; padding: 1rem; }
+    .issue-detail-panel {
+        padding: 1.25rem;
+        margin-bottom: 1rem;
+        background: var(--container-bg);
+        border: 1px solid var(--input-border);
+        border-radius: 6px;
+    }
+    .issue-detail-heading {
+        display: flex;
+        flex-wrap: wrap;
+        align-items: center;
+        justify-content: space-between;
+        gap: 0.75rem;
+        margin-bottom: 1rem;
+    }
+    .issue-detail-heading h1 { margin: 0; font-size: 1.45rem; }
+    .issue-detail-heading p { margin: 0.25rem 0 0; color: var(--muted-text, #65737e); }
+    .issue-detail-actions { display: flex; gap: 0.5rem; }
+    .issue-detail-actions a, .issue-detail-actions button {
+        min-height: 38px;
+        padding: 0.45rem 0.75rem;
+        border: 1px solid var(--button-bg);
+        border-radius: 4px;
+        color: var(--button-bg);
+        background: transparent;
+        text-decoration: none;
+        cursor: pointer;
+    }
+    .issue-detail-actions button { color: var(--button-text); background: var(--button-bg); }
+    .issue-detail-actions button[hidden] { display: none; }
+    .issue-detail-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(190px, 1fr));
+        gap: 1px;
+        background: var(--input-border);
+        border: 1px solid var(--input-border);
+    }
+    .issue-detail-field { min-width: 0; padding: 0.75rem; background: var(--container-bg); }
+    .issue-detail-label {
+        display: block;
+        margin-bottom: 0.25rem;
+        color: var(--muted-text, #65737e);
+        font-size: 0.8rem;
+    }
+    .issue-detail-value { overflow-wrap: anywhere; font-weight: 600; }
+    .issue-detail-table-wrap { overflow-x: auto; }
+    .issue-detail-table { width: 100%; min-width: 800px; border-collapse: collapse; }
+    .issue-detail-table th, .issue-detail-table td {
+        padding: 0.7rem;
+        border-bottom: 1px solid var(--input-border);
+        text-align: left;
+    }
+    .issue-detail-table th { color: var(--muted-text, #65737e); font-size: 0.82rem; }
+    .issue-detail-table .numeric { text-align: right; font-variant-numeric: tabular-nums; }
+    #issue-detail-message { color: var(--muted-text, #65737e); }
+</style>
+
+<main class="issue-detail-wrap with-fixed-taskbar">
+    <section class="issue-detail-panel">
+        <header class="issue-detail-heading">
+            <div>
+                <h1 id="issue-title">Stock issue</h1>
+                <p id="issue-subtitle">Loading issue details...</p>
+            </div>
+            <div class="issue-detail-actions">
+                <button id="back-to-issues-button" type="button" onclick="window.history.back()">Back</button>
+                <button id="receive-issue-button" type="button" hidden>Receive issue</button>
+                <button id="cancel-issue-button" type="button" hidden>Cancel Issue</button>
+            </div>
+        </header>
+        <div id="issue-detail-message" role="status"></div>
+        <div id="issue-header-fields" class="issue-detail-grid"></div>
+    </section>
+
+    <section class="issue-detail-panel">
+        <h2>Issue lines</h2>
+        <div class="issue-detail-table-wrap">
+            <table class="issue-detail-table">
+                <thead>
+                    <tr>
+                        <th>Product</th>
+                        <th>Project IDs</th>
+                        <th class="numeric">Issued</th>
+                        <th class="numeric">Received</th>
+                        <th class="numeric">Finalised</th>
+                        <th>UOM</th>
+                    </tr>
+                </thead>
+                <tbody id="issue-lines-body">
+                    <tr><td colspan="6">Loading issue lines...</td></tr>
+                </tbody>
+            </table>
+        </div>
+    </section>
+</main>
+
+<script>
+    window.FERMESYNC = {
+        userId: {{ current_user.id | tojson }},
+        permissions: {{ current_user.permissions | tojson }}
+    };
+    window.STOCK_ISSUE_ID = {{ issue_id | tojson }};
+</script>
+<script src="{{ url_for('inventory.static', filename='stock_issue/stock_issue_list.js') }}?v={{ filemtime('inventory','stock_issue/stock_issue_list.js') }}"></script>
+<script src="{{ url_for('inventory.static', filename='stock_issue/stock_issue_details.js') }}?v={{ filemtime('inventory','stock_issue/stock_issue_details.js') }}"></script>
+{% endblock %}

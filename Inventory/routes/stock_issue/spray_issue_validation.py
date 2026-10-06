@@ -21,7 +21,7 @@ def validate_spray_execution_quantities(cursor, execution_id, lines, quantity_ke
                SUM(LIN.IssLineQtyIssued - ISNULL(LIN.IssLineQtyReceived, 0))
         FROM stk.IssueHeader HEA
         JOIN stk.IssueLines LIN ON LIN.IssLineIssueId = HEA.IdIssue
-        WHERE HEA.IssSprayExecutionId = ?
+        WHERE HEA.IssSprayExecutionId = ? and HEA.IssCancelled = 0
         GROUP BY LIN.IssLineStockLink
     """, (execution_id,))
     previously_issued = {

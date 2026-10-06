@@ -154,7 +154,7 @@ def fetch_spray_record_data(instruction_id):
     from stk.IssueHeader ISS
     JOIN agr.SprayExecution EXE on EXE.IdSprExec = ISS.IssSprayExecutionId
     JOIN agr.SprayHeader HEA on HEA.SprayHExecutionId = EXE.IdSprExec
-    Where HEA.IdSprayH = ?
+    Where HEA.IdSprayH = ? and ISS.IssCancelled = 0 and ISS.IssInvoiceNo is not null
     """, instruction_id)
 
     invoice_numbers = []

@@ -48,7 +48,7 @@ def grv_history():
          SELECT OrderNum, MAX(OrderDate), MAX(SupplierName), MAX(SupplierAccount),
              MAX(WarehouseName), MAX(Description), MAX(OrdTotIncl), MAX(DocState), MAX(DocStateText)
         FROM [stk]._uvPurchaseOrders
-        WHERE iWarehouseID IN ({warehouse_placeholders})
+        WHERE DocFlag = 1 AND iWarehouseID IN ({warehouse_placeholders})
     """
     params = list(warehouses)
     if start_date:
@@ -120,7 +120,7 @@ def grv_history_detail(po_number):
                OrdTotIncl, DocState, DocStateText, cDescription, fQuantity,
              fQtyProcessed, UnitCode, fUnitPriceIncl, WarehouseName, GrvNumber
         FROM [stk]._uvPurchaseOrders
-        WHERE OrderNum = ? AND iWarehouseID IN ({warehouse_placeholders})
+        WHERE OrderNum = ? AND DocFlag = 1 AND iWarehouseID IN ({warehouse_placeholders})
         ORDER BY iLineID
     """
     conn = None

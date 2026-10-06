@@ -1,64 +1,181 @@
 
 let returnSubmissionInProgress = false;
+let cancellationInProgress = false;
 
 document.addEventListener("DOMContentLoaded", async () => {
-    const list = document.getElementById("incomplete-issues-list");
-    if (list) {
-        loadIncompleteIssues();
+        const tableBody = document.getElementById("stock-issues-body");
+        if (tableBody) {
+        if (document.getElementById("issue-from-filter")) setDefaultIssueDates();
+        document.getElementById("apply-issue-filters")?.addEventListener("click", loadIncompleteIssues);
+        document.getElementById("issue-status-filter")?.addEventListener("change", loadIncompleteIssues);
+                loadIncompleteIssues();
     }
 });
 
+function setDefaultIssueDates() {
+    const today = new Date();
+    const start = new Date(today);
+    start.setDate(today.getDate() - 6);
+    const toInputDate = date => {
+        const local = new Date(date.getTime() - date.getTimezoneOffset() * 60000);
+        return local.toISOString().slice(0, 10);
+    };
+    document.getElementById("issue-from-filter").value = toInputDate(start);
+    document.getElementById("issue-to-filter").value = toInputDate(today);
+}
+
 async function loadIncompleteIssues() {
-  const list = document.getElementById("incomplete-issues-list");
-  if (!list) {
+    const tableBody = document.getElementById("stock-issues-body");
+    if (!tableBody) {
       return;
   }
-  list.innerHTML = "<i>Loading...</i>";
+    tableBody.innerHTML = "<tr><td colspan=\"7\">Loading issues...</td></tr>";
 
   try {
-      const serverIssues = await request("/inventory/SDK/incomplete_issues")
-        .then(res => res.json())
-        .then(res => {
-            if (!res.success) {
-                list.innerHTML = "<i>Failed to load issues.</i>";
+            const params = new URLSearchParams();
+            const statusFilter = document.getElementById("issue-status-filter");
+            const fromFilter = document.getElementById("issue-from-filter");
+            const toFilter = document.getElementById("issue-to-filter");
+            if (statusFilter) params.set("status", statusFilter.value);
+            if (fromFilter?.value) params.set("from", fromFilter.value);
+            if (toFilter?.value) params.set("to", toFilter.value);
+            const response = await request(`/inventory/SDK/incomplete_issues?${params}`);
+            const result = await response.json();
+            if (!response.ok || !result.success) {
+                    throw new Error(result.message || "Failed to load issues.");
             }
-            return res.issues || [];
-        });
-
-    renderIssues(serverIssues);
+            renderIssues(result.issues || []);
   } catch (err) {
     console.error(err);
-    list.innerHTML = "<i>Failed to load issues.</i>";
+        tableBody.innerHTML = `<tr><td colspan="7">${escapeIssueText(err.message || "Failed to load issues.")}</td></tr>`;
   }
 }
 
 function renderIssues(issues) {
-  const list = document.getElementById("incomplete-issues-list");
-  list.innerHTML = "";
+    const tableBody = document.getElementById("stock-issues-body");
+    tableBody.replaceChildren();
 
   if (!issues.length) {
-    list.innerHTML = "<i>No incomplete issues.</i>";
+        tableBody.innerHTML = '<tr><td colspan="7">No issues match these filters.</td></tr>';
     return;
   }
 
   for (const issue of issues) {
-    const div = document.createElement("div");
-    div.classList.add("issue-card");
+        const row = document.createElement("tr");
+        const issueDate = issue.IssueTimeStamp ? new Date(issue.IssueTimeStamp).toLocaleString() : "—";
+        const fields = [
+                issue.IssueNo || `#${issue.IssueId}`,
+                issueDate,
+                issue.IsCancelled ? "Cancelled" : (issue.IsFinalised ? "Finalised" : "Outstanding"),
+                issue.WhseDescription || "—",
+                issue.ExecutionDescription || "—",
+                issue.EvolutionReference || "—",
+        ];
+        for (const value of fields) {
+                const cell = document.createElement("td");
+                if (issue.IsCancelled && value === "Cancelled") {
+                    const badge = document.createElement("span");
+                    badge.className = "issue-status-badge cancelled";
+                    badge.textContent = value;
+                    cell.appendChild(badge);
+                } else {
+                    cell.textContent = value;
+                }
+                row.appendChild(cell);
+        }
+        row.cells[2].className = "issue-status";
+        if (issue.IsCancelled) row.classList.add("issue-cancelled");
 
-    div.innerHTML = `
-      <h3>
-        ${issue.IssueNo}
-      </h3>
-      <p><b>Date:</b> ${issue.IssueTimeStamp}</p>
-      <p><b>Warehouse:</b> ${issue.WhseDescription}</p>
-      <button class="btn-primary"
-        onclick="startReturnWizard('${issue.IssueId}', this)">
-        Process Return →
-      </button>
-    `;
-
-    list.appendChild(div);
+        const actions = document.createElement("td");
+        actions.className = "issue-actions";
+        const details = document.createElement("a");
+        details.href = `/inventory/SDK/stock_issue_details/${issue.IssueId}`;
+        details.textContent = "Details";
+        actions.appendChild(details);
+        const permissions = window.FERMESYNC?.permissions || [];
+        if (permissions.includes("STOCK_ISSUE_CREATE") && !issue.IsFinalised && !issue.IsCancelled) {
+                const receive = document.createElement("button");
+                receive.type = "button";
+                receive.className = "receive-issue";
+                receive.textContent = "Receive";
+                receive.addEventListener("click", () => startReturnWizard(issue.IssueId, receive));
+                actions.appendChild(receive);
+        }
+            const canCancel = permissions.includes("STOCK_ISSUE_CANCEL") && !issue.IsCancelled && (
+                issue.ExecutionId == null || issue.ExecutionFinalised === false
+            );
+            if (canCancel) {
+                const cancel = document.createElement("button");
+                cancel.type = "button";
+                cancel.textContent = "Cancel Issue";
+                cancel.addEventListener("click", () => cancelStockIssue(
+                    issue.IssueId,
+                    cancel,
+                    Boolean(issue.EvolutionReference)
+                ));
+                actions.appendChild(cancel);
+            }
+        row.appendChild(actions);
+        tableBody.appendChild(row);
   }
+}
+
+function escapeIssueText(value) {
+    const element = document.createElement("span");
+    element.textContent = value;
+    return element.innerHTML;
+}
+
+async function cancelStockIssue(issueId, sourceButton = null, hasEvolutionReference = true) {
+    if (cancellationInProgress) return;
+    const confirmation = await Swal.fire({
+        icon: "warning",
+        title: "Are you very sure?",
+        text: hasEvolutionReference
+            ? "This will create an Evolution credit note for the linked sales order."
+            : "No Evolution sales order exists. This will cancel the issue in Fermesync only.",
+        showCancelButton: true,
+        confirmButtonText: hasEvolutionReference ? "Yes, create credit note" : "Yes, cancel issue",
+        cancelButtonText: "Keep issue",
+        confirmButtonColor: "#b42318",
+    });
+    if (!confirmation.isConfirmed) return;
+
+    cancellationInProgress = true;
+    if (sourceButton) {
+        sourceButton.disabled = true;
+        sourceButton.textContent = "Processing...";
+    }
+    try {
+        Swal.fire({ title: "Creating credit note...", allowOutsideClick: false, didOpen: () => Swal.showLoading() });
+        const response = await request("/inventory/SDK/cancel_stock_issue", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ issue_id: issueId }),
+        });
+        const result = await response.json();
+        if (!response.ok || !result.success) {
+            throw new Error(result.message || "Issue cancellation failed.");
+        }
+        if (result.credited) {
+            await Swal.fire("Credit note created", `Evolution reference: ${result.credit_note_number || "—"}`, "success");
+        } else {
+            await Swal.fire("Issue cancelled", result.message || "Issue cancelled in Fermesync.", "success");
+        }
+        if (window.onStockIssueCancelSuccess) {
+            await window.onStockIssueCancelSuccess();
+        } else {
+            await loadIncompleteIssues();
+        }
+    } catch (error) {
+        await Swal.fire("Cancellation failed", error.message || "Could not create the credit note.", "error");
+    } finally {
+        cancellationInProgress = false;
+        if (sourceButton?.isConnected) {
+            sourceButton.disabled = false;
+            sourceButton.textContent = "Cancel Issue";
+        }
+    }
 }
 
 // ============================================================================
@@ -351,3 +468,4 @@ async function startReturnWizard(issueId, sourceButton = null) {
 }
 
 window.startReturnWizard = startReturnWizard;
+window.cancelStockIssue = cancelStockIssue;

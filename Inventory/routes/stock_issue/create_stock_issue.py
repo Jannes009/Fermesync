@@ -13,7 +13,7 @@ from .spray_issue_validation import validate_spray_execution_quantities
 @login_required
 def stock_issue_wizard():
     # permission check (optional)
-    if "STOCK_ISSUE" in current_user.permissions:
+    if "STOCK_ISSUE_CREATE" in current_user.permissions:
         return render_template('EvolutionSDK/stock_issue.html')
     else:
         abort(403)
@@ -25,7 +25,7 @@ def stock_issue_wizard():
 @inventory_bp.route("/SDK/create_stock_issue", methods=["POST"])
 @login_required
 def create_stock_issue():
-    if "STOCK_ISSUE" not in current_user.permissions:
+    if "STOCK_ISSUE_CREATE" not in current_user.permissions:
         abort(403)  # Forbidden
     data = request.json
     if not data:

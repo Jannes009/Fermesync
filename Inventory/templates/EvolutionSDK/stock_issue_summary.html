@@ -1,6 +1,5 @@
 {% extends 'inventory_base.html' %}
 {% block content %}
-<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
     <style>
         * { box-sizing: border-box; }
         body {
@@ -70,24 +69,6 @@
             border-radius: 8px; cursor: pointer; font-size: 1rem;
         }
 
-        .btn-ghost {
-            background: transparent;
-            color: var(--button-bg);
-            border: 1px solid var(--button-bg);
-            padding: 8px 12px;
-            border-radius: 999px;
-            cursor: pointer;
-            font-size: 0.9rem;
-        }
-
-        .hidden { display: none; }
-
-        .panel-section + .panel-section {
-            margin-top: 1.5rem;
-            padding-top: 1.5rem;
-            border-top: 1px solid var(--input-border);
-        }
-
         .section-title-row {
             display: flex;
             flex-wrap: wrap;
@@ -102,53 +83,71 @@
             font-size: 1.2rem;
         }
 
-        .section-hint {
-            font-size: 0.85rem;
-            color: var(--muted-text, #7b8a99);
+        .issue-filters {
+            display: flex;
+            flex-wrap: wrap;
+            align-items: end;
+            gap: 0.75rem;
+            margin: 1rem 0;
         }
 
-        /***********************************
-         HORIZONTAL CARDS FOR MOBILE
-        ***********************************/
-        .horizontal-scroll {
+        .issue-filters label {
             display: grid;
-            grid-auto-flow: column;
-            grid-auto-columns: minmax(280px, 1fr);
-            gap: 16px;
-            padding-bottom: 6px;
-            overflow-x: auto;
-            scroll-snap-type: x proximity;
+            gap: 0.3rem;
+            color: var(--muted-text, #65737e);
+            font-size: 0.85rem;
         }
 
-        .horizontal-scroll::-webkit-scrollbar {
-            height: 6px;
-        }
-
-        .horizontal-scroll::-webkit-scrollbar-thumb {
-            background: rgba(123,138,153,0.5);
-            border-radius: 999px;
-        }
-
-        .issue-card {
-            min-width: 260px;
-            padding: 12px;
-            border-radius: 8px;
+        .issue-filters input, .issue-filters select {
+            min-height: 40px;
+            padding: 0.45rem 0.6rem;
+            color: var(--primary-text);
             background: var(--form-bg);
             border: 1px solid var(--input-border);
-            flex-shrink: 0;
-            scroll-snap-align: start;
-            display: flex;
-            flex-direction: column;
-            gap: 4px;
+            border-radius: 4px;
         }
 
-        .issue-card h4 {
-            margin-top: 0; font-size: 1.1rem;
+        .table-scroll { overflow-x: auto; }
+        .issues-table { width: 100%; border-collapse: collapse; min-width: 780px; }
+        .issues-table th, .issues-table td {
+            padding: 0.7rem;
+            border-bottom: 1px solid var(--input-border);
+            text-align: left;
+            vertical-align: middle;
         }
-
-        .issue-card button {
-            margin-top: 8px;
-            width: 100%;
+        .issues-table th { font-size: 0.82rem; color: var(--muted-text, #65737e); }
+        .issue-status { font-weight: 600; }
+        .issue-status-badge {
+            display: inline-block;
+            padding: 0.2rem 0.5rem;
+            border: 1px solid transparent;
+            border-radius: 4px;
+            font-size: 0.78rem;
+            font-weight: 700;
+        }
+        .issue-status-badge.cancelled {
+            color: #8f2119;
+            background: #fde8e6;
+            border-color: #e7aaa5;
+        }
+        .issue-actions { display: flex; gap: 0.5rem; }
+        .issue-actions a, .issue-actions button {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            min-height: 36px;
+            padding: 0.4rem 0.65rem;
+            border: 1px solid var(--button-bg);
+            border-radius: 4px;
+            color: var(--button-bg);
+            background: transparent;
+            text-decoration: none;
+            cursor: pointer;
+            white-space: nowrap;
+        }
+        .issue-actions .receive-issue {
+            color: var(--button-text);
+            background: var(--button-bg);
         }
     </style>
 
@@ -158,22 +157,56 @@
         <div class="panel-header">
             <div>
                 <h1>Stock Issues</h1>
-                <p>Review outstanding issues, process returns, or start a new one.</p>
+                <p>Review stock issue history and receive outstanding issues.</p>
             </div>
             <div class="panel-header-actions">
+                {% if can_create %}
                 <button id="new-issue-btn" class="btn-primary">
                     + Start New Stock Issue
                 </button>
+                {% endif %}
             </div>
         </div>
 
         <div class="panel-section">
             <div class="section-title-row">
-                <h2>Incomplete Stock Issues</h2>
-                <span class="section-hint">Swipe horizontally on mobile to view all</span>
+                <h2>Stock Issues</h2>
             </div>
-            <div id="incomplete-issues-list" class="horizontal-scroll">
-                Loading…
+            {% if can_view %}
+            <div class="issue-filters" aria-label="Stock issue filters">
+                <label>Status
+                    <select id="issue-status-filter">
+                        <option value="all">Outstanding and recent</option>
+                        <option value="outstanding">Outstanding only</option>
+                        <option value="finalised">Finalised only</option>
+                    </select>
+                </label>
+                <label>From
+                    <input id="issue-from-filter" type="date">
+                </label>
+                <label>To
+                    <input id="issue-to-filter" type="date">
+                </label>
+                <button id="apply-issue-filters" class="btn-primary" type="button">Apply filters</button>
+            </div>
+            {% endif %}
+            <div class="table-scroll">
+                <table class="issues-table">
+                    <thead>
+                        <tr>
+                            <th>Issue</th>
+                            <th>Issued</th>
+                            <th>Status</th>
+                            <th>Warehouse</th>
+                            <th>Execution</th>
+                            <th>Evolution reference</th>
+                            <th>Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody id="stock-issues-body">
+                        <tr><td colspan="7">Loading issues...</td></tr>
+                    </tbody>
+                </table>
             </div>
         </div>
     </div>
@@ -190,7 +223,7 @@
 </script>
 
 <script>
-document.getElementById("new-issue-btn").addEventListener("click", () => {
+document.getElementById("new-issue-btn")?.addEventListener("click", () => {
     window.location.href = '/inventory/SDK/stock_issue_wizard';
 });
 </script>

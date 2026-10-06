@@ -47,14 +47,11 @@ def spray_executions_summary():
             People.PersonName,
             EXE.SprExecFinalised,
             SP.SprayPBlockNo,
-            FRM.FarmName,
             EXE.SprExecDate
         FROM agr.SprayExecution EXE
         JOIN agr.SprayHeader HEA
             ON HEA.SprayHExecutionId = EXE.IdSprExec
         JOIN [agr].[SprayProjects] SP on SP.SprayPSprayId = HEA.IdSprayH
-        JOIN [agr].[ProjectAttributes] PA on PA.ProjAttrProjectId = SP.SprayPProjectId
-        JOIN [agr].Farm FRM on FRM.IdFarm = PA.ProjAttrFarmId
         LEFT JOIN agr.People People on People.IdPerson = EXE.SprExecResponsiblePerson
         WHERE HEA.SprayHWhseId IN ({placeholders})
         ORDER BY EXE.SprExecDate DESC, EXE.IdSprExec DESC
@@ -69,7 +66,6 @@ def spray_executions_summary():
                 "date": row.SprExecDate,
                 "responsible_person": row.PersonName,
                 "finalised": bool(row.SprExecFinalised),
-                "farm_names": [],
                 "block_numbers": [],
                 "descriptions": [],
                 "weeks": [],
@@ -89,13 +85,50 @@ def spray_executions_summary():
             if block_no not in (None, ''):
                 executions[exec_id]["block_numbers"].append(str(block_no))
 
-            farm_name = (row.FarmName or '').strip()
-            if farm_name:
-                executions[exec_id]["farm_names"].append(farm_name)
-
             spray_no = (row.SprayHNo or '').strip()
             if spray_no:
                 executions[exec_id]["spray_nos"].append(spray_no)
+
+    if executions:
+        execution_ids = tuple(executions)
+        execution_placeholders = ','.join('?' for _ in execution_ids)
+        cur.execute(f"""
+            WITH Recommended AS (
+                SELECT HEA.SprayHExecutionId AS ExecutionId,
+                       SUM(LIN.SprayLineTotalQty) AS RecommendedQty
+                FROM agr.SprayHeader HEA
+                JOIN agr.SprayLines LIN ON LIN.SprayLineHeaderId = HEA.IdSprayH
+                WHERE HEA.SprayHExecutionId IN ({execution_placeholders})
+                GROUP BY HEA.SprayHExecutionId
+            ), Issued AS (
+                SELECT HEA.IssSprayExecutionId AS ExecutionId,
+                       SUM(LIN.IssLineQtyIssued - ISNULL(LIN.IssLineQtyReceived, 0)) AS IssuedQty
+                FROM stk.IssueHeader HEA
+                JOIN stk.IssueLines LIN ON LIN.IssLineIssueId = HEA.IdIssue
+                WHERE HEA.IssSprayExecutionId IN ({execution_placeholders}) and IssCancelled = 0
+                GROUP BY HEA.IssSprayExecutionId
+            )
+            SELECT EXE.IdSprExec,
+                   ISNULL(REC.RecommendedQty, 0) AS RecommendedQty,
+                   ISNULL(ISS.IssuedQty, 0) AS IssuedQty
+            FROM agr.SprayExecution EXE
+            LEFT JOIN Recommended REC ON REC.ExecutionId = EXE.IdSprExec
+            LEFT JOIN Issued ISS ON ISS.ExecutionId = EXE.IdSprExec
+            WHERE EXE.IdSprExec IN ({execution_placeholders})
+        """, execution_ids * 3)
+
+        for row in cur.fetchall():
+            recommended_qty = float(row.RecommendedQty or 0)
+            issued_qty = float(row.IssuedQty or 0)
+            percent_diff = None
+            if issued_qty > 0 and recommended_qty:
+                percent_diff = (issued_qty - recommended_qty) / recommended_qty * 100
+            executions[row.IdSprExec]["qty_percent_diff"] = (
+                f"{'+' if percent_diff > 0 else ''}{format_decimal(percent_diff)}%"
+                if percent_diff is not None else "N/A"
+            )
+            if issued_qty <= 0:
+                executions[row.IdSprExec]["qty_percent_diff"] = ""
 
     execution_rows = []
     all_blocks = []
@@ -118,11 +151,6 @@ def spray_executions_summary():
                 if week not in all_weeks:
                     all_weeks.append(week)
 
-        unique_farms = []
-        for farm_name in execution["farm_names"]:
-            if farm_name and farm_name not in unique_farms:
-                unique_farms.append(farm_name)
-
         unique_blocks = []
         for block_no in execution["block_numbers"]:
             if block_no and block_no not in unique_blocks:
@@ -135,13 +163,12 @@ def spray_executions_summary():
             "date": format_datetime(execution["date"]),
             "responsible_person": execution["responsible_person"] or '-',
             "finalised": execution["finalised"],
-            "farm_names": unique_farms,
-            "farm_name_text": ', '.join(unique_farms) if unique_farms else '-',
             "block_numbers": unique_blocks,
             "block_text": ', '.join(unique_blocks) if unique_blocks else '-',
             "description": ', '.join(unique_descriptions) if unique_descriptions else '-',
             "spray_no": ', '.join(unique_spray_nos) if unique_spray_nos else '-',
             "week_text": ', '.join(unique_weeks) if unique_weeks else '-',
+            "qty_percent_diff": execution.get("qty_percent_diff", "N/A"),
             "recommendations_count": len(unique_descriptions)
         })
 
@@ -252,14 +279,15 @@ def view_execution(execution_id):
     # You might need to adjust this based on your actual database schema
     cur.execute("""
     SELECT 
-        QTY.IdIssue,
+        IH.IdIssue,
+        IH.IssCancelled,
         REC.SprayLineStkId,
-        QTY.IssTimeStamp,
-        QTY.IssFinalisedTimeStamp,
-        QTY.QtyOut,
-        QTY.QtyIn,
-        QTY.FinalisedNett,
-        QTY.UnFinalisedOut,
+        IH.IssTimeStamp,
+        IH.IssFinalisedTimeStamp,
+        IL.IssLineQtyIssued QtyOut,
+        IL.IssLineQtyReceived QtyIn,
+        IL.IssLineQtyFinalised FinalisedNett,
+        (CASE WHEN IssFinalised = 0 THEN IssLineQtyIssued ELSE 0 END) UnFinalisedOut,
         UOM.cUnitCode,
         EVOSTK.StockDescription,
 		ACT.ChemActIngredient,
@@ -280,7 +308,8 @@ def view_execution(execution_id):
             ON LIN.SprayLineHeaderId = HEA.IdSprayH
         GROUP BY EXE.IdSprExec, LIN.SprayLineStkId, LIN.SprayLineUoMId
     ) REC
-    LEFT JOIN stk._uvIssueQuantities QTY  ON REC.IdSprExec = QTY.IssSprayExecutionId AND REC.SprayLineStkId = QTY.IssLineStockLink
+    LEFT JOIN stk.IssueHeader IH ON REC.IdSprExec = IH.IssSprayExecutionId
+    LEFT JOIN stk.IssueLines IL ON REC.SprayLineStkId = IL.IssLineStockLink and IH.IdIssue = IL.IssLineIssueId
 	JOIN cmn._uvStockItems EVOSTK on EVOSTK.StockLink = REC.SprayLineStkId
     JOIN agr.ChemStock STK ON STK.ChemStockLink = REC.SprayLineStkId
 	JOIN agr.ChemActiveIngredient ACT on ACT.IdChemAct = STK.ChemStockActiveIngrId
@@ -310,14 +339,16 @@ def view_execution(execution_id):
             }
 
         # accumulate totals
-        stock_dict[stock_key]["qty_out"] += row.QtyOut or 0
-        stock_dict[stock_key]["qty_in"] += row.QtyIn or 0
-        stock_dict[stock_key]["qty_finalised_nett"] += row.FinalisedNett or 0
-        stock_dict[stock_key]["qty_unfinalised"] += row.UnFinalisedOut or 0
+        if not row.IssCancelled:
+            stock_dict[stock_key]["qty_out"] += row.QtyOut or 0
+            stock_dict[stock_key]["qty_in"] += row.QtyIn or 0
+            stock_dict[stock_key]["qty_finalised_nett"] += row.FinalisedNett or 0
+            stock_dict[stock_key]["qty_unfinalised"] += row.UnFinalisedOut or 0
 
         # keep individual issue detail
         stock_dict[stock_key]["details"].append({
             "issue_id": row.IdIssue,
+            "issue_cancelled": bool(row.IssCancelled),
             "qty_out": row.QtyOut or 0,
             "qty_in": row.QtyIn or 0,
             "qty_finalised_nett": row.FinalisedNett or 0,
@@ -341,62 +372,6 @@ def view_execution(execution_id):
                          spray_instructions=spray_instructions,
                          stock_movements=stock_movements)
 
-@agri_bp.route("/execution/issue/<int:issue_id>", methods=["GET"])
-@login_required
-def get_issue_details(issue_id):
-    if "SPRAY_EXEC_VIEW" not in current_user.permissions:
-        abort(403)
-    conn = create_db_connection()
-    cur = conn.cursor()
-
-    cur.execute("""
-        SELECT HEA.IdIssue, HEA.IssNo, HEA.IssWhseId, HEA.IssTimeStamp, HEA.IssFinalisedTimeStamp,
-               HEA.IssFinalised, WHSE.WhseDescription
-        FROM stk.IssueHeader HEA
-        LEFT JOIN cmn._uvWarehouses WHSE ON WHSE.WhseLink = HEA.IssWhseId
-        WHERE HEA.IdIssue = ?
-    """, issue_id)
-
-    header = cur.fetchone()
-    if not header:
-        conn.close()
-        return jsonify({"success": False, "message": "Issue not found."}), 404
-
-    cur.execute("""
-        SELECT LIN.IdIssLine, LIN.IssLineStockLink, STK.StockDescription,
-               LIN.IssLineQtyIssued, LIN.IssLineQtyReceived, LIN.IssLineQtyFinalised,
-               UOM.cUnitCode
-        FROM stk.IssueLines LIN
-        LEFT JOIN cmn._uvStockItems STK ON STK.StockLink = LIN.IssLineStockLink
-        LEFT JOIN cmn._uvUOM UOM ON UOM.idUnits = LIN.IssLineUoMId
-        WHERE LIN.IssLineIssueId = ?
-    """, issue_id)
-
-    lines = [
-        {
-            "line_id": row.IdIssLine,
-            "product_link": row.IssLineStockLink,
-            "product_desc": row.StockDescription,
-            "qty_issued": row.IssLineQtyIssued or 0,
-            "qty_received": row.IssLineQtyReceived or 0,
-            "qty_finalised": row.IssLineQtyFinalised or 0,
-            "uom_code": row.cUnitCode
-        }
-        for row in cur.fetchall()
-    ]
-
-    issue = {
-        "issue_id": header.IdIssue,
-        "issue_no": header.IssNo,
-        "whse_id": header.IssWhseId,
-        "whse_description": header.WhseDescription,
-        "issued_timestamp": format_datetime(header.IssTimeStamp),
-        "finalised_timestamp": format_datetime(header.IssFinalisedTimeStamp),
-        "finalised": bool(header.IssFinalised)
-    }
-
-    conn.close()
-    return jsonify({"issue": issue, "lines": lines})
 
 @agri_bp.route("/execution/responsible-persons/<int:execution_id>", methods=["GET"])
 @login_required

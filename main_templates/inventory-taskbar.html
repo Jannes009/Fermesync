@@ -35,7 +35,7 @@
       {% if "STOCK_COUNT" in current_user.permissions %}
       <li><a href="/inventory/stock-counts" class="taskbar-link">Stock Count</a></li>
       {% endif %}
-      {% if "STOCK_ISSUE" in current_user.permissions %}
+      {% if "STOCK_ISSUE_CREATE" in current_user.permissions or "STOCK_ISSUE_VIEW" in current_user.permissions or "STOCK_ISSUE_CANCEL" in current_user.permissions %}
       <li><a href="/inventory/SDK/stock_issue_summary" class="taskbar-link">Stock Issue</a></li>
       {% endif %}
       {% if "STOCK_ADJUSTMENT" in current_user.permissions %}
@@ -220,7 +220,7 @@
         </a>
       </li>
       {% endif %}
-      {% if "STOCK_ISSUE" in current_user.permissions %}
+      {% if "STOCK_ISSUE_CREATE" in current_user.permissions or "STOCK_ISSUE_VIEW" in current_user.permissions or "STOCK_ISSUE_CANCEL" in current_user.permissions %}
       <li class="mobile-nav-item">
         <a href="/inventory/SDK/stock_issue_summary" class="mobile-nav-link">
           <div class="mobile-nav-content">
