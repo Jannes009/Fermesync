@@ -20,11 +20,9 @@ function load_delivery_lines_table(delnoteno) {
             `;
             lines.forEach(line => {
                 const invoicedQty = line.totalqtyinvoiced || 0;
-                const ProdUnitButton = invoicedQty === 0
-                    ? `<button class="icon-btn" onclick="changeProductionUnit('${line.dellineindex}', '${line.produnitname}', '${delnoteno}', '${line.totalqtyinvoiced}'); event.stopPropagation();">
+                const ProdUnitButton = `<button class="icon-btn" onclick="changeProductionUnit('${line.dellineindex}', '${line.produnitname}', '${delnoteno}', '${invoicedQty}'); event.stopPropagation();">
                             <img src="/market/static/Image/change.png" alt="Change Production Unit">
-                       </button>`
-                    : '';
+                       </button>`;
                 
 
                 tableHtml += `

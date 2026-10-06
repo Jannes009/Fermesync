@@ -362,10 +362,34 @@ def save_productuction_unit():
     data = request.get_json()
     line_id = data.get('line_id')
     production_unit_id = data.get('unit_id')
+    del_note_no = data.get('del_note_no')
     conn = create_db_connection()
     cursor = conn.cursor()
 
     try:
+        if del_note_no:
+            cursor.execute("""
+                SELECT L.DelLineFarmId, ISNULL(DN.TotalQtyInvoiced, 0)
+                FROM [mkt].ZZDeliveryNoteLines L
+                JOIN [mkt].ZZDeliveryNoteHeader H ON H.DelIndex = L.DelHeaderId
+                LEFT JOIN [mkt]._uvMarketDeliveryNote DN ON DN.DelLineIndex = L.DelLineIndex
+                WHERE H.DelNoteNo = ? AND L.DelLineIndex = ?
+            """, (del_note_no, line_id))
+            current_line = cursor.fetchone()
+            if not current_line:
+                return jsonify({'error': 'Delivery note line not found'}), 404
+            if not current_line[1]:
+                return jsonify({'error': 'The selected delivery note line has no invoiced quantity'}), 400
+
+            cursor.execute("""
+                EXEC [mkt].[SIGChangeProcessedProject]
+                    @DelNoteNo = ?,
+                    @OldProjectId = ?,
+                    @NewProjectId = ?
+            """, (del_note_no, current_line[0], production_unit_id))
+            conn.commit()
+            return jsonify({'message': 'Project updated for all matching delivery note lines'})
+
         query = """
             UPDATE [mkt].ZZDeliveryNoteLines
             SET DelLineFarmId = ?
@@ -374,6 +398,47 @@ def save_productuction_unit():
         cursor.execute(query, (production_unit_id, line_id))
         conn.commit()
         return jsonify({'message': 'Production unit updated successfully'})
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
+    finally:
+        cursor.close()
+        conn.close()
+
+@market_bp.route('/api/delivery-note-project-lines')
+def get_delivery_note_project_lines():
+    del_note_no = request.args.get('del_note_no')
+    line_id = request.args.get('line_id')
+    if not del_note_no or not line_id:
+        return jsonify({'error': 'del_note_no and line_id are required'}), 400
+
+    conn = create_db_connection()
+    cursor = conn.cursor()
+    try:
+        cursor.execute("""
+            SELECT L.DelLineFarmId, PU.ProdUnitName
+            FROM [mkt].ZZDeliveryNoteHeader H
+            JOIN [mkt].ZZDeliveryNoteLines L ON L.DelHeaderId = H.DelIndex
+            LEFT JOIN [mkt]._uvMarketProdUnit PU ON PU.ProjectLink = L.DelLineFarmId
+            WHERE H.DelNoteNo = ? AND L.DelLineIndex = ?
+        """, (del_note_no, line_id))
+        project = cursor.fetchone()
+        if not project:
+            return jsonify({'error': 'Delivery note line not found'}), 404
+
+        cursor.execute("""
+            SELECT L.DelLineIndex, P.ProductDescription
+            FROM [mkt].ZZDeliveryNoteHeader H
+            JOIN [mkt].ZZDeliveryNoteLines L ON L.DelHeaderId = H.DelIndex
+            LEFT JOIN [mkt]._uvMarketProduct P ON P.StockLink = L.DelLineStockId
+            WHERE H.DelNoteNo = ? AND L.DelLineFarmId = ?
+            ORDER BY L.DelLineIndex
+        """, (del_note_no, project[0]))
+        lines = [{'line_id': row[0], 'product': row[1]} for row in cursor.fetchall()]
+        return jsonify({
+            'project_id': project[0],
+            'project_name': project[1],
+            'lines': lines
+        })
     except Exception as e:
         return jsonify({'error': str(e)}), 500
     finally:

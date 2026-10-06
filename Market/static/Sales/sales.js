@@ -653,131 +653,121 @@ window.changeProduct = function(lineId, currentProduct, delNoteNo, qtyInvoiced) 
 
 
 
-// Function to handle Production Unit change (now same logic as product)
+// Change one line's project, or all lines sharing it when the line is invoiced.
 window.changeProductionUnit = function(lineId, currentProdUnit, delNoteNo, qtyInvoiced) {
-  console.log(qtyInvoiced);
-  // Show warning if invoiced quantity > 0
-  if (parseFloat(qtyInvoiced) > 0) {
-    Swal.fire({
-      title: '⚠️ Warning',
-      html: `
-        <div style="text-align: left; font-size: 15px; line-height: 1.6; color: #444;">
-          This production unit already has <strong>${qtyInvoiced}</strong> invoiced units.<br><br>
-          <strong>Any invoice containing this production unit will also be edited</strong> if you proceed.
-          <br><br>
-          Do you want to continue?
-        </div>
-      `,
-      icon: 'warning',
-      showCancelButton: true,
-      confirmButtonText: 'Yes, continue',
-      cancelButtonText: 'Cancel',
-      reverseButtons: true,
-      confirmButtonColor: '#d33',
-    }).then(result => {
-      if (result.isConfirmed) {
-        openProductionUnitModal();
-      }
-    });
-  } else {
-    openProductionUnitModal();
-  }
+  const isInvoiced = parseFloat(qtyInvoiced) > 0;
+  const projectLinesRequest = isInvoiced
+    ? fetch(`/market/api/delivery-note-project-lines?del_note_no=${encodeURIComponent(delNoteNo)}&line_id=${encodeURIComponent(lineId)}`).then(response => response.json())
+    : Promise.resolve(null);
 
-  // Function to show the production unit change modal
-  function openProductionUnitModal() {
-    fetch('/market/api/production_units')
-      .then(response => response.json())
-      .then(units => {
-        const modalHtml = `
-          <div style="text-align: left; font-size: 0.95rem;">
-            <div style="margin-bottom: 1rem;">
-              <label style="display: block; margin-bottom: 0.5rem; font-weight: 600; color: #334155;">
-                Current Production Unit
-              </label>
-              <div style="padding: 0.75rem; background: #f8fafc; border-radius: 8px; color: #475569; border: 1px solid #e2e8f0;">
-                ${currentProdUnit}
-              </div>
-            </div>
+  Promise.all([
+    fetch('/market/api/production_units').then(response => response.json()),
+    projectLinesRequest
+  ])
+    .then(([units, projectData]) => {
+      if (units.error) throw new Error(units.error);
+      if (projectData && projectData.error) throw new Error(projectData.error);
 
-            <div style="margin-bottom: 1rem;">
-              <label style="display: block; margin-bottom: 0.5rem; font-weight: 600; color: #334155;">
-                New Production Unit
-              </label>
-              <select id="prodUnitSelect" class="form-select" style="width: 100%; padding: 0.5rem; border: 1px solid #d1d5db; border-radius: 8px; background: white; color: #111827;">
-                <option value="">Select a production unit...</option>
-                ${units.map(u => `<option value="${u.UnitId}">${u.UnitName}</option>`).join('')}
-              </select>
+      const oldProjectName = projectData?.project_name || currentProdUnit;
+      const affectedLines = projectData?.lines || [];
+      const affectedLinesHtml = affectedLines.map(line =>
+        `<li>Line ${escapeHtml(line.line_id)}: ${escapeHtml(line.product || 'Unknown product')}</li>`
+      ).join('');
+      const modalHtml = `
+        <div style="text-align: left; font-size: 0.95rem;">
+          <div style="margin-bottom: 1rem;">
+            <label style="display: block; margin-bottom: 0.5rem; font-weight: 600; color: #334155;">
+              Current Project
+            </label>
+            <div style="padding: 0.75rem; background: #f8fafc; border-radius: 8px; color: #475569; border: 1px solid #e2e8f0;">
+              ${escapeHtml(oldProjectName || 'Unknown project')}
             </div>
           </div>
-        `;
+          ${isInvoiced ? `
+            <div style="margin-bottom: 1rem; padding: 0.75rem; background: #fff7ed; border: 1px solid #fed7aa; border-radius: 6px; color: #9a3412;">
+              Changing the project will update every line listed below and the project on their processed invoices.
+            </div>
+            <ul style="max-height: 180px; overflow-y: auto; margin-bottom: 1rem; padding-left: 1.5rem; text-align: left;">
+              ${affectedLinesHtml}
+            </ul>
+          ` : ''}
+          <div style="margin-bottom: 1rem;">
+            <label style="display: block; margin-bottom: 0.5rem; font-weight: 600; color: #334155;">
+              New Project
+            </label>
+            <select id="prodUnitSelect" class="form-select" style="width: 100%; padding: 0.5rem; border: 1px solid #d1d5db; border-radius: 8px; background: white; color: #111827;">
+              <option value="">Select a project...</option>
+              ${units.map(unit => `<option value="${escapeHtml(unit.UnitId)}">${escapeHtml(unit.UnitName)}</option>`).join('')}
+            </select>
+          </div>
+        </div>
+      `;
 
-        Swal.fire({
-          title: 'Change Production Unit',
-          html: modalHtml,
-          showCancelButton: true,
-          confirmButtonText: 'Save',
-          cancelButtonText: 'Cancel',
-          width: 600,
-          didOpen: () => {
-            $('#prodUnitSelect').select2({
-              dropdownParent: $('.swal2-container'),
-              width: '100%',
-              placeholder: 'Search for a production unit...',
-              allowClear: true
-            });
-          },
-          preConfirm: () => {
-            const selectedUnit = document.getElementById('prodUnitSelect').value;
-            if (!selectedUnit) {
-              Swal.showValidationMessage('Please select a production unit');
-              return false;
-            }
-            return selectedUnit;
+      Swal.fire({
+        title: isInvoiced ? 'Change Project for Delivery Note Lines' : 'Change Project',
+        html: modalHtml,
+        showCancelButton: true,
+        confirmButtonText: isInvoiced ? 'Change All Listed Lines' : 'Save',
+        cancelButtonText: 'Cancel',
+        width: isInvoiced ? 700 : 600,
+        didOpen: () => {
+          $('#prodUnitSelect').select2({
+            dropdownParent: $('.swal2-container'),
+            width: '100%',
+            placeholder: 'Search for a project...',
+            allowClear: true
+          });
+        },
+        preConfirm: () => {
+          const selectedUnit = document.getElementById('prodUnitSelect').value;
+          if (!selectedUnit) {
+            Swal.showValidationMessage('Please select a project');
+            return false;
           }
-        }).then((result) => {
-          if (result.isConfirmed) {
-            fetch('/market/api/save_production_unit', {
-              method: 'POST',
-              headers: { 'Content-Type': 'application/json' },
-              body: JSON.stringify({
-                line_id: lineId,
-                unit_id: result.value
-              })
-            })
-            .then(response => response.json())
-            .then(data => {
-              if (data.message) {
-                Swal.fire({
-                  title: 'Success!',
-                  text: 'Production unit has been updated successfully.',
-                  icon: 'success',
-                  timer: 1500,
-                  showConfirmButton: false
-                }).then(() => {
-                  load_delivery_lines_table(delNoteNo);
-                });
-              } else {
-                throw new Error(data.error || 'Failed to update production unit');
-              }
-            })
-            .catch(error => {
-              Swal.fire({
-                title: 'Error',
-                text: error.message || 'Failed to update production unit',
-                icon: 'error'
-              });
+          return selectedUnit;
+        }
+      }).then(result => {
+        if (!result.isConfirmed) return;
+
+        fetch('/market/api/save_production_unit', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            line_id: lineId,
+            unit_id: result.value,
+            del_note_no: isInvoiced ? delNoteNo : null
+          })
+        })
+          .then(async response => {
+            const data = await response.json();
+            if (!response.ok) throw new Error(data.error || 'Failed to update project');
+            return data;
+          })
+          .then(() => {
+            Swal.fire({
+              title: 'Success!',
+              text: isInvoiced ? 'Project updated for all listed delivery note lines.' : 'Project updated successfully.',
+              icon: 'success',
+              timer: 1500,
+              showConfirmButton: false
+            }).then(() => load_delivery_lines_table(delNoteNo));
+          })
+          .catch(error => {
+            Swal.fire({
+              title: 'Error',
+              text: error.message || 'Failed to update project',
+              icon: 'error'
             });
-          }
-        });
-      })
-      .catch(() => {
-        Swal.fire({
-          title: 'Error',
-          text: 'Failed to load production units',
-          icon: 'error'
-        });
+          });
       });
-  }
+    })
+    .catch(error => {
+      Swal.fire({
+        title: 'Error',
+        text: error.message || 'Failed to load projects or delivery note lines',
+        icon: 'error'
+      });
+    });
 };
 
 
