@@ -572,13 +572,12 @@
 
   .stock-movement-details.expanded {
     max-height: 500px;
-    padding: 1rem;
+    padding: 0.5rem;
   }
 
   .movement-detail-table {
     width: 100%;
     border-collapse: collapse;
-    margin-top: 1rem;
   }
 
   .movement-detail-table th,
@@ -640,6 +639,14 @@
     font-weight: 600;
   }
 
+  .movement-detail-timestamp {
+    margin-top: 0.2rem;
+    color: var(--secondary-text);
+    font-size: 0.76rem;
+    font-weight: 400;
+    white-space: normal;
+  }
+
   .detail-item {
     display: flex;
     flex-direction: column;
@@ -686,6 +693,7 @@
       <header style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1.5rem;">
         <h1>Spray Execution: {{ spray_instructions | map(attribute='description') | join(', ') }}</h1>
         <div style="display: flex; gap: 0.5rem;">
+          <button onclick="window.history.back()" class="btn-secondary">Back</button>
           <a href="/agri/execution/{{ execution.id }}/instruction_pdf" target="_blank" class="btn-success">Print Instructions</a>
           {% if not execution.finalised %}
             {% if execution.can_delete and 'SPRAY_EXEC_CREATE' in current_user.permissions %}
@@ -756,13 +764,9 @@
               <table class="movement-detail-table">
                 <thead>
                   <tr>
-                    <th>Issue ID</th>
-                    <th>Status</th>
-                    <th>Qty Out</th>
-                    <th>Qty In</th>
-                    <th>Nett</th>
+                    <th>Issue No.</th>
+                    <th>Issued By</th>
                     <th>Unfinalised</th>
-                    <th>Issued</th>
                     <th>Finalised</th>
                     <th>Action</th>
                   </tr>
@@ -770,20 +774,18 @@
                 <tbody>
                   {% for detail in movement.details %}
                   <tr class="movement-detail-row{% if detail.issue_cancelled %} movement-issue-cancelled{% endif %}">
-                    <td>{{ detail.issue_id or '-' }}</td>
+                    <td>{{ detail.issue_number or '—' }}</td>
                     <td>
-                      {% if detail.issue_cancelled %}
-                        <span class="issue-cancelled-badge">Cancelled</span>
-                      {% else %}
-                        Active
+                      <strong>{{ detail.issue_user or '—' }}</strong>
+                      <div class="movement-detail-timestamp">Issued {{ detail.time_issued_display }}</div>
+                    </td>
+                    <td class="movement-detail-value">{{ detail.qty_unfinalised_display }} {{ movement.unit_code }}</td>
+                    <td class="movement-detail-value">
+                      {{ detail.qty_finalised_nett_display }} {{ movement.unit_code }}
+                      {% if detail.time_finalised %}
+                      <div class="movement-detail-timestamp">Finalised {{ detail.time_finalised_display }}</div>
                       {% endif %}
                     </td>
-                    <td class="movement-detail-value">{{ detail.qty_out_display }} {{ movement.unit_code }}</td>
-                    <td class="movement-detail-value">{{ detail.qty_in_display }} {{ movement.unit_code }}</td>
-                    <td class="movement-detail-value">{{ detail.qty_finalised_nett_display }} {{ movement.unit_code }}</td>
-                    <td class="movement-detail-value">{{ detail.qty_unfinalised_display }} {{ movement.unit_code }}</td>
-                    <td>{{ detail.time_issued_display }}</td>
-                    <td>{{ detail.time_finalised_display }}</td>
                     <td>
                       {% if detail.issue_id and ('STOCK_ISSUE_VIEW' in current_user.permissions or 'STOCK_ISSUE_CANCEL' in current_user.permissions) %}
                         <a class="btn-view-issue" href="/inventory/SDK/stock_issue_details/{{ detail.issue_id }}">View</a>

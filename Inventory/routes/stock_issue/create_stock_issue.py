@@ -94,7 +94,7 @@ def validate_stock_issue_costs(cursor, lines_payload):
         FROM cmn._uvStockItems SI
         LEFT JOIN cmn._uvStockCosts SC
             ON SC.StockID = SI.StockLink
-        WHERE SI.StockLink IN ({placeholders})
+        WHERE SI.StockLink IN ({placeholders}) AND SI.ItemActive = 1
     """, tuple(product_ids))
 
     costs_by_product = {}

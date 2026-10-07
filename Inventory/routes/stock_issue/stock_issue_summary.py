@@ -46,7 +46,7 @@ def stock_issue_summary():
 @inventory_bp.route("/SDK/stock_issue_details/<int:issue_id>", methods=["GET"])
 @login_required
 def stock_issue_details(issue_id):
-    if "STOCK_ISSUE_VIEW" not in current_user.permissions:
+    if not _has_stock_issue_permission("STOCK_ISSUE_VIEW"):
         abort(403)
     return render_template("EvolutionSDK/stock_issue_details.html", issue_id=issue_id)
 
@@ -58,7 +58,7 @@ def incomplete_issues():
         abort(403)
 
     status = request.args.get("status", "all")
-    if "STOCK_ISSUE_VIEW" not in current_user.permissions:
+    if not _has_stock_issue_permission("STOCK_ISSUE_VIEW") and status in {"finalised", "all"}:
         status = "outstanding"
     if status not in {"all", "outstanding", "finalised"}:
         return jsonify({"success": False, "message": "Invalid status filter."}), 400
@@ -144,7 +144,7 @@ def incomplete_issues():
 @inventory_bp.route("/SDK/stock_issue_details_data/<int:issue_id>", methods=["GET"])
 @login_required
 def stock_issue_details_data(issue_id):
-    if "STOCK_ISSUE_VIEW" not in current_user.permissions:
+    if not _has_stock_issue_permission("STOCK_ISSUE_VIEW"):
         abort(403)
 
     conn = create_db_connection()
@@ -196,20 +196,14 @@ def stock_issue_details_data(issue_id):
                 ISNULL(LIN.IssLineQtyReceived, 0) AS IssLineQtyReceived,
                 LIN.IssLineQtyFinalised,
                 LIN.IssLineUoMId,
-                UOM.cUnitCode,
-                STRING_AGG(CONVERT(varchar(20), PROJ.IssLinProjProjectId), ', ') AS ProjectIds
+                UOM.cUnitCode
             FROM stk.IssueLines LIN
             LEFT JOIN cmn._uvStockItems STK ON STK.StockLink = LIN.IssLineStockLink
             LEFT JOIN cmn._uvUOM UOM ON UOM.idUnits = LIN.IssLineUoMId
-            LEFT JOIN stk.IssueLineProjects PROJ ON PROJ.IssLinProjLineId = LIN.IdIssLine
             WHERE LIN.IssLineIssueId = ?
-            GROUP BY
-                LIN.IdIssLine, LIN.IssLineStockLink, STK.StockDescription,
-                LIN.IssLineQtyIssued, LIN.IssLineQtyReceived, LIN.IssLineQtyFinalised,
-                LIN.IssLineUoMId, UOM.cUnitCode
             ORDER BY LIN.IdIssLine
         """, (issue_id,))
-        lines = [{
+        lines_by_id = {row.IdIssLine: {
             "line_id": row.IdIssLine,
             "product_link": row.IssLineStockLink,
             "product_desc": row.StockDescription,
@@ -218,8 +212,39 @@ def stock_issue_details_data(issue_id):
             "qty_finalised": row.IssLineQtyFinalised,
             "uom_id": row.IssLineUoMId,
             "uom_code": row.cUnitCode,
-            "project_ids": row.ProjectIds,
-        } for row in cursor.fetchall()]
+            "project_allocations": [],
+        } for row in cursor.fetchall()}
+
+        cursor.execute("""
+            SELECT
+                LIN.IdIssLine,
+                ILP.IssLinProjProjectId,
+                ILP.IssLinProjWeight,
+                PROJ.ProjectCode,
+                PROJ.ProjectName
+            FROM stk.IssueLines LIN
+            JOIN stk.IssueLineProjects ILP ON ILP.IssLinProjLineId = LIN.IdIssLine
+            LEFT JOIN cmn._uvProject PROJ ON PROJ.ProjectLink = ILP.IssLinProjProjectId
+            WHERE LIN.IssLineIssueId = ?
+            ORDER BY LIN.IdIssLine, ILP.IssLinProjProjectId
+        """, (issue_id,))
+        for allocation in cursor.fetchall():
+            line = lines_by_id.get(allocation.IdIssLine)
+            if not line:
+                continue
+            weight = float(allocation.IssLinProjWeight or 0)
+            line["project_allocations"].append({
+                "project_code": allocation.ProjectCode,
+                "project_name": allocation.ProjectName,
+                "weight": weight,
+                "qty_issued": float(line["qty_issued"] or 0) * weight,
+                "qty_received": float(line["qty_received"] or 0) * weight,
+                "qty_finalised": (
+                    float(line["qty_finalised"]) * weight
+                    if line["qty_finalised"] is not None else None
+                ),
+            })
+        lines = list(lines_by_id.values())
 
         return jsonify({
             "success": True,
@@ -272,7 +297,6 @@ def cancel_stock_issue():
     warehouse_ids = _stock_issue_warehouse_ids()
     if not warehouse_ids:
         return jsonify({"success": False, "message": "Stock issue not found."}), 404
-    warehouse_placeholders = ",".join("?" for _ in warehouse_ids)
     try:
         conn = create_db_connection()
         cursor = conn.cursor()
@@ -288,19 +312,22 @@ def cancel_stock_issue():
         LEFT JOIN agr.SprayExecution EXE ON EXE.IdSprExec = HEA.IssSprayExecutionId
         LEFT JOIN stk._uvSalesOrders PO on PO.InvNumber = HEA.IssInvoiceNo
                 WHERE HEA.IdIssue = ?
-                    AND HEA.IssWhseId IN ({warehouse_placeholders})
-                """.format(warehouse_placeholders=warehouse_placeholders), (issue_id, *warehouse_ids))
+                """, (issue_id,))
         issue = cursor.fetchone()
         if not issue:
             return jsonify({"success": False, "message": "Stock issue not found."}), 404
         if bool(issue.IssCancelled):
             return jsonify({"success": False, "message": "This stock issue has already been cancelled."}), 409
-        if issue.IssSprayExecutionId is not None and (
-            issue.SprExecFinalised is None or bool(issue.SprExecFinalised)
-        ):
+        # if issue.IssSprayExecutionId is not None and (
+        #     issue.SprExecFinalised is None or bool(issue.SprExecFinalised)):
+        #     return jsonify({
+        #         "success": False,
+        #         "message": "This issue cannot be cancelled because its linked execution is finalised or unavailable."
+        #     }), 409
+        if not issue.AutoIndex and issue.IssInvoiceNo:
             return jsonify({
                 "success": False,
-                "message": "This issue cannot be cancelled because its linked execution is finalised or unavailable."
+                "message": "This issue cannot be cancelled because it has an invoice number but no linked Evolution sales order."
             }), 409
         if not issue.AutoIndex:
             cursor.execute("""
@@ -309,7 +336,7 @@ def cancel_stock_issue():
                     IssCancelledByUserId = ?,
                     IssCancelledTimeStamp = GETDATE(),
                     IssEvolutionCreditNoteNo = NULL,
-                    IssFinalised = 1,
+                    IssFinalised = 1
                 WHERE IdIssue = ? AND ISNULL(IssCancelled, 0) = 0
             """, (current_user.id, issue_id))
             if cursor.rowcount != 1:

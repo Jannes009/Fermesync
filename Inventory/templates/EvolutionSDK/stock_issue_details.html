@@ -1,97 +1,264 @@
 {% extends 'inventory_base.html' %}
 {% block content %}
 <style>
-    .issue-detail-wrap { max-width: 1180px; margin: 0 auto; padding: 1rem; }
-    .issue-detail-panel {
-        padding: 1.25rem;
-        margin-bottom: 1rem;
-        background: var(--container-bg);
-        border: 1px solid var(--input-border);
-        border-radius: 6px;
-    }
+    .issue-detail-wrap { max-width: 1180px; margin: 0 auto; padding: 1rem; background: var(--container-bg); color: var(--primary-text); font-size: 0.95rem; border-radius: 8px; box-shadow: 0 1px 6px rgba(44,62,80,0.08); }
     .issue-detail-heading {
         display: flex;
         flex-wrap: wrap;
         align-items: center;
         justify-content: space-between;
         gap: 0.75rem;
-        margin-bottom: 1rem;
+        padding-bottom: 1rem;
+        border-bottom: 1px solid var(--table-border);
     }
-    .issue-detail-heading h1 { margin: 0; font-size: 1.45rem; }
-    .issue-detail-heading p { margin: 0.25rem 0 0; color: var(--muted-text, #65737e); }
-    .issue-detail-actions { display: flex; gap: 0.5rem; }
+    .issue-detail-heading h1 { margin: 0; font-size: 1.5rem; }
+    .issue-detail-heading p { margin: 0.35rem 0 0; color: var(--secondary-text); }
+    .issue-detail-actions { display: flex; flex-wrap: wrap; gap: 0.5rem; }
     .issue-detail-actions a, .issue-detail-actions button {
         min-height: 38px;
         padding: 0.45rem 0.75rem;
         border: 1px solid var(--button-bg);
-        border-radius: 4px;
+        border-radius: 5px;
         color: var(--button-bg);
-        background: transparent;
+        background: var(--container-bg);
         text-decoration: none;
         cursor: pointer;
     }
-    .issue-detail-actions button { color: var(--button-text); background: var(--button-bg); }
+    .issue-detail-actions button:hover, .issue-detail-actions a:hover {
+        color: var(--button-text);
+        background: var(--button-hover);
+    }
+    .issue-detail-actions .btn-back {
+        border-color: #6c757d;
+        color: #ffffff;
+        background: #6c757d;
+    }
+    .issue-detail-actions .btn-back:hover { border-color: #565e64; background: #565e64; }
+    .issue-detail-actions .btn-receive {
+        border-color: var(--button-bg);
+        color: var(--button-text);
+        background: var(--button-bg);
+    }
+    .issue-detail-actions .btn-receive:hover { border-color: var(--button-hover); background: var(--button-hover); }
+    .issue-detail-actions .btn-cancel {
+        border-color: #b42318;
+        color: #ffffff;
+        background: #b42318;
+    }
+    .issue-detail-actions .btn-cancel:hover { border-color: #8f1c13; background: #8f1c13; }
     .issue-detail-actions button[hidden] { display: none; }
+    .issue-status {
+        display: inline-flex;
+        align-items: center;
+        min-height: 26px;
+        margin-top: 0.5rem;
+        padding: 0.2rem 0.6rem;
+        border: 1px solid var(--input-border);
+        border-radius: 4px;
+        background: var(--table-header-bg);
+        color: var(--table-header-text);
+        font-size: 0.78rem;
+        font-weight: 700;
+    }
+    .issue-detail-section { padding: 1.25rem 0; border-bottom: 1px solid var(--table-border); }
+    .issue-detail-section:last-child { border-bottom: 0; }
+    .issue-detail-section h2 { margin: 0 0 0.85rem; font-size: 1.1rem; }
     .issue-detail-grid {
         display: grid;
-        grid-template-columns: repeat(auto-fit, minmax(190px, 1fr));
-        gap: 1px;
-        background: var(--input-border);
-        border: 1px solid var(--input-border);
+        grid-template-columns: repeat(auto-fit, minmax(210px, 1fr));
+        gap: 0.75rem 1.5rem;
+        padding-top: 1rem;
     }
-    .issue-detail-field { min-width: 0; padding: 0.75rem; background: var(--container-bg); }
+    .issue-detail-field { min-width: 0; }
     .issue-detail-label {
         display: block;
         margin-bottom: 0.25rem;
-        color: var(--muted-text, #65737e);
+        color: var(--secondary-text);
         font-size: 0.8rem;
     }
     .issue-detail-value { overflow-wrap: anywhere; font-weight: 600; }
-    .issue-detail-table-wrap { overflow-x: auto; }
-    .issue-detail-table { width: 100%; min-width: 800px; border-collapse: collapse; }
-    .issue-detail-table th, .issue-detail-table td {
-        padding: 0.7rem;
-        border-bottom: 1px solid var(--input-border);
-        text-align: left;
+    .execution-description-link { color: var(--button-bg); text-decoration: underline; text-underline-offset: 2px; }
+    .execution-description-link:hover { color: var(--button-hover); }
+    .issue-event-list { list-style: none; margin: 0; padding: 0 0 0 1rem; border-left: 2px solid var(--input-border); }
+    .issue-event { position: relative; display: grid; grid-template-columns: minmax(150px, 220px) 1fr; gap: 0.75rem; padding: 0.25rem 0 1rem 1rem; }
+    .issue-event::before {
+        position: absolute;
+        top: 0.35rem;
+        left: -1.36rem;
+        width: 8px;
+        height: 8px;
+        border: 2px solid var(--container-bg);
+        border-radius: 50%;
+        background: var(--button-bg);
+        content: "";
     }
-    .issue-detail-table th { color: var(--muted-text, #65737e); font-size: 0.82rem; }
+    .issue-event time { color: var(--secondary-text); font-size: 0.88rem; }
+    .issue-event-title { font-weight: 700; }
+    .issue-detail-table-wrap { overflow-x: auto; }
+    .issue-detail-table { width: 100%; min-width: 720px; }
     .issue-detail-table .numeric { text-align: right; font-variant-numeric: tabular-nums; }
-    #issue-detail-message { color: var(--muted-text, #65737e); }
+    .quantity-value { white-space: nowrap; }
+    .uom-badge {
+        display: inline-block;
+        margin-left: 0.35rem;
+        padding: 0.12rem 0.38rem;
+        border: 1px solid var(--input-border);
+        border-radius: 4px;
+        background: var(--muted-bg);
+        color: var(--secondary-text);
+        font-size: 0.72rem;
+        font-weight: 700;
+        line-height: 1.3;
+        vertical-align: 1px;
+    }
+    .allocation-toggle {
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        width: 32px;
+        height: 32px;
+        padding: 0;
+        border: 0;
+        border-radius: 3px;
+        background: transparent;
+        color: var(--secondary-text);
+        font-size: 1rem;
+        line-height: 1;
+        cursor: pointer;
+    }
+    .allocation-toggle:hover { background: var(--table-row-hover); }
+    .allocation-toggle:disabled { cursor: default; opacity: 0.65; }
+    .allocation-chevron { display: inline-block; transition: transform 0.15s ease; }
+    .allocation-toggle[aria-expanded="true"] .allocation-chevron { transform: rotate(90deg); }
+    .allocation-row[hidden] { display: none; }
+    .allocation-cell { padding: 0.75rem !important; background: var(--form-bg) !important; }
+    .allocation-table { width: 100%; border-collapse: collapse; background: var(--container-bg); }
+    .allocation-table th, .allocation-table td { padding: 0.55rem; border-bottom: 1px solid var(--table-border); text-align: left; }
+    .allocation-table th { color: var(--table-header-text); background: var(--table-header-bg); font-size: 0.8rem; }
+    .allocation-table .numeric { text-align: right; }
+    .allocation-share { color: var(--secondary-text); white-space: nowrap; }
+    #issue-detail-message { color: var(--secondary-text); }
+    @media (max-width: 640px) {
+        .issue-detail-wrap { padding: 0.75rem; }
+        .issue-event { grid-template-columns: 1fr; gap: 0.2rem; }
+        .issue-detail-actions { width: 100%; }
+        .issue-detail-actions button { flex: 1 1 auto; }
+        .issue-detail-table-wrap { overflow: visible; }
+        .issue-detail-table { display: block; min-width: 0; }
+        .issue-detail-table thead { display: none; }
+        .issue-detail-table tbody { display: block; }
+        .issue-detail-table tr.issue-line-row {
+            display: grid;
+            grid-template-columns: repeat(2, minmax(0, 1fr));
+            gap: 0.35rem 0.65rem;
+            margin-bottom: 0.65rem;
+            padding: 0.65rem;
+            border: 1px solid var(--table-border);
+            border-radius: 5px;
+            background: var(--container-bg);
+        }
+        .issue-detail-table tr.issue-line-row td {
+            display: flex;
+            align-items: baseline;
+            justify-content: space-between;
+            min-width: 0;
+            padding: 0.25rem 0;
+            border: 0;
+            text-align: right;
+            gap: 0.4rem;
+        }
+        .issue-detail-table tr.issue-line-row td::before {
+            color: var(--secondary-text);
+            content: attr(data-label);
+            font-size: 0.76rem;
+            text-align: left;
+        }
+        .issue-detail-table tr.issue-line-row td:first-child {
+            display: block;
+            grid-column: 1 / -1;
+            padding-bottom: 0.45rem;
+            border-bottom: 1px solid var(--table-border);
+            font-weight: 700;
+            text-align: left;
+        }
+        .issue-detail-table tr.issue-line-row td:first-child::before { content: none; }
+        .issue-detail-table tr.issue-line-row td:last-child { grid-column: 1 / -1; }
+        .allocation-toggle { width: 100%; height: 36px; justify-content: flex-start; }
+        .allocation-chevron { font-size: 0.95rem; }
+        .issue-detail-table tr.allocation-row { display: block; margin: -0.65rem 0 0.75rem; }
+        .issue-detail-table tr.allocation-row[hidden] { display: none; }
+        .issue-detail-table tr.allocation-row td { display: block; width: 100%; }
+        .allocation-cell { padding: 0.55rem !important; }
+        .allocation-table { display: block; }
+        .allocation-table thead { display: none; }
+        .allocation-table tbody { display: block; }
+        .allocation-table tr {
+            display: grid;
+            grid-template-columns: repeat(2, minmax(0, 1fr));
+            gap: 0.25rem 0.6rem;
+            padding: 0.5rem 0;
+            border-bottom: 1px solid var(--table-border);
+        }
+        .allocation-table td {
+            display: flex;
+            justify-content: space-between;
+            min-width: 0;
+            padding: 0.25rem 0;
+            border: 0;
+            gap: 0.35rem;
+        }
+        .allocation-table td::before {
+            color: var(--secondary-text);
+            content: attr(data-label);
+            font-size: 0.73rem;
+        }
+        .allocation-table td:first-child {
+            display: block;
+            grid-column: 1 / -1;
+            font-weight: 700;
+        }
+        .allocation-table td:first-child::before { content: none; }
+        .allocation-table td.numeric { text-align: right; }
+    }
 </style>
 
 <main class="issue-detail-wrap with-fixed-taskbar">
-    <section class="issue-detail-panel">
+    <section class="issue-detail-section">
         <header class="issue-detail-heading">
             <div>
                 <h1 id="issue-title">Stock issue</h1>
-                <p id="issue-subtitle">Loading issue details...</p>
+                <p id="issue-subtitle"><span class="issue-status">Loading...</span></p>
             </div>
             <div class="issue-detail-actions">
-                <button id="back-to-issues-button" type="button" onclick="window.history.back()">Back</button>
-                <button id="receive-issue-button" type="button" hidden>Receive issue</button>
-                <button id="cancel-issue-button" type="button" hidden>Cancel Issue</button>
+                <button id="back-to-issues-button" class="btn-back" type="button" onclick="window.history.back()">Back</button>
+                <button id="receive-issue-button" class="btn-receive" type="button" hidden>Receive issue</button>
+                <button id="cancel-issue-button" class="btn-cancel" type="button" hidden>Cancel Issue</button>
             </div>
         </header>
         <div id="issue-detail-message" role="status"></div>
         <div id="issue-header-fields" class="issue-detail-grid"></div>
     </section>
 
-    <section class="issue-detail-panel">
+    <section class="issue-detail-section">
+        <h2>Activity</h2>
+        <ol id="issue-event-list" class="issue-event-list"></ol>
+    </section>
+
+    <section class="issue-detail-section">
         <h2>Issue lines</h2>
         <div class="issue-detail-table-wrap">
-            <table class="issue-detail-table">
+            <table class="fs-table fs-hover issue-detail-table">
                 <thead>
                     <tr>
                         <th>Product</th>
-                        <th>Project IDs</th>
                         <th class="numeric">Issued</th>
                         <th class="numeric">Received</th>
                         <th class="numeric">Finalised</th>
-                        <th>UOM</th>
+                        <th aria-label="Project allocations"></th>
                     </tr>
                 </thead>
                 <tbody id="issue-lines-body">
-                    <tr><td colspan="6">Loading issue lines...</td></tr>
+                    <tr><td colspan="5">Loading issue lines...</td></tr>
                 </tbody>
             </table>
         </div>

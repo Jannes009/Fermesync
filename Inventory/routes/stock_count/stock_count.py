@@ -148,7 +148,7 @@ def fetch_session_products(header_id):
                 InvCountLineQtyCounted
             FROM [stk].InventoryCountLines LIN
             LEFT JOIN cmn._uvUOM UOM on UOM.idUnits = LIN.InvCountUoMId
-            JOIN cmn._uvStockItems STK on STK.StockLink = LIN.InvCountLineStockId
+            JOIN cmn._uvStockItems STK on STK.StockLink = LIN.InvCountLineStockId and STK.ItemActive = 1
             WHERE InvCountLineHeaderId = ?
             ORDER BY STK.StockDescription
         """, (header_id,))

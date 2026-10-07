@@ -36,6 +36,7 @@ def adjust_cost_products():
         cursor.execute("""
             SELECT StockLink, StockDescription
             FROM cmn._uvStockItems
+            Where ItemActive = 1
             ORDER BY StockDescription
         """)
         products = [
@@ -80,7 +81,7 @@ def adjust_cost_current():
             FROM cmn._uvStockItems SI
             LEFT JOIN cmn._uvStockCosts SC ON SC.StockID = SI.StockLink
             LEFT JOIN cmn._uvStockUnitConversion CONV ON CONV.StockLink = SI.StockLink
-            WHERE SI.StockLink = ?
+            WHERE SI.StockLink = ? AND SI.ItemActive = 1
         """, (product_link,))
         row = cursor.fetchone()
         if not row:
@@ -129,7 +130,7 @@ def adjust_cost():
             FROM cmn._uvStockItems SI
             LEFT JOIN cmn._uvStockCosts SC ON SC.StockID = SI.StockLink
             LEFT JOIN cmn._uvStockWarehouse SW on SW.StockID = SI.StockLink
-            WHERE SI.StockLink = ?
+            WHERE SI.StockLink = ? AND SI.ItemActive = 1
         """, (product_link,))
         row = cursor.fetchone()
         if not row:

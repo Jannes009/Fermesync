@@ -88,7 +88,7 @@ def fetch_products_for_spray():
     cursor.execute("""
     Select DISTINCT StockId, STK.StockCode, STK.StockDescription, UoMId, UOM.cUnitCode, QtyAvailable, WhseId
     from [agr].[_uvSprayStockRequirements] REQ
-    JOIN [cmn].[_uvStockItems] STK on STK.StockLink = REQ.StockId
+    JOIN [cmn].[_uvStockItems] STK on STK.StockLink = REQ.StockId AND STK.ItemActive = 1
     JOIN [cmn].[_uvUOM] UOM on UOM.idUnits = UoMId
     Where SprayHExecutionId = ?
     """, (execution_id,))

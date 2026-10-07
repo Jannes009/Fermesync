@@ -320,7 +320,7 @@ def update_chemstock(stock_link):
         else:
             # create minimal ChemStock row
             # attempt to use stock code/name from cmn._uvStockItems
-            cur.execute("SELECT StockCode, StockDescription FROM cmn._uvStockItems WHERE StockLink = ?", (stock_link,))
+            cur.execute("SELECT StockCode, StockDescription FROM cmn._uvStockItems WHERE StockLink = ? AND ItemActive = 1", (stock_link,))
             s = cur.fetchone()
             code = s[0] if s else f'P{stock_link}'
             name = s[1] if s else f'Product {stock_link}'

@@ -129,7 +129,7 @@ def execution_instruction_pdf(execution_id):
                 SME.SprayMixHa
             FROM agr.SprayMixLines LIN
             JOIN agr.SprayMix SME ON LIN.SprayMixLineMixId = SME.IdSprayMix
-            JOIN cmn._uvStockItems EVOSTK ON EVOSTK.StockLink = LIN.SprayMixLineStockId
+            JOIN cmn._uvStockItems EVOSTK ON EVOSTK.StockLink = LIN.SprayMixLineStockId and EVOSTK.ItemActive = 1
             LEFT JOIN agr.ChemStock STK ON STK.IdChemStock = LIN.SprayMixLineStockId
             LEFT JOIN cmn._uvUOM UOM ON UOM.idUnits = LIN.SprayMixLineUoMId
             WHERE SME.SprayMixHeaderId = ?
@@ -182,7 +182,7 @@ def execution_instruction_pdf(execution_id):
             UOM.cUnitCode
 			--Select *
         FROM agr._uvSprayStockRequirements REQ
-        JOIN cmn._uvStockItems EVOSTK ON EVOSTK.StockLink = REQ.StockId
+        JOIN cmn._uvStockItems EVOSTK ON EVOSTK.StockLink = REQ.StockId and EVOSTK.ItemActive = 1
         LEFT JOIN agr.ChemStock STK ON STK.IdChemStock = REQ.StockId
         LEFT JOIN cmn._uvUOM UOM ON UOM.idUnits = REQ.UoMId
         WHERE REQ.SprayId IN (SELECT IdSprayH FROM agr.SprayHeader WHERE SprayHExecutionId = ?)

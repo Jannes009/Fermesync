@@ -53,6 +53,7 @@ def get_products():
             from cmn._uvStockItems STK
             JOIN stk._uvStockLinks LINK on LINK.iStockID = STK.StockLink and iDCLink = ?
             JOIN [cmn].[_uvStockWarehouse] STKWHSE on STKWHSE.StockID = STK.StockLink and STKWHSE.WhseID = ?
+            WHERE STK.ItemActive = 1
         """, (supplier_id, warehouse_id))
         products = cursor.fetchall()
 
@@ -89,7 +90,7 @@ def purchase_order_stock_item_units(stock_id):
 	LST.InvDate,
     CASE WHEN STKUOM.PurchaseUnitId = UOM.idUnits THEN 1 ELSE 0 END AS DefaultUnit
     from [cmn].[_uvStockUnits] STKUOM
-    JOIN [cmn].[_uvStockItems] STK on STK.StockLink = STKUOM.StockLink
+    JOIN [cmn].[_uvStockItems] STK on STK.StockLink = STKUOM.StockLink AND STK.ItemActive = 1
     JOIN [cmn].[_uvUOM] UOM on UOM.iUnitCategoryID = PurchaseUnitCatId
     LEFT JOIN [stk].[_uvStockLinks] LINK on LINK.iStockID = STKUOM.StockLink and LINK.iDCLink = ?
     LEFT JOIN [stk].[_uvLastSupplierInvoicePrice] LST

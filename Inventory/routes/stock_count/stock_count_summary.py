@@ -124,12 +124,11 @@ def get_shelf_detail_data(warehouse_id, category_id):
 
         cursor.execute("""
             SELECT
-                STK.StockLink AS product_id,
-                STK.StockDescription AS description,
+                QTY.StockLink AS product_id,
+                QTY.StockDescription AS description,
                 QTY.QtyOnHand AS system_qty,
                 UOM.cUnitCode AS unit_code
             FROM [stk]._uvInventoryQty QTY
-            LEFT JOIN [cmn]._uvStockItems STK ON STK.StockLink = QTY.StockLink
             LEFT JOIN [cmn]._uvUOM UOM ON UOM.idUnits = QTY.StockingUnitId
             WHERE QTY.WhseLink = ?
               AND QTY.idStockCategories = ?

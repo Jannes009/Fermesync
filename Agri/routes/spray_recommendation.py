@@ -69,7 +69,7 @@ def _fetch_all_product_catalog(cursor, warehouse_ids):
             CRP.StkCrpWitholdingPeriodDef,
             CRP.StkCrpFunctionDef
         FROM cmn._uvStockWarehouse SW
-        JOIN cmn._uvStockItems SI ON SI.StockLink = SW.StockID
+        JOIN cmn._uvStockItems SI ON SI.StockLink = SW.StockID and SI.ItemActive = 1
         JOIN agr.ChemStock STK ON STK.ChemStockLink = SW.StockID
         LEFT JOIN agr.ChemActiveIngredient ACT ON ACT.IdChemAct = STK.ChemStockActiveIngrId
         LEFT JOIN agr.ChemStockCrop CRP ON CRP.StkCrpChemStockId = STK.IdChemStock

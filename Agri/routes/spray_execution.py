@@ -280,7 +280,9 @@ def view_execution(execution_id):
     cur.execute("""
     SELECT 
         IH.IdIssue,
+        IH.IssNo,
         IH.IssCancelled,
+        IssueUser.username AS IssueUserName,
         REC.SprayLineStkId,
         IH.IssTimeStamp,
         IH.IssFinalisedTimeStamp,
@@ -310,6 +312,7 @@ def view_execution(execution_id):
     ) REC
     LEFT JOIN stk.IssueHeader IH ON REC.IdSprExec = IH.IssSprayExecutionId
     LEFT JOIN stk.IssueLines IL ON REC.SprayLineStkId = IL.IssLineStockLink and IH.IdIssue = IL.IssLineIssueId
+    LEFT JOIN users.Users IssueUser ON IssueUser.id = IH.IssByUserId
 	JOIN cmn._uvStockItems EVOSTK on EVOSTK.StockLink = REC.SprayLineStkId
     JOIN agr.ChemStock STK ON STK.ChemStockLink = REC.SprayLineStkId
 	JOIN agr.ChemActiveIngredient ACT on ACT.IdChemAct = STK.ChemStockActiveIngrId
@@ -348,6 +351,8 @@ def view_execution(execution_id):
         # keep individual issue detail
         stock_dict[stock_key]["details"].append({
             "issue_id": row.IdIssue,
+            "issue_number": row.IssNo,
+            "issue_user": row.IssueUserName,
             "issue_cancelled": bool(row.IssCancelled),
             "qty_out": row.QtyOut or 0,
             "qty_in": row.QtyIn or 0,
