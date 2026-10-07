@@ -1,5 +1,8 @@
 
 async function init() {
+    if (window.STOCK_COUNT_LOCATION) {
+        setCountLocation(window.STOCK_COUNT_LOCATION.warehouse, window.STOCK_COUNT_LOCATION.shelf);
+    }
     const urlParams = new URLSearchParams(window.location.search);
     const preWarehouse = urlParams.get("warehouse");
     const preCategory = urlParams.get("category");

@@ -1,0 +1,367 @@
+{% extends "inventory_base.html" %}
+{% block content %}
+<style>
+  .qty-page {
+    max-width: 1500px;
+    margin: 0 auto;
+    padding: 1rem;
+    background: var(--container-bg); 
+    color: var(--primary-text);
+    font-size: 0.95rem; 
+    border-radius: 8px; 
+    box-shadow: 0 1px 6px rgba(44,62,80,0.08);
+  }
+  .qty-heading {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: 1rem;
+    padding-bottom: 1rem;
+    border-bottom: 1px solid var(--table-border);
+  }
+  .qty-heading-left {
+    display: flex;
+    flex-direction: column;
+    gap: 0.7rem;
+    min-width: 0;
+  }
+  .qty-heading h1 { margin: 0; font-size: 1.5rem; }
+  .qty-action-row {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 0.55rem;
+  }
+  .qty-action-button {
+    min-height: 36px;
+    padding: 0.45rem 0.8rem;
+    border: 0;
+    border-radius: 5px;
+    background: var(--button-bg);
+    color: var(--button-text);
+    font-size: 0.82rem;
+    font-weight: 600;
+    cursor: pointer;
+    transition: background-color 0.15s ease;
+  }
+  .qty-action-button:hover { background: var(--button-hover); }
+  .qty-period-controls { display: grid; justify-items: end; gap: 0.4rem; }
+  .qty-period-label { color: var(--secondary-text); font-size: 0.82rem; font-weight: 700; }
+  .qty-filters { display: flex; flex-wrap: wrap; align-items: end; gap: 0.65rem; }
+  .qty-filters label, .qty-search label { display: grid; gap: 0.3rem; color: var(--secondary-text); font-size: 0.8rem; font-weight: 600; }
+  .qty-filters input[type="date"], .qty-search input {
+    min-height: 40px;
+    padding: 0.45rem 0.6rem;
+    border: 1px solid var(--input-border);
+    border-radius: 5px;
+    background: var(--form-bg);
+    color: var(--primary-text);
+  }
+  .qty-filters button {
+    min-height: 40px;
+    padding: 0.5rem 0.8rem;
+    border: 0;
+    border-radius: 5px;
+    background: var(--button-bg);
+    color: var(--button-text);
+    font-weight: 600;
+    cursor: pointer;
+  }
+  .qty-filters button:hover { background: var(--button-hover); }
+  .qty-view-filters { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 0.75rem 1.25rem; padding: 0.75rem 0; }
+  .qty-search { flex: 1 1 250px; max-width: 390px; }
+  .qty-view-options { display: flex; flex-wrap: wrap; align-items: center; gap: 0.8rem 1.25rem; }
+  .qty-availability-filter { display: grid; gap: 0.25rem; color: var(--secondary-text); font-size: 0.78rem; font-weight: 600; }
+  .qty-availability-filter select { min-height: 34px; padding: 0.35rem 0.55rem; border: 1px solid var(--input-border); border-radius: 4px; background: var(--form-bg); color: var(--primary-text); }
+  .qty-status-filters { display: flex; flex-wrap: wrap; align-items: center; gap: 0.45rem 0.8rem; margin: 0; padding: 0; border: 0; }
+  .qty-status-filters legend { margin-right: 0.5rem; color: var(--secondary-text); font-size: 0.8rem; font-weight: 700; }
+  .qty-status-option { display: inline-flex; align-items: center; gap: 0.35rem; color: var(--secondary-text); font-size: 0.8rem; cursor: pointer; }
+  .qty-status-option input { accent-color: var(--button-bg); }
+  .qty-column-controls { display: flex; flex-wrap: wrap; align-items: center; gap: 0.35rem; padding: 0 0 0.7rem; }
+  .qty-column-label { margin-right: 0.2rem; color: var(--secondary-text); font-size: 0.78rem; font-weight: 700; }
+  .qty-column-toggle, .qty-columns-reset {
+    min-height: 30px;
+    padding: 0.25rem 0.45rem;
+    border: 1px solid var(--input-border);
+    border-radius: 4px;
+    background: var(--container-bg);
+    color: var(--secondary-text);
+    font-size: 0.74rem;
+    cursor: pointer;
+  }
+  .qty-column-toggle[aria-pressed="true"] { border-color: var(--button-bg); background: var(--form-bg); color: var(--primary-text); font-weight: 700; }
+  .qty-column-toggle:hover, .qty-columns-reset:hover { background: var(--table-row-hover); }
+  .qty-columns-reset { border-color: transparent; color: var(--button-bg); }
+  .qty-column-controls { display: flex; flex-wrap: wrap; align-items: center; gap: 0.35rem; padding: 0 0 0.7rem; }
+  .qty-column-label { margin-right: 0.2rem; color: var(--secondary-text); font-size: 0.78rem; font-weight: 700; }
+  .qty-column-toggle, .qty-columns-reset {
+    min-height: 30px;
+    padding: 0.25rem 0.45rem;
+    border: 1px solid var(--input-border);
+    border-radius: 4px;
+    background: var(--container-bg);
+    color: var(--secondary-text);
+    font-size: 0.74rem;
+    cursor: pointer;
+  }
+  .qty-column-toggle[aria-pressed="true"] { border-color: var(--button-bg); background: var(--form-bg); color: var(--primary-text); font-weight: 700; }
+  .qty-columns-reset { border-color: transparent; color: var(--button-bg); }
+  .qty-columns-reset:hover, .qty-column-toggle:hover { background: var(--table-row-hover); }
+  .qty-status { display: inline-flex; align-items: center; padding: 0.18rem 0.45rem; border-radius: 4px; font-size: 0.75rem; font-weight: 700; white-space: nowrap; }
+  .qty-status.enough { color: #205d39; background: #e8f5ec; }
+  .qty-status.incoming { color: #73500a; background: #fff4d6; }
+  .qty-status.action { color: #8f2119; background: #fde8e6; }
+  .qty-table-scroll { overflow: auto; max-height: calc(100vh - 260px); border: 1px solid var(--table-border); border-radius: 6px; background: var(--container-bg); }
+  .qty-table { width: 100%; min-width: max-content; border-collapse: separate; border-spacing: 0; }
+  .qty-table th, .qty-table td { padding: 0.65rem 0.8rem; border-bottom: 1px solid var(--table-border); text-align: left; }
+  .qty-table thead th { position: sticky; top: 0; z-index: 2; background: var(--table-header-bg); color: var(--table-header-text); font-size: 0.82rem; }
+.qty-table > thead > tr > th:first-child,
+.qty-table > tbody > tr.qty-summary-row > td:first-child {
+  position: sticky;
+  left: 0;
+  z-index: 1;
+  background: var(--container-bg);
+}
+.qty-table > thead > tr > th:first-child {
+  z-index: 3;
+  background: var(--table-header-bg);
+}
+.qty-detail-row > td {
+  position: static;
+  left: auto;
+  z-index: auto;
+  padding: 0.85rem !important;
+  background: var(--form-bg) !important;
+}
+.qty-detail-wrap {
+  overflow-x: auto;
+  width: 0;
+  min-width: 100%;
+}
+  .qty-table thead th:first-child { z-index: 3; background: var(--table-header-bg); }
+  .qty-table .qty-description { min-width: 240px; }
+  .qty-warehouse-heading { display: grid; gap: 0.15rem; min-width: 100px; }
+  .qty-warehouse-heading small { color: var(--secondary-text); font-size: 0.72rem; font-weight: 400; }
+.qty-table > tbody > tr.qty-summary-row:hover > td,
+.qty-table > tbody > tr.qty-summary-row:hover > td:first-child {
+  background: var(--table-row-hover);
+}
+  .qty-description-content { display: flex; align-items: center; gap: 0.5rem; }
+  .qty-product-text { display: grid; gap: 0.12rem; min-width: 0; }
+  .qty-product-name { color: var(--primary-text); font-size: 0.94rem; font-weight: 700; line-height: 1.25; }
+  .qty-active-ingredient { color: var(--secondary-text); font-size: 0.76rem; font-weight: 400; line-height: 1.25; }
+  .qty-product-view { display: inline-flex; flex: 0 0 28px; align-items: center; justify-content: center; width: 28px; height: 28px; border-radius: 4px; color: var(--button-bg); text-decoration: none; }
+  .qty-product-view:hover { background: var(--table-row-hover); color: var(--button-hover); }
+  .qty-product-view { display: inline-flex; flex: 0 0 28px; align-items: center; justify-content: center; width: 28px; height: 28px; border-radius: 4px; color: var(--button-bg); text-decoration: none; }
+  .qty-product-view:hover { background: var(--table-row-hover); color: var(--button-hover); }
+  .qty-expand {
+    flex: 0 0 28px;
+    width: 28px;
+    height: 28px;
+    padding: 0;
+    border: 0;
+    border-radius: 4px;
+    background: transparent;
+    color: var(--secondary-text);
+    cursor: pointer;
+  }
+  .qty-expand:hover { background: var(--table-row-hover); }
+  .qty-expand span { display: inline-block; transition: transform 0.15s ease; }
+  .qty-expand[aria-expanded="true"] span { transform: rotate(90deg); }
+  .qty-available-cell { text-align: right !important; font-variant-numeric: tabular-nums; }
+  .qty-unlinked { color: var(--secondary-text); font-size: 0.85rem; font-weight: 400; text-align: center !important; }
+  .qty-quantity { display: inline-block; min-width: 3rem; padding: 0.2rem 0.45rem; border-radius: 4px; font-weight: 700; text-align: center; }
+  .qty-quantity.enough { color: #205d39; background: #e8f5ec; }
+  .qty-quantity.incoming { color: #73500a; background: #fff4d6; }
+  .qty-quantity.action { color: #8f2119; background: #fde8e6; }
+  .qty-detail-row[hidden] { display: none; }
+  .qty-detail-row > td { padding: 0.85rem !important; background: var(--form-bg) !important; }
+  .qty-detail-wrap { overflow-x: auto; }
+  .qty-detail-table { width: 100%; min-width: 540px; table-layout: fixed; border-collapse: collapse; background: var(--container-bg); font-size: 0.76rem; }
+  .qty-detail-table th, .qty-detail-table td { padding: 0.32rem 0.42rem; border-bottom: 1px solid var(--table-border); text-align: left; line-height: 1.2; }
+  .qty-detail-table th { background: var(--table-header-bg); color: var(--table-header-text); font-size: 0.7rem; }
+  .qty-detail-table th:first-child, .qty-detail-table td:first-child { width: 145px; overflow-wrap: anywhere; }
+  .qty-detail-table th:nth-child(2), .qty-detail-table td:nth-child(2),
+  .qty-detail-table th:nth-child(3), .qty-detail-table td:nth-child(3),
+  .qty-detail-table th:nth-child(4), .qty-detail-table td:nth-child(4),
+  .qty-detail-table th:nth-child(5), .qty-detail-table td:nth-child(5) { width: 68px; }
+  .qty-detail-table th:last-child, .qty-detail-table td:last-child { width: 115px; }
+  .qty-detail-table .numeric { text-align: right; font-variant-numeric: tabular-nums; white-space: nowrap; }
+  .qty-detail-table .qty-status { padding: 0.14rem 0.32rem; font-size: 0.67rem; }
+  .qty-detail-expand {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 24px;
+    height: 24px;
+    border: 1px solid var(--input-border);
+    border-radius: 4px;
+    background: var(--container-bg);
+    color: var(--secondary-text);
+    cursor: pointer;
+    font-size: 0.75rem;
+    margin-right: 0.45rem;
+    vertical-align: middle;
+  }
+  .qty-detail-expand[aria-expanded="true"] { background: var(--form-bg); color: var(--button-bg); }
+  .qty-detail-spray-table {
+    width: 100%;
+    border-collapse: collapse;
+    background: var(--container-bg);
+    font-size: 0.75rem;
+  }
+  .qty-detail-spray-table th, .qty-detail-spray-table td {
+    padding: 0.35rem 0.45rem;
+    border-bottom: 1px solid var(--table-border);
+    text-align: left;
+  }
+  .qty-detail-spray-table th { background: var(--table-header-bg); color: var(--table-header-text); }
+  .qty-detail-spray-table td.numeric, .qty-detail-spray-table th.numeric {
+    text-align: right;
+    font-variant-numeric: tabular-nums;
+  }
+  .qty-detail-spray-row td { background: var(--container-bg); }
+  .modal {
+    position: fixed;
+    inset: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: rgba(15, 23, 42, 0.5);
+    z-index: 1200;
+  }
+  .modal.hidden {
+    display: none;
+  }
+  .modal-content {
+    width: min(1100px, calc(100vw - 2rem));
+    max-height: calc(100vh - 2rem);
+    background: var(--container-bg);
+    border: 1px solid var(--table-border);
+    border-radius: 10px;
+    box-shadow: 0 18px 40px rgba(15, 23, 42, 0.25);
+    overflow: hidden;
+  }
+  .modal-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 0.8rem 1rem;
+    border-bottom: 1px solid var(--table-border);
+  }
+  .modal-header h2 { margin: 0; font-size: 1.1rem; }
+  .modal-header button {
+    border: 0;
+    background: transparent;
+    color: var(--secondary-text);
+    font-size: 1.5rem;
+    cursor: pointer;
+  }
+  .modal-body { background: var(--container-bg); }
+  .qty-message { padding: 1.5rem; color: var(--secondary-text); text-align: center; }
+  @media (max-width: 640px) {
+    .qty-page { padding: 0.65rem; }
+    .qty-heading { align-items: stretch; }
+    .qty-heading h1 { font-size: 1.3rem; }
+    .qty-period-controls { justify-items: stretch; }
+    .qty-filters { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); }
+    .qty-filters button { grid-column: 1 / -1; }
+    .qty-view-filters { align-items: stretch; }
+    .qty-search { flex-basis: 100%; max-width: none; }
+    .qty-view-options { width: 100%; align-items: flex-start; flex-direction: column; }
+    .qty-view-options { width: 100%; align-items: flex-start; flex-direction: column; }
+    .qty-status-filters { gap: 0.45rem 0.65rem; }
+    .qty-status-filters legend { flex-basis: 100%; }
+    .qty-table-scroll { max-height: calc(100vh - 310px); overflow-x: auto; }
+    .qty-table { width: 100%; min-width: 100%; table-layout: fixed; }
+    .qty-table .qty-description { width: 50%; min-width: 0; }
+    .qty-table th:not(:first-child), .qty-table td:not(:first-child) {
+      width: 50%;
+      min-width: 100px;
+      padding: 0.45rem 0.35rem;
+    }
+    .qty-table th, .qty-table td { padding: 0.45rem; }
+    .qty-warehouse-heading { min-width: 0; overflow-wrap: anywhere; font-size: 0.72rem; line-height: 1.2; }
+    .qty-available-cell { text-align: center !important; }
+    .qty-quantity { min-width: 0; padding: 0.18rem 0.25rem; font-size: 0.8rem; white-space: nowrap; }
+    .qty-description-content { align-items: flex-start; gap: 0.2rem; }
+    .qty-product-text { flex: 1 1 auto; width: 0; }
+    .qty-product-name { font-size: 0.84rem; overflow-wrap: anywhere; }
+    .qty-active-ingredient { font-size: 0.7rem; overflow-wrap: anywhere; }
+    .qty-expand, .qty-product-view { flex-basis: 24px; width: 24px; height: 26px; }
+  }
+</style>
+
+<main class="qty-page with-fixed-taskbar">
+  <header class="qty-heading">
+    <div class="qty-heading-left">
+      <h1>Warehouse Stock</h1>
+      <div class="qty-action-row" aria-label="Warehouse actions">
+        <button type="button" class="qty-action-button" onclick="window.location.href='/agri/product/new'">Create Product</button>
+        <button type="button" class="qty-action-button" onclick="if (typeof openSuggestedOrderModal === 'function') { openSuggestedOrderModal(); }">Suggested Order</button>
+        <button type="button" class="qty-action-button" onclick="if (typeof openIbtModal === 'function') { openIbtModal(); }">IBT Transfer</button>
+      </div>
+    </div>
+    <div class="qty-period-controls">
+      <div class="qty-period-label">Calculate qty needed for the period</div>
+      <form class="qty-filters" id="qty-filters">
+        <label>From<input id="qty-from" type="date" required></label>
+        <label>To<input id="qty-to" type="date" required></label>
+        <button type="submit">Apply period</button>
+      </form>
+    </div>
+  </header>
+
+  <div class="qty-view-filters">
+    <label class="qty-search">Search <input id="qty-search" type="search" placeholder="Description or active ingredient"></label>
+    <div class="qty-view-options">
+      <label class="qty-availability-filter">Availability in shown warehouses
+        <select id="qty-availability-filter">
+          <option value="all">In stock and out of stock</option>
+          <option value="in-stock">In stock only</option>
+          <option value="out-of-stock">Out of stock only</option>
+        </select>
+      </label>
+      <fieldset class="qty-status-filters" aria-label="Filter products by stock status">
+        <legend>Stock status</legend>
+        <label class="qty-status-option"><input type="checkbox" value="enough" checked><span class="qty-status enough">Enough stock</span></label>
+        <label class="qty-status-option"><input type="checkbox" value="incoming" checked><span class="qty-status incoming">Covered by incoming stock</span></label>
+        <label class="qty-status-option"><input type="checkbox" value="action" checked><span class="qty-status action">Action required</span></label>
+      </fieldset>
+    </div>
+  </div>
+
+  <div id="qty-column-controls" class="qty-column-controls" role="group" aria-label="Show or hide warehouse columns"></div>
+  <div class="qty-table-scroll">
+    <table class="qty-table" id="qty-table">
+      <thead><tr id="qty-table-head"><th class="qty-description">Description</th></tr></thead>
+      <tbody id="qty-table-body"><tr><td class="qty-message">Loading warehouse quantities...</td></tr></tbody>
+    </table>
+  </div>
+</main>
+
+<div id="suggestedOrderModal" class="modal hidden" aria-hidden="true">
+  <div class="modal-content" style="max-width: 1100px; width: min(100%, 1100px);">
+    <div class="modal-header">
+      <h2>Suggested Order</h2>
+      <button type="button" onclick="closeSuggestedOrderModal()">&times;</button>
+    </div>
+    <div id="suggestedOrderModalBody" class="modal-body" style="padding: 0; overflow: auto; max-height: calc(100vh - 140px);"></div>
+  </div>
+</div>
+
+<div id="ibtModal" class="modal hidden" aria-hidden="true">
+  <div class="modal-content" style="max-width: 1100px; width: min(100%, 1100px);">
+    <div class="modal-header">
+      <h2>IBT Transfer</h2>
+      <button type="button" onclick="closeIbtModal()">&times;</button>
+    </div>
+    <div id="ibtModalBody" class="modal-body" style="padding: 0; overflow: auto; max-height: calc(100vh - 140px);"></div>
+  </div>
+</div>
+
+<script src="{{ url_for('agri.static', filename='suggested_order.js') }}?v={{ filemtime('agri', 'suggested_order.js') }}"></script>
+<script src="{{ url_for('agri.static', filename='suggested_ibt.js') }}?v={{ filemtime('agri', 'suggested_ibt.js') }}"></script>
+<script src="{{ url_for('inventory.static', filename='qty_dashboard.js') }}?v={{ filemtime('inventory', 'qty_dashboard.js') }}"></script>
+{% endblock %}

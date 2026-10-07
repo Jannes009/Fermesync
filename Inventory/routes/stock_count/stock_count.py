@@ -33,6 +33,13 @@ def create_stock_count():
 
         cat_name = category_link_to_name(cat_id, cursor)
         whse_code = warehouse_link_to_code(whse_id, cursor)
+        cursor.execute("""
+            SELECT WhseDescription
+            FROM cmn._uvWarehouses
+            WHERE WhseLink = ?
+        """, (whse_id,))
+        warehouse_row = cursor.fetchone()
+        warehouse_name = warehouse_row.WhseDescription if warehouse_row else whse_code
         
         # Header = session
         cursor.execute("""
@@ -68,7 +75,12 @@ def create_stock_count():
 
         conn.commit()
 
-        return jsonify({"success": True, "session_id": header_id})
+        return jsonify({
+            "success": True,
+            "session_id": header_id,
+            "warehouse_name": warehouse_name,
+            "shelf_name": cat_name,
+        })
     except Exception as e:
         conn.rollback()
         conn.close()
@@ -116,21 +128,25 @@ def stock_count_session(header_id):
     cursor = conn.cursor()
     cursor.execute("""
         SELECT
-            InvCountHeaderId,
-            InvCountTimeFinalised
-        FROM [stk].InventoryCountHeaders
-        WHERE InvCountHeaderId = ?
-    """, header_id)
+            H.InvCountHeaderId,
+            H.InvCountTimeFinalised,
+            H.InvCountCatName,
+            WHSE.WhseDescription
+        FROM stk.InventoryCountHeaders H
+        LEFT JOIN cmn._uvWarehouses WHSE ON WHSE.WhseLink = H.InvCountWhseId
+        WHERE H.InvCountHeaderId = ?
+    """, (header_id,))
     row = cursor.fetchone()
     conn.close()
-    print(row.InvCountTimeFinalised)
     if not row:
         abort(404)
     if row.InvCountTimeFinalised is not None:
         abort(409, "Stock count already finalised")
     return render_template(
         "stock_count/stock_count.html",
-        session_id=header_id
+        session_id=header_id,
+        warehouse_name=row.WhseDescription,
+        shelf_name=row.InvCountCatName,
     )
 
 @inventory_bp.route("/stock-counts/<int:header_id>/products")

@@ -20,6 +20,20 @@
     .btn-primary:hover { background: var(--button-hover); }
     .btn-primary:disabled { opacity: 0.6; cursor: not-allowed; }
     .hidden { display: none; }
+    .count-location {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 0.75rem;
+      margin-bottom: 0.85rem;
+      padding: 0.75rem;
+      border: 1px solid var(--input-border);
+      border-left: 4px solid var(--button-bg);
+      border-radius: 6px;
+      background: var(--form-bg);
+    }
+    .count-location-item { min-width: 0; }
+    .count-location-label { display: block; margin-bottom: 0.2rem; color: var(--secondary-text); font-size: 0.72rem; font-weight: 700; text-transform: uppercase; }
+    .count-location-value { display: block; overflow-wrap: anywhere; font-weight: 600; }
 
     /* Product Row — Compact & Beautiful */
     .product-row {
@@ -256,6 +270,7 @@
       .card { 
         padding: 0.5rem; 
       }
+      .count-location { gap: 0.5rem; padding: 0.6rem; }
       
       header h1 { 
         font-size: 1.1rem; 
@@ -342,6 +357,16 @@
 
         <!-- STEP 2 -->
         <section id="step-2" class="hidden">
+          <div class="count-location" id="count-location" aria-label="Current count location" hidden>
+            <div class="count-location-item">
+              <span class="count-location-label">Warehouse</span>
+              <strong class="count-location-value" id="count-warehouse"></strong>
+            </div>
+            <div class="count-location-item">
+              <span class="count-location-label">Shelf</span>
+              <strong class="count-location-value" id="count-shelf"></strong>
+            </div>
+          </div>
           <h3 class="step-header">Count Products</h3>
           <div class="progress-info" id="progress-info">Counting products... <span id="progress-text">0/0</span></div>
           <div id="products-container"></div>
@@ -374,6 +399,12 @@
   </div>
 </div>
 
+<script>
+  window.STOCK_COUNT_LOCATION = {
+    warehouse: {{ warehouse_name | default('', true) | tojson }},
+    shelf: {{ shelf_name | default('', true) | tojson }}
+  };
+</script>
 <script src="{{ url_for('inventory.static', filename='stock_count/stock_count_setup.js') }}?{{ filemtime('inventory', 'stock_count/stock_count_setup.js') }}"></script>
 
 <script src="{{ url_for('inventory.static', filename='stock_count/stock_count.js') }}?{{ filemtime('inventory', 'stock_count/stock_count.js') }}"></script>

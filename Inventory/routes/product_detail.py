@@ -133,6 +133,80 @@ def format_inventory_row(row):
     }
 
 
+def warehouse_stock_status(qty_needed, qty_on_hand, qty_on_po, qty_on_ibt):
+    if float(qty_on_hand or 0) >= float(qty_needed or 0):
+        return 'enough'
+    incoming = max(float(qty_on_po or 0), 0) + max(float(qty_on_ibt or 0), 0)
+    if incoming > 0 and float(qty_on_hand or 0) + incoming >= float(qty_needed or 0):
+        return 'incoming'
+    return 'action'
+
+
+def load_warehouse_demand(stock_link, start_date, end_date):
+    inventory_rows = load_inventory_rows(stock_link)
+    if not inventory_rows:
+        return []
+
+    formatted_rows = [format_inventory_row(row) for row in inventory_rows]
+    wh_clause, wh_params = warehouse_placeholders()
+    if not wh_clause:
+        return formatted_rows
+
+    conn = create_db_connection()
+    if not conn:
+        return formatted_rows
+
+    start_week = f'{start_date.isocalendar().year:04d}-{start_date.isocalendar().week:02d}'
+    end_week = f'{end_date.isocalendar().year:04d}-{end_date.isocalendar().week:02d}'
+
+    try:
+        cur = conn.cursor()
+        cur.execute(f"""
+            SELECT
+                P.SprayHWhseId AS WhseLink,
+                SUM(ISNULL(P.StockingUnitsNeeded, 0)) AS QtyNeeded
+            FROM agr._uvStockProjectionUnitsNeededPerWH P
+            WHERE P.SprayLineStkId = ?
+              AND P.SprayHWeek >= ?
+              AND P.SprayHWeek <= ?
+              AND P.SprayHWhseId IN ({wh_clause})
+            GROUP BY P.SprayHWhseId
+        """, (stock_link, start_week, end_week) + wh_params)
+        demand_by_wh = {
+            int(row.WhseLink): float(row.QtyNeeded or 0)
+            for row in cur.fetchall()
+        }
+    finally:
+        close_db_connection(conn)
+
+    items = []
+    for row in formatted_rows:
+        whse_link = int(row['WhseLink'])
+        qty_on_hand = float(row.get('QtyOnHand') or 0)
+        qty_on_po = float(row.get('QtyOnPO') or 0)
+        qty_on_ibt = float(row.get('QtyOnIBT') or 0)
+        qty_needed = demand_by_wh.get(whse_link, 0)
+        status = warehouse_stock_status(qty_needed, qty_on_hand, qty_on_po, qty_on_ibt)
+        items.append({
+            'WhseLink': whse_link,
+            'WhseCode': row.get('WhseCode'),
+            'WhseName': row.get('WhseName'),
+            'QtyOnHand': format_qty(qty_on_hand),
+            'QtyOnPO': format_qty(qty_on_po),
+            'QtyOnIBT': format_qty(qty_on_ibt),
+            'QtyNeeded': format_qty(qty_needed),
+            'Status': status,
+            'ReorderLevel': format_qty(row.get('ReorderLevel')),
+            'ReorderQty': format_qty(row.get('ReorderQty')),
+            'CategoryId': row.get('CategoryId'),
+            'CategoryName': row.get('CategoryName'),
+            'LastStockCount': row.get('LastStockCount'),
+            'WeeksUntilNegative': row.get('WeeksUntilNegative'),
+            'FirstNegativeWeek': row.get('FirstNegativeWeek'),
+        })
+    return items
+
+
 def load_suppliers(stock_link):
     conn = create_db_connection()
     if not conn:
@@ -636,22 +710,42 @@ def product_detail(stock_link):
     if 'WHSE_QTYS' not in current_user.permissions:
         abort(403)
 
-    warehouse_id = request.args.get('whse', type=int)
-    if warehouse_id is None:
-        return 'Warehouse ID is required', 400
-
     inventory_rows = load_inventory_rows(stock_link)
     if not inventory_rows:
         abort(404)
 
     formatted_rows = [format_inventory_row(row) for row in inventory_rows]
-    selected = next((row for row in formatted_rows if row['WhseLink'] == warehouse_id), None)
-    if not selected:
-        abort(404)
+    default_warehouse = formatted_rows[0]
+
+    end_date = parse_date_param(request.args.get('to')) or datetime.today().date()
+    start_date = parse_date_param(request.args.get('from')) or (end_date - timedelta(days=183))
+    if start_date > end_date:
+        start_date, end_date = end_date, start_date
+
+    warehouse_summary = load_warehouse_demand(stock_link, start_date, end_date)
+    if not warehouse_summary:
+        warehouse_summary = [
+            {
+                'WhseLink': row['WhseLink'],
+                'WhseCode': row['WhseCode'],
+                'WhseName': row['WhseName'],
+                'QtyOnHand': row['QtyOnHand'],
+                'QtyOnPO': row['QtyOnPO'],
+                'QtyOnIBT': row['QtyOnIBT'],
+                'QtyNeeded': 0,
+                'Status': 'action',
+                'ReorderLevel': row['ReorderLevel'],
+                'ReorderQty': row['ReorderQty'],
+                'CategoryId': row.get('CategoryId'),
+                'LastStockCount': row.get('LastStockCount'),
+                'WeeksUntilNegative': row.get('WeeksUntilNegative'),
+            }
+            for row in formatted_rows
+        ]
 
     suppliers = load_suppliers(stock_link)
     chemstock = load_chemstock(stock_link)
-    notices = build_notices(selected, suppliers, chemstock)
+    notices = build_notices(default_warehouse, suppliers, chemstock)
     warehouses = load_warehouse_selector(stock_link)
 
     product = {
@@ -663,13 +757,17 @@ def product_detail(stock_link):
     return render_template(
         'product_detail.html',
         product=product,
-        warehouse_id=warehouse_id,
+        warehouse_id=None,
         warehouses=warehouses,
-        selected_warehouse=selected,
+        selected_warehouse=default_warehouse,
+        default_inventory_warehouse=default_warehouse,
         all_warehouses=formatted_rows,
+        warehouse_summary=warehouse_summary,
         suppliers=suppliers,
         chemstock=chemstock,
         notices=notices,
+        start_date=start_date.strftime('%Y-%m-%d'),
+        end_date=end_date.strftime('%Y-%m-%d'),
     )
 
 

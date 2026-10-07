@@ -445,6 +445,32 @@ body { background: var(--bg-gray); }
   border: 1px solid #fecaca;
 }
 
+.status-badge {
+  display: inline-flex;
+  align-items: center;
+  padding: 4px 8px;
+  border-radius: 999px;
+  font-size: 11px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.3px;
+}
+
+.status-badge.enough {
+  background: #ecfdf5;
+  color: #166534;
+}
+
+.status-badge.incoming {
+  background: #eff6ff;
+  color: #1d4ed8;
+}
+
+.status-badge.action {
+  background: #fff7ed;
+  color: #c2410c;
+}
+
 .empty-state {
   padding: 24px;
   text-align: center;
@@ -647,24 +673,13 @@ body { background: var(--bg-gray); }
         <p>{{ product.StockDescription }}</p>
       </div>
       <div class="header-controls">
-        <div class="warehouse-selector">
-          <label for="whseSelect">Warehouse</label>
-          <select id="whseSelect" onchange="changeWarehouse()">
-            {% for wh in warehouses %}
-            <option value="{{ wh.WhseLink }}" {% if wh.WhseLink == warehouse_id %}selected{% endif %}>
-              {{ wh.WhseCode }} - {{ wh.WhseName }}
-            </option>
-            {% endfor %}
-          </select>
-        </div>
         <button type="button" class="btn-back" onclick="goBack()">← Back</button>
       </div>
     </div>
   </div>
 
   <div class="erp-tabs" role="tablist">
-    <button type="button" class="tab-btn active" data-tab="warehouse" onclick="switchTab('warehouse', this)">Warehouse</button>
-    <button type="button" class="tab-btn" data-tab="warehouses" onclick="switchTab('warehouses', this)">Warehouses</button>
+    <button type="button" class="tab-btn active" data-tab="warehouses" onclick="switchTab('warehouses', this)">Warehouses</button>
     <button type="button" class="tab-btn" data-tab="history" onclick="switchTab('history', this)">History</button>
     <button type="button" class="tab-btn" data-tab="suppliers" onclick="switchTab('suppliers', this)">Suppliers</button>
     <button type="button" class="tab-btn" data-tab="chemstock" onclick="switchTab('chemstock', this)">ChemStock</button>
@@ -672,8 +687,8 @@ body { background: var(--bg-gray); }
   </div>
 
   <div class="erp-content">
-    <!-- WAREHOUSE -->
-    <div id="tab-warehouse" class="tab-panel active">
+    <!-- WAREHOUSES -->
+    <div id="tab-warehouses" class="tab-panel active">
       {% if notices %}
       <div class="section">
         <div class="section-header"><h3>Notices</h3></div>
@@ -689,77 +704,47 @@ body { background: var(--bg-gray); }
 
       <div class="section">
         <div class="section-header">
-          <h3>{{ selected_warehouse.WhseCode }} — {{ selected_warehouse.WhseName }}</h3>
-        </div>
-        <div class="section-content">
-          <div class="stat-grid">
-            <div class="stat-card">
-              <div class="stat-label">Qty On Hand</div>
-              <div class="stat-value">{{ selected_warehouse.QtyOnHand }}</div>
+          <h3>Warehouse demand and status</h3>
+          <div class="filter-actions" style="align-items:flex-end;">
+            <div class="filter-group">
+              <label for="warehouseFromDate">From</label>
+              <input type="date" id="warehouseFromDate" value="{{ start_date }}">
             </div>
-            <div class="stat-card">
-              <div class="stat-label">Qty On Issues</div>
-              <div class="stat-value">{{ selected_warehouse.QtyOnIssues }}</div>
+            <div class="filter-group">
+              <label for="warehouseToDate">To</label>
+              <input type="date" id="warehouseToDate" value="{{ end_date }}">
             </div>
-            <div class="stat-card">
-              <div class="stat-label">Qty On Purchase Orders</div>
-              <div class="stat-value">{{ selected_warehouse.QtyOnPO }}</div>
-            </div>
-            <div class="stat-card">
-              <div class="stat-label">Qty On IBT</div>
-              <div class="stat-value">{{ selected_warehouse.QtyOnIBT }}</div>
-            </div>
-            <div class="stat-card">
-              <div class="stat-label">Reorder Level</div>
-              <div class="stat-value">{{ selected_warehouse.ReorderLevel }}</div>
-            </div>
-            <div class="stat-card">
-              <div class="stat-label">Reorder Qty</div>
-              <div class="stat-value">{{ selected_warehouse.ReorderQty }}</div>
-            </div>
-            <div class="stat-card">
-              <div class="stat-label">Last Stock Count</div>
-              <div class="stat-value">{{ selected_warehouse.LastStockCount or '—' }}</div>
-            </div>
-            <div class="stat-card">
-              <div class="stat-label">Weeks Until Negative</div>
-              <div class="stat-value">
-                {% if selected_warehouse.WeeksUntilNegative is not none %}
-                  {{ selected_warehouse.WeeksUntilNegative }}
-                {% else %}
-                  —
-                {% endif %}
-              </div>
-            </div>
+            <button type="button" class="btn-filter" onclick="applyWarehouseDateFilter()">Apply</button>
           </div>
         </div>
-      </div>
-    </div>
-
-    <!-- WAREHOUSES -->
-    <div id="tab-warehouses" class="tab-panel">
-      <div class="section">
-        <div class="section-header"><h3>All Warehouses</h3></div>
         <div class="section-content">
           <div class="table-container">
             <table class="table-compact">
               <thead>
                 <tr>
                   <th>Warehouse</th>
-                  <th class="text-right">On Hand</th>
-                  <th class="text-right">PO</th>
-                  <th class="text-right">IBT</th>
+                  <th class="text-right">Qty On Hand</th>
+                  <th class="text-right">Qty Needed</th>
+                  <th class="text-right">Qty On PO</th>
+                  <th class="text-right">Qty On IBT</th>
+                  <th>Status</th>
                   <th>Last Stock Count</th>
                   <th class="text-right">Weeks Until Negative</th>
                 </tr>
               </thead>
               <tbody>
-                {% for wh in all_warehouses %}
-                <tr{% if wh.WhseLink == warehouse_id %} style="background: var(--primary-light);"{% endif %}>
+                {% for wh in warehouse_summary %}
+                <tr>
                   <td>{{ wh.WhseCode }} — {{ wh.WhseName }}</td>
                   <td class="text-right">{{ wh.QtyOnHand }}</td>
+                  <td class="text-right">{{ wh.QtyNeeded }}</td>
                   <td class="text-right">{{ wh.QtyOnPO }}</td>
                   <td class="text-right">{{ wh.QtyOnIBT }}</td>
+                  <td>
+                    <span class="status-badge {{ wh.Status }}">
+                      {% if wh.Status == 'enough' %}Enough{% elif wh.Status == 'incoming' %}Incoming{% elif wh.Status == 'action' %}Action{% else %}Unlinked{% endif %}
+                    </span>
+                  </td>
                   <td>{{ wh.LastStockCount or '—' }}</td>
                   <td class="text-right">
                     {% if wh.WeeksUntilNegative is not none %}{{ wh.WeeksUntilNegative }}{% else %}—{% endif %}
@@ -1034,6 +1019,14 @@ body { background: var(--bg-gray); }
           <form id="inventoryForm" onsubmit="submitInventoryForm(event)">
             <div class="form-grid">
               <div class="form-group">
+                <label for="inventoryWarehouse">Warehouse</label>
+                <select id="inventoryWarehouse" onchange="changeInventoryWarehouse()">
+                  {% for wh in all_warehouses %}
+                  <option value="{{ wh.WhseLink }}" {% if wh.WhseLink == default_inventory_warehouse.WhseLink %}selected{% endif %}>{{ wh.WhseCode }} — {{ wh.WhseName }}</option>
+                  {% endfor %}
+                </select>
+              </div>
+              <div class="form-group">
                 <label for="inventoryCategory">Shelf / Category</label>
                 <select id="inventoryCategory">
                   <option value="">Select a category</option>
@@ -1041,11 +1034,11 @@ body { background: var(--bg-gray); }
               </div>
               <div class="form-group">
                 <label for="inventoryReorderLevel">Reorder Level</label>
-                <input type="number" id="inventoryReorderLevel" step="0.01" value="{{ selected_warehouse.ReorderLevel }}">
+                <input type="number" id="inventoryReorderLevel" step="0.01" value="{{ default_inventory_warehouse.ReorderLevel }}">
               </div>
               <div class="form-group">
                 <label for="inventoryReorderQty">Reorder Quantity</label>
-                <input type="number" id="inventoryReorderQty" step="0.01" value="{{ selected_warehouse.ReorderQty }}">
+                <input type="number" id="inventoryReorderQty" step="0.01" value="{{ default_inventory_warehouse.ReorderQty }}">
               </div>
             </div>
             <div class="form-actions">
@@ -1063,8 +1056,9 @@ body { background: var(--bg-gray); }
 <script>
 const PRODUCT_STOCK_LINK = {{ product.StockLink }};
 const CHEMSTOCK = {{ chemstock | tojson }};
-const CURRENT_WAREHOUSE_ID = {{ warehouse_id }};
-const INITIAL_CATEGORY_ID = {{ selected_warehouse.CategoryId if selected_warehouse.CategoryId is not none else 'null' }};
+const INVENTORY_WAREHOUSE_DATA = {{ all_warehouses | tojson }};
+const DEFAULT_INVENTORY_WAREHOUSE_ID = {{ default_inventory_warehouse.WhseLink }};
+const INITIAL_CATEGORY_ID = {{ default_inventory_warehouse.CategoryId if default_inventory_warehouse.CategoryId is not none else 'null' }};
 
 const pageState = {
   historyLoaded: false,
@@ -1101,16 +1095,16 @@ function switchTab(tabName, button) {
   }
 }
 
-function changeWarehouse() {
-  const whseId = document.getElementById('whseSelect').value;
-  const url = new URL(window.location);
-  url.searchParams.set('whse', whseId);
-  window.location.href = url.toString();
+function goBack() {
+  window.location.href = '/inventory/qty';
 }
 
-function goBack() {
-  const url = new URL(window.location.origin + '/inventory/qty');
-  url.searchParams.set('whse', CURRENT_WAREHOUSE_ID);
+function applyWarehouseDateFilter() {
+  const from = document.getElementById('warehouseFromDate').value;
+  const to = document.getElementById('warehouseToDate').value;
+  const url = new URL(window.location.href);
+  if (from) url.searchParams.set('from', from); else url.searchParams.delete('from');
+  if (to) url.searchParams.set('to', to); else url.searchParams.delete('to');
   window.location.href = url.toString();
 }
 
@@ -1480,23 +1474,47 @@ async function fetchSprays() {
   }
 }
 
-async function populateInventoryCategories() {
+function getSelectedInventoryWarehouse() {
+  const warehouseSelect = document.getElementById('inventoryWarehouse');
+  return warehouseSelect ? Number(warehouseSelect.value) : DEFAULT_INVENTORY_WAREHOUSE_ID;
+}
+
+function populateWarehouseInventoryForm(warehouseId) {
+  const warehouse = INVENTORY_WAREHOUSE_DATA.find(item => Number(item.WhseLink) === Number(warehouseId));
+  const reorderLevel = document.getElementById('inventoryReorderLevel');
+  const reorderQty = document.getElementById('inventoryReorderQty');
+  if (warehouse) {
+    reorderLevel.value = warehouse.ReorderLevel ?? 0;
+    reorderQty.value = warehouse.ReorderQty ?? 0;
+  }
+}
+
+function changeInventoryWarehouse() {
+  const warehouseId = getSelectedInventoryWarehouse();
+  populateWarehouseInventoryForm(warehouseId);
+  populateInventoryCategories(warehouseId);
+}
+
+async function populateInventoryCategories(whseId = DEFAULT_INVENTORY_WAREHOUSE_ID) {
   const select = document.getElementById('inventoryCategory');
-  if (pageState.categoriesLoaded) return;
+  const warehouseId = Number(whseId);
+  select.innerHTML = '<option value="">Loading...</option>';
 
   try {
-    const response = await request(`/inventory/categories?whse=${CURRENT_WAREHOUSE_ID}`);
+    const response = await request(`/inventory/categories?whse=${warehouseId}`);
     const data = await response.json();
     if (!data.success) {
       throw new Error(data.message || 'Failed to load categories');
     }
     const categories = data.categories || [];
+    const currentWarehouse = INVENTORY_WAREHOUSE_DATA.find(item => Number(item.WhseLink) === warehouseId) || {};
+    const selectedCategoryId = currentWarehouse.CategoryId ?? INITIAL_CATEGORY_ID;
     select.innerHTML = '<option value="">Select a category</option>';
     categories.forEach(cat => {
       const opt = document.createElement('option');
       opt.value = cat.category_id;
       opt.textContent = cat.category_name;
-      if (INITIAL_CATEGORY_ID !== null && Number(cat.category_id) === Number(INITIAL_CATEGORY_ID)) {
+      if (selectedCategoryId !== null && Number(cat.category_id) === Number(selectedCategoryId)) {
         opt.selected = true;
       }
       select.appendChild(opt);
@@ -1516,7 +1534,7 @@ async function submitInventoryForm(event) {
     categoryId: document.getElementById('inventoryCategory').value || null,
     reorderLevel: document.getElementById('inventoryReorderLevel').value || null,
     reorderQty: document.getElementById('inventoryReorderQty').value || null,
-    warehouseId: CURRENT_WAREHOUSE_ID,
+    warehouseId: getSelectedInventoryWarehouse(),
   };
 
   const btn = event.target.querySelector('button[type="submit"]');
@@ -1548,16 +1566,20 @@ async function submitInventoryForm(event) {
 }
 
 function resetInventoryForm() {
-  document.getElementById('inventoryReorderLevel').value = '{{ selected_warehouse.ReorderLevel }}';
-  document.getElementById('inventoryReorderQty').value = '{{ selected_warehouse.ReorderQty }}';
+  const warehouseId = getSelectedInventoryWarehouse();
+  const currentWarehouse = INVENTORY_WAREHOUSE_DATA.find(item => Number(item.WhseLink) === Number(warehouseId));
+  document.getElementById('inventoryReorderLevel').value = currentWarehouse ? (currentWarehouse.ReorderLevel ?? 0) : 0;
+  document.getElementById('inventoryReorderQty').value = currentWarehouse ? (currentWarehouse.ReorderQty ?? 0) : 0;
   document.getElementById('inventoryMessage').className = 'status-message';
-  if (pageState.categoriesLoaded && INITIAL_CATEGORY_ID !== null) {
-    document.getElementById('inventoryCategory').value = INITIAL_CATEGORY_ID;
+  if (pageState.categoriesLoaded && currentWarehouse && currentWarehouse.CategoryId !== null) {
+    document.getElementById('inventoryCategory').value = currentWarehouse.CategoryId;
   }
 }
 
 document.addEventListener('DOMContentLoaded', () => {
   defaultHistoryDates();
+  populateInventoryCategories(DEFAULT_INVENTORY_WAREHOUSE_ID);
+  populateWarehouseInventoryForm(DEFAULT_INVENTORY_WAREHOUSE_ID);
 });
 </script>
 <script

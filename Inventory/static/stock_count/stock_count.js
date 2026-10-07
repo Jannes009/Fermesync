@@ -367,6 +367,7 @@ async function onStartCounting() {
     return;
   }
   sessionId = data.session_id;
+    setCountLocation(data.warehouse_name, data.shelf_name);
 
   history.pushState(
     { sessionId },
@@ -376,6 +377,14 @@ async function onStartCounting() {
 
   await loadProductsForSession(sessionId);
   showStep(2);
+}
+
+function setCountLocation(warehouseName, shelfName) {
+        const location = document.getElementById("count-location");
+        if (!location) return;
+        document.getElementById("count-warehouse").textContent = warehouseName || "—";
+        document.getElementById("count-shelf").textContent = shelfName || "—";
+        location.hidden = false;
 }
 
 function displayProducts() {
