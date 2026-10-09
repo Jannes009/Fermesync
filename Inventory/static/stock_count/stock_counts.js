@@ -42,6 +42,7 @@ function bindCollapseToggle(button, panel, storageKey, itemKey) {
 
 document.addEventListener("DOMContentLoaded", () => {
     bindOverviewControls();
+    bindDocumentControls();
     loadOverview();
 });
 
@@ -61,6 +62,313 @@ function bindModalCloseHandlers() {
         }
         if (shelfModal && e.target === shelfModal) {
             closeShelfModal();
+        }
+    });
+}
+
+function bindDocumentControls() {
+    const toggle = document.getElementById("documentToggle");
+    const menu = document.getElementById("documentMenu");
+    if (!toggle || !menu) return;
+
+    toggle.addEventListener("click", (event) => {
+        event.stopPropagation();
+        const shouldOpen = menu.classList.contains("hidden");
+        menu.classList.toggle("hidden", !shouldOpen);
+        toggle.setAttribute("aria-expanded", String(shouldOpen));
+    });
+
+    menu.querySelectorAll("[data-document-action]").forEach(button => {
+        button.addEventListener("click", () => {
+            const action = button.dataset.documentAction;
+            handleDocumentAction(action);
+            menu.classList.add("hidden");
+            toggle.setAttribute("aria-expanded", "false");
+        });
+    });
+
+    document.addEventListener("click", (event) => {
+        if (!toggle.contains(event.target) && !menu.contains(event.target)) {
+            menu.classList.add("hidden");
+            toggle.setAttribute("aria-expanded", "false");
+        }
+    });
+}
+
+function buildPrintableDocumentHtml(doc) {
+    const lines = Array.isArray(doc?.lines) ? doc.lines : [];
+    const escapeHtml = value => String(value ?? "").replace(/[&<>"']/g, character => ({
+        "&": "&amp;",
+        "<": "&lt;",
+        ">": "&gt;",
+        '"': "&quot;",
+        "'": "&#39;"
+    })[character]);
+    const rows = lines.map(line => `
+        <tr>
+            <td>${escapeHtml(line.description || "-")}</td>
+            <td style="text-align:right;">${Number(line.system || 0).toFixed(2)} ${escapeHtml(line.unit || "")}</td>
+            <td style="text-align:right;">${line.counted === null || line.counted === undefined ? "N/A" : Number(line.counted).toFixed(2)} ${escapeHtml(line.unit || "")}</td>
+            <td style="text-align:right;">${line.variance === null || line.variance === undefined ? "N/A" : Number(line.variance).toFixed(2)}</td>
+        </tr>
+    `).join("") || '<tr><td colspan="4" style="text-align:center; padding: 1rem;">No line items found.</td></tr>';
+
+    const title = escapeHtml(doc?.title || "Stock Count Document");
+    const logoUrl = escapeHtml(new URL("/main_static/icons/HorizontalLogoAndText.svg", window.location.origin).href);
+    return `
+        <!doctype html>
+        <html>
+        <head>
+            <meta charset="utf-8">
+            <title>${title}</title>
+            <style>
+                body { font-family: Arial, sans-serif; margin: 32px; color: #111827; }
+                .header { border-bottom: 1px solid #d1d5db; padding-bottom: 16px; margin-bottom: 20px; }
+                .brand-mark { display: block; width: 100px; height: auto; margin-bottom: 12px; opacity: .62; }
+                h1 { margin: 0 0 8px; font-size: 28px; }
+                .meta { display: grid; grid-template-columns: repeat(3, minmax(180px, 1fr)); gap: 12px; margin-top: 16px; }
+                .meta-box { border: 1px solid #e5e7eb; border-radius: 8px; padding: 10px 12px; background: #f9fafb; }
+                .meta-box span { display: block; font-size: 11px; text-transform: uppercase; letter-spacing: 0.08em; color: #6b7280; margin-bottom: 4px; }
+                table { width: 100%; border-collapse: collapse; margin-top: 12px; }
+                th, td { border-bottom: 1px solid #e5e7eb; padding: 9px 10px; text-align: left; }
+                th { background: #f3f4f6; font-size: 12px; text-transform: uppercase; letter-spacing: 0.06em; }
+                @media print { body { margin: 16mm; } }
+            </style>
+        </head>
+        <body>
+            <div class="header">
+                <img class="brand-mark" src="${logoUrl}" alt="Fermesync">
+                <h1>Stock Count Document</h1>
+                <div><strong>${title}</strong></div>
+            </div>
+            <div class="meta">
+                <div class="meta-box"><span>Warehouse</span><strong>${escapeHtml(doc?.warehouse || "")}</strong></div>
+                <div class="meta-box"><span>Created by</span><strong>${escapeHtml(doc?.username || "N/A")}</strong></div>
+                <div class="meta-box"><span>Completed</span><strong>${escapeHtml(doc?.end_time || "N/A")}</strong></div>
+            </div>
+            <table>
+                <thead>
+                    <tr>
+                        <th>Description</th>
+                        <th>System Qty</th>
+                        <th>Counted Qty</th>
+                        <th>Variance</th>
+                    </tr>
+                </thead>
+                <tbody>${rows}</tbody>
+            </table>
+        </body>
+        </html>
+    `;
+}
+
+function printStockCountDocument(documentData) {
+    const frame = document.createElement("iframe");
+    frame.setAttribute("title", "Stock count print document");
+    frame.setAttribute("aria-hidden", "true");
+    frame.style.cssText = "position:fixed;left:-10000px;bottom:0;width:1px;height:1px;border:0;";
+    frame.onload = () => {
+        const frameWindow = frame.contentWindow;
+        if (!frameWindow) {
+            frame.remove();
+            return;
+        }
+        frameWindow.addEventListener("afterprint", () => frame.remove(), { once: true });
+        frameWindow.focus();
+        frameWindow.print();
+        setTimeout(() => frame.remove(), 60000);
+    };
+    frame.srcdoc = buildPrintableDocumentHtml(documentData);
+    document.body.appendChild(frame);
+}
+
+function loadLowInkStockCountLogo() {
+    return new Promise(resolve => {
+        const image = new Image();
+        image.onload = () => {
+            try {
+                const canvas = document.createElement("canvas");
+                canvas.width = 900;
+                canvas.height = Math.round(900 * image.naturalHeight / image.naturalWidth);
+                const context = canvas.getContext("2d");
+                if (!context) return resolve(null);
+                context.fillStyle = "#fff";
+                context.fillRect(0, 0, canvas.width, canvas.height);
+                context.globalAlpha = 0.62;
+                context.drawImage(image, 0, 0, canvas.width, canvas.height);
+                resolve(canvas.toDataURL("image/png"));
+            } catch (error) {
+                resolve(null);
+            }
+        };
+        image.onerror = () => resolve(null);
+        image.src = "/main_static/icons/HorizontalLogoAndText.svg";
+    });
+}
+
+const stockCountLogoPromise = loadLowInkStockCountLogo();
+
+async function createStockCountPdf(documentData) {
+    const jsPDF = window.jspdf?.jsPDF;
+    if (!jsPDF) throw new Error("PDF sharing is unavailable because the PDF generator did not load.");
+
+    const pdf = new jsPDF({ orientation: "portrait", unit: "mm", format: "a4" });
+    const pageWidth = pdf.internal.pageSize.getWidth();
+    const pageHeight = pdf.internal.pageSize.getHeight();
+    const margin = 14;
+    const tableWidth = pageWidth - margin * 2;
+    const columns = [tableWidth * 0.46, tableWidth * 0.18, tableWidth * 0.18, tableWidth * 0.18];
+    const title = documentData.title || "Stock Count";
+    let y = 18;
+
+    const logoDataUrl = await stockCountLogoPromise;
+    if (logoDataUrl) {
+        pdf.addImage(logoDataUrl, "PNG", margin, y, 42, 7.8);
+        y += 13;
+    }
+
+    pdf.setFont("helvetica", "bold");
+    pdf.setFontSize(18);
+    const titleLines = pdf.splitTextToSize(title, tableWidth);
+    pdf.text(titleLines, margin, y);
+    y += titleLines.length * 8 + 3;
+
+    pdf.setFont("helvetica", "normal");
+    pdf.setFontSize(10);
+    pdf.text(`Warehouse: ${documentData.warehouse || "N/A"}`, margin, y);
+    pdf.text(`Counted by: ${documentData.username || "N/A"}`, margin + tableWidth / 2, y);
+    y += 6;
+    pdf.text(`Started: ${documentData.start_time || "N/A"}`, margin, y);
+    pdf.text(`Completed: ${documentData.end_time || "N/A"}`, margin + tableWidth / 2, y);
+    y += 10;
+
+    const drawTableHeader = () => {
+        pdf.setFillColor(239, 243, 247);
+        pdf.rect(margin, y, tableWidth, 8, "F");
+        pdf.setFont("helvetica", "bold");
+        pdf.setFontSize(8.5);
+        pdf.setTextColor(31, 41, 55);
+        ["Description", "System Qty", "Counted Qty", "Variance"].forEach((label, index) => {
+            const x = margin + columns.slice(0, index).reduce((total, width) => total + width, 0) + 2;
+            pdf.text(label, x, y + 5.3);
+        });
+        y += 8;
+        pdf.setFont("helvetica", "normal");
+        pdf.setFontSize(9);
+    };
+
+    drawTableHeader();
+    (documentData.lines || []).forEach(line => {
+        const unit = line.unit ? ` ${line.unit}` : "";
+        const descriptionLines = pdf.splitTextToSize(String(line.description || "-"), columns[0] - 4);
+        const rowHeight = Math.max(7, descriptionLines.length * 4.5 + 2);
+        if (y + rowHeight > pageHeight - margin) {
+            pdf.addPage();
+            y = margin;
+            drawTableHeader();
+        }
+
+        pdf.setDrawColor(220, 225, 231);
+        pdf.line(margin, y + rowHeight, margin + tableWidth, y + rowHeight);
+        pdf.setTextColor(17, 24, 39);
+        pdf.text(descriptionLines, margin + 2, y + 4.5);
+
+        const values = [
+            `${Number(line.system || 0).toFixed(2)}${unit}`,
+            line.counted === null || line.counted === undefined ? "N/A" : `${Number(line.counted).toFixed(2)}${unit}`,
+            line.variance === null || line.variance === undefined ? "N/A" : Number(line.variance).toFixed(2)
+        ];
+        let x = margin + columns[0];
+        values.forEach((value, index) => {
+            const cellWidth = columns[index + 1];
+            pdf.text(value, x + cellWidth - 2, y + 4.5, { align: "right" });
+            x += cellWidth;
+        });
+        y += rowHeight;
+    });
+
+    const filename = `${title.replace(/[^a-z0-9_-]+/gi, "-").replace(/^-|-$/g, "") || "stock-count"}.pdf`;
+    return new File([pdf.output("blob")], filename, { type: "application/pdf" });
+}
+
+async function handleDocumentAction(action) {
+    const documentData = window.currentStockCountDocument || {};
+
+    if (action === "print") {
+        printStockCountDocument(documentData);
+        return;
+    }
+
+    if (action === "share") {
+        try {
+            const pdfFile = createStockCountPdf(documentData);
+            if (navigator.share && navigator.canShare?.({ files: [pdfFile] })) {
+                await navigator.share({
+                    title: documentData.title || "Stock Count Document",
+                    files: [pdfFile]
+                });
+                return;
+            }
+
+            Swal.fire({
+                icon: "info",
+                title: "PDF sharing unavailable",
+                text: "This browser or device cannot share PDF files. Try the Share action on a device with file sharing support.",
+                confirmButtonText: "OK"
+            });
+            return;
+        } catch (error) {
+            if (error.name === "AbortError") return;
+            Swal.fire({
+                icon: "error",
+                title: "Unable to share PDF",
+                text: error.message || "The stock count PDF could not be shared.",
+                confirmButtonText: "OK"
+            });
+        }
+    }
+}
+
+function showPostCompletionDocumentPrompt(data) {
+    const summary = {
+        title: `${data.warehouse_name || "Warehouse"} - ${data.shelf_name || "Shelf"}`,
+        warehouse: data.warehouse_name || "Warehouse",
+        username: data.counted_by || "N/A",
+        start_time: data.start_time || "N/A",
+        end_time: data.end_time || "N/A",
+        lines: Array.isArray(data.lines) ? data.lines : []
+    };
+    window.currentStockCountDocument = summary;
+
+    return Swal.fire({
+        title: "Stock count complete",
+        html: `
+            <div style="display:flex; flex-direction:column; gap:16px; text-align:left; padding: 8px 4px;">
+                <div style="display:flex; align-items:center; justify-content:space-between; gap:12px; border-bottom:1px solid #e5e7eb; padding-bottom:12px;">
+                    <div>
+                        <div style="font-size:12px; letter-spacing:0.08em; text-transform:uppercase; color:#6b7280;">Completed</div>
+                        <strong style="font-size:18px;">${summary.title}</strong>
+                    </div>
+                    <span style="display:inline-flex; align-items:center; justify-content:center; width:36px; height:36px; border-radius:999px; background:#dcfce7; color:#166534; font-weight:700;">✓</span>
+                </div>
+                <div style="display:flex; justify-content:center; gap:10px; flex-wrap:wrap;">
+                    <button type="button" class="prompt-doc-action" data-prompt-action="print" style="border:none; border-radius:8px; background:#111827; color:#fff; padding:10px 16px; font-weight:700; cursor:pointer;">Print</button>
+                    <button type="button" class="prompt-doc-action" data-prompt-action="share" style="border:none; border-radius:8px; background:#dbeafe; color:#1d4ed8; padding:10px 16px; font-weight:700; cursor:pointer;">Share PDF</button>
+                </div>
+            </div>
+        `,
+        showConfirmButton: false,
+        showCancelButton: true,
+        cancelButtonText: "Close",
+        customClass: {
+            popup: "stock-count-success-popup"
+        },
+        didOpen: () => {
+            document.querySelectorAll(".prompt-doc-action").forEach(button => {
+                button.addEventListener("click", () => {
+                    handleDocumentAction(button.dataset.promptAction);
+                });
+            });
         }
     });
 }
@@ -402,11 +710,22 @@ async function openModal(headerId) {
 
         const modalTitle = document.getElementById("modalTitle");
         const modalLines = document.getElementById("modalLines");
+        window.currentStockCountDocument = {
+            title: `${data.warehouse} - ${data.shelf}`,
+            warehouse: data.warehouse,
+            username: data.counted_by || "N/A",
+            start_time: data.start_time || "N/A",
+            end_time: data.end_time || "N/A",
+            lines: Array.isArray(data.lines) ? data.lines : []
+        };
 
-        modalTitle.innerHTML = `<i class="fas fa-warehouse"></i> ${data.warehouse} - ${data.shelf}`;
-        document.getElementById("modalUsername").textContent = data.counted_by || "N/A";
-        document.getElementById("modalStartTime").textContent = data.start_time || "N/A";
-        document.getElementById("modalEndTime").textContent = data.end_time || "N/A";
+        const warehouseIcon = document.createElement("i");
+        warehouseIcon.className = "fas fa-warehouse";
+        warehouseIcon.setAttribute("aria-hidden", "true");
+        modalTitle.replaceChildren(warehouseIcon, document.createTextNode(` ${window.currentStockCountDocument.title}`));
+        document.getElementById("modalUsername").textContent = window.currentStockCountDocument.username;
+        document.getElementById("modalStartTime").textContent = window.currentStockCountDocument.start_time;
+        document.getElementById("modalEndTime").textContent = window.currentStockCountDocument.end_time;
         modalLines.innerHTML = "";
 
         if (data.lines.length === 0) {

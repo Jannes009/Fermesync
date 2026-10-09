@@ -132,7 +132,7 @@ def get_shelf_detail_data(warehouse_id, category_id):
             LEFT JOIN [cmn]._uvUOM UOM ON UOM.idUnits = QTY.StockingUnitId
             WHERE QTY.WhseLink = ?
               AND QTY.idStockCategories = ?
-            ORDER BY STK.StockDescription
+            ORDER BY QTY.StockDescription
         """, (warehouse_id, category_id))
 
         products = [{
@@ -423,13 +423,14 @@ def stock_count_detail(header_id):
     try:
         cursor.execute("""
             SELECT
-                InvCountWhseCode,
-                InvCountCatName,
-                InvCountUserName,
-                InvCountTimeCreated,
-                InvCountTimeFinalised
-            FROM [stk].InventoryCountHeaders
-            WHERE InvCountHeaderId = ?
+                COALESCE(W.WhseDescription, H.InvCountWhseCode) AS WarehouseName,
+                H.InvCountCatName,
+                H.InvCountUserName,
+                H.InvCountTimeCreated,
+                H.InvCountTimeFinalised
+            FROM [stk].InventoryCountHeaders H
+            LEFT JOIN cmn._uvWarehouses W ON W.WhseLink = H.InvCountWhseId
+            WHERE H.InvCountHeaderId = ?
         """, (header_id,))
 
         h = cursor.fetchone()

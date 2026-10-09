@@ -154,6 +154,38 @@
         font-weight: 700;
     }
 
+    .project-select-grid {
+        display: grid;
+        grid-template-columns: minmax(180px, 1fr) minmax(0, 2fr);
+        gap: 8px;
+        margin-bottom: 10px;
+    }
+
+    .project-selection {
+        display: grid;
+        align-content: start;
+        gap: 8px;
+        min-width: 0;
+    }
+
+    .project-selection label {
+        font-weight: 600;
+        color: var(--muted);
+        font-size: .9rem;
+    }
+
+    .project-selection-hint {
+        margin: 0;
+        color: var(--muted);
+        font-size: .82rem;
+    }
+
+    @media (max-width: 700px) {
+        .project-select-grid {
+            grid-template-columns: minmax(0, 1fr);
+        }
+    }
+
     .product-card {
         border: 1px solid var(--line);
         border-radius: 12px;
@@ -1020,9 +1052,21 @@
             <!-- PROJECTS -->
             <div class="section-title">Projects</div>
 
-            <select id="project_ids" multiple class="select2" data-placeholder="Select projects">
-                <option></option>
-            </select>
+            <div class="project-select-grid">
+                <div class="project-selection">
+                    <label for="project_field_id">Field (optional)</label>
+                    <select id="project_field_id" class="select2" data-placeholder="Select a field">
+                        <option value="">Select a field</option>
+                    </select>
+                    <p class="project-selection-hint">Selecting a field selects its projects. You can then adjust the project list.</p>
+                </div>
+                <div class="project-selection">
+                    <label for="project_ids">Projects</label>
+                    <select id="project_ids" multiple class="select2" data-placeholder="Select projects">
+                        <option></option>
+                    </select>
+                </div>
+            </div>
 
             <!-- DOSE MODE -->
             <div class="section-title">Dose Method</div>
@@ -1230,10 +1274,6 @@
 
     </div>
 </div>
-
-<script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
-<script src="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/js/select2.min.js"></script>
-<script src="https://cdn.jsdelivr.net/npm/sweetalert2@11/dist/sweetalert2.all.min.js"></script>
 <script type="module" src="{{ url_for('agri.static', filename='SprayRecommendation/offline.js') }}?v={{ filemtime('agri','SprayRecommendation/offline.js') }}"></script>
 <script
   src="{{ url_for('agri.static',

@@ -406,6 +406,7 @@
   };
 </script>
 <script src="{{ url_for('inventory.static', filename='stock_count/stock_count_setup.js') }}?{{ filemtime('inventory', 'stock_count/stock_count_setup.js') }}"></script>
-
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+<script src="{{ url_for('inventory.static', filename='stock_count/stock_counts.js') }}?{{ filemtime('inventory', 'stock_count/stock_counts.js') }}"></script>
 <script src="{{ url_for('inventory.static', filename='stock_count/stock_count.js') }}?{{ filemtime('inventory', 'stock_count/stock_count.js') }}"></script>
 {% endblock %}

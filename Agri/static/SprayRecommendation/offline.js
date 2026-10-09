@@ -66,7 +66,10 @@ async function readProjects() {
 async function fetchProjects(force = false) {
     const cached = await readProjects();
     const refreshDue = await shouldRefresh('catalog', cached?.refreshed_at, true);
-    if (!force && cached && !refreshDue) {
+    const cacheHasFieldData = (cached?.projects || []).every(project =>
+        Object.prototype.hasOwnProperty.call(project, 'proj_attr_field_id')
+    );
+    if (!force && cached && !refreshDue && cacheHasFieldData) {
         return { projects: cached.projects, refreshed_at: cached.refreshed_at, source: 'cache' };
     }
     if (!navigator.onLine) {

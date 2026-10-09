@@ -243,6 +243,7 @@ async function updateProducts(projectIds, force = false) {
 async function updateProjects(force = false, loadAllData = false) {
     const $projectSelect = $('#project_ids');
     const selectedBeforeRefresh = $projectSelect.val() || [];
+    const fieldSelect = document.getElementById('project_field_id');
     $projectSelect.empty();
 
     try {
@@ -268,11 +269,31 @@ async function updateProjects(force = false, loadAllData = false) {
                 option.setAttribute('data-crop-theme-color', project.crop_theme_color || '');
                 if (project.proj_attr_block_no) option.setAttribute('data-block-no', project.proj_attr_block_no);
                 if (project.proj_attr_whse_id) option.setAttribute('data-whse-id', project.proj_attr_whse_id);
+                if (project.proj_attr_field_id !== null && project.proj_attr_field_id !== undefined) {
+                    option.setAttribute('data-field-id', project.proj_attr_field_id);
+                }
                 $projectSelect.append(option);
             });
+            if (fieldSelect) {
+                const fields = new Map();
+                data.projects.forEach(project => {
+                    if (project.proj_attr_field_id !== null && project.proj_attr_field_id !== undefined && project.proj_attr_field_description) {
+                        fields.set(String(project.proj_attr_field_id), project.proj_attr_field_description);
+                    }
+                });
+                fieldSelect.replaceChildren(new Option('Select a field', ''));
+                Array.from(fields.entries())
+                    .sort((left, right) => left[1].localeCompare(right[1]))
+                    .forEach(([id, description]) => fieldSelect.add(new Option(description, id)));
+                $(fieldSelect).trigger('change.select2');
+            }
             const restoredSelection = selectedBeforeRefresh.filter(id => data.projects.some(project => String(project.project_id) === String(id)));
             $projectSelect.val(restoredSelection).prop('disabled', false).trigger('change');
         } else {
+            if (fieldSelect) {
+                fieldSelect.replaceChildren(new Option('Select a field', ''));
+                $(fieldSelect).trigger('change.select2');
+            }
             const placeholder = document.createElement('option');
             placeholder.value = '';
             placeholder.disabled = true;
@@ -290,6 +311,10 @@ async function updateProjects(force = false, loadAllData = false) {
         updateSubmitAvailability();
     } catch (error) {
         console.error('Error fetching projects:', error);
+        if (fieldSelect) {
+            fieldSelect.replaceChildren(new Option('Select a field', ''));
+            $(fieldSelect).trigger('change.select2');
+        }
         const placeholder = document.createElement('option');
         placeholder.value = '';
         placeholder.disabled = true;
@@ -970,6 +995,9 @@ document.querySelectorAll('input[name="dose_mode"]').forEach(r => {
 
 // Validate crop consistency when projects change
 $('#project_ids').on('change', function() {
+    if (!window.isApplyingFieldSelection) {
+        $('#project_field_id').val('').trigger('change.select2');
+    }
     const selectedIds = $(this).val() || [];
     
     if (selectedIds.length <= 1) {
@@ -1058,6 +1086,19 @@ $('#project_ids').on('change', function() {
     updateProducts(selectedProjectIds);
     updateContextDataset();
     FormStateManager.scheduleSave();
+});
+
+$('#project_field_id').on('change', function() {
+    const fieldId = this.value;
+    if (!fieldId) return;
+
+    const matchingProjectIds = Array.from(document.querySelectorAll('#project_ids option[data-field-id]'))
+        .filter(option => option.dataset.fieldId === fieldId)
+        .map(option => option.value);
+
+    window.isApplyingFieldSelection = true;
+    $('#project_ids').val([...new Set(matchingProjectIds)]).trigger('change');
+    window.isApplyingFieldSelection = false;
 });
 
 async function fetchAndApplyProjectDefaults(projectId) {

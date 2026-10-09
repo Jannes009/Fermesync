@@ -159,12 +159,15 @@ def fetch_projects_for_warehouse():
             SELECT DISTINCT p.ProjectLink, p.ProjectCode, pa.ProjAttrCropId, pa.ProjAttrHa,
                      c.CropThemeColor, pa.ProjAttrBlockNo, pa.ProjAttrWhseId, pa.ProjAttrFarmId,
                      pa.ProjAttrDefaultSprayMethodId, pa.ProjAttrDefaultDose,
-                     pa.ProjAttrDefaultWaterPerHa, pa.ProjAttrDefaultWaterPerTank
+                     pa.ProjAttrDefaultWaterPerHa, pa.ProjAttrDefaultWaterPerTank,
+                     pa.ProjAttrFieldId, FLD.FieldDescription AS ProjAttrFieldDescription
             FROM cmn._uvProject p
             JOIN agr.ProjectAttributes pa
                 ON pa.ProjAttrProjectId = p.ProjectLink
             LEFT JOIN agr.Crop c
                 ON c.IdCrop = pa.ProjAttrCropId
+            LEFT JOIN agr.Field FLD
+                ON FLD.IdField = pa.ProjAttrFieldId
             WHERE pa.ProjAttrWhseId = ?
               AND pa.ProjAttrIsActive = 1
             ORDER BY p.ProjectCode
@@ -179,12 +182,15 @@ def fetch_projects_for_warehouse():
             SELECT DISTINCT p.ProjectLink, p.ProjectCode, pa.ProjAttrCropId, pa.ProjAttrHa,
                      c.CropThemeColor, pa.ProjAttrBlockNo, pa.ProjAttrWhseId, pa.ProjAttrFarmId,
                      pa.ProjAttrDefaultSprayMethodId, pa.ProjAttrDefaultDose,
-                     pa.ProjAttrDefaultWaterPerHa, pa.ProjAttrDefaultWaterPerTank
+                     pa.ProjAttrDefaultWaterPerHa, pa.ProjAttrDefaultWaterPerTank,
+                     pa.ProjAttrFieldId, FLD.FieldDescription AS ProjAttrFieldDescription
             FROM cmn._uvProject p
             JOIN agr.ProjectAttributes pa
                 ON pa.ProjAttrProjectId = p.ProjectLink
             LEFT JOIN agr.Crop c
                 ON c.IdCrop = pa.ProjAttrCropId
+            LEFT JOIN agr.Field FLD
+                ON FLD.IdField = pa.ProjAttrFieldId
             WHERE pa.ProjAttrWhseId IN ({placeholders})
               AND pa.ProjAttrIsActive = 1
             ORDER BY p.ProjectCode
@@ -206,7 +212,9 @@ def fetch_projects_for_warehouse():
             "default_spray_method_id": getattr(row, 'ProjAttrDefaultSprayMethodId', None),
             "default_dose": getattr(row, 'ProjAttrDefaultDose', None),
             "default_water_per_ha": getattr(row, 'ProjAttrDefaultWaterPerHa', None),
-            "default_water_per_tank": getattr(row, 'ProjAttrDefaultWaterPerTank', None)
+            "default_water_per_tank": getattr(row, 'ProjAttrDefaultWaterPerTank', None),
+            "proj_attr_field_id": getattr(row, 'ProjAttrFieldId', None),
+            "proj_attr_field_description": getattr(row, 'ProjAttrFieldDescription', None)
         }
         for row in rows
     ]

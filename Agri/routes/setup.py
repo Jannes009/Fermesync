@@ -81,6 +81,13 @@ def setup():
     """)
     varieties = cur.fetchall()
 
+    cur.execute("""
+        SELECT IdField, FieldDescription
+        FROM agr.Field
+        ORDER BY FieldDescription
+    """)
+    fields = cur.fetchall()
+
     # Projects
     cur.execute(f"""
         SELECT ProjectLink, ProjectCode, ProjectName
@@ -135,6 +142,8 @@ def setup():
         pa.ProjAttrProjectManager,
         pa.ProjAttrAgriculturist,
         pa.ProjAttrBlockNo,
+        pa.ProjAttrFieldId,
+        FLD.FieldDescription AS ProjAttrFieldDescription,
         pa.ProjAttrDefaultSprayMethodId,
         pa.ProjAttrDefaultDose,
         pa.ProjAttrDefaultWaterPerHa,
@@ -143,6 +152,7 @@ def setup():
     JOIN cmn._uvProject PRJ on PRJ.ProjectLink = PA.ProjAttrProjectId
     LEFT JOIN agr.Farm F on F.IdFarm = PA.ProjAttrFarmId
     LEFT JOIN [cmn]._uvWarehouses WHSE on WHSE.WhseLink = PA.ProjAttrWhseId
+    LEFT JOIN agr.Field FLD on FLD.IdField = PA.ProjAttrFieldId
     JOIN agr.Crop CRP on CRP.IdCrop = PA.ProjAttrCropId
     JOIN agr.Variety VA on VA.IdVariety = PA.ProjAttrVarietyId
     Where PRJ.MainProjectLink IN ({','.join(['?'] * len(current_user.projects))})
@@ -157,6 +167,7 @@ def setup():
         farms=farms,
         crops=crops,
         varieties=varieties,
+        fields=fields,
         warehouses=warehouses,
         spray_methods=spray_methods,
         projects=projects,
@@ -224,6 +235,7 @@ def add_project_attr():
         plant_date = data.get('plant_date')
         harvest_date = data.get('harvest_date') or None
         petal_fall_date = data.get('80_perc_petal_fall_date') or None
+        field_id = data.get('field_id')
         project_manager = data.get('project_manager')
         agriculturist = data.get('agriculturist')
         block_no = data.get('block_no')
@@ -241,6 +253,7 @@ def add_project_attr():
         plant_date = request.form.get('plant_date')
         harvest_date = request.form.get('harvest_date') or None
         petal_fall_date = request.form.get('80_perc_petal_fall_date') or None
+        field_id = request.form.get('field_id')
         project_manager = request.form.get('project_manager')
         agriculturist = request.form.get('agriculturist')
         block_no = request.form.get('block_no')
@@ -249,13 +262,18 @@ def add_project_attr():
         default_water_per_ha = request.form.get('default_water_per_ha')
         default_water_per_tank = request.form.get('default_water_per_tank')
 
+    if not field_id:
+        if data:
+            return jsonify({"success": False, "message": "Field is required"}), 400
+        return redirect(url_for("agri.setup"))
+
     conn = create_db_connection()
     cur = conn.cursor()
     cur.execute("""
         INSERT INTO agr.ProjectAttributes
-        (ProjAttrProjectId, ProjAttrFarmId, ProjAttrWhseId, ProjAttrCropId, ProjAttrVarietyId, ProjAttrHa, ProjAttrPlantDate, ProjAttrHarvestDate, ProjAttr80PercPetalFallDate, ProjAttrProjectManager, ProjAttrAgriculturist, ProjAttrBlockNo, ProjAttrDefaultSprayMethodId, ProjAttrDefaultDose, ProjAttrDefaultWaterPerHa, ProjAttrDefaultWaterPerTank)
-        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-    """, project_id, farm_id, whse_id, crop_id, variety_id, ha, plant_date, harvest_date, petal_fall_date, project_manager, agriculturist, block_no, default_spray_method_id, default_dose, default_water_per_ha, default_water_per_tank)
+        (ProjAttrProjectId, ProjAttrFarmId, ProjAttrWhseId, ProjAttrCropId, ProjAttrVarietyId, ProjAttrHa, ProjAttrPlantDate, ProjAttrHarvestDate, ProjAttr80PercPetalFallDate, ProjAttrProjectManager, ProjAttrAgriculturist, ProjAttrBlockNo, ProjAttrFieldId, ProjAttrDefaultSprayMethodId, ProjAttrDefaultDose, ProjAttrDefaultWaterPerHa, ProjAttrDefaultWaterPerTank)
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+    """, project_id, farm_id, whse_id, crop_id, variety_id, ha, plant_date, harvest_date, petal_fall_date, project_manager, agriculturist, block_no, field_id, default_spray_method_id, default_dose, default_water_per_ha, default_water_per_tank)
     conn.commit()
     conn.close()
 
@@ -336,6 +354,7 @@ def update_project_attr():
     plant_date = data.get('plant_date')
     harvest_date = data.get('harvest_date') or None
     petal_fall_date = data.get('80_perc_petal_fall_date') or None
+    field_id = data.get('field_id')
     project_manager = (data.get('project_manager') or '').strip()
     agriculturist = (data.get('agriculturist') or '').strip()
     block_no = (data.get('block_no') or '').strip()
@@ -344,20 +363,46 @@ def update_project_attr():
     default_water_per_ha = data.get('default_water_per_ha')
     default_water_per_tank = data.get('default_water_per_tank')
 
-    if not attr_id or not project_id or not farm_id or not whse_id or not crop_id or not variety_id:
-        return jsonify({"success": False, "message": "Project, farm, warehouse, crop and variety are required"}), 400
+    if not attr_id or not project_id or not farm_id or not whse_id or not crop_id or not variety_id or not field_id:
+        return jsonify({"success": False, "message": "Project, farm, warehouse, crop, variety and field are required"}), 400
 
     conn = create_db_connection()
     cur = conn.cursor()
     cur.execute("""
         UPDATE agr.ProjectAttributes
-        SET ProjAttrProjectId = ?, ProjAttrFarmId = ?, ProjAttrWhseId = ?, ProjAttrCropId = ?, ProjAttrVarietyId = ?, ProjAttrHa = ?, ProjAttrPlantDate = ?, ProjAttrHarvestDate = ?, ProjAttr80PercPetalFallDate = ?, ProjAttrProjectManager = ?, ProjAttrAgriculturist = ?, ProjAttrBlockNo = ?, ProjAttrDefaultSprayMethodId = ?, ProjAttrDefaultDose = ?, ProjAttrDefaultWaterPerHa = ?, ProjAttrDefaultWaterPerTank = ?
+        SET ProjAttrProjectId = ?, ProjAttrFarmId = ?, ProjAttrWhseId = ?, ProjAttrCropId = ?, ProjAttrVarietyId = ?, ProjAttrHa = ?, ProjAttrPlantDate = ?, ProjAttrHarvestDate = ?, ProjAttr80PercPetalFallDate = ?, ProjAttrProjectManager = ?, ProjAttrAgriculturist = ?, ProjAttrBlockNo = ?, ProjAttrFieldId = ?, ProjAttrDefaultSprayMethodId = ?, ProjAttrDefaultDose = ?, ProjAttrDefaultWaterPerHa = ?, ProjAttrDefaultWaterPerTank = ?
         WHERE IdProjAttr = ?
-    """, project_id, farm_id, whse_id, crop_id, variety_id, ha, plant_date, harvest_date, petal_fall_date, project_manager, agriculturist, block_no, default_spray_method_id, default_dose, default_water_per_ha, default_water_per_tank, attr_id)
+    """, project_id, farm_id, whse_id, crop_id, variety_id, ha, plant_date, harvest_date, petal_fall_date, project_manager, agriculturist, block_no, field_id, default_spray_method_id, default_dose, default_water_per_ha, default_water_per_tank, attr_id)
     conn.commit()
     conn.close()
 
     return jsonify({"success": True})
+
+
+@agri_bp.route('/setup/field', methods=['POST'])
+@login_required
+def add_field():
+    data = request.get_json(silent=True) or {}
+    description = (data.get('description') or '').strip()
+    if not description:
+        return jsonify({"success": False, "message": "Field description is required"}), 400
+
+    conn = create_db_connection()
+    cur = conn.cursor()
+    try:
+        cur.execute("""
+            INSERT INTO agr.Field (FieldDescription)
+            OUTPUT INSERTED.IdField
+            VALUES (?)
+        """, description)
+        field_id = cur.fetchone()[0]
+        conn.commit()
+        return jsonify({"success": True, "field": {"id": field_id, "description": description}})
+    except Exception:
+        conn.rollback()
+        raise
+    finally:
+        conn.close()
 
 
 @agri_bp.route('/setup/farm/<int:farm_id>/spray-methods', methods=['GET'])

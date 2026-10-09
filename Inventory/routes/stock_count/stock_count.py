@@ -228,10 +228,11 @@ def finalise_stock_count(header_id):
 
     try:
         cursor.execute("""
-            SELECT InvCountWhseId, InvCountCatName
-            FROM [stk].InventoryCountHeaders
-            WHERE InvCountHeaderId = ?
-              AND InvCountTimeFinalised IS NULL
+            SELECT H.InvCountWhseId, H.InvCountCatName, W.WhseDescription
+            FROM [stk].InventoryCountHeaders H
+            LEFT JOIN cmn._uvWarehouses W ON W.WhseLink = H.InvCountWhseId
+            WHERE H.InvCountHeaderId = ?
+              AND H.InvCountTimeFinalised IS NULL
         """, (header_id,))
 
         header = cursor.fetchone()
@@ -246,7 +247,7 @@ def finalise_stock_count(header_id):
         """, (header_id,))
         products = cursor.fetchall()
 
-        whse_id, cat_name = header
+        whse_id, cat_name, warehouse_name = header
 
         # fetch project for warehouse
         cursor.execute("""
@@ -293,7 +294,13 @@ def finalise_stock_count(header_id):
         """, (header_id,))
         conn.commit()
 
-        return jsonify({"success": True})
+        return jsonify({
+            "success": True,
+            "message": "Stock count completed successfully.",
+            "warehouse_name": warehouse_name,
+            "shelf_name": cat_name,
+            "session_id": header_id
+        })
 
     except Exception as ex:
         print(str(ex))

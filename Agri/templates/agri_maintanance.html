@@ -59,6 +59,9 @@
   .edit-modal-footer { display:flex; justify-content:flex-end; gap: 10px; margin-top: 20px; }
   .edit-modal-field { display: none; }
   .edit-modal-field.active { display: block; }
+  .field-select-control { display: flex; align-items: center; gap: 8px; }
+  .field-select-control .select2-container { flex: 1; min-width: 0; }
+  .add-field-btn { width: 40px; min-width: 40px; padding: 0; font-size: 1.25rem; line-height: 1; }
 
   /* Tabs */
   .tab-pane { display: none; }
@@ -171,25 +174,27 @@
                     <th>Variety</th>
                     <th>Ha</th>
                     <th>Warehouse</th>
+                    <th>Field</th>
                     <th>Actions</th>
                   </tr>
                 </thead>
                 <tbody>
                   {% for pa in spray_projects %}
-                  <tr class="main-row" data-entity="project_attr" data-id="{{ pa.IdProjAttr }}" data-project-id="{{ pa.ProjAttrProjectId }}" data-farm-id="{{ pa.ProjAttrFarmId }}" data-whse-id="{{ pa.ProjAttrWhseId }}" data-whse-name="{{ pa.ProjAttrWhseName }}" data-crop-id="{{ pa.ProjAttrCropId }}" data-variety-id="{{ pa.ProjAttrVarietyId }}" data-ha="{{ pa.ProjAttrHa }}" data-plant-date="{{ format_setup_date(pa.ProjAttrPlantDate) }}" data-harvest-date="{{ format_setup_date(pa.ProjAttrHarvestDate) }}" data-petal-fall-date="{{ format_setup_date(pa.ProjAttr80PercPetalFallDate) }}" data-project-manager="{{ pa.ProjAttrProjectManager }}" data-agriculturist="{{ pa.ProjAttrAgriculturist }}" data-block-no="{{ pa.ProjAttrBlockNo }}" data-default-spray-method-id="{{ pa.ProjAttrDefaultSprayMethodId or '' }}" data-default-dose="{{ pa.ProjAttrDefaultDose or '' }}" data-default-water-per-ha="{{ pa.ProjAttrDefaultWaterPerHa or '' }}" data-default-water-per-tank="{{ pa.ProjAttrDefaultWaterPerTank or '' }}">
+                  <tr class="main-row" data-entity="project_attr" data-id="{{ pa.IdProjAttr }}" data-project-id="{{ pa.ProjAttrProjectId }}" data-farm-id="{{ pa.ProjAttrFarmId }}" data-whse-id="{{ pa.ProjAttrWhseId }}" data-whse-name="{{ pa.ProjAttrWhseName }}" data-crop-id="{{ pa.ProjAttrCropId }}" data-variety-id="{{ pa.ProjAttrVarietyId }}" data-ha="{{ pa.ProjAttrHa }}" data-plant-date="{{ format_setup_date(pa.ProjAttrPlantDate) }}" data-harvest-date="{{ format_setup_date(pa.ProjAttrHarvestDate) }}" data-petal-fall-date="{{ format_setup_date(pa.ProjAttr80PercPetalFallDate) }}" data-project-manager="{{ pa.ProjAttrProjectManager }}" data-agriculturist="{{ pa.ProjAttrAgriculturist }}" data-block-no="{{ pa.ProjAttrBlockNo }}" data-field-id="{{ pa.ProjAttrFieldId or '' }}" data-field-description="{{ pa.ProjAttrFieldDescription or '' }}" data-default-spray-method-id="{{ pa.ProjAttrDefaultSprayMethodId or '' }}" data-default-dose="{{ pa.ProjAttrDefaultDose or '' }}" data-default-water-per-ha="{{ pa.ProjAttrDefaultWaterPerHa or '' }}" data-default-water-per-tank="{{ pa.ProjAttrDefaultWaterPerTank or '' }}">
                     <td>{{ pa.ProjectName }}</td>
                     <td>{{ pa.ProjAttrFarmName }}</td>
                     <td>{{ pa.CropCode }}</td>
                     <td>{{ pa.VarietyCode }}</td>
                     <td>{{ pa.ProjAttrHa }}</td>
                     <td>{{ pa.ProjAttrWhseName }}</td>
+                    <td>{{ pa.ProjAttrFieldDescription or '-' }}</td>
                     <td style="white-space:nowrap;">
                       <button class="btn edit-row-btn" type="button" data-entity="project_attr" data-id="{{ pa.IdProjAttr }}">Edit</button>
                       <button class="btn ghost toggle-details-btn" type="button" data-id="{{ pa.IdProjAttr }}">▼</button>
                     </td>
                   </tr>
                   <tr class="expand-row" data-parent-id="{{ pa.IdProjAttr }}" style="display:none;">
-                    <td colspan="7">
+                    <td colspan="8">
                       <div style="display:flex; gap:24px;">
                         <div><strong>Plant Date:</strong> {{ format_setup_date(pa.ProjAttrPlantDate) }}</div>
                         <div><strong>Harvest Date:</strong> {{ format_setup_date(pa.ProjAttrHarvestDate) }}</div>
@@ -197,6 +202,7 @@
                         <div><strong>Manager:</strong> {{ pa.ProjAttrProjectManager }}</div>
                         <div><strong>Agriculturist:</strong> {{ pa.ProjAttrAgriculturist }}</div>
                         <div><strong>Block:</strong> {{ pa.ProjAttrBlockNo }}</div>
+                        <div><strong>Field:</strong> {{ pa.ProjAttrFieldDescription or '-' }}</div>
                         <div style="margin-left:12px;"><strong>Defaults:</strong>
                           <div>Method: {{ pa.ProjAttrDefaultSprayMethodId or '-' }}</div>
                           <div>Dose: {{ pa.ProjAttrDefaultDose or '-' }}</div>
@@ -314,6 +320,16 @@
             </select>
           </div>
           <div class="form-row">
+            <label for="edit-project-attr-field">Field</label>
+            <div class="field-select-control">
+              <select id="edit-project-attr-field" name="field_id" class="input select2" required>
+                <option value="">Select Field</option>
+                {% for field in fields %}<option value="{{ field.IdField }}">{{ field.FieldDescription }}</option>{% endfor %}
+              </select>
+              <button type="button" id="add-field-btn" class="btn add-field-btn" aria-label="Add field" title="Add field">+</button>
+            </div>
+          </div>
+          <div class="form-row">
             <label for="edit-project-attr-crop">Crop</label>
             <select id="edit-project-attr-crop" name="crop_id" class="input select2" required>
               <option value="">Select Crop</option>
@@ -409,6 +425,23 @@
         <div class="edit-modal-footer">
           <button type="button" class="btn ghost" id="edit-modal-cancel">Cancel</button>
            <button type="submit" class="btn">Save</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <div id="add-field-modal" class="edit-modal" aria-hidden="true">
+    <div class="edit-modal-backdrop" id="add-field-backdrop"></div>
+    <div class="edit-modal-content" role="dialog" aria-modal="true" aria-labelledby="add-field-title" style="width:min(420px, 100%);">
+      <h3 id="add-field-title">Add Field</h3>
+      <form id="add-field-form">
+        <div class="form-row">
+          <label for="new-field-description">Field name</label>
+          <input type="text" id="new-field-description" maxlength="200" required>
+        </div>
+        <div class="edit-modal-footer">
+          <button type="button" class="btn ghost" id="add-field-cancel">Cancel</button>
+          <button type="submit" class="btn">Add Field</button>
         </div>
       </form>
     </div>
@@ -551,10 +584,12 @@ document.addEventListener('DOMContentLoaded', function () {
       const whseValue = row.dataset.whseId || '';
       const cropValue = row.dataset.cropId || '';
       const varietyValue = row.dataset.varietyId || '';
+      const fieldValue = row.dataset.fieldId || '';
 
       $('#edit-project-attr-project').val(projectValue).trigger('change');
       $('#edit-project-attr-farm').val(farmValue).trigger('change');
       $('#edit-project-attr-warehouse').val(whseValue).trigger('change');
+      $('#edit-project-attr-field').val(fieldValue).trigger('change');
       $('#edit-project-attr-crop').val(cropValue).trigger('change');
       $('#edit-project-attr-variety').val(varietyValue).trigger('change');
 
@@ -603,10 +638,11 @@ document.addEventListener('DOMContentLoaded', function () {
       if (draftRaw) {
         const draft = JSON.parse(draftRaw);
         // Only restore when adding a NEW project (id empty)
-        if (!id) {
+        if (!document.getElementById('edit-id').value) {
           if (draft.project_id) $('#edit-project-attr-project').val(draft.project_id).trigger('change');
           if (draft.farm_id) $('#edit-project-attr-farm').val(draft.farm_id).trigger('change');
           if (draft.warehouse_id) $('#edit-project-attr-warehouse').val(draft.warehouse_id).trigger('change');
+          if (draft.field_id) $('#edit-project-attr-field').val(draft.field_id).trigger('change');
           if (draft.crop_id) $('#edit-project-attr-crop').val(draft.crop_id).trigger('change');
           if (draft.variety_id) $('#edit-project-attr-variety').val(draft.variety_id).trigger('change');
           if (draft.ha) document.getElementById('edit-project-attr-ha').value = draft.ha;
@@ -687,11 +723,12 @@ document.addEventListener('DOMContentLoaded', function () {
       const whseId = document.getElementById('edit-project-attr-warehouse').value;
       const cropId = document.getElementById('edit-project-attr-crop').value;
       const varietyId = document.getElementById('edit-project-attr-variety').value;
+      const fieldId = document.getElementById('edit-project-attr-field').value;
       const haVal = document.getElementById('edit-project-attr-ha').value;
       const plantDateVal = document.getElementById('edit-project-attr-plant-date').value;
 
-      if (!projectId || !farmId || !whseId || !cropId || !varietyId || !haVal || !plantDateVal) {
-        Swal.fire('Validation error', 'Please fill Project, Farm, Warehouse, Crop, Variety, Hectares and Plant Date.', 'warning');
+      if (!projectId || !farmId || !whseId || !cropId || !varietyId || !fieldId || !haVal || !plantDateVal) {
+        Swal.fire('Validation error', 'Please fill Project, Farm, Warehouse, Crop, Variety, Field, Hectares and Plant Date.', 'warning');
         return;
       }
 
@@ -700,6 +737,7 @@ document.addEventListener('DOMContentLoaded', function () {
       payload.warehouse_id = document.getElementById('edit-project-attr-warehouse').value;
       payload.crop_id = document.getElementById('edit-project-attr-crop').value;
       payload.variety_id = document.getElementById('edit-project-attr-variety').value;
+      payload.field_id = fieldId;
       payload.ha = document.getElementById('edit-project-attr-ha').value;
       payload.plant_date = document.getElementById('edit-project-attr-plant-date').value;
       payload.harvest_date = document.getElementById('edit-project-attr-harvest-date').value || null;
@@ -792,6 +830,7 @@ document.addEventListener('DOMContentLoaded', function () {
             const warehouseOption = document.querySelector(`#edit-project-attr-warehouse option[value="${payload.warehouse_id}"]`);
             const cropOption = document.querySelector(`#edit-project-attr-crop option[value="${payload.crop_id}"]`);
             const varietyOption = document.querySelector(`#edit-project-attr-variety option[value="${payload.variety_id}"]`);
+            const fieldOption = document.querySelector(`#edit-project-attr-field option[value="${payload.field_id}"]`);
 
             row.dataset.projectId = payload.project_id;
             row.dataset.farmId = payload.farm_id;
@@ -799,6 +838,8 @@ document.addEventListener('DOMContentLoaded', function () {
             row.dataset.whseName = warehouseOption ? warehouseOption.textContent : '';
             row.dataset.cropId = payload.crop_id;
             row.dataset.varietyId = payload.variety_id;
+            row.dataset.fieldId = payload.field_id;
+            row.dataset.fieldDescription = fieldOption ? fieldOption.textContent : '';
             row.dataset.ha = payload.ha;
             row.dataset.plantDate = payload.plant_date;
             row.dataset.harvestDate = payload.harvest_date || '';
@@ -817,6 +858,7 @@ document.addEventListener('DOMContentLoaded', function () {
             row.cells[3].textContent = varietyOption ? varietyOption.textContent.split(' - ')[0] : row.cells[3].textContent;
             row.cells[4].textContent = payload.ha;
             row.cells[5].textContent = warehouseOption ? warehouseOption.textContent : row.cells[5].textContent;
+            row.cells[6].textContent = fieldOption ? fieldOption.textContent : row.cells[6].textContent;
             // update expanded details row
             const expandRow = document.querySelector(`.expand-row[data-parent-id="${id}"]`);
             if (expandRow) {
@@ -829,6 +871,7 @@ document.addEventListener('DOMContentLoaded', function () {
                   <div><strong>Manager:</strong> ${payload.project_manager || ''}</div>
                   <div><strong>Agriculturist:</strong> ${payload.agriculturist || ''}</div>
                   <div><strong>Block:</strong> ${payload.block_no || ''}</div>
+                  <div><strong>Field:</strong> ${fieldOption ? fieldOption.textContent.replace(/[&<>"']/g, character => ({'&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;'}[character])) : '-'}</div>
                   <div style="margin-left:12px;"><strong>Defaults:</strong>
                     <div>Method: ${payload.default_spray_method_id || '-'}</div>
                     <div>Dose: ${payload.default_dose || '-'}</div>
@@ -854,6 +897,7 @@ document.addEventListener('DOMContentLoaded', function () {
         project_id: document.getElementById('edit-project-attr-project').value || '',
         farm_id: document.getElementById('edit-project-attr-farm').value || '',
         warehouse_id: document.getElementById('edit-project-attr-warehouse').value || '',
+        field_id: document.getElementById('edit-project-attr-field').value || '',
         crop_id: document.getElementById('edit-project-attr-crop').value || '',
         variety_id: document.getElementById('edit-project-attr-variety').value || '',
         ha: document.getElementById('edit-project-attr-ha').value || '',
@@ -908,6 +952,56 @@ document.addEventListener('DOMContentLoaded', function () {
     });
   }
   if (filterSearchEl) filterSearchEl.addEventListener('input', applyProjectFilters);
+
+  const fieldModal = document.getElementById('add-field-modal');
+  const fieldDescriptionInput = document.getElementById('new-field-description');
+  const fieldSelect = $('#edit-project-attr-field');
+
+  function closeFieldModal() {
+    fieldModal.classList.remove('active');
+    fieldModal.setAttribute('aria-hidden', 'true');
+    fieldDescriptionInput.value = '';
+  }
+
+  document.getElementById('add-field-btn').addEventListener('click', () => {
+    fieldModal.classList.add('active');
+    fieldModal.setAttribute('aria-hidden', 'false');
+    fieldDescriptionInput.focus();
+  });
+
+  document.getElementById('add-field-cancel').addEventListener('click', closeFieldModal);
+  document.getElementById('add-field-backdrop').addEventListener('click', closeFieldModal);
+
+  document.getElementById('add-field-form').addEventListener('submit', async (event) => {
+    event.preventDefault();
+    const description = fieldDescriptionInput.value.trim();
+    if (!description) {
+      fieldDescriptionInput.focus();
+      return;
+    }
+
+    const submitButton = event.currentTarget.querySelector('button[type="submit"]');
+    submitButton.disabled = true;
+    try {
+      const response = await request('/agri/setup/field', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ description })
+      });
+      const result = await response.json();
+      if (!response.ok || !result.success) {
+        throw new Error(result.message || 'Unable to add field');
+      }
+
+      const option = new Option(result.field.description, result.field.id, true, true);
+      fieldSelect.append(option).trigger('change');
+      closeFieldModal();
+    } catch (error) {
+      Swal.fire('Unable to add field', error.message || 'Please try again.', 'error');
+    } finally {
+      submitButton.disabled = false;
+    }
+  });
 
 });
 

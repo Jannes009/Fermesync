@@ -523,10 +523,32 @@ async function submitFinalCount() {
         const data = await res.json();
 
         if (data.success) {
-            Swal.fire("Success!", data.message || "Stock count completed", "success")
-                .then(() => {
+            const lines = Array.from(document.querySelectorAll(".qty-input")).map((input, index) => {
+                const product = products[index] || {};
+                const counted = Number(input.value || 0);
+                const system = Number(product.system_qty || 0);
+                return {
+                    description: product.product_desc || product.description || `Item ${index + 1}`,
+                    system: system,
+                    counted: counted,
+                    variance: counted - system,
+                    unit: product.unit || ""
+                };
+            });
+
+            const payload = {
+                warehouse_name: data.warehouse_name || window.STOCK_COUNT_LOCATION?.warehouse || "Warehouse",
+                shelf_name: data.shelf_name || window.STOCK_COUNT_LOCATION?.shelf || "Shelf",
+                counted_by: "Current user",
+                start_time: "N/A",
+                end_time: new Date().toLocaleString(),
+                lines: lines
+            };
+            showPostCompletionDocumentPrompt(payload).then((result) => {
+                if (result && result.isDismissed) {
                     location.href = "/inventory/stock-counts";
-                });
+                }
+            });
         } else {
             Swal.fire("Failed", data.message || "Finalization failed", "error");
         }
