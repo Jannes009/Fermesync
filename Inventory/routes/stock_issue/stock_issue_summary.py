@@ -12,6 +12,7 @@ from System.Reflection import BindingFlags
 from .spray_issue_validation import validate_spray_execution_quantities
 
 from Core.sdk_connection import EvolutionConnection, EvolutionAgentNotFoundError, EvolutionConnectionError
+from Instance.local_settings import DEFAULT_STOCK_COUNT_PROJECT_ID
 import Pastel.Evolution as Evo
 
 STOCK_ISSUE_PERMISSIONS = {
@@ -281,6 +282,122 @@ def stock_issue_details_data(issue_id):
         conn.close()
 
 
+def _stock_issue_count_adjustments(cursor, issue_id):
+    cursor.execute(f"""
+        SELECT
+            H.InvCountHeaderId AS count_id,
+            H.InvCountTimeFinalised AS finalised_at,
+            L.InvCountLineStockId AS product_link,
+            STK.StockDescription AS product_desc,
+            UOM.cUnitCode AS uom_code,
+            L.InvCountLineQtyOnHand AS system_qty,
+            L.InvCountLineQtyCounted AS counted_qty,
+            L.InvCountLineQtyCounted - L.InvCountLineQtyOnHand AS adjustment_qty,
+            LIN.issue_qty
+        FROM stk.IssueHeader HEA
+        JOIN stk.InventoryCountHeaders H
+            ON H.InvCountWhseId = HEA.IssWhseId
+           AND H.InvCountTimeFinalised > HEA.IssFinalisedTimeStamp
+           AND H.InvCountStatus = 'FINALISED'
+        JOIN stk.InventoryCountLines L
+            ON L.InvCountLineHeaderId = H.InvCountHeaderId
+        JOIN (
+            SELECT
+                IssLineIssueId,
+                IssLineStockLink,
+                SUM(ISNULL(IssLineQtyFinalised, 0)) AS issue_qty
+            FROM stk.IssueLines
+            GROUP BY IssLineIssueId, IssLineStockLink
+        ) LIN ON LIN.IssLineIssueId = HEA.IdIssue
+             AND LIN.IssLineStockLink = L.InvCountLineStockId
+        LEFT JOIN cmn._uvStockItems STK ON STK.StockLink = L.InvCountLineStockId
+        LEFT JOIN cmn._uvUOM UOM ON UOM.idUnits = L.InvCountUoMId
+        WHERE HEA.IdIssue = ?
+          AND L.InvCountLineQtyCounted IS NOT NULL
+          AND L.InvCountLineQtyCounted <> L.InvCountLineQtyOnHand
+          AND LIN.issue_qty > 0
+        ORDER BY H.InvCountTimeFinalised, STK.StockDescription
+    """, (issue_id,))
+    return [{
+        "count_id": row.count_id,
+        "count_date": row.finalised_at,
+        "product_link": row.product_link,
+        "product_desc": row.product_desc,
+        "uom_code": row.uom_code,
+        "system_qty": float(row.system_qty or 0),
+        "counted_qty": float(row.counted_qty),
+        "adjustment_qty": float(row.adjustment_qty),
+        "issue_qty": float(row.issue_qty),
+    } for row in cursor.fetchall()]
+
+
+@inventory_bp.route("/SDK/stock_issue_count_adjustments/<int:issue_id>", methods=["GET"])
+@login_required
+def stock_issue_count_adjustments(issue_id):
+    if "STOCK_ISSUE_CANCEL" not in current_user.permissions:
+        abort(403)
+
+    warehouse_ids = _stock_issue_warehouse_ids()
+    if not warehouse_ids:
+        return jsonify({"success": False, "message": "Stock issue not found."}), 404
+
+    conn = create_db_connection()
+    cursor = conn.cursor()
+    try:
+        cursor.execute("""
+            SELECT IdIssue
+            FROM stk.IssueHeader
+            WHERE IdIssue = ? AND IssWhseId IN ({})
+        """.format(",".join("?" for _ in warehouse_ids)), (issue_id, *warehouse_ids))
+        if not cursor.fetchone():
+            return jsonify({"success": False, "message": "Stock issue not found."}), 404
+        return jsonify({
+            "success": True,
+            "adjustments": _stock_issue_count_adjustments(cursor, issue_id),
+        })
+    except Exception as e:
+        print("stock_issue_count_adjustments error:", e)
+        return jsonify({"success": False, "message": str(e)}), 500
+    finally:
+        cursor.close()
+        conn.close()
+
+
+def _post_issue_out_adjustments(cursor, adjustments, transaction_date):
+    if not adjustments:
+        return 0
+
+    products_by_link = {}
+    for adjustment in adjustments:
+        products_by_link.setdefault(int(adjustment["product_link"]), adjustment)
+
+    cursor.execute("""
+        SELECT WhseAttrProjectDef
+        FROM stk.WhseAttributes
+        WHERE WhseAttrWhseId = ?
+    """, (adjustments[0]["warehouse_id"],))
+    warehouse_project = cursor.fetchone()
+    project_id = int(warehouse_project[0]) if warehouse_project and warehouse_project[0] is not None else None
+
+    for adjustment in products_by_link.values():
+        issue_qty = float(adjustment["issue_qty"] or 0)
+        if issue_qty <= 0:
+            continue
+        trans = Evo.InventoryTransaction()
+        trans.TransactionCode = Evo.TransactionCode(Evo.Module.Inventory, "ADJ")
+        trans.Date = transaction_date
+        trans.Project = Evo.Project(project_id or DEFAULT_STOCK_COUNT_PROJECT_ID)
+        trans.InventoryItem = Evo.InventoryItem(int(adjustment["product_link"]))
+        trans.Quantity = issue_qty
+        trans.Operation = Evo.InventoryOperation.Decrease
+        trans.Warehouse = Evo.Warehouse(int(adjustment["warehouse_id"]))
+        trans.Reference = f"ISSUE-CANCEL-{adjustment['issue_id']}"
+        trans.Reference2 = "Returned issue quantity adjustment"
+        trans.Description = "Adjust out stock returned by stock issue cancellation"
+        trans.Post()
+    return len(products_by_link)
+
+
 @inventory_bp.route("/SDK/cancel_stock_issue", methods=["POST"])
 @login_required
 def cancel_stock_issue():
@@ -291,6 +408,9 @@ def cancel_stock_issue():
     issue_id = data.get("issue_id")
     if not issue_id:
         return jsonify({"success": False, "message": "Stock issue ID is required."}), 400
+    requested_reversals = data.get("reverse_count_adjustments") or []
+    if not isinstance(requested_reversals, list):
+        return jsonify({"success": False, "message": "Invalid stock count adjustment selection."}), 400
 
     conn = None
     cursor = None
@@ -307,17 +427,43 @@ def cancel_stock_issue():
             PO.OrderNum,
             HEA.IssCancelled,
             HEA.IssSprayExecutionId,
-            EXE.SprExecFinalised
+            EXE.SprExecFinalised,
+            HEA.IssWhseId
         FROM stk.IssueHeader HEA WITH (UPDLOCK, HOLDLOCK)
         LEFT JOIN agr.SprayExecution EXE ON EXE.IdSprExec = HEA.IssSprayExecutionId
         LEFT JOIN stk._uvSalesOrders PO on PO.InvNumber = HEA.IssInvoiceNo
-                WHERE HEA.IdIssue = ?
-                """, (issue_id,))
+                WHERE HEA.IdIssue = ? AND HEA.IssWhseId IN ({})
+                """.format(",".join("?" for _ in warehouse_ids)), (issue_id, *warehouse_ids))
         issue = cursor.fetchone()
         if not issue:
             return jsonify({"success": False, "message": "Stock issue not found."}), 404
         if bool(issue.IssCancelled):
             return jsonify({"success": False, "message": "This stock issue has already been cancelled."}), 409
+        count_adjustments = _stock_issue_count_adjustments(cursor, issue_id)
+        adjustments_by_key = {
+            (int(adjustment["count_id"]), int(adjustment["product_link"])): adjustment
+            for adjustment in count_adjustments
+        }
+        selected_keys = set()
+        for selection in requested_reversals:
+            try:
+                key = (int(selection["count_id"]), int(selection["product_link"]))
+            except (KeyError, TypeError, ValueError):
+                return jsonify({"success": False, "message": "Invalid stock count adjustment selection."}), 400
+            if key not in adjustments_by_key:
+                return jsonify({
+                    "success": False,
+                    "message": "A selected stock count adjustment is no longer eligible. Refresh and try again.",
+                }), 409
+            selected_keys.add(key)
+        selected_adjustments = [
+            {
+                **adjustments_by_key[key],
+                "warehouse_id": int(issue.IssWhseId),
+                "issue_id": int(issue_id),
+            }
+            for key in selected_keys
+        ]
         # if issue.IssSprayExecutionId is not None and (
         #     issue.SprExecFinalised is None or bool(issue.SprExecFinalised)):
         #     return jsonify({
@@ -345,6 +491,7 @@ def cancel_stock_issue():
             return jsonify({
                 "success": True,
                 "credited": False,
+                "out_adjusted_products": 0,
                 "message": "Issue cancelled in Fermesync. No Evolution sales order existed to credit."
             })
 
@@ -411,6 +558,11 @@ def cancel_stock_issue():
                 raise ValueError("The linked Evolution sales order has no quantities to credit.")
 
             credit_note_number = credit_note.Process()
+            out_adjusted_products = _post_issue_out_adjustments(
+                cursor,
+                selected_adjustments,
+                sales_order.InvoiceDate,
+            )
 
         cursor.execute("""
             UPDATE stk.IssueHeader
@@ -427,6 +579,7 @@ def cancel_stock_issue():
         return jsonify({
             "success": True,
             "credited": True,
+            "out_adjusted_products": out_adjusted_products,
             "credit_note_number": str(credit_note_number),
         })
     except Exception as e:

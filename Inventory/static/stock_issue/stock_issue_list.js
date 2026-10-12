@@ -128,17 +128,132 @@ function escapeIssueText(value) {
 
 async function cancelStockIssue(issueId, sourceButton = null, hasEvolutionReference = true) {
     if (cancellationInProgress) return;
-    const confirmation = await Swal.fire({
+    let countAdjustments = [];
+    try {
+        const previewResponse = await request(`/inventory/SDK/stock_issue_count_adjustments/${issueId}`);
+        const preview = await previewResponse.json();
+        if (!previewResponse.ok || !preview.success) {
+            throw new Error(preview.message || "Unable to check stock counts for this issue.");
+        }
+        countAdjustments = preview.adjustments || [];
+    } catch (error) {
+        await Swal.fire("Unable to check stock counts", error.message || "Cancellation was not started.", "error");
+        return;
+    }
+
+    const reversalSelection = [];
+    const confirmationOptions = {
         icon: "warning",
-        title: "Are you very sure?",
-        text: hasEvolutionReference
-            ? "This will create an Evolution credit note for the linked sales order."
-            : "No Evolution sales order exists. This will cancel the issue in Fermesync only.",
+        title: countAdjustments.length ? "Stock counts found after this issue" : "Are you very sure?",
+        text: countAdjustments.length
+            ? "If the issue stock was included in a count, select the adjustments to reverse as part of cancellation."
+            : hasEvolutionReference
+                ? "This will create an Evolution credit note for the linked sales order."
+                : "No Evolution sales order exists. This will cancel the issue in Fermesync only.",
         showCancelButton: true,
-        confirmButtonText: hasEvolutionReference ? "Yes, create credit note" : "Yes, cancel issue",
+        confirmButtonText: hasEvolutionReference ? "Cancel issue" : "Yes, cancel issue",
         cancelButtonText: "Keep issue",
         confirmButtonColor: "#b42318",
-    });
+    };
+    if (countAdjustments.length) {
+        const productsByLink = new Map();
+        for (const adjustment of countAdjustments) {
+            const productLink = Number(adjustment.product_link);
+            let product = productsByLink.get(productLink);
+            if (!product) {
+                product = {
+                    product_link: productLink,
+                    product_desc: adjustment.product_desc,
+                    uom_code: adjustment.uom_code,
+                    issue_qty: Number(adjustment.issue_qty || 0),
+                    counts: [],
+                };
+                productsByLink.set(productLink, product);
+            }
+            product.counts.push(adjustment);
+        }
+        const formatAdjustment = value => `${value > 0 ? "+" : ""}${value.toLocaleString(undefined, { maximumFractionDigits: 3 })}`;
+        const rows = Array.from(productsByLink.values()).map(product => {
+            const unit = product.uom_code ? ` ${escapeIssueText(product.uom_code)}` : "";
+            const countEntries = product.counts.map(adjustment => {
+                const countDate = adjustment.count_date ? new Date(adjustment.count_date).toLocaleString() : "Unknown date";
+                return `<span class="count-adjustment-count">
+                    <span class="count-adjustment-date">Count #${Number(adjustment.count_id)} · ${escapeIssueText(countDate)}</span>
+                    <strong>${formatAdjustment(Number(adjustment.adjustment_qty))}${unit}</strong>
+                </span>`;
+            }).join("");
+            const issueQuantity = product.issue_qty;
+            return `<label class="count-adjustment-row">
+                <span class="count-adjustment-info">
+                    <span class="count-adjustment-product">${escapeIssueText(product.product_desc || `Product ${product.product_link}`)}</span>
+                </span>
+                <span class="count-adjustment-count-list">${countEntries}</span>
+                <span class="count-adjustment-effect">
+                    <span class="count-adjustment-effect-label">Issue return</span>
+                    <span class="count-adjustment-quantity">+${issueQuantity.toLocaleString(undefined, { maximumFractionDigits: 3 })}${unit}</span>
+                </span>
+                <span class="count-adjustment-effect count-adjustment-reversal-effect">
+                    <span class="count-adjustment-effect-label">Out adjustment</span>
+                    <span class="count-adjustment-quantity">-${issueQuantity.toLocaleString(undefined, { maximumFractionDigits: 3 })}${unit}</span>
+                </span>
+                <span class="count-adjustment-choice">
+                    <input class="count-adjustment-reversal" type="checkbox" checked data-count-ids="${product.counts.map(adjustment => Number(adjustment.count_id)).join(",")}" data-product-link="${product.product_link}">
+                    <span>Reverse</span>
+                </span>
+            </label>`;
+        }).join("");
+        confirmationOptions.title = "Review stock and cancellation adjustments";
+        confirmationOptions.width = 900;
+        confirmationOptions.titleClass = "swal2-title-custom";
+        confirmationOptions.html = `
+            <style>
+                .swal2-html-container { padding: 12px 18px 8px !important; }
+                .count-adjustment-panel { text-align: left; }
+                .count-adjustment-intro { margin: 0 0 12px; color: #58636e; font-size: 0.92rem; line-height: 1.45; }
+                .count-adjustment-list { display: grid; gap: 8px; max-height: min(48vh, 390px); overflow-y: auto; padding: 2px 4px 2px 2px; }
+                .count-adjustment-row { display: grid; grid-template-columns: minmax(130px, 1fr) minmax(180px, 1.2fr) minmax(100px, auto) minmax(100px, auto) auto; align-items: center; gap: 12px; padding: 12px 14px; border: 1px solid #dce2e7; border-radius: 6px; background: #fff; cursor: pointer; }
+                .count-adjustment-row:hover { border-color: #9aa8b4; background: #f8fafb; }
+                .count-adjustment-info { display: grid; min-width: 0; gap: 4px; }
+                .count-adjustment-product { overflow-wrap: anywhere; color: #202a33; font-weight: 650; }
+                .count-adjustment-date { color: #66727e; font-size: 0.8rem; }
+                .count-adjustment-count-list { display: grid; min-width: 0; gap: 4px; }
+                .count-adjustment-count { display: flex; align-items: baseline; justify-content: space-between; gap: 8px; color: #202a33; font-size: 0.82rem; font-variant-numeric: tabular-nums; }
+                .count-adjustment-count strong { white-space: nowrap; }
+                .count-adjustment-effect { display: grid; gap: 3px; }
+                .count-adjustment-effect-label { color: #66727e; font-size: 0.72rem; }
+                .count-adjustment-reversal-effect .count-adjustment-quantity { color: #9b2c24; }
+                .count-adjustment-quantity { color: #202a33; font-size: 1rem; font-variant-numeric: tabular-nums; font-weight: 700; white-space: nowrap; }
+                .count-adjustment-choice { display: inline-flex; align-items: center; gap: 7px; color: #394650; font-size: 0.86rem; white-space: nowrap; }
+                .count-adjustment-reversal { width: 17px; height: 17px; margin: 0; accent-color: #b42318; }
+                @media (max-width: 700px) {
+                    .swal2-html-container { padding: 8px 10px !important; }
+                    .count-adjustment-row { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px 12px; padding: 10px 11px; }
+                    .count-adjustment-info, .count-adjustment-count-list, .count-adjustment-choice { grid-column: 1 / -1; }
+                    .count-adjustment-choice { justify-self: end; }
+                    .count-adjustment-choice { gap: 4px; font-size: 0.72rem; }
+                    .count-adjustment-reversal { width: 19px; height: 19px; }
+                    .count-adjustment-effect-label { font-size: 0.66rem; }
+                    .count-adjustment-quantity { font-size: 0.9rem; }
+                }
+            </style>
+            <div class="count-adjustment-panel">
+                <p class="count-adjustment-intro">The count variance is shown separately. Cancelling returns the issued quantity, then applies the same quantity out when selected. All products are selected by default.</p>
+                <div class="count-adjustment-list">${rows}</div>
+            </div>`;
+        confirmationOptions.preConfirm = () => {
+            reversalSelection.length = 0;
+            for (const checkbox of Swal.getPopup().querySelectorAll(".count-adjustment-reversal:checked")) {
+                for (const countId of checkbox.dataset.countIds.split(",").map(Number)) {
+                    reversalSelection.push({
+                        count_id: countId,
+                        product_link: Number(checkbox.dataset.productLink),
+                    });
+                }
+            }
+            return true;
+        };
+    }
+    const confirmation = await Swal.fire(confirmationOptions);
     if (!confirmation.isConfirmed) return;
 
     cancellationInProgress = true;
@@ -151,16 +266,19 @@ async function cancelStockIssue(issueId, sourceButton = null, hasEvolutionRefere
         const response = await request("/inventory/SDK/cancel_stock_issue", {
             method: "POST",
             headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ issue_id: issueId }),
+            body: JSON.stringify({ issue_id: issueId, reverse_count_adjustments: reversalSelection }),
         });
         const result = await response.json();
         if (!response.ok || !result.success) {
             throw new Error(result.message || "Issue cancellation failed.");
         }
+        const outAdjustmentMessage = result.out_adjusted_products
+            ? ` Out adjustments posted for ${result.out_adjusted_products} product(s).`
+            : "";
         if (result.credited) {
-            await Swal.fire("Credit note created", `Evolution reference: ${result.credit_note_number || "—"}`, "success");
+            await Swal.fire("Credit note created", `Evolution reference: ${result.credit_note_number || "—"}.${outAdjustmentMessage}`, "success");
         } else {
-            await Swal.fire("Issue cancelled", result.message || "Issue cancelled in Fermesync.", "success");
+            await Swal.fire("Issue cancelled", `${result.message || "Issue cancelled in Fermesync."}${outAdjustmentMessage}`, "success");
         }
         if (window.onStockIssueCancelSuccess) {
             await window.onStockIssueCancelSuccess();
