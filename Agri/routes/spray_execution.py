@@ -1,4 +1,5 @@
 from datetime import datetime
+import re
 from flask import render_template, request, redirect, url_for, jsonify, abort
 from flask_login import login_required, current_user
 from Core.auth import create_db_connection
@@ -214,12 +215,14 @@ def view_execution(execution_id):
 
     # Get spray instructions in this execution
     cur.execute("""
-        SELECT h.IdSprayH, h.SprayHNo, h.SprayHDescription, h.SprayHWeek, h.SprayHStatus,
+           SELECT h.IdSprayH, h.SprayHNo, h.SprayHDescription, h.SprayHWeek, h.SprayHStatus,
              h.SprayHDate, h.SprayHFinalised,
              ISNULL(h.SprayHRequireDateTime, 1) AS SprayHRequireDateTime,
-             ISNULL(h.SprayHRequireWeather, 1) AS SprayHRequireWeather
+               ISNULL(h.SprayHRequireWeather, 1) AS SprayHRequireWeather,
+               CRP.IdCrop, CRP.CropThemeColor
         FROM agr.SprayHeader h
         JOIN agr.SprayExecution b ON b.IdSprExec = h.SprayHExecutionId
+           LEFT JOIN agr.Crop CRP ON CRP.IdCrop = h.SprayHCropId
         WHERE b.IdSprExec = ?
         ORDER BY h.IdSprayH
     """, execution_id)
@@ -234,10 +237,19 @@ def view_execution(execution_id):
             "spray_date": row.SprayHDate,
             "require_date_time": bool(row.SprayHRequireDateTime),
             "require_weather": bool(row.SprayHRequireWeather),
+            "crop_id": row.IdCrop,
+            "crop_theme_color": row.CropThemeColor,
             "finalised": bool(row.SprayHFinalised)
         }
         for row in cur.fetchall()
     ]
+    crop_colors = {}
+    for instruction in spray_instructions:
+        color = instruction["crop_theme_color"]
+        if instruction["crop_id"] is not None and isinstance(color, str) and re.fullmatch(r"#[0-9A-Fa-f]{6}", color):
+            red, green, blue = (int(color[index:index + 2], 16) for index in (1, 3, 5))
+            crop_colors.setdefault(instruction["crop_id"], f"rgba({red}, {green}, {blue}, 0.7)")
+    execution["crop_colors"] = list(crop_colors.values())
 
     # Determine which execution actions are valid
     cur.execute("""

@@ -43,13 +43,14 @@
         margin: auto;
         padding: 1.5rem;
         box-sizing: border-box;
+        margin-bottom: 20px;
     }
 
     .card {
         width: 100%;
         min-width: 0;
         background: var(--container-bg, #fff);
-        border-radius: 16px;
+        border-radius: 8px;
         padding: 1.3rem;
         box-shadow: 0 8px 24px rgba(0, 0, 0, .06);
     }
@@ -1206,12 +1207,6 @@
                 History &amp; Context
             </button>
             <div id="context-body" class="context-body" role="region" aria-label="Recent spray history and context">
-                <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px;gap:8px">
-                    <h3 style="margin:0;flex:1;font-size:1.1rem">History &amp; Context</h3>
-                    <button type="button" id="context-close" class="icon-btn" title="Close" style="color:#999">
-                        ✕
-                    </button>
-                </div>
                 <div class="context-toolbar">
                     <div class="context-search">
                         <input id="context-search" type="search" placeholder="Search active ingredient or product" aria-label="Search active ingredient or product">

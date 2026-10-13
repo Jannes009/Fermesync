@@ -5,7 +5,14 @@
     --accent-color: #2d6cdf;
 }
 
-.page-wrap{ padding:1.5rem 2rem 3rem; max-width:1400px; margin:0 auto; }
+.page-wrap{
+    padding:1.5rem 2rem 3rem; 
+    max-width:1200px;
+    margin:0 auto; 
+    background: var(--container-bg);     
+    border-radius: 8px;
+    box-shadow: 0 1px 6px rgba(44, 62, 80, 0.08); 
+}
 
 .page-title-card{
     display:flex;
@@ -465,10 +472,6 @@ input[type="text"]:focus, input[type="date"]:focus, input[type="number"]:focus, 
   <div id="spray-lines"></div>
   <div id="spray-mixes"></div>
 </div>
-
-<script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
-<script src="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/js/select2.min.js"></script>
-<script src="https://cdn.jsdelivr.net/npm/sweetalert2@11/dist/sweetalert2.min.js"></script>
 <script>
     window.CURRENT_USER_ID = {{ current_user.id }};
     window.sprayOfflineReady = new Promise(resolve => {
@@ -903,7 +906,11 @@ function applyPageThemeColor(colorHex) {
     } else {
         if (/^#[0-9A-F]{6}$/i.test(colorHex)) {
             document.documentElement.style.setProperty('--accent-color', colorHex);
-            if (body) body.style.backgroundColor = '';
+            const color = Number.parseInt(colorHex.slice(1), 16);
+            const red = (color >> 16) & 255;
+            const green = (color >> 8) & 255;
+            const blue = color & 255;
+            if (body) body.style.backgroundColor = `rgba(${red}, ${green}, ${blue}, 0.7)`;
         }
     }
 }

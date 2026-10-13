@@ -212,7 +212,6 @@ function renderContextTimeline() {
     const showSelectedOnly = contextState.ingredientView === 'selected';
     const searchTerm = contextSearchTerm();
     const ingredients = new Map();
-    console.log(contextState.items, selectedIngredients, showSelectedOnly, searchTerm);
     contextState.items.forEach(item => {
         const ingredientKey = item.active_ingredient || '__unspecified__';
         if (showSelectedOnly && !selectedIngredients.has(item.active_ingredient || '')) return;
@@ -354,7 +353,6 @@ contextHandle?.addEventListener('click', () => {
     contextState.expanded = !contextState.expanded;
     contextSheet.classList.toggle('open', contextState.expanded);
     contextHandle.setAttribute('aria-expanded', String(contextState.expanded));
-    console.log(contextState.expanded, contextState.loaded);
     if (contextState.expanded) updateContextDataset();
 });
 
