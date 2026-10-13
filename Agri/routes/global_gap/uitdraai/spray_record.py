@@ -122,6 +122,8 @@ def fetch_spray_record_data(instruction_id):
         ,SUM(IssLineQtyFinalised*IssLinProjWeight) ProjectQty
         from  stk.IssueLineProjects WT 
         JOIN stk.IssueLines ISSLIN on ISSLIN.IdIssLine = WT.IssLinProjLineId
+        JOIN stk.IssueHeader ISSHEA on ISSHEA.IdIssue = ISSLIN.IssLineIssueId
+        WHERE ISSHEA.IssCancelled = 0
         GROUP BY IssLinProjSprayId, IssLineStockLink
 	)ISSQTY on ISSQTY.IssLinProjSprayId = HEA.IdSprayH and ISSQTY.IssLineStockLink = LIN.SprayLineStkId
     JOIN cmn._uvStockItems EVOSTK ON EVOSTK.StockLink = LIN.SprayLineStkId
