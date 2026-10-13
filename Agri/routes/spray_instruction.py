@@ -935,7 +935,8 @@ def get_spray_instruction_details():
                        HEA.SprayHFinalised, HEA.SprayHModifiedAt, CRP.CropThemeColor,
                        SM.SprayMethodName,
                        CASE WHEN SUM(ISNULL(ISS.QtyOut, 0)) OVER (PARTITION BY HEA.IdSprayH) > 0
-                            THEN 1 ELSE 0 END AS IssuesExist
+                           THEN 1 ELSE 0 END AS IssuesExist,
+                       HEA.SprayHCancelled
                 FROM agr.SprayHeader HEA
                 JOIN cmn._uvWhseMst WHSE ON WHSE.WhseLink = HEA.SprayHWhseId
                 LEFT JOIN agr.Crop CRP ON CRP.IdCrop = HEA.SprayHCropId
@@ -1030,6 +1031,7 @@ def get_spray_instruction_details():
                         "execution_id": header[12], "execution_finalised": bool(header[13]) if header[13] is not None else None,
                         "crop_theme_color": header[23], "status": header[19], "scouting": header[20],
                         "finalised": bool(header[21]) if header[21] is not None else None,
+                        "cancelled": header[26] is None or bool(header[26]),
                         "modified_at": header[22].isoformat() if header[22] is not None else None,
                         "issues_exist": bool(header[25]) if header[25] is not None else None
                     },

@@ -5,6 +5,7 @@ let contextState = {
     startWeek: null,
     endWeek: null,
     projectKey: '',
+    recommendations: null,
     loading: false,
     error: null,
     loaded: false,
@@ -81,6 +82,113 @@ function contextSearchTerm() {
 
 function contextRetryMarkup() {
     return '<button type="button" class="btn ghost context-retry" id="context-retry">Retry</button>';
+}
+
+async function loadContextRecommendations() {
+    if (contextState.recommendations) return contextState.recommendations;
+
+    const offline = window.sprayOfflineReady ? await window.sprayOfflineReady : window.SprayOffline;
+    if (!offline) throw new Error('Recommendation data is not available.');
+
+    let records = await offline.readRecommendations();
+    if (navigator.onLine) {
+        try {
+            records = await offline.refreshRecommendations();
+        } catch (error) {
+            if (!records.some(record => record.detail)) throw error;
+        }
+    }
+
+    contextState.recommendations = records.filter(record => record?.detail);
+    return contextState.recommendations;
+}
+
+function contextItemsFromRecommendations(records, selectedProjectIds) {
+    const selectedProjects = new Set(selectedProjectIds.map(String));
+    const groupedItems = new Map();
+
+    records.forEach(record => {
+        if (!Number.isFinite(Number(record.id))) return;
+        const detail = record.detail;
+        const header = detail?.header;
+        if (!header || header.cancelled || header.status === 'CANCELLED' || record.status === 'CANCELLED') return;
+
+        const sprayWeek = String(header.spray_week || record.spray_week || '');
+        const doseBasis = String(header.dose_basis || '').toUpperCase();
+        if (!sprayWeek || !['PER_100L', 'PER_HA'].includes(doseBasis)) return;
+
+        (header.projects || []).forEach(project => {
+            const projectId = String(project.project_id);
+            if (!selectedProjects.has(projectId)) return;
+            const projectHa = Number(project.ha || 0);
+
+            (detail.lines || []).forEach(line => {
+                const stockId = line.stock_id;
+                if (stockId === null || stockId === undefined) return;
+
+                let quantity;
+                if (doseBasis === 'PER_100L') {
+                    quantity = projectHa === 0
+                        ? 0
+                        : (Number(line.qty_per_100l || 0) / 100) * projectHa * Number(project.water_per_ha || 0);
+                } else {
+                    quantity = Number(line.qty_per_ha || 0) * projectHa;
+                }
+
+                const description = header.spray_description || record.description || '';
+                const key = JSON.stringify([
+                    projectId,
+                    stockId,
+                    line.uom_id,
+                    sprayWeek,
+                    description,
+                    line.active_ingredient || '',
+                ]);
+                let item = groupedItems.get(key);
+                if (!item) {
+                    item = {
+                        project_id: project.project_id,
+                        project_name: project.project_name || project.project_code || `Project ${projectId}`,
+                        stock_id: stockId,
+                        stock_description: line.stock_description || 'Unnamed product',
+                        active_ingredient: line.active_ingredient,
+                        uom: line.uom || '',
+                        spray_week: sprayWeek,
+                        description,
+                        total_qty: 0,
+                    };
+                    groupedItems.set(key, item);
+                }
+                item.total_qty += quantity;
+            });
+        });
+    });
+
+    return Array.from(groupedItems.values());
+}
+
+function availableContextWeeks(items) {
+    const parsedWeeks = Array.from(new Set(items.map(item => item.spray_week)))
+        .map(value => {
+            const match = /^(\d{4})-(\d{1,2})$/.exec(value);
+            return match ? [Number(match[1]), Number(match[2])] : null;
+        })
+        .filter(week => week && week[1] >= 1 && week[1] <= 53);
+    if (!parsedWeeks.length) return [];
+
+    parsedWeeks.sort((left, right) => left[0] - right[0] || left[1] - right[1]);
+    let [year, week] = parsedWeeks[0];
+    const [lastYear, lastWeek] = parsedWeeks[parsedWeeks.length - 1];
+    const availableWeeks = [];
+    while (year < lastYear || (year === lastYear && week <= lastWeek)) {
+        availableWeeks.push(`${year}-${String(week).padStart(2, '0')}`);
+        week += 1;
+        if (week > 53) {
+            year += 1;
+            week = 1;
+        }
+    }
+    return availableWeeks;
 }
 
 function renderContextTimeline() {
@@ -212,21 +320,19 @@ async function updateContextDataset() {
     contextState.loading = true;
     contextState.error = null;
     renderContextTimeline();
-    const params = new URLSearchParams({
-        ...(contextState.startWeek ? { start_week: contextState.startWeek } : {}),
-        ...(contextState.endWeek ? { end_week: contextState.endWeek } : {})
-    });
-    projectIds.forEach(projectId => params.append('project_id', projectId));
-
     try {
-        const response = await request(`/agri/spray-recommendation/context?${params.toString()}`);
-        const data = await response.json();
-        if (!response.ok || !data.success) {
-            throw new Error(data.message || `Unable to fetch product history (HTTP ${response.status})`);
+        const recommendations = await loadContextRecommendations();
+        const allItems = contextItemsFromRecommendations(recommendations, projectIds);
+        contextState.availableWeeks = availableContextWeeks(allItems);
+        if (!contextState.availableWeeks.length) {
+            contextState.startWeek = null;
+            contextState.endWeek = null;
         }
-        contextState.availableWeeks = data.available_weeks || [];
         populateWeekFilters();
-        contextState.items = data.items || [];
+        contextState.items = allItems.filter(item =>
+            (!contextState.startWeek || item.spray_week >= contextState.startWeek) &&
+            (!contextState.endWeek || item.spray_week <= contextState.endWeek)
+        );
         contextState.error = null;
         contextState.loaded = true;
     } catch (error) {
@@ -325,6 +431,7 @@ contextSearch?.addEventListener('input', renderContextTimeline);
 document.addEventListener('click', event => {
     if (!event.target.closest('#context-retry')) return;
     contextState.loaded = false;
+    contextState.recommendations = null;
     updateContextDataset();
 });
 
