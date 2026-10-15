@@ -487,6 +487,11 @@ def cancel_stock_issue():
             """, (current_user.id, issue_id))
             if cursor.rowcount != 1:
                 raise RuntimeError("The stock issue cancellation could not be recorded.")
+            cursor.execute("""
+                UPDATE agr.SprayExecution
+                SET SprExecModifiedAt = GETDATE()
+                WHERE IdSprExec = ?
+            """, (issue.IssSprayExecutionId,))
             conn.commit()
             return jsonify({
                 "success": True,
@@ -575,6 +580,11 @@ def cancel_stock_issue():
         """, (current_user.id, credit_note_number, issue_id))
         if cursor.rowcount != 1:
             raise RuntimeError("The stock issue cancellation could not be recorded.")
+        cursor.execute("""
+            UPDATE agr.SprayExecution
+            SET SprExecModifiedAt = GETDATE()
+            WHERE IdSprExec = ?
+        """, (issue.IssSprayExecutionId,))
         conn.commit()
         return jsonify({
             "success": True,
@@ -910,6 +920,13 @@ def process_return():
                 SET IssInvoiceNo = ?
                 WHERE IdIssue = ?
             """, (order_number, issue_id))
+
+        if execution_id is not None:
+            cursor.execute("""
+                UPDATE agr.SprayExecution
+                SET SprExecModifiedAt = GETDATE()
+                WHERE IdSprExec = ?
+            """, (execution_id,))
 
         conn.commit()
 

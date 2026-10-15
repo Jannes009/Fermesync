@@ -414,6 +414,12 @@ def generate_stock_issue_for_spray(execution_id, lines_payload, order_final, iss
             WHERE IdIssue = ?
         """, (issue_no, stock_issue_id))
 
+        cursor.execute("""
+            UPDATE agr.SprayExecution
+            SET SprExecModifiedAt = GETDATE()
+            WHERE IdSprExec = ?
+        """, (execution_id,))
+
         conn.commit()
 
         cursor.execute("""

@@ -8,6 +8,9 @@
   .actions { display: flex; flex-wrap: wrap; gap: 0.75rem; align-items: center; margin-top: 0.5rem; }
   .actions a { display: inline-flex; align-items: center; justify-content: center; padding: 10px 16px; border-radius: 8px; background: #6c757d; color: white; text-decoration: none; font-size: 0.95rem; }
   .actions a:hover { background: #5a6268; }
+  .actions button { padding: 10px 16px; border: 0; border-radius: 8px; background: var(--button-bg); color: var(--button-text); font-size: 0.95rem; cursor: pointer; }
+  .actions button:disabled { opacity: 0.6; cursor: wait; }
+  .refresh-status { align-self: center; color: var(--secondary-text); font-size: 0.85rem; }
   .toolbar { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 1rem; margin-top: 1.25rem; }
   .filters { display: flex; flex-wrap: wrap; gap: 0.75rem; align-items: end; }
   .filter-field { min-width: 180px; }
@@ -98,6 +101,8 @@
       </div>
       <div class="actions">
         <a href="/agri/spray-recommendations-summary">Back to recommendations</a>
+        <button id="refreshExecutionsButton" type="button" title="Refresh execution summaries">Refresh</button>
+        <span id="execution-refresh-status" class="refresh-status" role="status"></span>
       </div>
     </div>
 
@@ -150,32 +155,16 @@
             <th scope="col" data-sort-type="finalised" aria-sort="none"><button class="sort-button" type="button">Finalised</button></th>
           </tr>
         </thead>
-        <tbody id="executionTableBody">
-          {% for exe in executions %}
-            <tr class="execution-row"
-                data-href="/agri/execution/{{ exe.id }}"
-                data-execution-id="{{ exe.id }}"
-                data-finalised="{{ 'true' if exe.finalised else 'false' }}"
-                data-week="{{ exe.week_text|e }}"
-                data-block="{{ exe.block_text|e }}"
-                data-description="{{ exe.description|e }}">
-              <td>{{ exe.spray_no }}</td>
-              <td class="description-cell">
-                <span class="description-text">{{ exe.description }}</span>
-              </td>
-              <td>{{ exe.date }}</td>
-              <td>{{ exe.responsible_person }}</td>
-              <td>{{ exe.qty_percent_diff }}</td>
-              <td>{{ exe.block_text }}</td>
-              <td><span class="status-pill {% if exe.finalised %}status-finalised{% else %}status-draft{% endif %}">{% if exe.finalised %}Yes{% else %}No{% endif %}</span></td>
-            </tr>
-          {% endfor %}
-        </tbody>
+        <tbody id="executionTableBody"></tbody>
       </table>
     </div>
   </div>
 </div>
 
+<script>
+window.sprayOfflineReady = new Promise(resolve => { window.resolveSprayOfflineReady = resolve; });
+</script>
+<script type="module" src="{{ url_for('agri.static', filename='SprayRecommendation/offline.js') }}?v={{ filemtime('agri','SprayRecommendation/offline.js') }}"></script>
 <script>
 const weekFilter = document.getElementById('weekFilter');
 const blockFilter = document.getElementById('blockFilter');
@@ -257,6 +246,79 @@ function attachExecutionHandlers() {
   });
 }
 
+function setFilterOptions(select, values, allLabel) {
+  const selected = select.value;
+  select.replaceChildren(new Option(allLabel, ''));
+  [...new Set(values.filter(Boolean))].sort(sortCollator.compare).forEach(value => {
+    select.appendChild(new Option(value, value));
+  });
+  if ([...select.options].some(option => option.value === selected)) select.value = selected;
+}
+
+function renderExecutions(records) {
+  const rows = (records || []).map(record => record.detail).filter(Boolean);
+  rows.sort((left, right) => (right.date || '').localeCompare(left.date || '') || Number(right.id) - Number(left.id));
+  executionTableBody.replaceChildren();
+  if (!rows.length) {
+    const emptyRow = document.createElement('tr');
+    const cell = emptyRow.insertCell();
+    cell.colSpan = 7;
+    cell.className = 'no-data';
+    cell.textContent = 'No spray executions found.';
+    executionTableBody.appendChild(emptyRow);
+  }
+
+  rows.forEach(execution => {
+    const row = document.createElement('tr');
+    row.className = 'execution-row';
+    row.dataset.href = `/agri/execution/${execution.id}`;
+    row.dataset.executionId = execution.id;
+    row.dataset.finalised = String(Boolean(execution.finalised));
+    row.dataset.week = execution.week_text || '-';
+    row.dataset.block = execution.block_text || '-';
+    row.dataset.description = execution.description || '-';
+    row.insertCell().textContent = execution.spray_no || '-';
+    const descriptionCell = row.insertCell();
+    descriptionCell.className = 'description-cell';
+    const description = document.createElement('span');
+    description.className = 'description-text';
+    description.textContent = execution.description || '-';
+    descriptionCell.appendChild(description);
+    row.insertCell().textContent = execution.date || '-';
+    row.insertCell().textContent = execution.responsible_person || '-';
+    row.insertCell().textContent = execution.qty_percent_diff ?? 'N/A';
+    row.insertCell().textContent = execution.block_text || '-';
+    const finalisedCell = row.insertCell();
+    const status = document.createElement('span');
+    status.className = `status-pill ${execution.finalised ? 'status-finalised' : 'status-draft'}`;
+    status.textContent = execution.finalised ? 'Yes' : 'No';
+    finalisedCell.appendChild(status);
+    executionTableBody.appendChild(row);
+  });
+
+  setFilterOptions(weekFilter, rows.flatMap(row => (row.week_text || '').split(', ').filter(value => value && value !== '-')), 'All weeks');
+  setFilterOptions(blockFilter, rows.flatMap(row => (row.block_text || '').split(', ').filter(value => value && value !== '-')), 'All blocks');
+  attachExecutionHandlers();
+  applyExecutionFilters();
+}
+
+async function refreshExecutionSummaries(force = false) {
+  const button = document.getElementById('refreshExecutionsButton');
+  const status = document.getElementById('execution-refresh-status');
+  if (button) button.disabled = true;
+  if (status) status.textContent = 'Refreshing...';
+  try {
+    const offline = await window.sprayOfflineReady;
+    const records = await offline.refreshExecutions(force);
+    renderExecutions(records);
+    if (status) status.textContent = records.length ? 'Up to date' : 'No cached executions. Use Refresh to load.';
+  } catch (error) {
+    if (status) status.textContent = error.message || 'Unable to refresh';
+  } finally {
+    if (button) button.disabled = false;
+  }
+}
+
 finalisedOptions.forEach(option => {
   option.addEventListener('change', () => {
     updateToggleSelection();
@@ -273,8 +335,14 @@ if (blockFilter) {
 }
 
 updateToggleSelection();
-applyExecutionFilters();
-attachExecutionHandlers();
+document.getElementById('refreshExecutionsButton')?.addEventListener('click', () => refreshExecutionSummaries(true));
+window.sprayOfflineReady.then(async offline => {
+  renderExecutions(await offline.readExecutions());
+  refreshExecutionSummaries(false);
+}).catch(error => {
+  const status = document.getElementById('execution-refresh-status');
+  if (status) status.textContent = error.message || 'Unable to load cached executions';
+});
 </script>
 
 {% endblock %}

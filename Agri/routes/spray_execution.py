@@ -28,156 +28,162 @@ def format_datetime(value):
 def spray_executions_summary():
     if "SPRAY_EXEC_VIEW" not in current_user.permissions:
         abort(403)
+    return render_template("spray_execution_summary.html",
+                           executions=[], week_filter_options=[], block_filter_options=[])
+
+
+@agri_bp.route("/spray-executions/metadata", methods=["GET"])
+@login_required
+def spray_executions_metadata():
+    if "SPRAY_EXEC_VIEW" not in current_user.permissions:
+        abort(403)
+
+    warehouse_ids = list(dict.fromkeys(current_user.warehouses or []))
+    if not warehouse_ids:
+        return jsonify({"success": True, "items": []})
+
     conn = create_db_connection()
     cur = conn.cursor()
+    items = {}
+    try:
+        for offset in range(0, len(warehouse_ids), 1000):
+            warehouse_batch = warehouse_ids[offset:offset + 1000]
+            placeholders = ','.join('?' for _ in warehouse_batch)
+            cur.execute(f"""
+                SELECT DISTINCT EXE.IdSprExec, EXE.SprExecModifiedAt
+                FROM agr.SprayExecution EXE
+                JOIN agr.SprayHeader HEA ON HEA.SprayHExecutionId = EXE.IdSprExec
+                WHERE HEA.SprayHWhseId IN ({placeholders})
+            """, tuple(warehouse_batch))
+            for row in cur.fetchall():
+                modified_at = row.SprExecModifiedAt
+                items[row.IdSprExec] = {
+                    "id": row.IdSprExec,
+                    "modified_at": modified_at.isoformat() if modified_at else None,
+                }
+        return jsonify({"success": True, "items": list(items.values())})
+    finally:
+        conn.close()
 
-    whse_ids = tuple(current_user.warehouses or [])
-    if not whse_ids:
-        return jsonify([])
 
-    placeholders = ','.join('?' for _ in whse_ids)
+@agri_bp.route("/spray-executions/details", methods=["POST"])
+@login_required
+def spray_executions_details():
+    if "SPRAY_EXEC_VIEW" not in current_user.permissions:
+        abort(403)
 
-    cur.execute(f"""
-        SELECT
-            EXE.IdSprExec,
-            HEA.IdSprayH,
-            HEA.SprayHNo,
-            HEA.SprayHDescription,
-            HEA.SprayHWeek,
-            HEA.SprayHWhseId,
-            People.PersonName,
-            EXE.SprExecFinalised,
-            SP.SprayPBlockNo,
-            EXE.SprExecDate
-        FROM agr.SprayExecution EXE
-        JOIN agr.SprayHeader HEA
-            ON HEA.SprayHExecutionId = EXE.IdSprExec
-        JOIN [agr].[SprayProjects] SP on SP.SprayPSprayId = HEA.IdSprayH
-        LEFT JOIN agr.People People on People.IdPerson = EXE.SprExecResponsiblePerson
-        WHERE HEA.SprayHWhseId IN ({placeholders})
-        ORDER BY EXE.SprExecDate DESC, EXE.IdSprExec DESC
-    """, whse_ids)
+    payload = request.get_json(silent=True) or {}
+    execution_ids = list(dict.fromkeys(
+        int(value) for value in payload.get("execution_ids", [])
+        if str(value).isdigit()
+    ))
+    warehouse_ids = list(dict.fromkeys(current_user.warehouses or []))
+    if not execution_ids or not warehouse_ids:
+        return jsonify({"success": True, "items": []})
 
+    conn = create_db_connection()
+    cur = conn.cursor()
     executions = {}
-    for row in cur.fetchall():
-        exec_id = row.IdSprExec
-        if exec_id not in executions:
-            executions[exec_id] = {
-                "id": exec_id,
-                "date": row.SprExecDate,
-                "responsible_person": row.PersonName,
-                "finalised": bool(row.SprExecFinalised),
-                "block_numbers": [],
-                "descriptions": [],
-                "weeks": [],
-                "spray_nos": []
-            }
+    try:
+        for execution_offset in range(0, len(execution_ids), 500):
+            execution_batch = execution_ids[execution_offset:execution_offset + 500]
+            execution_placeholders = ','.join('?' for _ in execution_batch)
+            for warehouse_offset in range(0, len(warehouse_ids), 500):
+                warehouse_batch = warehouse_ids[warehouse_offset:warehouse_offset + 500]
+                warehouse_placeholders = ','.join('?' for _ in warehouse_batch)
+                cur.execute(f"""
+                    SELECT EXE.IdSprExec, EXE.SprExecDate, EXE.SprExecFinalised,
+                           EXE.SprExecModifiedAt, People.PersonName,
+                           HEA.IdSprayH, HEA.SprayHNo, HEA.SprayHDescription,
+                           HEA.SprayHWeek, SP.SprayPBlockNo
+                    FROM agr.SprayExecution EXE
+                    JOIN agr.SprayHeader HEA ON HEA.SprayHExecutionId = EXE.IdSprExec
+                    JOIN agr.SprayProjects SP ON SP.SprayPSprayId = HEA.IdSprayH
+                    LEFT JOIN agr.People People ON People.IdPerson = EXE.SprExecResponsiblePerson
+                    WHERE EXE.IdSprExec IN ({execution_placeholders})
+                      AND HEA.SprayHWhseId IN ({warehouse_placeholders})
+                """, tuple(execution_batch) + tuple(warehouse_batch))
+                for row in cur.fetchall():
+                    execution = executions.setdefault(row.IdSprExec, {
+                        "id": row.IdSprExec,
+                        "date_value": row.SprExecDate,
+                        "modified_at": row.SprExecModifiedAt.isoformat() if row.SprExecModifiedAt else None,
+                        "responsible_person": row.PersonName or '-',
+                        "finalised": bool(row.SprExecFinalised),
+                        "descriptions": [], "weeks": [], "blocks": [], "spray_nos": [],
+                    })
+                    for key, value in (
+                        ("descriptions", row.SprayHDescription),
+                        ("weeks", row.SprayHWeek),
+                        ("blocks", row.SprayPBlockNo),
+                        ("spray_nos", row.SprayHNo),
+                    ):
+                        value = str(value).strip() if value is not None else ''
+                        if value and value not in execution[key]:
+                            execution[key].append(value)
 
-        if row.IdSprayH:
-            description = (row.SprayHDescription or '').strip()
-            if description:
-                executions[exec_id]["descriptions"].append(description)
+        execution_keys = list(executions)
+        for offset in range(0, len(execution_keys), 600):
+            execution_batch = execution_keys[offset:offset + 600]
+            placeholders = ','.join('?' for _ in execution_batch)
+            cur.execute(f"""
+                WITH Recommended AS (
+                    SELECT HEA.SprayHExecutionId AS ExecutionId,
+                           SUM(LIN.SprayLineTotalQty) AS RecommendedQty
+                    FROM agr.SprayHeader HEA
+                    JOIN agr.SprayLines LIN ON LIN.SprayLineHeaderId = HEA.IdSprayH
+                    WHERE HEA.SprayHExecutionId IN ({placeholders})
+                    GROUP BY HEA.SprayHExecutionId
+                ), Issued AS (
+                    SELECT HEA.IssSprayExecutionId AS ExecutionId,
+                           SUM(LIN.IssLineQtyIssued - ISNULL(LIN.IssLineQtyReceived, 0)) AS IssuedQty
+                    FROM stk.IssueHeader HEA
+                    JOIN stk.IssueLines LIN ON LIN.IssLineIssueId = HEA.IdIssue
+                    WHERE HEA.IssSprayExecutionId IN ({placeholders}) AND HEA.IssCancelled = 0
+                    GROUP BY HEA.IssSprayExecutionId
+                )
+                SELECT EXE.IdSprExec, ISNULL(REC.RecommendedQty, 0) AS RecommendedQty,
+                       ISNULL(ISS.IssuedQty, 0) AS IssuedQty
+                FROM agr.SprayExecution EXE
+                LEFT JOIN Recommended REC ON REC.ExecutionId = EXE.IdSprExec
+                LEFT JOIN Issued ISS ON ISS.ExecutionId = EXE.IdSprExec
+                WHERE EXE.IdSprExec IN ({placeholders})
+            """, tuple(execution_batch) * 3)
+            for row in cur.fetchall():
+                recommended_qty = float(row.RecommendedQty or 0)
+                issued_qty = float(row.IssuedQty or 0)
+                percent_diff = ((issued_qty - recommended_qty) / recommended_qty * 100
+                                if issued_qty > 0 and recommended_qty else None)
+                executions[row.IdSprExec]["qty_percent_diff"] = (
+                    f"{'+' if percent_diff > 0 else ''}{format_decimal(percent_diff)}%"
+                    if percent_diff is not None else "N/A"
+                )
+                if issued_qty <= 0:
+                    executions[row.IdSprExec]["qty_percent_diff"] = ""
 
-            week = (row.SprayHWeek or '').strip()
-            if week:
-                executions[exec_id]["weeks"].append(week)
-
-            block_no = row.SprayPBlockNo
-            if block_no not in (None, ''):
-                executions[exec_id]["block_numbers"].append(str(block_no))
-
-            spray_no = (row.SprayHNo or '').strip()
-            if spray_no:
-                executions[exec_id]["spray_nos"].append(spray_no)
-
-    if executions:
-        execution_ids = tuple(executions)
-        execution_placeholders = ','.join('?' for _ in execution_ids)
-        cur.execute(f"""
-            WITH Recommended AS (
-                SELECT HEA.SprayHExecutionId AS ExecutionId,
-                       SUM(LIN.SprayLineTotalQty) AS RecommendedQty
-                FROM agr.SprayHeader HEA
-                JOIN agr.SprayLines LIN ON LIN.SprayLineHeaderId = HEA.IdSprayH
-                WHERE HEA.SprayHExecutionId IN ({execution_placeholders})
-                GROUP BY HEA.SprayHExecutionId
-            ), Issued AS (
-                SELECT HEA.IssSprayExecutionId AS ExecutionId,
-                       SUM(LIN.IssLineQtyIssued - ISNULL(LIN.IssLineQtyReceived, 0)) AS IssuedQty
-                FROM stk.IssueHeader HEA
-                JOIN stk.IssueLines LIN ON LIN.IssLineIssueId = HEA.IdIssue
-                WHERE HEA.IssSprayExecutionId IN ({execution_placeholders}) and IssCancelled = 0
-                GROUP BY HEA.IssSprayExecutionId
-            )
-            SELECT EXE.IdSprExec,
-                   ISNULL(REC.RecommendedQty, 0) AS RecommendedQty,
-                   ISNULL(ISS.IssuedQty, 0) AS IssuedQty
-            FROM agr.SprayExecution EXE
-            LEFT JOIN Recommended REC ON REC.ExecutionId = EXE.IdSprExec
-            LEFT JOIN Issued ISS ON ISS.ExecutionId = EXE.IdSprExec
-            WHERE EXE.IdSprExec IN ({execution_placeholders})
-        """, execution_ids * 3)
-
-        for row in cur.fetchall():
-            recommended_qty = float(row.RecommendedQty or 0)
-            issued_qty = float(row.IssuedQty or 0)
-            percent_diff = None
-            if issued_qty > 0 and recommended_qty:
-                percent_diff = (issued_qty - recommended_qty) / recommended_qty * 100
-            executions[row.IdSprExec]["qty_percent_diff"] = (
-                f"{'+' if percent_diff > 0 else ''}{format_decimal(percent_diff)}%"
-                if percent_diff is not None else "N/A"
-            )
-            if issued_qty <= 0:
-                executions[row.IdSprExec]["qty_percent_diff"] = ""
-
-    execution_rows = []
-    all_blocks = []
-    all_weeks = []
-    for execution in executions.values():
-        unique_descriptions = []
-        for description in execution["descriptions"]:
-            if description and description not in unique_descriptions:
-                unique_descriptions.append(description)
-
-        unique_spray_nos = []
-        for spray_no in execution["spray_nos"]:
-            if spray_no and spray_no not in unique_spray_nos:
-                unique_spray_nos.append(spray_no)
-
-        unique_weeks = []
-        for week in execution["weeks"]:
-            if week and week not in unique_weeks:
-                unique_weeks.append(week)
-                if week not in all_weeks:
-                    all_weeks.append(week)
-
-        unique_blocks = []
-        for block_no in execution["block_numbers"]:
-            if block_no and block_no not in unique_blocks:
-                unique_blocks.append(block_no)
-                if block_no not in all_blocks:
-                    all_blocks.append(block_no)
-
-        execution_rows.append({
-            "id": execution["id"],
-            "date": format_datetime(execution["date"]),
-            "responsible_person": execution["responsible_person"] or '-',
-            "finalised": execution["finalised"],
-            "block_numbers": unique_blocks,
-            "block_text": ', '.join(unique_blocks) if unique_blocks else '-',
-            "description": ', '.join(unique_descriptions) if unique_descriptions else '-',
-            "spray_no": ', '.join(unique_spray_nos) if unique_spray_nos else '-',
-            "week_text": ', '.join(unique_weeks) if unique_weeks else '-',
-            "qty_percent_diff": execution.get("qty_percent_diff", "N/A"),
-            "recommendations_count": len(unique_descriptions)
-        })
-
-    conn.close()
-    return render_template("spray_execution_summary.html",
-                           executions=execution_rows,
-                            week_filter_options=sorted(all_weeks, key=str.lower),
-                            block_filter_options=sorted(all_blocks, key=str.lower),)
+        items = []
+        for execution in executions.values():
+            descriptions = execution["descriptions"]
+            blocks = execution["blocks"]
+            weeks = execution["weeks"]
+            spray_nos = execution["spray_nos"]
+            items.append({
+                "id": execution["id"],
+                "modified_at": execution["modified_at"],
+                "date": format_datetime(execution["date_value"]),
+                "responsible_person": execution["responsible_person"],
+                "finalised": execution["finalised"],
+                "block_text": ', '.join(blocks) if blocks else '-',
+                "week_text": ', '.join(weeks) if weeks else '-',
+                "description": ', '.join(descriptions) if descriptions else '-',
+                "spray_no": ', '.join(spray_nos) if spray_nos else '-',
+                "qty_percent_diff": execution.get("qty_percent_diff", "N/A"),
+                "recommendations_count": len(descriptions),
+            })
+        items.sort(key=lambda item: (item["date"] or '', item["id"]), reverse=True)
+        return jsonify({"success": True, "items": items})
+    finally:
+        conn.close()
 
 
 @agri_bp.route("/execution/<int:execution_id>", methods=["GET"])
@@ -452,7 +458,7 @@ def update_responsible_person(execution_id):
             return jsonify({"success": False, "message": "Cannot update the responsible person on a finalised execution."}), 400
 
         cur.execute(
-            "UPDATE agr.SprayExecution SET SprExecResponsiblePerson = ? WHERE IdSprExec = ?",
+            "UPDATE agr.SprayExecution SET SprExecResponsiblePerson = ?, SprExecModifiedAt = GETDATE() WHERE IdSprExec = ?",
             responsible_person_id,
             execution_id,
         )
@@ -512,7 +518,8 @@ def finalize_execution(execution_id):
         cur.execute("""
             UPDATE agr.SprayExecution
             SET SprExecFinalised = 1,
-                SprExecFinalisedTimestamp = GETDATE()
+                SprExecFinalisedTimestamp = GETDATE(),
+                SprExecModifiedAt = GETDATE()
             WHERE IdSprExec = ?
             AND ISNULL(SprExecFinalised, 0) = 0
         """, execution_id)
@@ -603,7 +610,8 @@ def update_instruction(execution_id, instruction_id):
         UPDATE EXE
         SET
             SprExecFinalised = 1,
-            SprExecFinalisedTimestamp = GETDATE()
+            SprExecFinalisedTimestamp = GETDATE(),
+            SprExecModifiedAt = GETDATE()
         FROM agr.SprayExecution EXE
         WHERE EXE.IdSprExec = ?
         AND ISNULL(EXE.SprExecFinalised, 0) = 0          -- only if not already finalised
@@ -614,6 +622,11 @@ def update_instruction(execution_id, instruction_id):
                 AND ISNULL(HEA.SprayHFinalised, 0) = 0   -- still has un-finalised sprays
             );
       """, execution_id)
+
+    cur.execute(
+        "UPDATE agr.SprayExecution SET SprExecModifiedAt = GETDATE() WHERE IdSprExec = ?",
+        execution_id,
+    )
 
     conn.commit()
     conn.close()

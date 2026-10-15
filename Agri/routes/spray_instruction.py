@@ -623,6 +623,13 @@ def save_spray_lines(spray_id):
 
         _rebuild_spray_mixes(cur, spray_id, header=header, lines=saved_lines)
         cur.execute("UPDATE agr.SprayHeader SET SprayHModifiedAt = GETDATE() WHERE IdSprayH = ?", spray_id)
+        cur.execute("""
+            UPDATE EXE
+            SET SprExecModifiedAt = GETDATE()
+            FROM agr.SprayExecution EXE
+            JOIN agr.SprayHeader HEA ON HEA.SprayHExecutionId = EXE.IdSprExec
+            WHERE HEA.IdSprayH = ?
+        """, spray_id)
         conn.commit()
         return jsonify({"success": True})
 
@@ -681,6 +688,13 @@ def save_spray_header(spray_id):
             end_datetime,
             spray_id
         )
+        cur.execute("""
+            UPDATE EXE
+            SET SprExecModifiedAt = GETDATE()
+            FROM agr.SprayExecution EXE
+            JOIN agr.SprayHeader HEA ON HEA.SprayHExecutionId = EXE.IdSprExec
+            WHERE HEA.IdSprayH = ?
+        """, spray_id)
         conn.commit()
         return jsonify({"success": True, "message": "Header changes saved successfully."})
     except Exception as e:
@@ -822,6 +836,13 @@ def save_spray_projects(spray_id):
             'water_per_tank': water_per_tank,
         }
         _rebuild_spray_mixes(cur, spray_id, header=header)
+        cur.execute("""
+            UPDATE EXE
+            SET SprExecModifiedAt = GETDATE()
+            FROM agr.SprayExecution EXE
+            JOIN agr.SprayHeader HEA ON HEA.SprayHExecutionId = EXE.IdSprExec
+            WHERE HEA.IdSprayH = ?
+        """, spray_id)
         conn.commit()
         return jsonify({"success": True, "message": "Project settings saved successfully."})
     except Exception as e:

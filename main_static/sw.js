@@ -40,6 +40,7 @@ const SHELL = [
 
   // spray pages
   '/agri/spray-recommendations-summary',
+  '/agri/spray-executions-summary',
   '/agri/spray-recommendation/create',
   '/agri/spray/0',
 ];
@@ -127,6 +128,11 @@ self.addEventListener('fetch', event => {
     return;
   }
 
+  if (url.pathname === '/main_static/offline/db.js') {
+    event.respondWith(networkFirst(req));
+    return;
+  }
+
   const agriStaticAsset = url.pathname.startsWith('/agri/static/');
   if (agriStaticAsset) {
     event.respondWith(networkFirst(req));
@@ -161,7 +167,7 @@ async function networkFirst(request) {
     catch {
 
         // Offline (or network failure)
-        const cached = await cache.match(request, { ignoreSearch: true });
+        const cached = await cache.match(request) || await cache.match(request, { ignoreSearch: true });
         if (cached) {
             return cached;
         }

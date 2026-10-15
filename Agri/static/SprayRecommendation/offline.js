@@ -1,10 +1,11 @@
-import { db } from '/main_static/offline/db.js?v=60';
+import { db } from '/main_static/offline/db.js?v=61';
 
 const CACHE_MAX_AGE = 7 * 24 * 60 * 60 * 1000;
 const DEVICE_SETTINGS_KEY = 'agri_device_settings';
 const DEFAULT_DEVICE_SETTINGS = {
     catalog: { mode: 'auto', auto_policy: 'page_load', interval_ms: 86400000 },
-    spray: { mode: 'auto', auto_policy: 'page_load', interval_ms: 86400000 }
+    spray: { mode: 'auto', auto_policy: 'page_load', interval_ms: 86400000 },
+    execution: { mode: 'auto', auto_policy: 'page_load', interval_ms: 86400000 }
 };
 const userId = String(window.CURRENT_USER_ID || 'unknown');
 const readyResolver = window.resolveSprayOfflineReady;
@@ -19,11 +20,11 @@ function isFresh(refreshedAt, maxAge = CACHE_MAX_AGE) {
 
 function normalizeDeviceSettings(value) {
     const settings = value || {};
-    return ['catalog', 'spray'].reduce((result, section) => {
-        const source = settings[section] || {};
+    return ['catalog', 'spray', 'execution'].reduce((result, section) => {
+        const source = { ...DEFAULT_DEVICE_SETTINGS[section], ...(settings[section] || {}) };
         const interval = Number(source.interval_ms);
         result[section] = {
-            mode: source.mode === 'auto' ? 'auto' : 'manual',
+            mode: source.mode === 'manual' ? 'manual' : 'auto',
             auto_policy: source.auto_policy === 'interval' ? 'interval' : 'page_load',
             interval_ms: Number.isFinite(interval) && interval > 0 ? interval : DEFAULT_DEVICE_SETTINGS[section].interval_ms
         };
@@ -39,12 +40,15 @@ async function readDeviceSettings() {
         : normalizeDeviceSettings(DEFAULT_DEVICE_SETTINGS);
     if (!hasUserSettings) {
         await db.meta.put({ key: DEVICE_SETTINGS_KEY, value: settings, user_saved: false, updated_at: now() });
+    } else if (!record.value?.execution) {
+        await db.meta.put({ ...record, value: settings, updated_at: now() });
     }
     return settings;
 }
 
 async function saveDeviceSettings(value) {
-    const settings = normalizeDeviceSettings(value);
+    const current = await readDeviceSettings();
+    const settings = normalizeDeviceSettings({ ...current, ...value });
     await db.meta.put({ key: DEVICE_SETTINGS_KEY, value: settings, user_saved: true, updated_at: now() });
     return settings;
 }
@@ -423,6 +427,88 @@ async function recommendationRefreshTime() {
     return record?.refreshed_at || null;
 }
 
+async function readExecutions() {
+    return db.spray_executions.where('user_id').equals(userId).toArray();
+}
+
+async function fetchExecutionDetails(ids) {
+    const response = await fetch('/agri/spray-executions/details', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        credentials: 'same-origin',
+        body: JSON.stringify({ execution_ids: ids.map(Number) })
+    });
+    const data = await response.json();
+    if (!response.ok || !data.success) {
+        throw new Error(data.message || 'Failed to refresh spray executions');
+    }
+    return data.items || [];
+}
+
+async function refreshExecutions(force = false) {
+    const existing = await readExecutions();
+    const refreshKey = `spray_executions_refreshed:${userId}`;
+    const refreshRecord = await db.meta.get(refreshKey);
+    const refreshDue = await shouldRefresh('execution', refreshRecord?.refreshed_at, true);
+    if (!force && !refreshDue) {
+        if (existing.length) return existing;
+        if (!navigator.onLine) throw new Error('You are offline and no spray executions are cached.');
+        return existing;
+    }
+    if (!navigator.onLine) {
+        if (existing.length) return existing;
+        throw new Error('You are offline and no spray executions are cached.');
+    }
+
+    const response = await fetch('/agri/spray-executions/metadata', { credentials: 'same-origin' });
+    const data = await response.json();
+    if (!response.ok || !data.success) {
+        throw new Error(data.message || 'Failed to refresh spray execution metadata');
+    }
+
+    const metadata = data.items || [];
+    const existingById = new Map(existing.map(record => [Number(record.id), record]));
+    const changedIds = metadata
+        .filter(item => {
+            const cached = existingById.get(Number(item.id));
+            return !cached?.detail || String(cached.modified_at || '') !== String(item.modified_at || '');
+        })
+        .map(item => Number(item.id));
+
+    const detailItems = [];
+    for (let offset = 0; offset < changedIds.length; offset += 500) {
+        detailItems.push(...await fetchExecutionDetails(changedIds.slice(offset, offset + 500)));
+    }
+    const detailsById = new Map(detailItems.map(item => [Number(item.id), item]));
+    const missingIds = changedIds.filter(id => !detailsById.has(id));
+    if (missingIds.length) {
+        throw new Error(`The server did not return execution details for: ${missingIds.join(', ')}`);
+    }
+
+    const records = metadata.map(item => {
+        const id = Number(item.id);
+        const cached = existingById.get(id);
+        const detail = detailsById.get(id);
+        return {
+            ...(cached || {}),
+            user_id: userId,
+            id,
+            modified_at: item.modified_at,
+            detail: detail || cached.detail,
+            refreshed_at: now()
+        };
+    });
+    await db.spray_executions.bulkPut(records);
+
+    const serverIds = new Set(metadata.map(item => Number(item.id)));
+    const staleKeys = existing
+        .filter(record => !serverIds.has(Number(record.id)))
+        .map(record => [userId, record.id]);
+    if (staleKeys.length) await db.spray_executions.bulkDelete(staleKeys);
+    await db.meta.put({ key: refreshKey, refreshed_at: now() });
+    return records;
+}
+
 async function markRecommendationsScheduled(ids, executionId) {
     for (const id of ids) {
         await db.spray_recommendations.update([userId, Number(id)], {
@@ -461,6 +547,8 @@ const api = {
     refreshRecommendations,
     refreshInstruction,
     recommendationRefreshTime,
+    readExecutions,
+    refreshExecutions,
     markRecommendationsScheduled,
     lastRefreshes,
     readDeviceSettings,

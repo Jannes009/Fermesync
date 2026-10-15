@@ -63,6 +63,21 @@ db.version(5).stores({
   await transaction.table('spray_methods').clear();
 });
 
+db.version(6).stores({
+  meta: 'key',
+  outbox: '++id, created_at, retry_count',
+  notifications: 'id, created_at, read',
+  grvDrafts: 'poNumber',
+  spray_projects: 'id, refreshed_at',
+  spray_products: '[catalog_key+stock_id], catalog_key, stock_id, refreshed_at',
+  spray_methods: 'project_id, refreshed_at',
+  spray_recommendations: '[user_id+id], user_id, status, created_at',
+  spray_instructions: null,
+  spray_product_catalog: 'stock_id, refreshed_at',
+  spray_method_catalog: 'farm_id, refreshed_at',
+  spray_executions: '[user_id+id], user_id, modified_at'
+});
+
 export async function generateNotification(UserId, Title, Message, EntityId, action_url = null) {
     fetch('/inventory/notifications/create_notification', {
         method: 'POST',

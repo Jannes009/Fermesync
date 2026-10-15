@@ -89,6 +89,37 @@
     </section>
     {% endif %}
 
+    {% if "SPRAY_EXEC_VIEW" in current_user.permissions %}
+    <section class="settings-section">
+      <h2>Spray Executions</h2>
+      <p>Execution summaries cached on this device.</p>
+      <div class="setting-grid">
+        <div>
+          <span class="field-label">Refresh mode</span>
+          <div class="choice-group">
+            <label class="choice"><input type="radio" name="execution-mode" value="manual"> Manual</label>
+            <label class="choice"><input type="radio" name="execution-mode" value="auto" checked> Auto</label>
+          </div>
+        </div>
+        <div class="execution-auto-options">
+          <label class="field-label" for="execution-auto-policy">Auto refresh</label>
+          <select id="execution-auto-policy">
+            <option value="page_load">Every page load</option>
+            <option value="interval">When data is older than</option>
+          </select>
+        </div>
+        <div class="execution-interval-options">
+          <label class="field-label" for="execution-interval">Refresh period</label>
+          <select id="execution-interval">
+            <option value="3600000">1 hour</option>
+            <option value="86400000">1 day</option>
+            <option value="604800000">7 days</option>
+          </select>
+        </div>
+      </div>
+    </section>
+    {% endif %}
+
     <div class="settings-actions">
       <button type="submit">Save device settings</button>
       <span id="settings-status" class="settings-status" role="status"></span>

@@ -738,8 +738,8 @@ def create_execution():
 
         # Use a driver-safe insert path to avoid ODBC SQLBindParameter issues on OUTPUT INSERTED.
         cur.execute("""
-            INSERT INTO agr.SprayExecution (SprExecDate, SprExecResponsiblePerson)
-            VALUES (CONVERT(date, ?), NULL)
+            INSERT INTO agr.SprayExecution (SprExecDate, SprExecResponsiblePerson, SprExecModifiedAt)
+            VALUES (CONVERT(date, ?), NULL, GETDATE())
         """, (execution_date,))
         cur.execute("SELECT CAST(SCOPE_IDENTITY() AS int) AS execution_id")
         execution_id = get_inserted_id(cur, 'agr.SprayExecution')
