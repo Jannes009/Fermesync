@@ -116,7 +116,10 @@ function renderStockIssueDetails(issue) {
     receiveButton.hidden = !permissions.includes("STOCK_ISSUE_CREATE") || issue.is_finalised || issue.is_cancelled;
     receiveButton.onclick = () => window.startReturnWizard(issue.id, receiveButton);
     const cancelButton = document.getElementById("cancel-issue-button");
-    cancelButton.hidden = !permissions.includes("STOCK_ISSUE_CANCEL") || issue.is_cancelled;
+    console.log(issue);
+    cancelButton.hidden = !permissions.includes("STOCK_ISSUE_CANCEL") || issue.is_cancelled || !(
+                issue.execution_id == null || issue.execution_finalised === false
+    );;
     cancelButton.onclick = () => window.cancelStockIssue(
         issue.id,
         cancelButton,

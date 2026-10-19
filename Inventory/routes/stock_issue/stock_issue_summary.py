@@ -464,12 +464,12 @@ def cancel_stock_issue():
             }
             for key in selected_keys
         ]
-        # if issue.IssSprayExecutionId is not None and (
-        #     issue.SprExecFinalised is None or bool(issue.SprExecFinalised)):
-        #     return jsonify({
-        #         "success": False,
-        #         "message": "This issue cannot be cancelled because its linked execution is finalised or unavailable."
-        #     }), 409
+        if issue.IssSprayExecutionId is not None and (
+            issue.SprExecFinalised is None or bool(issue.SprExecFinalised)):
+            return jsonify({
+                "success": False,
+                "message": "This issue cannot be cancelled because its linked execution is finalised or unavailable."
+            }), 409
         if not issue.AutoIndex and issue.IssInvoiceNo:
             return jsonify({
                 "success": False,
