@@ -192,18 +192,21 @@ def list_ibts():
                      MIN(S.FromWhseLink) FromWhseLink,
                      MIN(S.ToWhseLink) ToWhseLink,
                      COUNT(DISTINCT S.IDWhseIBTLines) LineCount,
-                     H.IBTRequestTimeStamp
+                     H.IBTRequestTimeStamp,
+                     H.IBTApprovalTimeStamp
               FROM stk._uvIBTSummary S
                   LEFT JOIN stk.IBT H on H.IBTNo = S.cIBTNumber
                   Where S.FromWhseLink in ({placeholders}) or S.ToWhseLink in ({placeholders})
-              GROUP BY H.IdIBT, S.cIBTNumber, H.IBTWorkflowStatus, H.IBTRequestTimeStamp
+              GROUP BY H.IdIBT, S.cIBTNumber, H.IBTWorkflowStatus,
+                       H.IBTRequestTimeStamp, H.IBTApprovalTimeStamp
             ORDER BY H.IBTRequestTimeStamp DESC, S.cIBTNumber DESC
         """, warehouses + warehouses)
         rows = [{"id": row.IdIBT, "number": row.IBTNo, "status": row.IBTWorkflowStatus,
             "warehouse_from": row.FromWhseName, "warehouse_to": row.ToWhseName,
             "warehouse_from_id": row.FromWhseLink, "warehouse_to_id": row.ToWhseLink,
                 "line_count": row.LineCount,
-                "request_timestamp": row.IBTRequestTimeStamp}
+                "request_timestamp": row.IBTRequestTimeStamp,
+                "approval_timestamp": row.IBTApprovalTimeStamp}
                 for row in cursor.fetchall()]
         for row in rows:
             row["id"] = _ensure_local_ibt(cursor, row["number"])

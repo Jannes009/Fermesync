@@ -257,7 +257,7 @@ function setFilterOptions(select, values, allLabel) {
 
 function renderExecutions(records) {
   const rows = (records || []).map(record => record.detail).filter(Boolean);
-  rows.sort((left, right) => (right.date || '').localeCompare(left.date || '') || Number(right.id) - Number(left.id));
+  rows.sort((left, right) => (left.date || '').localeCompare(right.date || '') || Number(left.id) - Number(right.id));
   executionTableBody.replaceChildren();
   if (!rows.length) {
     const emptyRow = document.createElement('tr');

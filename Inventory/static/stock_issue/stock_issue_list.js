@@ -62,7 +62,7 @@ function renderIssues(issues) {
 
   for (const issue of issues) {
         const row = document.createElement("tr");
-        const issueDate = issue.IssueTimeStamp ? new Date(issue.IssueTimeStamp).toLocaleString() : "—";
+        const issueDate = formatIssueAge(issue.IssueTimeStamp);
         const fields = [
                 issue.IssueNo || `#${issue.IssueId}`,
                 issueDate,
@@ -126,6 +126,27 @@ function escapeIssueText(value) {
     return element.innerHTML;
 }
 
+function formatIssueAge(value) {
+    if (!value) return "—";
+    const issueDate = new Date(value);
+    if (Number.isNaN(issueDate.getTime())) return "—";
+
+    const today = new Date();
+    const todayUtc = Date.UTC(today.getFullYear(), today.getMonth(), today.getDate());
+    const issueUtc = Date.UTC(issueDate.getFullYear(), issueDate.getMonth(), issueDate.getDate());
+    const daysAgo = Math.round((todayUtc - issueUtc) / 86400000);
+    if (daysAgo === 0) return "Today";
+    if (daysAgo < 0) return `In ${Math.abs(daysAgo)} day${daysAgo === -1 ? "" : "s"}`;
+    return `${daysAgo} day${daysAgo === 1 ? "" : "s"} ago`;
+}
+
+function formatIssueCalendarDate(value) {
+    if (!value) return "Unknown date";
+    const date = new Date(value);
+    if (Number.isNaN(date.getTime())) return "Unknown date";
+    return `${String(date.getDate()).padStart(2, "0")}/${String(date.getMonth() + 1).padStart(2, "0")}/${date.getFullYear()}`;
+}
+
 async function cancelStockIssue(issueId, sourceButton = null, hasEvolutionReference = true) {
     if (cancellationInProgress) return;
     let countAdjustments = [];
@@ -176,7 +197,7 @@ async function cancelStockIssue(issueId, sourceButton = null, hasEvolutionRefere
         const rows = Array.from(productsByLink.values()).map(product => {
             const unit = product.uom_code ? ` ${escapeIssueText(product.uom_code)}` : "";
             const countEntries = product.counts.map(adjustment => {
-                const countDate = adjustment.count_date ? new Date(adjustment.count_date).toLocaleString() : "Unknown date";
+                const countDate = formatIssueCalendarDate(adjustment.count_date);
                 return `<span class="count-adjustment-count">
                     <span class="count-adjustment-date">Count #${Number(adjustment.count_id)} · ${escapeIssueText(countDate)}</span>
                     <strong>${formatAdjustment(Number(adjustment.adjustment_qty))}${unit}</strong>

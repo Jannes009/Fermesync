@@ -98,7 +98,7 @@
   <div class="print-slip-title"><h1 id="print-slip-number"></h1></div>
   <img class="print-slip-uitdraai" src="{{ url_for('static', filename='icons/UitdraaiLogo.jpeg') }}" alt="Uitdraai">
 </div>
-<div class="detail-shell"><div class="detail-head"><h1 id="title">IBT Detail</h1><div class="detail-head-actions"><button id="print-btn" class="detail-btn" type="button" hidden><i class="fas fa-print" aria-hidden="true"></i> Print picking slip</button><a class="detail-btn secondary" href="/inventory/SDK/IBT">Back</a></div></div><div id="message" class="detail-panel muted">Loading...</div><div id="detail" hidden><div class="detail-panel"><div class="detail-grid"><div><span class="detail-label">From</span><span id="from" class="detail-value"></span></div><div><span class="detail-label">To</span><span id="to" class="detail-value"></span></div><div><span class="detail-label">Status</span><span id="status" class="detail-value"></span></div><div><span class="detail-label">Requested</span><span id="requested" class="detail-value"></span></div></div></div><div class="detail-panel"><h2>Products</h2><div id="lines"></div></div><div id="history-panel" class="detail-panel"><h2>History</h2><div id="history" class="detail-grid"></div></div><div id="actions" class="detail-actions"></div></div></div>
+<div class="detail-shell"><div class="detail-head"><h1 id="title">IBT Detail</h1><div class="detail-head-actions"><button id="print-btn" class="detail-btn" type="button" hidden><i class="fas fa-print" aria-hidden="true"></i> Print picking slip</button><a class="detail-btn secondary" href="/inventory/SDK/IBT">Back</a></div></div><div id="message" class="detail-panel muted">Loading...</div><div id="detail" hidden><div class="detail-panel"><div class="detail-grid"><div><span class="detail-label">From</span><span id="from" class="detail-value"></span></div><div><span class="detail-label">To</span><span id="to" class="detail-value"></span></div><div><span class="detail-label">Status</span><span id="status" class="detail-value"></span></div><div><span class="detail-label">Approved</span><span id="approved" class="detail-value"></span></div></div></div><div class="detail-panel"><h2>Products</h2><div id="lines"></div></div><div id="history-panel" class="detail-panel"><h2>History</h2><div id="history" class="detail-grid"></div></div><div id="actions" class="detail-actions"></div></div></div>
 <script>
 window.IBT_PERMISSIONS={{ permissions|tojson }};
 window.IBT_WAREHOUSES={{ current_user.warehouses|tojson }};
@@ -111,7 +111,13 @@ window.IBT_WAREHOUSES={{ current_user.warehouses|tojson }};
   const allowed = name => permissions.includes(`IBT_${name}`);
   const message = document.getElementById('message');
   const esc = value => String(value ?? '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
-  const date = value => value ? new Date(value).toLocaleString() : '—';
+  const date = (value, includeTime = false) => {
+    if (!value) return '—';
+    const parsed = new Date(value);
+    if (Number.isNaN(parsed.getTime())) return '—';
+    const formatted = `${String(parsed.getDate()).padStart(2, '0')}/${String(parsed.getMonth() + 1).padStart(2, '0')}/${parsed.getFullYear()}`;
+    return includeTime ? `${formatted} ${String(parsed.getHours()).padStart(2, '0')}:${String(parsed.getMinutes()).padStart(2, '0')}` : formatted;
+  };
   const load = async () => {
     if (!id) throw new Error('No IBT was selected.');
     const response = await request(`/inventory/ibt/detail/${encodeURIComponent(id)}`);
@@ -125,7 +131,7 @@ window.IBT_WAREHOUSES={{ current_user.warehouses|tojson }};
     document.getElementById('from').textContent = ibt.warehouse_from.name;
     document.getElementById('to').textContent = ibt.warehouse_to.name;
     document.getElementById('status').textContent = ibt.status;
-    document.getElementById('requested').textContent = date(ibt.request_timestamp);
+    document.getElementById('approved').textContent = date(ibt.approval_timestamp);
     const printButton = document.getElementById('print-btn');
     printButton.hidden = ibt.status !== 'APPROVED' && ibt.status !== 'ISSUED';
     printButton.addEventListener('click', () => window.print());
@@ -139,7 +145,7 @@ window.IBT_WAREHOUSES={{ current_user.warehouses|tojson }};
     ].filter(event => event.timestamp).sort((left, right) => new Date(left.timestamp) - new Date(right.timestamp));
     document.getElementById('history').className = 'ibt-history-list';
     document.getElementById('history').innerHTML = historyEvents.length
-      ? historyEvents.map(event => `<li class="ibt-history-event"><time datetime="${esc(new Date(event.timestamp).toISOString())}">${esc(date(event.timestamp))}</time><div><strong>${esc(event.label)}</strong>${event.user ? ` by ${esc(event.user)}` : ''}${event.reason ? `<span class="ibt-history-reason">${esc(event.reason)}</span>` : ''}</div></li>`).join('')
+      ? historyEvents.map(event => `<li class="ibt-history-event"><time datetime="${esc(new Date(event.timestamp).toISOString())}">${esc(date(event.timestamp, true))}</time><div><strong>${esc(event.label)}</strong>${event.user ? ` by ${esc(event.user)}` : ''}${event.reason ? `<span class="ibt-history-reason">${esc(event.reason)}</span>` : ''}</div></li>`).join('')
       : '<li class="muted">No recorded activity.</li>';
     const actions = [];
     const reviewUrl = `/inventory/SDK/IBT_issue?ibt_no=${encodeURIComponent(ibt.number)}&step=3`;

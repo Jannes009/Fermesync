@@ -44,7 +44,7 @@ async function loadIbtSummary() {
         <th>Status</th>
         <th>Route</th>
         <th>Lines</th>
-        <th>Requested</th>
+        <th>Approved</th>
         <th>Action</th>
         </tr>
     </thead>
@@ -53,7 +53,7 @@ async function loadIbtSummary() {
         <td>${esc(ibt.number)}</td>
         <td><span class="ibt-status status-${esc(ibt.status)}">${esc(ibtStatusLabels[ibt.status] || ibt.status)}</span></td>
         <td>${esc(ibt.warehouse_from || '—')} → ${esc(ibt.warehouse_to || '—')}</td>
-        <td>${ibt.line_count}</td><td>${formatIbtDate(ibt.request_timestamp)}</td>
+        <td>${ibt.line_count}</td><td>${formatIbtAge(ibt.approval_timestamp)}</td>
         <td>${actionMarkup(ibt)}</td>
         </tr>`).join('')}
     </tbody>
@@ -71,8 +71,18 @@ function ibtNumberForRow(row) {
     return row.dataset.number;
 }
 
-function formatIbtDate(value) {
-    return value ? new Date(value).toLocaleString() : '—';
+function formatIbtAge(value) {
+    if (!value) return 'Not approved';
+    const approved = new Date(value);
+    if (Number.isNaN(approved.getTime())) return '—';
+
+    const today = new Date();
+    const todayUtc = Date.UTC(today.getFullYear(), today.getMonth(), today.getDate());
+    const approvedUtc = Date.UTC(approved.getFullYear(), approved.getMonth(), approved.getDate());
+    const daysAgo = Math.round((todayUtc - approvedUtc) / 86400000);
+    if (daysAgo === 0) return 'Today';
+    if (daysAgo < 0) return `In ${Math.abs(daysAgo)} day${daysAgo === -1 ? '' : 's'}`;
+    return `${daysAgo} day${daysAgo === 1 ? '' : 's'} ago`;
 }
 
 document.addEventListener('DOMContentLoaded', () => {
