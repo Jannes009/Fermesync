@@ -30,6 +30,23 @@ def create_stock_count():
     conn = create_db_connection()
     cursor = conn.cursor()
     try:
+        cursor.execute("""
+            SELECT TOP 1 InvCountHeaderId
+            FROM [stk].InventoryCountHeaders WITH (UPDLOCK, HOLDLOCK)
+            WHERE InvCountWhseId = ?
+              AND InvCountCatId = ?
+              AND InvCountStatus = 'DRAFT'
+            ORDER BY InvCountTimeCreated DESC, InvCountHeaderId DESC
+        """, (whse_id, cat_id))
+        existing_draft = cursor.fetchone()
+        if existing_draft:
+            conn.rollback()
+            return jsonify({
+                "success": False,
+                "draft_exists": True,
+                "draft_id": existing_draft.InvCountHeaderId,
+                "message": "A draft stock count already exists for this shelf."
+            }), 409
 
         cat_name = category_link_to_name(cat_id, cursor)
         whse_code = warehouse_link_to_code(whse_id, cursor)

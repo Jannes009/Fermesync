@@ -91,7 +91,8 @@ def get_shelf_detail_data(warehouse_id, category_id):
         cursor.execute("""
             SELECT
                 h.InvCountHeaderId,
-                CONVERT(date, h.InvCountTimeFinalised) AS CountDate,
+                CONVERT(date, COALESCE(h.InvCountTimeFinalised, h.InvCountTimeCreated)) AS CountDate,
+                h.InvCountStatus,
                 h.InvCountUserName,
                 COUNT(l.InvCountLineHeaderId) AS TotalProducts,
                 COUNT(l.InvCountLineQtyCounted) AS ProductsCounted,
@@ -106,9 +107,10 @@ def get_shelf_detail_data(warehouse_id, category_id):
             LEFT JOIN [stk].InventoryCountLines l ON l.InvCountLineHeaderId = h.InvCountHeaderId
             WHERE h.InvCountWhseId = ?
               AND h.InvCountCatId = ?
-              AND h.InvCountStatus = 'FINALISED'
-            GROUP BY h.InvCountHeaderId, h.InvCountTimeFinalised, h.InvCountUserName
-            ORDER BY h.InvCountTimeFinalised DESC
+                            AND h.InvCountStatus IN ('FINALISED', 'DRAFT', 'DISCARDED')
+                        GROUP BY h.InvCountHeaderId, h.InvCountTimeFinalised, h.InvCountTimeCreated,
+                                         h.InvCountStatus, h.InvCountUserName
+                        ORDER BY COALESCE(h.InvCountTimeFinalised, h.InvCountTimeCreated) DESC
         """, (warehouse_id, category_id))
 
         history = []
@@ -116,6 +118,7 @@ def get_shelf_detail_data(warehouse_id, category_id):
             history.append({
                 "headerId": r.InvCountHeaderId,
                 "date": format_date_value(r.CountDate),
+                "status": r.InvCountStatus,
                 "user": r.InvCountUserName,
                 "productsCounted": r.ProductsCounted,
                 "totalProducts": r.TotalProducts,
@@ -427,7 +430,8 @@ def stock_count_detail(header_id):
                 H.InvCountCatName,
                 H.InvCountUserName,
                 H.InvCountTimeCreated,
-                H.InvCountTimeFinalised
+                H.InvCountTimeFinalised,
+                H.InvCountStatus
             FROM [stk].InventoryCountHeaders H
             LEFT JOIN cmn._uvWarehouses W ON W.WhseLink = H.InvCountWhseId
             WHERE H.InvCountHeaderId = ?
@@ -469,7 +473,9 @@ def stock_count_detail(header_id):
             "shelf": h[1],
             "counted_by": h[2],
             "start_time": format_datetime(h[3]),
-            "end_time": format_datetime(h[4]),
+            "end_time": format_datetime(h[4]) if h[5] == "FINALISED" else "N/A",
+            "discarded_at": format_datetime(h[4]) if h[5] == "DISCARDED" else "N/A",
+            "status": h[5],
             "lines": lines
         })
     except Exception as e:

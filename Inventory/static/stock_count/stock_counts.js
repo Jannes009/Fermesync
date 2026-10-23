@@ -714,8 +714,9 @@ async function openModal(headerId) {
             title: `${data.warehouse} - ${data.shelf}`,
             warehouse: data.warehouse,
             username: data.counted_by || "N/A",
+            status: data.status || "N/A",
             start_time: data.start_time || "N/A",
-            end_time: data.end_time || "N/A",
+            end_time: data.status === "DISCARDED" ? data.discarded_at || "N/A" : data.end_time || "N/A",
             lines: Array.isArray(data.lines) ? data.lines : []
         };
 
@@ -724,8 +725,15 @@ async function openModal(headerId) {
         warehouseIcon.setAttribute("aria-hidden", "true");
         modalTitle.replaceChildren(warehouseIcon, document.createTextNode(` ${window.currentStockCountDocument.title}`));
         document.getElementById("modalUsername").textContent = window.currentStockCountDocument.username;
+        const modalStatus = document.getElementById("modalStatus");
+        if (modalStatus) {
+            modalStatus.textContent = window.currentStockCountDocument.status;
+            modalStatus.className = `count-status count-status-${String(data.status || "").toLowerCase()}`;
+        }
         document.getElementById("modalStartTime").textContent = window.currentStockCountDocument.start_time;
         document.getElementById("modalEndTime").textContent = window.currentStockCountDocument.end_time;
+        const modalEndTimeLabel = document.getElementById("modalEndTimeLabel");
+        if (modalEndTimeLabel) modalEndTimeLabel.textContent = data.status === "DISCARDED" ? "Discarded at" : "End time";
         modalLines.innerHTML = "";
 
         if (data.lines.length === 0) {
@@ -736,13 +744,16 @@ async function openModal(headerId) {
             `);
         } else {
             data.lines.forEach(line => {
-                const variance = line.variance ?? 0;
+                const isCounted = line.counted !== null && line.counted !== undefined;
+                const variance = Number(line.variance) || 0;
                 const systemQty = Number(line.system) || 0;
                 const variancePercent = systemQty === 0 ? 0 : (Math.abs(variance) / systemQty) * 100;
-                let varianceText = "<span style=\"color:#10b981;\"><i class=\"fas fa-check\"></i> OK</span>";
-                let rowClass = "ok";
+                let varianceText = isCounted
+                    ? "<span style=\"color:#10b981;\"><i class=\"fas fa-check\"></i> OK</span>"
+                    : "<span style=\"color:#6b7280;\">Not counted</span>";
+                let rowClass = isCounted ? "ok" : "pending";
 
-                if (variance !== 0) {
+                if (isCounted && variance !== 0) {
                     if (variancePercent < 5) {
                         varianceText = `<span style="color:#b45309;"><i class="fas fa-exclamation"></i> ${variance} (${variancePercent.toFixed(1)}%)</span>`;
                         rowClass = "warn";

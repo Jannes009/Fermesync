@@ -352,19 +352,44 @@ function updateStep1NextButton() {
 
 /* ====== Start Counting ====== */
 async function onStartCounting() {
-  const res = await request("/inventory/create_stock_count", {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({
-      warehouse: selectedWarehouse,
-      category: selectedCategory
-    })
-  });
+    const createSession = async () => {
+        const response = await request("/inventory/create_stock_count", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+                warehouse: selectedWarehouse,
+                category: selectedCategory
+            })
+        });
+        return { response, data: await response.json() };
+    };
 
-  const data = await res.json();
-  if (!data.success) {
-    Swal.fire("Error", data.message || "Failed to create stock count session", "error");
-    return;
+    let { response, data } = await createSession();
+    if (response.status === 409 && data.draft_exists && data.draft_id) {
+        const confirmation = await Swal.fire({
+            icon: "warning",
+            title: "Draft stock count exists",
+            text: "Discard the existing draft and start a new count for this shelf?",
+            showCancelButton: true,
+            confirmButtonText: "Yes",
+            cancelButtonText: "Cancel",
+            confirmButtonColor: "#b42318"
+        });
+        if (!confirmation.isConfirmed) return;
+
+        const discardResponse = await request(`/inventory/stock-counts/discard/${data.draft_id}`, { method: "POST" });
+        const discardData = await discardResponse.json();
+        if (!discardResponse.ok || !discardData.success) {
+            await Swal.fire("Unable to discard", discardData.message || "The existing draft could not be discarded.", "error");
+            return;
+        }
+
+        ({ response, data } = await createSession());
+    }
+
+    if (!response.ok || !data.success) {
+        await Swal.fire("Error", data.message || "Failed to create stock count session", "error");
+        return;
   }
   sessionId = data.session_id;
     setCountLocation(data.warehouse_name, data.shelf_name);
