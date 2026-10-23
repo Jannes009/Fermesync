@@ -95,10 +95,12 @@ def spray_executions_details():
                     SELECT EXE.IdSprExec, EXE.SprExecDate, EXE.SprExecFinalised,
                            EXE.SprExecModifiedAt, People.PersonName,
                            HEA.IdSprayH, HEA.SprayHNo, HEA.SprayHDescription,
-                           HEA.SprayHWeek, SP.SprayPBlockNo
+                           HEA.SprayHWeek, SP.SprayPBlockNo, FRM.FarmName
                     FROM agr.SprayExecution EXE
                     JOIN agr.SprayHeader HEA ON HEA.SprayHExecutionId = EXE.IdSprExec
                     JOIN agr.SprayProjects SP ON SP.SprayPSprayId = HEA.IdSprayH
+                    LEFT JOIN agr.ProjectAttributes PA ON PA.ProjAttrProjectId = SP.SprayPProjectId
+                    LEFT JOIN agr.Farm FRM ON FRM.IdFarm = PA.ProjAttrFarmId
                     LEFT JOIN agr.People People ON People.IdPerson = EXE.SprExecResponsiblePerson
                     WHERE EXE.IdSprExec IN ({execution_placeholders})
                       AND HEA.SprayHWhseId IN ({warehouse_placeholders})
@@ -110,13 +112,14 @@ def spray_executions_details():
                         "modified_at": row.SprExecModifiedAt.isoformat() if row.SprExecModifiedAt else None,
                         "responsible_person": row.PersonName or '-',
                         "finalised": bool(row.SprExecFinalised),
-                        "descriptions": [], "weeks": [], "blocks": [], "spray_nos": [],
+                        "descriptions": [], "weeks": [], "blocks": [], "spray_nos": [], "farms": [],
                     })
                     for key, value in (
                         ("descriptions", row.SprayHDescription),
                         ("weeks", row.SprayHWeek),
                         ("blocks", row.SprayPBlockNo),
                         ("spray_nos", row.SprayHNo),
+                        ("farms", row.FarmName),
                     ):
                         value = str(value).strip() if value is not None else ''
                         if value and value not in execution[key]:
@@ -167,6 +170,7 @@ def spray_executions_details():
             blocks = execution["blocks"]
             weeks = execution["weeks"]
             spray_nos = execution["spray_nos"]
+            farms = execution["farms"]
             items.append({
                 "id": execution["id"],
                 "modified_at": execution["modified_at"],
@@ -177,6 +181,7 @@ def spray_executions_details():
                 "week_text": ', '.join(weeks) if weeks else '-',
                 "description": ', '.join(descriptions) if descriptions else '-',
                 "spray_no": ', '.join(spray_nos) if spray_nos else '-',
+                "farm_text": ', '.join(farms) if farms else '',
                 "qty_percent_diff": execution.get("qty_percent_diff", "N/A"),
                 "recommendations_count": len(descriptions),
             })

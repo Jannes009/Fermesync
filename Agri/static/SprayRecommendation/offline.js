@@ -471,7 +471,8 @@ async function refreshExecutions(force = false) {
     const changedIds = metadata
         .filter(item => {
             const cached = existingById.get(Number(item.id));
-            return !cached?.detail || String(cached.modified_at || '') !== String(item.modified_at || '');
+            return !cached?.detail || !Object.prototype.hasOwnProperty.call(cached.detail, 'farm_text') ||
+                String(cached.modified_at || '') !== String(item.modified_at || '');
         })
         .map(item => Number(item.id));
 

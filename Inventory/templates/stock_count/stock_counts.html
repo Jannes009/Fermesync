@@ -9,14 +9,13 @@ body {
     font-size: .95rem;
 }
 
-.main-content {
-    padding: 2rem 0;
-}
-
 .container-wide {
-    max-width: 1200px;
+    max-width: 1100px;
     margin: auto;
-    padding: 0 1rem;
+    padding: 1rem 1rem;
+      background:var(--container-bg);
+  border-radius: 8px;
+  box-shadow: 0 1px 6px rgba(44, 62, 80, 0.08);
 }
 
 .page-header {
@@ -41,7 +40,7 @@ body {
     align-items: center;
     margin-bottom: 1.25rem;
     padding: 1rem 1.1rem;
-    background: var(--container-bg);
+    background: var(--card-bg);
     border-radius: 12px;
     box-shadow: 0 4px 18px rgba(0,0,0,.08);
 }
@@ -122,7 +121,7 @@ body {
 }
 
 .incomplete-alert {
-    background: var(--container-bg);
+    background: var(--card-bg);
     border-radius: 12px;
     box-shadow: 0 4px 18px rgba(0,0,0,.08);
     padding: 1rem 1.15rem;
@@ -205,7 +204,7 @@ body {
 }
 
 .warehouse-section {
-    background: var(--container-bg);
+    background: var(--card-bg);
     border-radius: 12px;
     box-shadow: 0 4px 18px rgba(0,0,0,.08);
     padding: 0;
@@ -237,7 +236,7 @@ body {
     width: 100%;
     border: none;
     padding: .9rem 1rem;
-    background: rgba(0,0,0,.02);
+    background: var(--card-bg);
     color: inherit;
     text-align: left;
     cursor: pointer;
@@ -604,7 +603,6 @@ body {
 
 </style>
 
-<div class="main-content with-fixed-taskbar">
     <div class="container-wide">
         <div class="page-header">
             <h1><i class="fas fa-box-check"></i> Stock Counts</h1>
@@ -634,91 +632,5 @@ body {
 
         <div id="warehouseOverview"></div>
     </div>
-</div>
-
-<div id="shelfModal" class="modal hidden">
-    <div class="modal-content" role="dialog" aria-modal="true" aria-labelledby="shelfModalTitle">
-        <div class="details-modal-header">
-            <h3 id="shelfModalTitle">Shelf Details</h3>
-            <button class="btn-action-small secondary" onclick="closeShelfModal()">
-                <i class="fas fa-times"></i> Close
-            </button>
-        </div>
-
-        <div class="details-modal-body">
-            <div class="details-meta">
-                <div>
-                    <span>Last counted</span>
-                    <strong id="shelfLastCount">N/A</strong>
-                </div>
-                <div>
-                    <span>Next due</span>
-                    <strong id="shelfNextDue">N/A</strong>
-                </div>
-                <div>
-                    <span>Status</span>
-                    <strong id="shelfStatus" class="status-pill status-never">Never counted</strong>
-                </div>
-            </div>
-
-            <div class="shelf-actions">
-                <button id="shelfStartCountButton" class="btn-action-small">
-                    <i class="fas fa-plus"></i> Start Stock Count
-                </button>
-            </div>
-
-            <h4>Count history</h4>
-            <div class="history-table-wrap">
-                <table class="history-table">
-                    <thead>
-                        <tr>
-                            <th>Date</th>
-                            <th>User</th>
-                            <th>Products</th>
-                            <th>Avg variance</th>
-                        </tr>
-                    </thead>
-                    <tbody id="shelfHistoryTableBody"></tbody>
-                </table>
-            </div>
-        </div>
-    </div>
-</div>
-
-<div id="countModal" class="modal hidden">
-    <div class="modal-content" role="dialog" aria-modal="true" aria-labelledby="modalTitle">
-        <div class="details-modal-header">
-            <h3 id="modalTitle">Stock Count Details</h3>
-        </div>
-
-        <div class="details-modal-body">
-            <div class="details-meta" aria-label="Stock count summary">
-                <div><span>Username</span><strong id="modalUsername">N/A</strong></div>
-                <div><span>Start time</span><strong id="modalStartTime">N/A</strong></div>
-                <div><span>End time</span><strong id="modalEndTime">N/A</strong></div>
-            </div>
-            <div class="history-table-wrap">
-                <table class="table history-table">
-                    <thead>
-                        <tr>
-                            <th>Description</th>
-                            <th>System Qty</th>
-                            <th>Counted Qty</th>
-                            <th>Variance</th>
-                        </tr>
-                    </thead>
-                    <tbody id="modalLines"></tbody>
-                </table>
-            </div>
-        </div>
-
-        <div class="details-modal-footer">
-            <button onclick="closeModal()" class="btn-action-small secondary">
-                <i class="fas fa-times"></i> Close
-            </button>
-        </div>
-    </div>
-</div>
-
 <script src="{{ url_for('inventory.static', filename='stock_count/stock_counts.js') }}?{{ filemtime('inventory', 'stock_count/stock_counts.js') }}"></script>
 {% endblock %}

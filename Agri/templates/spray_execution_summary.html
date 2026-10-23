@@ -126,6 +126,12 @@
             {% endfor %}
           </select>
         </div>
+        <div class="filter-field">
+          <label for="farmFilter">Farm</label>
+          <select id="farmFilter">
+            <option value="">All farms</option>
+          </select>
+        </div>
       </div>
 
       <div class="toggle-wrap">
@@ -168,6 +174,7 @@ window.sprayOfflineReady = new Promise(resolve => { window.resolveSprayOfflineRe
 <script>
 const weekFilter = document.getElementById('weekFilter');
 const blockFilter = document.getElementById('blockFilter');
+const farmFilter = document.getElementById('farmFilter');
 const executionTableBody = document.getElementById('executionTableBody');
 const finalisedOptions = document.querySelectorAll('input[name="finalisedFilter"]');
 const sortCollator = new Intl.Collator(undefined, { numeric: true, sensitivity: 'base' });
@@ -222,17 +229,20 @@ function updateToggleSelection() {
 function applyExecutionFilters() {
   const weekValue = weekFilter ? weekFilter.value : '';
   const blockValue = blockFilter ? blockFilter.value : '';
+  const farmValue = farmFilter ? farmFilter.value : '';
   const hideFinalised = document.querySelector('input[name="finalisedFilter"][value="hide"]')?.checked ?? true;
 
   document.querySelectorAll('.execution-row').forEach(row => {
     const rowWeek = (row.dataset.week || '').toLowerCase();
     const rowBlock = (row.dataset.block || '').toLowerCase();
+    const rowFarms = (row.dataset.farm || '').split(',').map(value => value.trim().toLowerCase());
     const rowFinalised = row.dataset.finalised === 'true';
     const matchesWeek = !weekValue || rowWeek.includes(weekValue.toLowerCase());
     const matchesBlock = !blockValue || rowBlock.includes(blockValue.toLowerCase());
+    const matchesFarm = !farmValue || rowFarms.includes(farmValue.toLowerCase());
     const matchesFinalised = !hideFinalised || !rowFinalised;
 
-    row.style.display = matchesWeek && matchesBlock && matchesFinalised ? '' : 'none';
+    row.style.display = matchesWeek && matchesBlock && matchesFarm && matchesFinalised ? '' : 'none';
   });
 }
 
@@ -276,6 +286,7 @@ function renderExecutions(records) {
     row.dataset.finalised = String(Boolean(execution.finalised));
     row.dataset.week = execution.week_text || '-';
     row.dataset.block = execution.block_text || '-';
+    row.dataset.farm = execution.farm_text || '';
     row.dataset.description = execution.description || '-';
     row.insertCell().textContent = execution.spray_no || '-';
     const descriptionCell = row.insertCell();
@@ -298,6 +309,7 @@ function renderExecutions(records) {
 
   setFilterOptions(weekFilter, rows.flatMap(row => (row.week_text || '').split(', ').filter(value => value && value !== '-')), 'All weeks');
   setFilterOptions(blockFilter, rows.flatMap(row => (row.block_text || '').split(', ').filter(value => value && value !== '-')), 'All blocks');
+  setFilterOptions(farmFilter, rows.flatMap(row => (row.farm_text || '').split(', ').filter(Boolean)), 'All farms');
   attachExecutionHandlers();
   applyExecutionFilters();
 }
@@ -332,6 +344,9 @@ if (weekFilter) {
 
 if (blockFilter) {
   blockFilter.addEventListener('change', applyExecutionFilters);
+}
+if (farmFilter) {
+  farmFilter.addEventListener('change', applyExecutionFilters);
 }
 
 updateToggleSelection();

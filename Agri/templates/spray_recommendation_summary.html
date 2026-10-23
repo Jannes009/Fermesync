@@ -994,6 +994,12 @@
           <option value="">All blocks</option>
         </select>
       </div>
+      <div class="filter-field">
+        <label for="filterFarm">Farm</label>
+        <select id="filterFarm">
+          <option value="">All farms</option>
+        </select>
+      </div>
     </div>
 
     <div class="toolbar-toggle">
@@ -1077,6 +1083,7 @@ function showRecommendationsLoading() {
 document.addEventListener('DOMContentLoaded', () => {
     const weekSelect = document.getElementById('filterWeek');
     const blockSelect = document.getElementById('filterBlock');
+    const farmSelect = document.getElementById('filterFarm');
     const recommendationFinalisedOptions = document.querySelectorAll('input[name="recommendationFinalisedFilter"]');
     const createButton = getCreateButton();
 
@@ -1085,6 +1092,9 @@ document.addEventListener('DOMContentLoaded', () => {
     }
     if (blockSelect) {
         blockSelect.addEventListener('change', renderRecommendationsTable);
+    }
+    if (farmSelect) {
+      farmSelect.addEventListener('change', renderRecommendationsTable);
     }
     if (recommendationFinalisedOptions.length) {
         recommendationFinalisedOptions.forEach(option => {
@@ -1190,8 +1200,9 @@ document.addEventListener('DOMContentLoaded', () => {
 function populateFilters(data) {
     const weekSelect = document.getElementById('filterWeek');
     const blockSelect = document.getElementById('filterBlock');
+  const farmSelect = document.getElementById('filterFarm');
 
-    if (!weekSelect || !blockSelect) {
+  if (!weekSelect || !blockSelect || !farmSelect) {
         return;
     }
 
@@ -1202,12 +1213,19 @@ function populateFilters(data) {
         .split(',')
         .map(value => value.trim())
         .filter(Boolean)))).sort();
+      const farms = Array.from(new Set(data
+        .flatMap(item => (item.farm_name || '').split(',').map(value => value.trim()))
+        .filter(Boolean))).sort();
 
-    weekSelect.innerHTML = '<option value="">All weeks</option>' + weeks.map(week => `
-      <option value="${week}">${week}</option>`).join('');
-
-    blockSelect.innerHTML = '<option value="">All blocks</option>' + blocks.map(block => `
-        <option value="${block}">${block}</option>`).join('');
+      const updateOptions = (select, label, values) => {
+        const selected = select.value;
+        select.replaceChildren(new Option(label, ''));
+        values.forEach(value => select.appendChild(new Option(value, value)));
+        if (values.includes(selected)) select.value = selected;
+      };
+      updateOptions(weekSelect, 'All weeks', weeks);
+      updateOptions(blockSelect, 'All blocks', blocks);
+      updateOptions(farmSelect, 'All farms', farms);
 }
 
 function updateRecommendationFinalisedToggleSelection() {
@@ -1222,6 +1240,7 @@ function updateRecommendationFinalisedToggleSelection() {
 function applyFilters() {
     const selectedWeek = document.getElementById('filterWeek')?.value || '';
     const selectedBlock = document.getElementById('filterBlock')?.value || '';
+    const selectedFarm = document.getElementById('filterFarm')?.value || '';
     const hideFinalised = document.querySelector('input[name="recommendationFinalisedFilter"][value="hide"]')?.checked ?? true;
 
     return recommendations.filter(item => {
@@ -1240,6 +1259,10 @@ function applyFilters() {
         const matchesBlock = !selectedBlock || itemBlocks.includes(selectedBlock);
         if (!matchesBlock) {
             return false;
+        }
+        const itemFarms = (item.farm_name || '').split(',').map(value => value.trim()).filter(Boolean);
+        if (selectedFarm && !itemFarms.includes(selectedFarm)) {
+          return false;
         }
 
         return true;
