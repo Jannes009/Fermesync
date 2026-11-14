@@ -131,15 +131,16 @@ def new_product():
         try:
             cur.execute("""
                 INSERT INTO agr.ChemStock
-                    (ChemStockCode, ChemStockName,
+                    (ChemStockCode, ChemStockName, ChemStockRegNumber,
                      ChemStockActiveIngrId, ChemStockGroupId,
                      ChemStockColourCodeId, ChemStockStockingUnitId,
                      ChemStockPurchasingUnitId)
                 OUTPUT INSERTED.IdChemStock
-                VALUES (?, ?, ?, ?, ?, ?, ?)
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?)
             """, (
                 product_code,
                 brand_name,
+                (extract_value(data.get('registration_number')) or '').strip(),
                 active_ing_id,
                 group_id,
                 colour_code_id,
@@ -150,20 +151,18 @@ def new_product():
 
             for crop_entry in chemstockcrop_payload:
                 crop_id = extract_value(crop_entry.get('crop'))
-                reg_number = (extract_value(crop_entry.get('registration_number')) or '').strip()
                 withh_period = (extract_value(crop_entry.get('withholding_period')) or '').strip()
                 reg_type = (extract_value(crop_entry.get('type')) or '').strip()
                 func = (extract_value(crop_entry.get('func')) or '').strip()
 
                 cur.execute("""
                     INSERT INTO agr.ChemStockCrop
-                        (StkCrpChemStockId, StkCrpCropId, StkCrpRegNumber,
+                        (StkCrpChemStockId, StkCrpCropId,
                          StkCrpType, StkCrpWitholdingPeriodDef, StkCrpFunctionDef)
-                    VALUES (?, ?, ?, ?, ?, ?)
+                    VALUES (?, ?, ?, ?, ?)
                 """, (
                     chem_stock_id,
                     crop_id,
-                    reg_number,
                     reg_type,
                     withh_period,
                     func
@@ -508,7 +507,7 @@ def duplicate_search():
                 s.StockCode,
                 s.StockDescription,
                 act.ChemActIngredient,
-                MIN(crp.StkCrpRegNumber) as SampleReg
+                MIN(st.ChemStockRegNumber) as SampleReg
             FROM cmn._uvStockItems s
             JOIN agr.ChemStock st ON st.ChemStockLink = s.StockLink
             LEFT JOIN agr.ChemActiveIngredient act ON act.IdChemAct = st.ChemStockActiveIngrId
@@ -516,7 +515,7 @@ def duplicate_search():
             WHERE LOWER(s.StockDescription) LIKE ?
                OR LOWER(s.StockCode) LIKE ?
                OR LOWER(act.ChemActIngredient) LIKE ?
-               OR LOWER(crp.StkCrpRegNumber) LIKE ?
+               OR LOWER(st.ChemStockRegNumber) LIKE ?
             GROUP BY s.StockLink, s.StockCode, s.StockDescription, act.ChemActIngredient
             ORDER BY s.StockDescription
         """, (search_term, search_term, search_term, search_term))
@@ -539,7 +538,7 @@ def duplicate_search():
                 s.StockCode,
                 s.StockDescription,
                 act.ChemActIngredient,
-                MIN(crp.StkCrpRegNumber) as SampleReg
+                MIN(st.ChemStockRegNumber) as SampleReg
             FROM cmn._uvStockItems s
             JOIN agr.ChemStock st ON st.ChemStockLink = s.StockLink
             JOIN agr.ChemActiveIngredient act ON act.IdChemAct = st.ChemStockActiveIngrId
@@ -634,7 +633,7 @@ def product_details():
     cur = conn.cursor()
 
     cur.execute("""
-        SELECT st.ChemStockLink, st.ChemStockCode, st.ChemStockName, 
+        SELECT st.ChemStockLink, st.ChemStockCode, st.ChemStockName, st.ChemStockRegNumber,
 		act.IdChemAct AS active_ing_id, act.ChemActIngredient, 
 		st.ChemStockGroupId, st.ChemStockColourCodeId,
 		st.ChemStockStockingUnitId, st.ChemStockPurchasingUnitId
@@ -651,12 +650,13 @@ def product_details():
         'stock_link': row[0],
         'product_code': row[1],
         'product_description': row[2],
-        'active_ingredient_id': row[3],
-        'active_ingredient': row[4],
-        'group_id': row[5],
-        'colour_code_id': row[6],
-        'stocking_unit_id': row[7],
-        'purchasing_unit_id': row[8]
+        'registration_number': row[3],
+        'active_ingredient_id': row[4],
+        'active_ingredient': row[5],
+        'group_id': row[6],
+        'colour_code_id': row[7],
+        'stocking_unit_id': row[8],
+        'purchasing_unit_id': row[9]
     }
 
     # suppliers
@@ -678,7 +678,7 @@ def product_details():
 
     # crop registrations
     cur.execute("""
-        SELECT crp.StkCrpCropId, crp.StkCrpRegNumber, crp.StkCrpType, crp.StkCrpWitholdingPeriodDef, crp.StkCrpFunctionDef, c.IdCrop, c.CropCode, c.CropDescription
+        SELECT crp.StkCrpCropId, crp.StkCrpType, crp.StkCrpWitholdingPeriodDef, crp.StkCrpFunctionDef, c.IdCrop, c.CropCode, c.CropDescription
         FROM agr.ChemStock st
         JOIN agr.ChemStockCrop crp ON crp.StkCrpChemStockId = st.IdChemStock
         LEFT JOIN agr.Crop c ON c.IdCrop = crp.StkCrpCropId
@@ -688,13 +688,12 @@ def product_details():
     for r in cur.fetchall():
         regs.append({
             'id': r[0],
-            'registration_number': r[1],
-            'type': r[2],
-            'withholding_period': r[3],
-            'function': r[4],
-            'crop_id': r[5],
-            'crop_code': r[6],
-            'crop_description': r[7]
+            'type': r[1],
+            'withholding_period': r[2],
+            'function': r[3],
+            'crop_id': r[4],
+            'crop_code': r[5],
+            'crop_description': r[6]
         })
 
     close_db_connection(conn)

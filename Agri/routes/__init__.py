@@ -18,6 +18,7 @@ from . import spray_stock_issue
 from . import suggested_order
 from . import suggested_ibt
 from . import product
+from . import budgeting
 from .global_gap.uitdraai import spray_execution_instruction
 from .global_gap.uitdraai import spray_record
 from flask_login import login_required

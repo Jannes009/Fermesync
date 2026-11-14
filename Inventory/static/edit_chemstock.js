@@ -7,6 +7,7 @@ document.addEventListener('DOMContentLoaded', () => {
   const cropRows = document.getElementById('crop-rows');
   const inputActive = document.getElementById('edit-active');
   const inputColour = document.getElementById('edit-colour');
+  const inputRegistration = document.getElementById('edit-registration');
 
   if (!editBtn) return;
 
@@ -48,14 +49,6 @@ document.addEventListener('DOMContentLoaded', () => {
         Array.from(cropSelect.options).forEach(opt => { if (opt.textContent === crop.CropDescription) opt.selected = true; });
       }
     }
-
-    // Reg number
-    const regInput = document.createElement('input');
-    regInput.placeholder = 'Reg number';
-    regInput.style.padding = '8px';
-    regInput.style.border = '1px solid var(--border)';
-    regInput.style.borderRadius = '6px';
-    regInput.value = crop?.RegNumber || '';
 
     // Type select
     const typeSelect = document.createElement('select');
@@ -100,7 +93,6 @@ document.addEventListener('DOMContentLoaded', () => {
     removeBtn.addEventListener('click', () => row.remove());
 
     row.appendChild(field('Crop', cropSelect));
-    row.appendChild(field('Registration No.', regInput));
     row.appendChild(field('Type', typeSelect));
     row.appendChild(field('Function', funcInput));
     row.appendChild(field('Withholding (days)', withholdingInput));
@@ -150,6 +142,7 @@ document.addEventListener('DOMContentLoaded', () => {
         Array.from(inputColour.options).forEach(o => { if (o.textContent === CHEMSTOCK.ColourCode) o.selected = true; });
       }
 
+      inputRegistration.value = CHEMSTOCK.RegNumber || '';
       cropRows.innerHTML = '';
       (CHEMSTOCK.Crops || []).forEach(c => cropRows.appendChild(createCropRow(c)));
       modal.style.display = 'flex';
@@ -237,6 +230,7 @@ document.addEventListener('DOMContentLoaded', () => {
     const payload = {
       active_ingredient: inputActive.value || null,
       colour_code: inputColour.value || null,
+      registration_number: inputRegistration.value.trim() || null,
       crops: []
     };
 
@@ -244,12 +238,11 @@ document.addEventListener('DOMContentLoaded', () => {
       const selects = r.querySelectorAll('select');
       const inputs = r.querySelectorAll('input');
       const cropVal = selects[0]?.value || '';
-      const reg = inputs[0]?.value.trim() || '';
       const type = selects[1]?.value || '';
-      const func = inputs[1]?.value?.trim() || '';
-      const withholding = inputs[2]?.value.trim() || '';
-      if (!cropVal && !reg) continue;
-      payload.crops.push({ crop: cropVal, reg_number: reg, type: type, function: func, withholding: withholding });
+      const func = inputs[0]?.value?.trim() || '';
+      const withholding = inputs[1]?.value.trim() || '';
+      if (!cropVal) continue;
+      payload.crops.push({ crop: cropVal, type: type, function: func, withholding: withholding });
     }
 
     try {
@@ -266,11 +259,12 @@ document.addEventListener('DOMContentLoaded', () => {
       // update UI
       document.getElementById('reg-active').textContent = data.chemstock.ActiveIngredient || '—';
       document.getElementById('reg-colour').textContent = data.chemstock.ColourCode || '—';
+      document.getElementById('reg-number').textContent = data.chemstock.RegNumber || '—';
       const cropsWrap = document.getElementById('reg-crops-wrap');
       if (data.chemstock.Crops && data.chemstock.Crops.length) {
-        let html = '<div class="table-container"><table class="table-compact"><thead><tr><th>Crop</th><th>Reg Number</th><th>Type</th><th>Function</th><th>Withholding Period</th></tr></thead><tbody>';
+        let html = '<div class="table-container"><table class="table-compact"><thead><tr><th>Crop</th><th>Type</th><th>Function</th><th>Withholding Period</th></tr></thead><tbody>';
         data.chemstock.Crops.forEach(c => {
-          html += `<tr><td>${c.CropDescription}</td><td>${c.RegNumber}</td><td>${c.Type}</td><td>${c.Function}</td><td>${c.WithholdingPeriod}</td></tr>`;
+          html += `<tr><td>${c.CropDescription}</td><td>${c.Type}</td><td>${c.Function}</td><td>${c.WithholdingPeriod}</td></tr>`;
         });
         html += '</tbody></table></div>';
         cropsWrap.innerHTML = html;

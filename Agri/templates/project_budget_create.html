@@ -1,0 +1,86 @@
+{% extends 'inventory_base.html' %}
+{% block content %}
+<style>
+  .page-wrap { max-width:980px; margin:24px auto; padding:0 16px 36px; }
+  .editor { background:var(--container-bg,#fff); border:1px solid var(--input-border,#dfe6ee); border-radius:8px; overflow:hidden; }
+  .editor-heading { display:flex; justify-content:space-between; align-items:center; gap:16px; flex-wrap:wrap; padding:20px 22px; border-bottom:1px solid var(--input-border,#dfe6ee); }
+  .editor-heading h1 { margin:0; font-size:24px; }
+  .muted { color:var(--secondary-text,#475569); }
+  .context { display:grid; grid-template-columns:repeat(auto-fit,minmax(170px,1fr)); gap:12px; padding:18px 22px; background:#f8fafc; }
+  .context-item { padding:12px; border:1px solid var(--input-border,#dfe6ee); border-radius:6px; background:var(--container-bg,#fff); }
+  .context-item span { display:block; color:var(--secondary-text,#475569); font-size:12px; }
+  .context-item strong { display:block; margin-top:4px; }
+  .form-body { display:grid; grid-template-columns:minmax(260px,1fr) auto; align-items:end; gap:20px; padding:22px; }
+  .field label, .field-title { display:block; margin-bottom:7px; color:var(--secondary-text,#475569); font-size:12px; font-weight:700; }
+  .field select { width:100%; min-height:42px; padding:9px 10px; border:1px solid var(--input-border,#dfe6ee); border-radius:6px; background:#fff; }
+  .status-control { display:flex; align-items:center; gap:10px; min-height:42px; }
+  .switch { position:relative; width:46px; height:26px; flex:0 0 auto; }
+  .switch input { position:absolute; width:1px; height:1px; opacity:0; }
+  .switch-track { display:block; width:46px; height:26px; border-radius:20px; background:#94a3b8; cursor:pointer; transition:background .18s ease; }
+  .switch-track::after { content:""; display:block; width:20px; height:20px; margin:3px; border-radius:50%; background:#fff; transition:transform .18s ease; }
+  .switch input:checked + .switch-track { background:#25815a; }
+  .switch input:checked + .switch-track::after { transform:translateX(20px); }
+  .switch input:focus-visible + .switch-track { outline:3px solid #86b7fe; outline-offset:2px; }
+  .status-label { min-width:62px; font-weight:700; }
+  .form-actions { display:flex; justify-content:flex-end; gap:8px; padding:0 22px 22px; }
+  .btn { display:inline-block; border:none; border-radius:6px; padding:10px 14px; text-decoration:none; cursor:pointer; }
+  .btn-primary { background:var(--button-bg,#2d5bff); color:var(--button-text,#fff); }
+  .btn-secondary { background:#e9edf5; color:var(--primary-text,#1f2937); }
+  .empty-state { padding:14px 22px; color:#8a4b11; background:#fff8e7; border-top:1px solid #f3dfb2; }
+  @media (max-width:640px) { .form-body { grid-template-columns:1fr; } .form-actions { justify-content:stretch; } .form-actions .btn { text-align:center; flex:1; } }
+</style>
+<div class="page-wrap">
+  <div class="editor">
+    <div class="editor-heading">
+      <div>
+        <h1>Create project budget</h1>
+        <div class="muted">{{ project.name }}{% if project.code %} · {{ project.code }}{% endif %}</div>
+      </div>
+      <a class="btn btn-secondary" href="{{ url_for('agri.budgets_overview', tab='projects') }}">Back to projects</a>
+    </div>
+
+    <div class="context">
+      <div class="context-item"><span>Crop</span><strong>{{ project.crop }}</strong></div>
+      <div class="context-item"><span>Planting date</span><strong>{{ project.planting_date }}</strong></div>
+      <div class="context-item"><span>Project hectares</span><strong>{{ '%.2f'|format(project.hectares) }} ha</strong></div>
+    </div>
+
+    {% if templates %}
+    <form method="POST">
+      <div class="form-body">
+        <div class="field">
+          <label for="template_id">Budget template for {{ project.crop }}</label>
+          <select id="template_id" name="template_id" required>
+            <option value="" disabled selected>Select a template</option>
+            {% for template in templates %}
+            <option value="{{ template.id }}">{{ template.description }}</option>
+            {% endfor %}
+          </select>
+        </div>
+        <div>
+          <span class="field-title">Budget status</span>
+          <div class="status-control">
+            <label class="switch" for="is_active" aria-label="Set budget active">
+              <input id="is_active" name="is_active" type="checkbox" checked />
+              <span class="switch-track"></span>
+            </label>
+            <span class="status-label" id="statusLabel">Active</span>
+          </div>
+        </div>
+      </div>
+      <div class="form-actions">
+        <button class="btn btn-primary" type="submit">Create budget</button>
+      </div>
+    </form>
+    {% else %}
+    <div class="empty-state">There are no active budget templates for this crop. Create or activate a template for {{ project.crop }} before budgeting this project.</div>
+    {% endif %}
+  </div>
+</div>
+<script>
+  const activeCheckbox = document.getElementById('is_active');
+  activeCheckbox?.addEventListener('change', () => {
+    document.getElementById('statusLabel').textContent = activeCheckbox.checked ? 'Active' : 'Inactive';
+  });
+</script>
+{% endblock %}

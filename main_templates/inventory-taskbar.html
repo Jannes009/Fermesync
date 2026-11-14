@@ -69,6 +69,9 @@
       </li>
       {% endif %}
       {% endif %}
+      {% if "BUDGET_VIEW" in current_user.permissions or "BUDGET_CREATE" in current_user.permissions or "BUDGET_TEMPLATE_MANAGE" in current_user.permissions %}
+      <li><a href="/agri/budgets" class="taskbar-link">Budgets</a></li>
+      {% endif %}
       {% if "WHSE_QTYS" in current_user.permissions %}
       <li><a href="/inventory/qty" class="taskbar-link">Stock Qty's</a></li>
       {% endif %}
@@ -284,6 +287,16 @@
           </div>
         </a>
         {% endif %}
+      </li>
+      {% endif %}
+      {% if "AGR_MAIN" in current_user.permissions or "BUDGET_VIEW" in current_user.permissions or "BUDGET_CREATE" in current_user.permissions or "BUDGET_TEMPLATE_MANAGE" in current_user.permissions %}
+      <li class="mobile-nav-item">
+        <a href="/agri/budgets" class="mobile-nav-link">
+          <div class="mobile-nav-content">
+            <span class="mobile-nav-icon">💰</span>
+            <span>Budgets</span>
+          </div>
+        </a>
       </li>
       {% endif %}
       {% if "WHSE_QTYS" in current_user.permissions %}
@@ -1019,7 +1032,7 @@ main {
 }
 
 /* Desktop styles - ensure desktop nav is visible */
-@media (min-width: 769px) {
+@media (min-width: 1000px) {
   .mobile-menu-toggle,
   .mobile-menu-overlay,
   .mobile-only,

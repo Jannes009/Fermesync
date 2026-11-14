@@ -181,7 +181,7 @@ async function updateProducts(projectIds, force = false) {
                 
                 // Store product data for later reference
                 PRODUCTS_DATA[productLink] = {
-                    reg_number: cropDetails.reg_number || product.reg_number || '',
+                    reg_number: product.reg_number || '',
                     witholding_period: cropDetails.witholding_period || product.witholding_period || '',
                     function: cropDetails.function || product.function || ''
                 };

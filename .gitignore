@@ -27,3 +27,14 @@ dist/
 # Ignore JSON files (if they contain sensitive or temporary data)
 *.json
 
+# ignore tests
+tests/
+
+#ignore data import files
+AgriIntel_Browser_Profile/
+AgriIntel_Label_Import/
+AgriIntel_PHI_Import/
+agri_intel_label_import.py
+chem_data_import.py
+chem_data_mrl_import.py
+phi_data_import.py

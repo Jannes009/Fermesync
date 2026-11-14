@@ -1,0 +1,153 @@
+{% extends 'inventory_base.html' %}
+{% block content %}
+<style>
+  .page-wrap { max-width: 1320px; margin: 24px auto; padding: 0 16px 32px; }
+  .page-heading { display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:16px; margin-bottom:20px; }
+  .page-heading h1 { margin:0; font-size:26px; }
+  .muted { color: var(--secondary-text,#475569); }
+  .tabs { display:flex; gap:4px; border-bottom:1px solid var(--input-border,#dfe6ee); margin-bottom:18px; }
+  .tab { color:var(--secondary-text,#475569); text-decoration:none; padding:12px 16px; border-bottom:3px solid transparent; font-weight:600; }
+  .tab.active { color:var(--primary-text,#1f2937); border-bottom-color:var(--logo-color,#2e7d32); }
+  .panel { display:none; }
+  .panel.active { display:block; }
+  .toolbar { display:flex; flex-wrap:wrap; gap:12px; justify-content:space-between; align-items:center; margin-bottom:14px; }
+  .filters { display:flex; flex-wrap:wrap; gap:10px; }
+  .filters input, .filters select { padding:9px 10px; border:1px solid var(--input-border,#dfe6ee); border-radius:6px; }
+  .btn { display:inline-block; border:none; border-radius:6px; padding:9px 13px; text-decoration:none; cursor:pointer; }
+  .btn-primary { background:var(--button-bg,#2d5bff); color:var(--button-text,#fff); }
+  .btn-secondary { background:#e9edf5; color:var(--primary-text,#1f2937); }
+  .btn-danger { background:#d9464f; color:#fff; }
+  .table-scroll { overflow-x:auto; }
+  table { width:100%; min-width:850px; border-collapse:collapse; }
+  th, td { border-bottom:1px solid var(--input-border,#dfe6ee); padding:11px 10px; text-align:left; }
+  th { background:#f8fafc; color:var(--secondary-text,#475569); white-space:nowrap; }
+  .status-pill { display:inline-block; padding:4px 9px; border-radius:999px; font-size:12px; font-weight:600; }
+  .status-active { background:#d6f4dd; color:#166534; }
+  .status-inactive { background:#fef3c7; color:#92400e; }
+  .actions { display:flex; gap:7px; flex-wrap:wrap; }
+</style>
+<div class="page-wrap">
+  <div class="page-heading">
+    <div>
+      <h1>Budgets</h1>
+      <div class="muted">Reusable templates and project allocations</div>
+    </div>
+    {% if active_tab == 'templates' and can_create_template %}
+    <a class="btn btn-primary" href="{{ url_for('agri.create_budget_template') }}">Create template</a>
+    {% endif %}
+  </div>
+
+  <nav class="tabs" aria-label="Budget sections">
+    {% if can_view_templates %}
+    <a class="tab {{ 'active' if active_tab == 'templates' else '' }}" href="{{ url_for('agri.budgets_overview', tab='templates') }}" aria-current="{{ 'page' if active_tab == 'templates' else 'false' }}">Budget Templates</a>
+    {% endif %}
+    {% if can_view_projects %}
+    <a class="tab {{ 'active' if active_tab == 'projects' else '' }}" href="{{ url_for('agri.budgets_overview', tab='projects') }}" aria-current="{{ 'page' if active_tab == 'projects' else 'false' }}">Project Budgets</a>
+    {% endif %}
+  </nav>
+
+  {% if can_view_templates %}
+  <section class="panel {{ 'active' if active_tab == 'templates' else '' }}" aria-label="Budget templates">
+    <div class="toolbar">
+      <div class="filters">
+        <input type="search" id="searchInput" placeholder="Search templates" aria-label="Search templates" />
+        <select id="statusFilter" aria-label="Filter by status">
+          <option value="">All statuses</option><option value="active">Active</option><option value="inactive">Inactive</option>
+        </select>
+      </div>
+    </div>
+    <div class="table-scroll">
+      <table>
+        <thead><tr><th>Name</th><th>Crop</th><th>Products</th><th>Weeks</th><th>Created by</th><th>Last modified</th><th>Status</th><th>Actions</th></tr></thead>
+        <tbody>
+          {% for template in templates %}
+          <tr data-search="{{ template.description|lower }} {{ template.crop|lower }} {{ template.created_by|lower }}">
+            <td>{{ template.description }}</td><td>{{ template.crop }}</td><td>{{ template.product_count }}</td><td>{{ template.week_count }}</td><td>{{ template.created_by }}</td><td>{{ template.modified_at }}</td>
+            <td><span class="status-pill {{ 'status-active' if template.is_active else 'status-inactive' }}">{{ template.status }}</span></td>
+            <td><div class="actions">
+              {% if can_edit_template %}<a class="btn btn-secondary" href="{{ url_for('agri.edit_budget_template', template_id=template.id) }}">Edit</a>{% endif %}
+              {% if can_create_template %}<button class="btn btn-secondary" type="button" data-duplicate="{{ template.id }}">Duplicate</button>{% endif %}
+              {% if can_edit_template %}<button class="btn {{ 'btn-secondary' if template.is_active else 'btn-primary' }}" type="button" data-toggle-status="{{ template.id }}">{{ 'Deactivate' if template.is_active else 'Activate' }}</button>{% endif %}
+            </div></td>
+          </tr>
+          {% else %}<tr><td colspan="8" class="muted">No budget templates found.</td></tr>{% endfor %}
+        </tbody>
+      </table>
+    </div>
+  </section>
+  {% endif %}
+
+  {% if can_view_projects %}
+  <section class="panel {{ 'active' if active_tab == 'projects' else '' }}" aria-label="Project budgets">
+    <div class="table-scroll">
+      <table>
+        <thead><tr><th>Project</th><th>Crop</th><th>Planting</th><th>Actual Project Ha</th><th>Budgeted Ha</th><th>Template</th><th>Total</th><th>Status</th><th>Actions</th></tr></thead>
+        <tbody>
+          {% for budget in budgets %}
+          <tr>
+            <td>{{ budget.project_name }}</td><td>{{ budget.crop }}</td><td>{{ budget.planting_date }}</td>
+            <td>{{ '%.2f'|format(budget.project_ha) }}</td><td>{{ '%.2f'|format(budget.budget_ha) if budget.budget_ha is not none else '-' }}</td>
+            <td>{{ budget.template }}</td><td>{{ 'R %.2f'|format(budget.total_budget) if budget.id else '-' }}</td><td>{{ budget.status }}</td>
+            <td>
+              {% if budget.id %}
+              {% if can_edit_budget %}<a class="btn btn-secondary" href="{{ url_for('agri.edit_project_budget', budget_id=budget.id) }}">Open</a>{% endif %}
+              <a class="btn btn-secondary" href="{{ url_for('agri.project_budget_performance', budget_id=budget.id) }}">Performance</a>
+              {% elif not budget.id and can_create_budget %}<a class="btn btn-primary" href="{{ url_for('agri.create_project_budget', project_id=budget.project_id) }}">Create budget</a>
+              {% else %}<span class="muted">-</span>{% endif %}
+            </td>
+          </tr>
+          {% else %}<tr><td colspan="9" class="muted">No accessible projects found.</td></tr>{% endfor %}
+        </tbody>
+      </table>
+    </div>
+  </section>
+  {% endif %}
+</div>
+<script>
+  const searchInput = document.getElementById('searchInput');
+  const statusFilter = document.getElementById('statusFilter');
+  const rows = [...document.querySelectorAll('.panel.active tbody tr[data-search]')];
+
+  function applyFilters() {
+    if (!searchInput || !statusFilter) return;
+    const search = (searchInput.value || '').toLowerCase();
+    const status = statusFilter.value;
+    rows.forEach((row) => {
+      const text = row.dataset.search || '';
+      const active = row.querySelector('.status-pill')?.textContent.trim().toLowerCase() === 'active';
+      const matchesSearch = !search || text.includes(search);
+      const matchesStatus = !status || (status === 'active' ? active : !active);
+      row.style.display = matchesSearch && matchesStatus ? '' : 'none';
+    });
+  }
+
+  searchInput?.addEventListener('input', applyFilters);
+  statusFilter?.addEventListener('change', applyFilters);
+
+  document.querySelectorAll('[data-duplicate]').forEach((button) => {
+    button.addEventListener('click', async () => {
+      const templateId = button.dataset.duplicate;
+      const response = await fetch(`/agri/budget-template/${templateId}/duplicate`, { method: 'POST' });
+      const result = await response.json();
+      if (result.success) {
+        window.location.href = `/agri/budget-template/${result.template_id}`;
+      } else {
+        alert(result.message || 'Unable to duplicate template');
+      }
+    });
+  });
+
+  document.querySelectorAll('[data-toggle-status]').forEach((button) => {
+    button.addEventListener('click', async () => {
+      const templateId = button.dataset.toggleStatus;
+      const response = await fetch(`/agri/budget-template/${templateId}/toggle-status`, { method: 'POST' });
+      const result = await response.json();
+      if (result.success) {
+        window.location.reload();
+      } else {
+        alert(result.message || 'Unable to update template status');
+      }
+    });
+  });
+</script>
+{% endblock %}

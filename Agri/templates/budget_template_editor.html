@@ -1,0 +1,471 @@
+{% extends 'inventory_base.html' %}
+{% block content %}
+<style>
+  .page-wrap { max-width:1100px; margin:24px auto; padding:0 16px 36px; }
+  .editor { background:var(--container-bg,#fff); border:1px solid var(--input-border,#dfe6ee); border-radius:8px; overflow:hidden; }
+  .editor-heading { display:flex; justify-content:space-between; align-items:center; gap:18px; flex-wrap:wrap; padding:20px 22px; border-bottom:1px solid var(--input-border,#dfe6ee); }
+  .editor-heading h1 { margin:0; font-size:24px; }
+  .muted { color:var(--secondary-text,#475569); }
+  .setup { display:grid; grid-template-columns:minmax(220px,2fr) minmax(190px,1fr); gap:14px; padding:15px 22px; background:#f8fafc; }
+  .field label { display:block; font-size:12px; font-weight:700; color:var(--secondary-text,#475569); margin-bottom:7px; }
+  .field input, .field select, .product-select, .line-input { width:100%; min-height:38px; padding:8px 10px; border-radius:6px; border:1px solid var(--input-border,#dfe6ee); background:#fff; }
+  .catalog-message { padding:14px 22px 0; }
+  .product-sections { display:grid; gap:12px; padding:14px 22px; }
+  .product-section { padding:14px; border:1px solid var(--input-border,#dfe6ee); border-radius:8px; background:#fff; }
+  .product-section-header { display:flex; align-items:center; gap:8px; }
+  .section-toggle { flex:1; min-width:0; display:grid; grid-template-columns:minmax(0,1fr) auto 20px; align-items:center; gap:12px; padding:4px 0; border:0; background:transparent; color:var(--primary-text,#1f2937); text-align:left; cursor:pointer; }
+  .section-product-name { overflow:hidden; font-weight:700; text-overflow:ellipsis; white-space:nowrap; }
+  .section-header-total { display:flex; align-items:baseline; gap:6px; font-size:13px; font-weight:700; white-space:nowrap; }
+  .section-header-total output { min-width:64px; text-align:right; font-variant-numeric:tabular-nums; }
+  .section-toggle-icon { justify-self:center; color:var(--secondary-text,#475569); }
+  .section-body { padding-top:10px; }
+  .section-body[hidden] { display:none; }
+  .section-heading { display:flex; align-items:flex-end; gap:10px; margin-bottom:12px; }
+  .section-heading .field { flex:1; min-width:0; }
+  .section-heading label { display:block; font-size:12px; font-weight:700; color:var(--secondary-text,#475569); margin-bottom:7px; }
+  .setup .select2-container, .section-heading .select2-container { width:100% !important; }
+  .line-labels, .product-line { display:grid; grid-template-columns:minmax(120px,1fr) minmax(160px,1fr) 32px; gap:8px; align-items:center; }
+  .line-labels { margin-bottom:5px; color:var(--secondary-text,#475569); font-size:12px; font-weight:700; }
+  .product-lines { display:grid; gap:6px; }
+  .btn-add-line { width:100%; min-height:32px; margin-top:8px; padding:5px 10px; border:1px dashed #cbd5e1; border-radius:5px; background:#f8fafc; color:#64748b; font-size:13px; font-weight:600; cursor:pointer; }
+  .btn-add-line:hover { background:#f1f5f9; border-color:#94a3b8; color:#334155; }
+  .btn { border:none; border-radius:6px; padding:10px 14px; cursor:pointer; text-decoration:none; display:inline-block; }
+  .btn-primary { background:var(--button-bg,#2d5bff); color:var(--button-text,#fff); }
+  .btn-secondary { background:#e9edf5; color:var(--primary-text,#1f2937); }
+  .icon-remove {
+    display:inline-flex; flex:0 0 32px; align-items:center; justify-content:center;
+    width:32px; height:32px; padding:0; border:1px solid #d1d5db; border-radius:50%;
+    background:#f3f4f6; color:#6b7280; font-size:14px; cursor:pointer;
+    transition:background-color .15s ease, color .15s ease, border-color .15s ease;
+  }
+  .icon-remove:hover { background:#e5e7eb; border-color:#9ca3af; color:#374151; }
+  .icon-remove:focus-visible { outline:3px solid rgba(107,114,128,.25); outline-offset:2px; }
+  .add-product-wrap { padding:0 22px 22px; }
+  .btn-add-product { width:100%; min-height:58px; font-size:16px; font-weight:700; border:2px dashed #9aa8b8; }
+  @media (max-width:600px) {
+    .setup { grid-template-columns:1fr; padding:15px; }
+    .editor-heading, .product-sections, .catalog-message { padding-left:15px; padding-right:15px; }
+    .section-heading { align-items:stretch; flex-direction:column; }
+    .section-toggle { grid-template-columns:minmax(0,1fr) auto 16px; gap:8px; }
+    .section-header-total { gap:4px; font-size:12px; }
+    .section-header-total output { min-width:52px; }
+    .btn-remove { align-self:flex-end; }
+    .line-labels, .product-line { grid-template-columns:minmax(0,1fr) minmax(0,1fr) 32px; gap:6px; }
+    .add-product-wrap { padding:0 15px 15px; }
+  }
+</style>
+<div class="page-wrap">
+  <div class="editor">
+    <div class="editor-heading">
+      <div>
+        <h1>{{ template.description or 'New budget template' }}</h1>
+        <div class="muted">Crop programme and application quantities per hectare</div>
+      </div>
+      <div style="display:flex;gap:8px;flex-wrap:wrap;">
+        <a class="btn btn-secondary" href="{{ url_for('agri.budgets_overview', tab='templates') }}">Back to budgets</a>
+        <button class="btn btn-primary" id="saveTemplateBtn" type="button">Save template</button>
+      </div>
+    </div>
+
+    <div class="setup">
+      <div class="field">
+        <label for="templateDescription">Template name</label>
+        <input id="templateDescription" type="text" value="{{ template.description or '' }}" />
+      </div>
+      <div class="field">
+        <label for="cropSelect">Crop</label>
+        <select id="cropSelect">
+          <option value="">No crop</option>
+          {% for crop in crops %}
+          <option value="{{ crop.id }}" {% if crop.id == template.crop_id %}selected{% endif %}>{{ crop.description }}</option>
+          {% endfor %}
+        </select>
+      </div>
+    </div>
+
+    <div class="catalog-message muted" id="catalogMessage" aria-live="polite">Select a crop to load its products.</div>
+    <div class="product-sections" id="productSections"></div>
+    <div class="add-product-wrap">
+      <button class="btn btn-secondary btn-add-product" id="addProductBtn" type="button">+ Add product</button>
+    </div>
+  </div>
+</div>
+<script>
+  const templateId = {{ template.id if template.id is not none else 'null' }};
+  const initialLines = {{ lines | tojson | safe }};
+  const cropSelect = document.getElementById('cropSelect');
+
+  function escapeHtml(value) {
+    return String(value ?? '').replace(/[&<>"']/g, (character) => ({
+      '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;'
+    })[character]);
+  }
+
+  function createEmptySection() {
+    return { stock_id: '', product: null, lines: [{ week: '', quantity: '', isPlaceholder: false }] };
+  }
+
+  function createInitialSections(lines) {
+    const sectionsByStock = new Map();
+    lines.forEach((line) => {
+      const key = String(line.stock_id || '');
+      let section = sectionsByStock.get(key);
+      if (!section) {
+        section = {
+          stock_id: key,
+          collapsed: true,
+          product: {
+            id: key,
+            code: line.stock_code || '',
+            description: line.stock_description || `Stock ${key}`
+          },
+          lines: []
+        };
+        sectionsByStock.set(key, section);
+      }
+      section.lines.push({
+        id: line.id,
+        week: line.relational_week,
+        quantity: Number(line.quantity_per_ha || 0)
+      });
+    });
+
+    const sections = Array.from(sectionsByStock.values());
+    return sections.length ? sections : [createEmptySection()];
+  }
+
+  const state = {
+    catalog: [],
+    sections: createInitialSections(initialLines)
+  };
+
+  function getProductOptions(section) {
+    const products = [...state.catalog];
+    if (section.product && !products.some((product) => String(product.id) === String(section.stock_id))) {
+      products.push(section.product);
+    }
+    return products;
+  }
+
+  function getSectionDescription(section) {
+    return section.product
+      ? section.product.description || section.product.code || `Stock ${section.stock_id}`
+      : 'Choose a product';
+  }
+
+  function updateSectionTotal(sectionIndex) {
+    const section = state.sections[sectionIndex];
+    const output = document.querySelector(`[data-section-total="${sectionIndex}"]`);
+    if (!section || !output) return;
+    const total = section.lines.reduce((sum, line) => {
+      const quantity = Number(line.quantity);
+      return sum + (Number.isFinite(quantity) && quantity > 0 ? quantity : 0);
+    }, 0);
+    output.textContent = total.toFixed(2);
+  }
+
+  function renderLine(line, sectionIndex, lineIndex) {
+    return `
+      <div class="product-line">
+        <input class="line-input week-input" type="number" step="1" value="${escapeHtml(line.week)}"
+          data-section="${sectionIndex}" data-line="${lineIndex}" aria-label="Week number" />
+        <input class="line-input quantity-input" type="number" min="0" step="0.01" value="${escapeHtml(line.quantity)}"
+          data-section="${sectionIndex}" data-line="${lineIndex}" aria-label="Quantity per hectare" />
+        <button class="icon-remove btn-remove-line" type="button" data-remove-line data-section="${sectionIndex}" data-line="${lineIndex}"
+          aria-label="Remove week and quantity line" title="Remove line">
+          <i class="fas fa-times" aria-hidden="true"></i>
+        </button>
+      </div>
+    `;
+  }
+
+  function renderSections() {
+    const container = document.getElementById('productSections');
+    container.querySelectorAll('.product-select').forEach((select) => {
+      if ($(select).data('select2')) $(select).select2('destroy');
+    });
+    container.innerHTML = state.sections.map((section, sectionIndex) => {
+      const products = getProductOptions(section);
+      const collapsed = section.collapsed === true;
+      const options = products.map((product) => {
+        const selected = String(product.id) === String(section.stock_id) ? 'selected' : '';
+        const notLinked = cropSelect.value && !state.catalog.some((item) => String(item.id) === String(product.id))
+          ? ' (not linked to selected crop)'
+          : '';
+        const productName = product.description || product.code || `Stock ${product.id}`;
+        const label = `${productName}${product.code && product.description ? ` (${product.code})` : ''}${notLinked}`;
+        return `<option value="${escapeHtml(product.id)}" ${selected}>${escapeHtml(label)}</option>`;
+      }).join('');
+      return `
+        <section class="product-section" data-section="${sectionIndex}">
+          <div class="product-section-header">
+            <button class="section-toggle" type="button" data-toggle-section="${sectionIndex}"
+              aria-expanded="${!collapsed}" aria-controls="productSectionBody${sectionIndex}">
+              <span class="section-product-name" data-section-description="${sectionIndex}">${escapeHtml(getSectionDescription(section))}</span>
+              <span class="section-header-total"><span>Total Qty/ha</span><output data-section-total="${sectionIndex}" aria-live="polite">0.00</output></span>
+              <i class="fas ${collapsed ? 'fa-chevron-down' : 'fa-chevron-up'} section-toggle-icon" aria-hidden="true"></i>
+            </button>
+            <button class="icon-remove btn-remove" type="button" data-remove-section="${sectionIndex}" aria-label="Remove product section" title="Remove product section">
+              <i class="fas fa-times" aria-hidden="true"></i>
+            </button>
+          </div>
+          <div class="section-body" id="productSectionBody${sectionIndex}" ${collapsed ? 'hidden' : ''}>
+            <div class="section-heading">
+              <div class="field">
+                <label for="productSelect${sectionIndex}">Product</label>
+                <select class="product-select" id="productSelect${sectionIndex}" data-section="${sectionIndex}">
+                  <option value="">Choose a product</option>
+                  ${options}
+                </select>
+              </div>
+            </div>
+            <div class="line-labels"><span>Week no.</span><span>Qty/ha</span><span aria-hidden="true"></span></div>
+            <div class="product-lines">${section.lines.map((line, lineIndex) => renderLine(line, sectionIndex, lineIndex)).join('')}</div>
+            <button class="btn-add-line" type="button" data-add-line="${sectionIndex}">
+              <i class="fas fa-plus" aria-hidden="true"></i> Add line
+            </button>
+          </div>
+        </section>
+      `;
+    }).join('');
+    $(container).find('.product-select').select2({
+      width: '100%',
+      placeholder: 'Choose a product',
+      allowClear: true
+    });
+    state.sections.forEach((section, sectionIndex) => updateSectionTotal(sectionIndex));
+  }
+
+  function appendLineElement(sectionElement, line, sectionIndex, lineIndex) {
+    sectionElement.querySelector('.product-lines').insertAdjacentHTML(
+      'beforeend',
+      renderLine(line, sectionIndex, lineIndex)
+    );
+  }
+
+  function scrollAddProductButtonIntoView(visibleElement) {
+    const addProductButton = document.getElementById('addProductBtn');
+    if (!visibleElement || !addProductButton) return;
+    requestAnimationFrame(() => {
+      const visibleRect = visibleElement.getBoundingClientRect();
+      const buttonRect = addProductButton.getBoundingClientRect();
+      const viewportHeight = document.documentElement.clientHeight;
+      const taskbar = document.querySelector('.taskbar');
+      const taskbarBottom = taskbar ? taskbar.getBoundingClientRect().bottom : 0;
+      const topBoundary = Math.min(viewportHeight, Math.max(0, taskbarBottom) + 16);
+      const bottomBoundary = viewportHeight - 16;
+      const minScroll = visibleRect.bottom - bottomBoundary;
+      const maxScroll = visibleRect.top - topBoundary;
+      const desiredScroll = buttonRect.bottom - bottomBoundary;
+      const targetFits = visibleRect.height <= bottomBoundary - topBoundary;
+      const scrollAmount = targetFits && minScroll <= maxScroll
+        ? Math.max(minScroll, Math.min(desiredScroll, maxScroll))
+        : maxScroll;
+      if (Math.abs(scrollAmount) > 1) window.scrollBy({ top: scrollAmount, behavior: 'smooth' });
+    });
+  }
+
+  function addLineToSection(sectionIndex, focusNewLine = false) {
+    const section = state.sections[sectionIndex];
+    const sectionElement = document.querySelector(`.product-section[data-section="${sectionIndex}"]`);
+    if (!section || !sectionElement) return;
+    const previousLine = section.lines[section.lines.length - 1];
+    const newLine = { week: '', quantity: previousLine ? previousLine.quantity : '' };
+    section.lines.push(newLine);
+    const lineIndex = section.lines.length - 1;
+    appendLineElement(sectionElement, newLine, sectionIndex, lineIndex);
+    updateSectionTotal(sectionIndex);
+    if (focusNewLine) sectionElement.querySelector(`.week-input[data-line="${lineIndex}"]`).focus();
+    scrollAddProductButtonIntoView(sectionElement.querySelector(`.week-input[data-line="${lineIndex}"]`).closest('.product-line'));
+  }
+
+  async function loadStockCatalog(cropId) {
+    const message = document.getElementById('catalogMessage');
+    state.catalog = [];
+    if (!cropId) {
+      message.textContent = 'Select a crop to load its products.';
+      $(cropSelect).select2({ width: '100%' });
+      renderSections();
+      return;
+    }
+
+    message.textContent = 'Loading crop products...';
+    try {
+      const response = await fetch(`/agri/budget-template/stocks/${encodeURIComponent(cropId)}`);
+      if (!response.ok) throw new Error('Unable to load products');
+      const products = await response.json();
+      if (cropSelect.value !== String(cropId)) return;
+      state.catalog = products.map((product) => ({
+        id: product.id,
+        code: product.code || '',
+        description: product.description || ''
+      }));
+      message.textContent = `${state.catalog.length} linked products`;
+      renderSections();
+    } catch (error) {
+      if (cropSelect.value === String(cropId)) message.textContent = 'Unable to load products.';
+    }
+  }
+
+  function collectTemplatePayload() {
+    const lines = [];
+    for (const section of state.sections) {
+      if (!section.stock_id) continue;
+      for (let index = 0; index < section.lines.length; index += 1) {
+        const line = section.lines[index];
+        const weekText = String(line.week ?? '').trim();
+        const quantityText = String(line.quantity ?? '').trim();
+        if (index === section.lines.length - 1 && !weekText) continue;
+        if (!weekText && !quantityText) continue;
+        const week = Number(weekText);
+        const quantity = Number(quantityText);
+        if (!Number.isInteger(week) || quantityText === '' || !Number.isFinite(quantity) || quantity < 0) {
+          return { error: 'Enter a whole week number and a valid quantity for each started line.' };
+        }
+        if (quantity > 0) {
+          const payloadLine = {
+            stock_id: section.stock_id,
+            relational_week: week,
+            quantity_per_ha: quantity
+          };
+          if (line.id !== undefined && line.id !== null) payloadLine.id = line.id;
+          lines.push(payloadLine);
+        }
+      }
+    }
+    return {
+      description: document.getElementById('templateDescription').value,
+      crop_id: cropSelect.value || null,
+      is_active: true,
+      lines
+    };
+  }
+
+  $('#productSections').on('change', '.product-select', function () {
+    const sectionIndex = Number(this.dataset.section);
+    const section = state.sections[sectionIndex];
+    if (!section) return;
+    section.stock_id = this.value;
+    section.product = state.catalog.find((product) => String(product.id) === section.stock_id)
+      || (section.product && String(section.product.id) === section.stock_id ? section.product : null);
+    const description = document.querySelector(`[data-section-description="${sectionIndex}"]`);
+    if (description) description.textContent = getSectionDescription(section);
+  });
+
+  document.getElementById('productSections').addEventListener('input', (event) => {
+    const sectionIndex = Number(event.target.dataset.section);
+    const lineIndex = Number(event.target.dataset.line);
+    const section = state.sections[sectionIndex];
+    const line = section && section.lines[lineIndex];
+    if (!line) return;
+
+    if (event.target.matches('.week-input')) {
+      line.week = event.target.value;
+      updateSectionTotal(sectionIndex);
+      return;
+    }
+    if (!event.target.matches('.quantity-input')) return;
+    line.quantity = event.target.value;
+    updateSectionTotal(sectionIndex);
+  });
+
+  document.getElementById('productSections').addEventListener('keydown', (event) => {
+    if (!event.target.matches('.quantity-input') || event.key !== 'Tab' || event.shiftKey) return;
+    const sectionIndex = Number(event.target.dataset.section);
+    const lineIndex = Number(event.target.dataset.line);
+    const section = state.sections[sectionIndex];
+    const line = section && section.lines[lineIndex];
+    if (!line || lineIndex !== section.lines.length - 1) return;
+
+    line.quantity = event.target.value;
+    event.preventDefault();
+    addLineToSection(sectionIndex, true);
+  });
+
+  document.getElementById('productSections').addEventListener('click', (event) => {
+    const toggleButton = event.target.closest('[data-toggle-section]');
+    if (toggleButton) {
+      const section = state.sections[Number(toggleButton.dataset.toggleSection)];
+      if (!section) return;
+      section.collapsed = !section.collapsed;
+      renderSections();
+      return;
+    }
+
+    const addLineButton = event.target.closest('[data-add-line]');
+    if (addLineButton) {
+      addLineToSection(Number(addLineButton.dataset.addLine), true);
+      return;
+    }
+
+    const lineButton = event.target.closest('[data-remove-line]');
+    if (lineButton) {
+      const sectionIndex = Number(lineButton.dataset.section);
+      const lineIndex = Number(lineButton.dataset.line);
+      const section = state.sections[sectionIndex];
+      if (!section || !Number.isInteger(lineIndex) || lineIndex < 0 || lineIndex >= section.lines.length) return;
+
+      section.lines.splice(lineIndex, 1);
+      renderSections();
+      return;
+    }
+
+    const button = event.target.closest('[data-remove-section]');
+    if (!button) return;
+    state.sections.splice(Number(button.dataset.removeSection), 1);
+    renderSections();
+  });
+
+  document.getElementById('addProductBtn').addEventListener('click', () => {
+    state.sections.forEach((section) => {
+      section.collapsed = true;
+    });
+    state.sections.push(createEmptySection());
+    state.sections[state.sections.length - 1].collapsed = false;
+    renderSections();
+    const newSection = document.querySelector(`.product-section[data-section="${state.sections.length - 1}"]`);
+    scrollAddProductButtonIntoView(newSection);
+  });
+
+  $(cropSelect).on('change', () => {
+    state.sections.forEach((section) => {
+      section.stock_id = '';
+      section.product = null;
+    });
+    renderSections();
+    loadStockCatalog(cropSelect.value);
+  });
+
+  document.getElementById('saveTemplateBtn').addEventListener('click', async () => {
+    const payload = collectTemplatePayload();
+    if (payload.error) {
+      alert(payload.error);
+      return;
+    }
+    const endpoint = templateId ? `/agri/budget-template/${templateId}/save` : '/agri/budget-template/create';
+    const saveButton = document.getElementById('saveTemplateBtn');
+    saveButton.disabled = true;
+    try {
+      const response = await fetch(endpoint, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload)
+      });
+      const result = await response.json();
+      if (!response.ok || !result.success) {
+        alert(result.message || 'Unable to save template');
+        return;
+      }
+      if (!templateId) window.location.href = `/agri/budget-template/${result.template_id}`;
+      else window.location.reload();
+    } catch (error) {
+      alert('Unable to save template. Please try again.');
+    } finally {
+      saveButton.disabled = false;
+    }
+  });
+
+  renderSections();
+  if (cropSelect.value) loadStockCatalog(cropSelect.value);
+</script>
+{% endblock %}

@@ -64,8 +64,8 @@ def _fetch_all_product_catalog(cursor, warehouse_ids):
             STK.ChemStockPurchasingUnitId AS PurchaseUnitId,
             PURCHASEUOM.cUnitCode AS PurchaseUnitCode,
             ACT.ChemActIngredient,
+            STK.ChemStockRegNumber,
             CRP.StkCrpCropId AS CropId,
-            CRP.StkCrpRegNumber,
             CRP.StkCrpWitholdingPeriodDef,
             CRP.StkCrpFunctionDef
         FROM cmn._uvStockWarehouse SW
@@ -94,6 +94,7 @@ def _fetch_all_product_catalog(cursor, warehouse_ids):
             "purchase_uom_id": row.PurchaseUnitId,
             "purchase_uom_code": row.PurchaseUnitCode,
             "active_ingredient": row.ChemActIngredient,
+            "reg_number": row.ChemStockRegNumber,
             "crop_details": []
         })
         if row.WhseLink not in product["warehouse_ids"]:
@@ -102,7 +103,6 @@ def _fetch_all_product_catalog(cursor, warehouse_ids):
             product["crop_ids"].append(row.CropId)
             product["crop_details"].append({
                 "crop_id": row.CropId,
-                "reg_number": row.StkCrpRegNumber,
                 "witholding_period": row.StkCrpWitholdingPeriodDef,
                 "function": row.StkCrpFunctionDef
             })

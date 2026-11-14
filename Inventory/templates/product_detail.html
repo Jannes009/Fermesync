@@ -611,7 +611,7 @@ body { background: var(--bg-gray); }
 
 .crop-row {
   display: grid;
-  grid-template-columns: 2fr 1fr 140px 1fr 1fr auto;
+  grid-template-columns: 2fr 140px 1fr 1fr auto;
   gap: 10px;
   align-items: end;
   padding: 12px;
@@ -930,6 +930,10 @@ body { background: var(--bg-gray); }
               <dt>Colour Code</dt>
               <dd id="reg-colour">{{ chemstock.ColourCode or '—' }}</dd>
             </div>
+            <div class="def-row">
+              <dt>Registration Number</dt>
+              <dd id="reg-number">{{ chemstock.RegNumber or '—' }}</dd>
+            </div>
           </dl>
 
           <div style="margin-top: 1rem;">
@@ -941,7 +945,6 @@ body { background: var(--bg-gray); }
                   <thead>
                     <tr>
                       <th>Crop</th>
-                      <th>Reg Number</th>
                       <th>Type</th>
                       <th>Function</th>
                       <th>Withholding Period</th>
@@ -951,7 +954,6 @@ body { background: var(--bg-gray); }
                     {% for crop in chemstock.Crops %}
                     <tr>
                       <td>{{ crop.CropDescription }}</td>
-                      <td>{{ crop.RegNumber }}</td>
                       <td>{{ crop.Type }}</td>
                       <td>{{ crop.Function }}</td>
                       <td>{{ crop.WithholdingPeriod }}</td>
@@ -988,6 +990,10 @@ body { background: var(--bg-gray); }
                 <div class="chemstock-field">
                   <label for="edit-colour">Colour Code</label>
                   <select id="edit-colour" class="chemstock-control"></select>
+                </div>
+                <div class="chemstock-field">
+                  <label for="edit-registration">Registration Number</label>
+                  <input id="edit-registration" class="chemstock-control">
                 </div>
               </div>
             </section>

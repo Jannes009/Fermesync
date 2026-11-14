@@ -1,0 +1,446 @@
+{% extends 'inventory_base.html' %}
+{% block head %}
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.7/dist/chart.umd.min.js"></script>
+{% endblock %}
+{% block content %}
+<style>
+  .performance-page { max-width:1360px; margin:24px auto; padding:0 16px 36px; }
+  .page-heading { display:flex; justify-content:space-between; align-items:center; gap:16px; flex-wrap:wrap; margin-bottom:18px; }
+  .page-heading h1 { margin:0; font-size:25px; }
+  .muted { color:var(--secondary-text,#64748b); }
+  .btn { display:inline-block; padding:9px 13px; border-radius:6px; background:#e9edf5; color:var(--primary-text,#1f2937); text-decoration:none; }
+  .project-context { display:grid; grid-template-columns:repeat(4,minmax(150px,1fr)); gap:10px; padding:14px 0 18px; border-top:1px solid var(--input-border,#dfe6ee); }
+  .context-item { min-width:0; }
+  .context-item span { display:block; margin-bottom:4px; color:var(--secondary-text,#64748b); font-size:12px; }
+  .context-item strong { display:block; overflow-wrap:anywhere; }
+  .metrics { display:grid; grid-template-columns:repeat(4,minmax(180px,1fr)); gap:12px; margin-bottom:22px; }
+  .metric { min-width:0; padding:15px 16px; border:1px solid var(--input-border,#dfe6ee); border-radius:7px; background:var(--container-bg,#fff); }
+  .metric-label { display:block; color:var(--secondary-text,#64748b); font-size:12px; }
+  .metric-value { display:block; margin-top:7px; font-size:21px; font-weight:700; font-variant-numeric:tabular-nums; overflow-wrap:anywhere; }
+  .section { margin-top:24px; }
+  .section-heading { display:flex; justify-content:space-between; align-items:baseline; gap:12px; flex-wrap:wrap; margin-bottom:10px; }
+  .section-heading h2 { margin:0; font-size:18px; }
+  .comparison-charts { display:grid; grid-template-columns:repeat(auto-fit,minmax(min(100%,440px),1fr)); gap:14px; }
+  .chart-title { margin:0 0 8px; font-size:15px; }
+  .chart-footnote { margin:8px 0 0; font-size:12px; }
+  .ring-legend { display:flex; gap:16px; flex-wrap:wrap; margin:4px 0 8px; color:var(--secondary-text,#64748b); font-size:12px; }
+  .ring-key { display:inline-flex; align-items:center; gap:6px; }
+  .ring-swatch { width:13px; height:13px; border-radius:50%; border:1px solid rgba(15,23,42,.16); }
+  .type-legend { display:flex; flex-wrap:wrap; gap:8px 14px; padding:11px 13px; margin-bottom:12px; border:1px solid var(--input-border,#dfe6ee); border-radius:7px; background:var(--container-bg,#fff); }
+  .type-key { display:inline-flex; align-items:center; gap:7px; min-height:28px; cursor:pointer; }
+  .type-key input { width:16px; height:16px; margin:0; accent-color:#287c58; }
+  .type-swatch { width:13px; height:13px; flex:0 0 auto; border-radius:50%; border:1px solid rgba(15,23,42,.16); }
+  .chart-panel { min-height:340px; padding:14px 16px; border:1px solid var(--input-border,#dfe6ee); border-radius:7px; background:var(--container-bg,#fff); }
+  .chart-wrap { position:relative; height:310px; }
+  #weeklyChart { cursor:pointer; }
+  .week-detail-dialog { width:min(960px,calc(100vw - 32px)); max-width:none; max-height:calc(100vh - 32px); padding:0; border:1px solid var(--input-border,#dfe6ee); border-radius:9px; background:var(--container-bg,#fff); color:var(--primary-text,#1f2937); box-shadow:0 20px 60px rgba(15,23,42,.28); overflow:auto; }
+  .week-detail-dialog::backdrop { background:rgba(15,23,42,.56); }
+  .week-detail-header { display:flex; justify-content:space-between; align-items:flex-start; gap:16px; padding:18px 20px; border-bottom:1px solid var(--input-border,#dfe6ee); }
+  .week-detail-header h2 { margin:0; font-size:20px; }
+  .week-detail-header p { margin:4px 0 0; color:var(--secondary-text,#64748b); font-size:13px; }
+  .week-detail-close { flex:0 0 auto; border:0; background:transparent; color:var(--secondary-text,#64748b); font-size:20px; cursor:pointer; }
+  .week-detail-content { padding:16px 20px 20px; }
+  .week-cost-summary { display:grid; grid-template-columns:repeat(2,minmax(160px,1fr)); gap:10px; margin-bottom:14px; }
+  .week-cost-item { padding:11px 13px; border:1px solid var(--input-border,#dfe6ee); border-radius:6px; background:#f8fafc; }
+  .week-cost-item span { display:block; color:var(--secondary-text,#64748b); font-size:12px; }
+  .week-cost-item strong { display:block; margin-top:4px; font-size:17px; }
+  .week-detail-note { margin:0 0 10px; font-size:12px; }
+  .week-detail-table { min-width:760px; }
+  .week-detail-table tfoot td { border-top:2px solid var(--input-border,#cbd5e1); border-bottom:0; background:#f5f7f8; font-weight:700; }
+  .week-detail-table tfoot .quantity-total { min-width:140px; white-space:normal; }
+  .notice { margin:10px 0; padding:11px 13px; border:1px solid #e8dfc7; border-radius:6px; background:#fffaf0; color:#674d16; }
+  .table-scroll { overflow-x:auto; border:1px solid var(--input-border,#dfe6ee); border-radius:7px; }
+  table { width:100%; min-width:1120px; border-collapse:collapse; }
+  th, td { padding:10px 11px; border-bottom:1px solid var(--input-border,#dfe6ee); text-align:left; }
+  th { background:#f5f7f8; color:var(--secondary-text,#475569); font-size:12px; white-space:nowrap; }
+  tbody tr:last-child td { border-bottom:0; }
+  .number { text-align:right; white-space:nowrap; font-variant-numeric:tabular-nums; }
+  .empty-state { padding:25px; text-align:center; color:var(--secondary-text,#64748b); }
+  @media (max-width:900px) { .metrics { grid-template-columns:repeat(2,minmax(150px,1fr)); } .project-context { grid-template-columns:repeat(2,minmax(140px,1fr)); } }
+  @media (max-width:480px) { .metrics { grid-template-columns:1fr 1fr; gap:8px; } .metric { padding:12px; } .metric-value { font-size:18px; } .chart-panel { padding:10px; } .week-detail-header, .week-detail-content { padding-left:13px; padding-right:13px; } .week-cost-summary { grid-template-columns:1fr 1fr; gap:7px; } }
+</style>
+<main class="performance-page">
+  <header class="page-heading">
+    <div>
+      <h1>Budget Performance</h1>
+      <div class="muted">{{ project.name }}</div>
+    </div>
+    <a class="btn" href="{{ url_for('agri.budgets_overview', tab='projects') }}">Back to project budgets</a>
+  </header>
+
+  <section class="project-context" aria-label="Project information">
+    <div class="context-item"><span>Project</span><strong>{{ project.name }}</strong></div>
+    <div class="context-item"><span>Crop</span><strong>{{ project.crop }}</strong></div>
+    <div class="context-item"><span>Planting date</span><strong>{{ project.planting_date }}</strong></div>
+    <div class="context-item"><span>Project hectares</span><strong>{{ '%.2f'|format(project.project_hectares) }} ha</strong></div>
+  </section>
+  {% if project.project_hectares != project.budget_hectares %}
+  <div class="muted" style="margin:-8px 0 14px;">Budget calculations use {{ '%.2f'|format(project.budget_hectares) }} budgeted hectares; actual project area is shown above.</div>
+  {% endif %}
+
+  <section class="metrics" aria-label="Budget summary">
+    <div class="metric"><span class="metric-label">Total budget cost</span><strong class="metric-value">R {{ '%.2f'|format(budget_total) }}</strong></div>
+    <div class="metric"><span class="metric-label">Total actual cost</span><strong class="metric-value">R {{ '%.2f'|format(actual_total) }}</strong></div>
+    <div class="metric"><span class="metric-label">Difference (budget - actual)</span><strong class="metric-value">R {{ '%.2f'|format(difference) }}</strong></div>
+    <div class="metric"><span class="metric-label">Budget cost per hectare</span><strong class="metric-value">R {{ '%.2f'|format(budget_cost_per_ha) }}</strong></div>
+  </section>
+
+  <section class="section" aria-labelledby="weekly-heading">
+    <div class="section-heading">
+      <h2 id="weekly-heading">Weekly expenditure</h2>
+      <span class="muted">Click a week to compare its per-product physical quantities and costs</span>
+    </div>
+    {% if not has_budget_periods %}
+    <div class="notice">No budget week dates are stored for this project budget, so actual expenditure cannot be matched to budget weeks yet.</div>
+    {% elif not has_actual_costs %}
+    <div class="notice">No actual chemical or fertiliser transactions were found within the budget week dates.</div>
+    {% endif %}
+    {% if undated_budget_line_count %}
+    <div class="notice">{{ undated_budget_line_count }} budget line(s) have no stored calendar week date. They are included in budget totals but cannot be matched to actual transaction weeks.</div>
+    {% endif %}
+    {% if chart_weeks %}
+    <div class="chart-panel"><div class="chart-wrap"><canvas id="weeklyChart" aria-label="Weekly budget and actual expenditure chart"></canvas></div></div>
+    {% else %}
+    <div class="chart-panel empty-state">There are no dated budget weeks to chart.</div>
+    {% endif %}
+  </section>
+
+  <section class="section" aria-labelledby="comparison-heading">
+    <div class="section-heading">
+      <h2 id="comparison-heading">Budget and actual comparison</h2>
+      <span class="muted">Select product types to show or hide them in both charts.</span>
+    </div>
+    {% if category_summary %}
+    <div class="type-legend" id="typeLegend" role="group" aria-label="Product type chart keys">
+      {% for category in category_summary %}
+      <label class="type-key">
+        <input type="checkbox" data-type-index="{{ loop.index0 }}" checked />
+        <span class="type-swatch" data-type-swatch="{{ loop.index0 }}"></span>
+        <span>{{ category.product_type }}</span>
+      </label>
+      {% endfor %}
+    </div>
+    {% endif %}
+    <div class="comparison-charts">
+      <div class="chart-panel">
+        <h3 class="chart-title">Quantity by product type</h3>
+        <div class="ring-legend"><span class="ring-key"><span class="ring-swatch" style="background:#475569;"></span>Budget · outer ring</span><span class="ring-key"><span class="ring-swatch" style="background:#94a3b8;"></span>Actual · inner ring</span></div>
+        {% if category_summary %}
+        <div class="chart-wrap"><canvas id="typeQuantityChart" aria-label="Budget and actual quantities by crop product type"></canvas></div>
+        <p class="muted chart-footnote">Each ring shows that series' share by type. Tooltips show quantities; product units are not converted.</p>
+        {% else %}<div class="empty-state">No product quantities are available to compare.</div>{% endif %}
+      </div>
+      <div class="chart-panel">
+        <h3 class="chart-title">Cost by product type</h3>
+        <div class="ring-legend"><span class="ring-key"><span class="ring-swatch" style="background:#475569;"></span>Budget · outer ring</span><span class="ring-key"><span class="ring-swatch" style="background:#94a3b8;"></span>Actual · inner ring</span></div>
+        {% if category_summary %}
+        <div class="chart-wrap"><canvas id="typeCostChart" aria-label="Budget and actual costs by crop product type"></canvas></div>
+        <p class="muted chart-footnote">Each ring shows that series' share by type. Tooltips show values in South African Rand.</p>
+        {% else %}<div class="empty-state">No product types are available to compare.</div>{% endif %}
+      </div>
+    </div>
+  </section>
+
+  <section class="section" aria-labelledby="products-heading">
+    <div class="section-heading">
+      <h2 id="types-heading">Expenditure by product type</h2>
+      <span class="muted">Types follow the project crop's ChemStockCrop records.</span>
+    </div>
+    <div class="table-scroll">
+      <table style="min-width:640px;">
+        <thead>
+          <tr><th>Product type</th><th class="number">Products</th><th class="number">Budget quantity</th><th class="number">Actual quantity</th><th class="number">Quantity difference</th><th class="number">Budget cost</th><th class="number">Actual cost</th><th class="number">Cost difference</th></tr>
+        </thead>
+        <tbody>
+          {% for category in category_summary %}
+          <tr>
+            <td>{{ category.product_type }}</td>
+            <td class="number">{{ category.product_count }}</td>
+            <td class="number">{{ '%.2f'|format(category.budget_quantity) }}</td>
+            <td class="number">{{ '%.2f'|format(category.actual_quantity) }}</td>
+            <td class="number">{{ '%.2f'|format(category.quantity_difference) }}</td>
+            <td class="number">R {{ '%.2f'|format(category.budget_cost) }}</td>
+            <td class="number">R {{ '%.2f'|format(category.actual_cost) }}</td>
+            <td class="number">R {{ '%.2f'|format(category.difference) }}</td>
+          </tr>
+          {% else %}
+          <tr><td class="empty-state" colspan="8">No crop-linked product types are available.</td></tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  </section>
+
+  <section class="section" aria-labelledby="products-heading">
+    <div class="section-heading">
+      <h2 id="products-heading">Product comparison</h2>
+      <span class="muted">Quantities and costs use the database transaction sign conventions.</span>
+    </div>
+    <div class="table-scroll">
+      <table>
+        <thead>
+          <tr>
+            <th>Product type</th><th>Product code</th><th>Product description</th>
+            <th class="number">Budget quantity</th><th class="number">Actual quantity</th><th class="number">Quantity difference</th>
+            <th class="number">Budget unit price</th><th class="number">Budget total cost</th><th class="number">Actual total cost</th><th class="number">Cost difference</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for product in products %}
+          <tr>
+            <td>{{ product.product_type }}</td><td>{{ product.product_code or '-' }}</td><td>{{ product.product_description }}</td>
+            <td class="number">{{ '%.2f'|format(product.budget_quantity) }}</td>
+            <td class="number">{{ '%.2f'|format(product.actual_quantity) }}</td>
+            <td class="number">{{ '%.2f'|format(product.quantity_difference) }}</td>
+            <td class="number">R {{ '%.2f'|format(product.budget_unit_price) }}</td>
+            <td class="number">R {{ '%.2f'|format(product.budget_cost) }}</td>
+            <td class="number">R {{ '%.2f'|format(product.actual_cost) }}</td>
+            <td class="number">R {{ '%.2f'|format(product.cost_difference) }}</td>
+          </tr>
+          {% else %}
+          <tr><td class="empty-state" colspan="10">No budget products are available for comparison.</td></tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  </section>
+</main>
+<dialog class="week-detail-dialog" id="weekDetailDialog" aria-labelledby="weekDetailTitle">
+  <div class="week-detail-header">
+    <div>
+      <h2 id="weekDetailTitle">Weekly details</h2>
+      <p>Budget and actual physical quantities by product</p>
+    </div>
+    <button class="week-detail-close" id="weekDetailClose" type="button" aria-label="Close week details">
+      <i class="fas fa-times" aria-hidden="true"></i>
+    </button>
+  </div>
+  <div class="week-detail-content">
+    <div class="week-cost-summary" id="weekCostSummary"></div>
+    <p class="muted week-detail-note">Quantities are shown per product in its stock unit; different units are not combined.</p>
+    <div class="table-scroll">
+      <table class="week-detail-table">
+        <thead>
+          <tr>
+            <th>Product</th>
+            <th class="number">Budget quantity</th>
+            <th class="number">Actual quantity</th>
+            <th class="number">Difference</th>
+            <th class="number">Budget cost</th>
+            <th class="number">Actual cost</th>
+          </tr>
+        </thead>
+        <tbody id="weekDetailBody"></tbody>
+        <tfoot id="weekDetailFoot"></tfoot>
+      </table>
+    </div>
+  </div>
+</dialog>
+<script>
+  const weeklyData = {{ chart_weeks | tojson }};
+  const typeCostData = {{ category_summary | tojson }};
+  const currency = new Intl.NumberFormat('en-ZA', { style: 'currency', currency: 'ZAR' });
+  const quantityFormat = new Intl.NumberFormat('en-ZA', { maximumFractionDigits: 2 });
+  const chartColors = { budget: '#75a98b', actual: '#d58a45' };
+  const weekDetailDialog = document.getElementById('weekDetailDialog');
+  const typeColors = ['#287c58', '#d58a45', '#4b7f9c', '#9d4f4f', '#7a6a9c', '#a88a36', '#447b70', '#a56d43', '#65748b'];
+  const visibleTypeIndexes = new Set(typeCostData.map((_, index) => index));
+  const typeCharts = [];
+
+  function appendDetailCell(row, value, className = '') {
+    const cell = document.createElement('td');
+    cell.textContent = value;
+    if (className) cell.className = className;
+    row.appendChild(cell);
+  }
+
+  function quantityWithUnit(value, unitCode) {
+    const quantity = quantityFormat.format(Number(value) || 0);
+    return unitCode ? `${quantity} ${unitCode}` : quantity;
+  }
+
+  function quantityTotalsByUnit(products, field) {
+    const totals = new Map();
+    products.forEach((product) => {
+      const unitCode = String(product.stocking_unit_code || '').trim();
+      const key = unitCode || `unspecified:${product.stock_id}`;
+      const label = unitCode || `Unit unspecified (${product.product_code || product.product_description})`;
+      const quantity = Number(product[field] || 0);
+      const total = totals.get(key) || { label, quantity: 0 };
+      total.quantity += Number.isFinite(quantity) ? quantity : 0;
+      totals.set(key, total);
+    });
+    return Array.from(totals.values(), (total) => `${quantityFormat.format(total.quantity)} ${total.label}`).join('; ') || '—';
+  }
+
+  function showWeekDetails(week) {
+    document.getElementById('weekDetailTitle').textContent = `Week ${week.label}`;
+
+    const costSummary = document.getElementById('weekCostSummary');
+    costSummary.replaceChildren();
+    [
+      { label: 'Budget expenditure', value: currency.format(week.budget_cost) },
+      { label: 'Actual expenditure', value: currency.format(week.actual_cost) }
+    ].forEach((item) => {
+      const card = document.createElement('div');
+      card.className = 'week-cost-item';
+      const label = document.createElement('span');
+      label.textContent = item.label;
+      const value = document.createElement('strong');
+      value.textContent = item.value;
+      card.append(label, value);
+      costSummary.appendChild(card);
+    });
+
+    const body = document.getElementById('weekDetailBody');
+    body.replaceChildren();
+    const products = week.products || [];
+    if (!products.length) {
+      const row = document.createElement('tr');
+      const cell = document.createElement('td');
+      cell.className = 'empty-state';
+      cell.colSpan = 6;
+      cell.textContent = 'No budget or actual product quantities are available for this week.';
+      row.appendChild(cell);
+      body.appendChild(row);
+    } else {
+      products.forEach((product) => {
+        const row = document.createElement('tr');
+        const name = product.product_code
+          ? `${product.product_description} (${product.product_code})`
+          : product.product_description;
+        appendDetailCell(row, name);
+        appendDetailCell(row, quantityWithUnit(product.budget_quantity, product.stocking_unit_code), 'number');
+        appendDetailCell(row, quantityWithUnit(product.actual_quantity, product.stocking_unit_code), 'number');
+        appendDetailCell(row, quantityWithUnit(product.quantity_difference, product.stocking_unit_code), 'number');
+        appendDetailCell(row, currency.format(product.budget_cost), 'number');
+        appendDetailCell(row, currency.format(product.actual_cost), 'number');
+        body.appendChild(row);
+      });
+    }
+
+    const foot = document.getElementById('weekDetailFoot');
+    foot.replaceChildren();
+    const totalRow = document.createElement('tr');
+    const budgetCost = products.reduce((sum, product) => sum + (Number(product.budget_cost) || 0), 0);
+    const actualCost = products.reduce((sum, product) => sum + (Number(product.actual_cost) || 0), 0);
+    appendDetailCell(totalRow, 'Totals');
+    appendDetailCell(totalRow, quantityTotalsByUnit(products, 'budget_quantity'), 'number quantity-total');
+    appendDetailCell(totalRow, quantityTotalsByUnit(products, 'actual_quantity'), 'number quantity-total');
+    appendDetailCell(totalRow, quantityTotalsByUnit(products, 'quantity_difference'), 'number quantity-total');
+    appendDetailCell(totalRow, currency.format(budgetCost), 'number');
+    appendDetailCell(totalRow, currency.format(actualCost), 'number');
+    foot.appendChild(totalRow);
+
+    if (!weekDetailDialog.open) weekDetailDialog.showModal();
+  }
+
+  document.getElementById('weekDetailClose').addEventListener('click', () => weekDetailDialog.close());
+  weekDetailDialog.addEventListener('click', (event) => {
+    if (event.target === weekDetailDialog) weekDetailDialog.close();
+  });
+
+  function getTypeColor(index) {
+    return typeColors[index % typeColors.length];
+  }
+
+  function updateTypeCharts() {
+    typeCharts.forEach((chart) => {
+      chart.data.datasets[0].data = chart.budgetValues.map((value, index) => visibleTypeIndexes.has(index) ? value : 0);
+      chart.data.datasets[1].data = chart.actualValues.map((value, index) => visibleTypeIndexes.has(index) ? value : 0);
+      chart.update();
+    });
+  }
+
+  document.querySelectorAll('#typeLegend [data-type-index]').forEach((checkbox) => {
+    const index = Number(checkbox.dataset.typeIndex);
+    const swatch = document.querySelector(`[data-type-swatch="${index}"]`);
+    if (swatch) swatch.style.backgroundColor = getTypeColor(index);
+    checkbox.addEventListener('change', () => {
+      if (checkbox.checked) visibleTypeIndexes.add(index);
+      else visibleTypeIndexes.delete(index);
+      updateTypeCharts();
+    });
+  });
+
+  function withAlpha(color, alpha) {
+    const red = parseInt(color.slice(1, 3), 16);
+    const green = parseInt(color.slice(3, 5), 16);
+    const blue = parseInt(color.slice(5, 7), 16);
+    return `rgba(${red}, ${green}, ${blue}, ${alpha})`;
+  }
+
+  function createTypeDoughnut(elementId, budgetValues, actualValues, valueFormatter) {
+    const labels = typeCostData.map((item) => item.product_type);
+    const colors = labels.map((_, index) => getTypeColor(index));
+    const chart = new Chart(document.getElementById(elementId), {
+      type: 'doughnut',
+      data: {
+        labels,
+        datasets: [
+          { label: 'Budget', data: budgetValues.map((value, index) => visibleTypeIndexes.has(index) ? value : 0), backgroundColor: colors, borderColor: '#fff', borderWidth: 2, weight: 1.15 },
+          { label: 'Actual', data: actualValues.map((value, index) => visibleTypeIndexes.has(index) ? value : 0), backgroundColor: colors.map((color) => withAlpha(color, 0.48)), borderColor: '#fff', borderWidth: 2, weight: 0.85 }
+        ]
+      },
+      options: {
+        responsive: true,
+        maintainAspectRatio: false,
+        cutout: '48%',
+        plugins: {
+          legend: { display: false },
+          tooltip: { callbacks: { label: (context) => `${context.dataset.label} · ${context.label}: ${valueFormatter(context.parsed)}` } }
+        }
+      }
+    });
+    chart.budgetValues = budgetValues;
+    chart.actualValues = actualValues;
+    typeCharts.push(chart);
+  }
+
+  {% if chart_weeks %}
+  new Chart(document.getElementById('weeklyChart'), {
+    type: 'bar',
+    data: {
+      labels: weeklyData.map((week) => week.label),
+      datasets: [
+        { label: 'Budget', data: weeklyData.map((week) => week.budget_cost), backgroundColor: chartColors.budget, borderRadius: 3 },
+        { label: 'Actual expenditure', data: weeklyData.map((week) => week.actual_cost), backgroundColor: chartColors.actual, borderRadius: 3 }
+      ]
+    },
+    options: {
+      responsive: true,
+      maintainAspectRatio: false,
+      interaction: { mode: 'index', intersect: false },
+      onClick: (event, elements) => {
+        if (!elements.length) return;
+        const week = weeklyData[elements[0].index];
+        if (week) showWeekDetails(week);
+      },
+      scales: {
+        x: { grid: { display: false } },
+        y: { beginAtZero: true, ticks: { callback: (value) => currency.format(value) } }
+      },
+      plugins: {
+        legend: { position: 'top', align: 'end' },
+        tooltip: { callbacks: { label: (context) => `${context.dataset.label}: ${currency.format(context.parsed.y)}` } }
+      }
+    }
+  });
+  {% endif %}
+
+  {% if category_summary %}
+  createTypeDoughnut(
+    'typeQuantityChart',
+    typeCostData.map((item) => item.budget_quantity),
+    typeCostData.map((item) => item.actual_quantity),
+    (value) => quantityFormat.format(value)
+  );
+  createTypeDoughnut(
+    'typeCostChart',
+    typeCostData.map((item) => item.budget_cost),
+    typeCostData.map((item) => item.actual_cost),
+    (value) => currency.format(value)
+  );
+  {% endif %}
+</script>
+{% endblock %}

@@ -307,6 +307,7 @@ def load_chemstock(stock_link):
         return {
             'ActiveIngredient': None,
             'ColourCode': None,
+            'RegNumber': None,
             'Crops': [],
             'IsChemProduct': False,
         }
@@ -317,11 +318,11 @@ def load_chemstock(stock_link):
             SELECT
                 STK.ChemStockLink,
                 STK.IdChemStock,
+                STK.ChemStockRegNumber,
                 ACT.IdChemAct AS ChemActId,
                 ACT.ChemActIngredient,
                 CRP.IdCrop AS CropId,
                 CRP.CropDescription,
-                STKCRP.StkCrpRegNumber,
                 CLR.IdChemCol AS ChemColId,
                 CLR.ChemColCode,
                 STKCRP.StkCrpType,
@@ -343,6 +344,7 @@ def load_chemstock(stock_link):
         return {
             'ActiveIngredient': None,
             'ColourCode': None,
+            'RegNumber': None,
             'Crops': [],
             'IsChemProduct': False,
         }
@@ -352,13 +354,12 @@ def load_chemstock(stock_link):
         {
             'CropId': row.get('CropId'),
             'CropDescription': row.get('CropDescription') or '-',
-            'RegNumber': row.get('StkCrpRegNumber') or '-',
             'Type': row.get('StkCrpType') or '-',
             'Function': row.get('StkCrpFunctionDef') or '-',
             'WithholdingPeriod': row.get('StkCrpWitholdingPeriodDef') or '-',
         }
         for row in rows
-        if row.get('CropDescription') or row.get('StkCrpRegNumber')
+        if row.get('CropDescription')
     ]
 
     return {
@@ -366,6 +367,7 @@ def load_chemstock(stock_link):
         'ActiveIngredientId': first.get('ChemActId'),
         'ColourCode': first.get('ChemColCode'),
         'ColourCodeId': first.get('ChemColId'),
+        'RegNumber': first.get('ChemStockRegNumber'),
         'ChemStockId': first.get('IdChemStock'),
         'Crops': crops,
         'IsChemProduct': first.get('ChemStockLink') is not None,
@@ -378,6 +380,7 @@ def update_chemstock(stock_link):
     data = request.get_json(silent=True) or {}
     active = (data.get('active_ingredient') or '').strip() or None
     colour = (data.get('colour_code') or '').strip() or None
+    reg_number = (data.get('registration_number') or '').strip() or None
     crops = data.get('crops') or []
 
     conn = create_db_connection()
@@ -405,14 +408,13 @@ def update_chemstock(stock_link):
 
         print(chem_id)
         # Update ChemStock fields
-        cur.execute("UPDATE agr.ChemStock SET ChemStockActiveIngrId = ?, ChemStockColourCodeId = ? WHERE IdChemStock = ?", (active, colour, chem_id))
+        cur.execute("UPDATE agr.ChemStock SET ChemStockActiveIngrId = ?, ChemStockColourCodeId = ?, ChemStockRegNumber = ? WHERE IdChemStock = ?", (active, colour, reg_number, chem_id))
         conn.commit()
         print(crops)
         # Replace ChemStockCrop rows
         cur.execute("DELETE FROM agr.ChemStockCrop WHERE StkCrpChemStockId = ?", (chem_id,))
         for c in crops:
             crop_val = c.get('crop') or c.get('crop_id') or None
-            reg = c.get('reg_number') or c.get('RegNumber') or None
             typ = c.get('type') or c.get('Type') or None
             func = c.get('function') or c.get('Function') or None
             withhold = c.get('withholding') or c.get('WithholdingPeriod') or None
@@ -426,7 +428,7 @@ def update_chemstock(stock_link):
                     cr = cur.fetchone()
                     if cr:
                         crop_id = cr[0]
-            cur.execute("INSERT INTO agr.ChemStockCrop (StkCrpChemStockId, StkCrpCropId, StkCrpRegNumber, StkCrpType, StkCrpWitholdingPeriodDef, StkCrpFunctionDef) VALUES (?, ?, ?, ?, ?, ?)", (chem_id, crop_id, reg, typ, withhold, func))
+            cur.execute("INSERT INTO agr.ChemStockCrop (StkCrpChemStockId, StkCrpCropId, StkCrpType, StkCrpWitholdingPeriodDef, StkCrpFunctionDef) VALUES (?, ?, ?, ?, ?)", (chem_id, crop_id, typ, withhold, func))
         conn.commit()
 
         # Return updated chemstock structure

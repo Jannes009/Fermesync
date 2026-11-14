@@ -160,7 +160,9 @@
 
         <!-- Step 4: ChemStockCrop -->
         <div class="step" data-step="4">
-          <label class="mini">ChemStockCrop entries</label>
+          <label for="registration_number">Registration number</label>
+          <input id="registration_number" name="registration_number" />
+          <label class="mini" style="margin-top:12px">Crop entries</label>
           <div id="chem-crops"></div>
           <div style="margin-top:8px">
             <button type="button" class="btn add-btn" id="add-crop">Add crop</button>
@@ -338,6 +340,7 @@
       html += `<div><strong>Group:</strong> ${data.group_name || '—'}</div>`;
       html += `<div><strong>Active ingredient:</strong> ${activeIngInput.options[activeIngInput.selectedIndex]?.text || '—'}</div>`;
       html += `<div><strong>Colour code:</strong> ${colourCodeInput.options[colourCodeInput.selectedIndex]?.text || '—'}</div>`;
+      html += `<div><strong>Registration number:</strong> ${data.registration_number || '—'}</div>`;
       html += `<div><strong>Stocking unit:</strong> ${stockingUnitInput.options[stockingUnitInput.selectedIndex]?.text || '—'}</div>`;
       html += `<div><strong>Purchasing unit:</strong> ${purchasingUnitInput.options[purchasingUnitInput.selectedIndex]?.text || '—'}</div>`;
       if(data.warehouses.length){
@@ -358,7 +361,7 @@
       if(data.chemstockcrop.length){
         html += '<div style="margin-top:12px"><strong>Crop entries</strong><ul style="margin:6px 0 0 18px;">';
         data.chemstockcrop.forEach(c=>{
-          html += `<li>${c.crop || 'No crop'}${c.registration_number ? ' — Reg: ' + c.registration_number : ''}${c.withholding_period ? ' — Wh: ' + c.withholding_period : ''}${c.type ? ' — Type: ' + c.type : ''}${c.func ? ' — Function: ' + c.func : ''}</li>`;
+          html += `<li>${c.crop || 'No crop'}${c.withholding_period ? ' — Wh: ' + c.withholding_period : ''}${c.type ? ' — Type: ' + c.type : ''}${c.func ? ' — Function: ' + c.func : ''}</li>`;
         });
         html += '</ul></div>';
       }
@@ -562,6 +565,7 @@
         html += `<div style="max-width:70%">`;
         html += `<div style="font-weight:700">${dot} ${item.product_description || item.product_code} ${item.product_code? '('+item.product_code+')' : ''}</div>`;
         if(item.active_ingredient) html += `<div class="mini">${item.active_ingredient}</div>`;
+        if(item.sample_registration) html += `<div class="mini">Registration number: ${item.sample_registration}</div>`;
         html += `<div class="mini">Suppliers: ${item.supplier_count} • Warehouses: ${item.warehouse_count} • Crops: ${item.crop_count}</div>`;
         html += `</div>`;
         html += `<div style="display:flex;gap:8px">`;
@@ -663,7 +667,7 @@
         html += `<button id="close-preview" class="btn ghost" style="flex-shrink:0;padding:6px 12px">✕</button>`;
         html += `</div>`;
         html += `<hr style="margin:12px 0"/>`;
-        html += `<div><strong>General</strong><div class="mini">Brand: ${p.product_description || ''}</div><div class="mini">Code: ${p.product_code || ''}</div><div class="mini">Ingredient: ${p.active_ingredient || ''}</div></div>`;
+        html += `<div><strong>General</strong><div class="mini">Brand: ${p.product_description || ''}</div><div class="mini">Code: ${p.product_code || ''}</div><div class="mini">Ingredient: ${p.active_ingredient || ''}</div><div class="mini">Registration number: ${p.registration_number || '—'}</div></div>`;
         html += `<div style="margin-top:14px"><strong>Suppliers (${suppliers.length})</strong>`;
         suppliers.forEach(s=> html += `<div class="mini">• ${s.name}</div>`);
         html += `</div>`;
@@ -671,7 +675,7 @@
         warehouses.forEach(w=> html += `<div class="mini">• ${w.description}</div>`);
         html += `</div>`;
         html += `<div style="margin-top:14px"><strong>Crop Registrations (${regs.length})</strong>`;
-        regs.forEach(r=> html += `<div class="mini">• ${r.crop_description || ''} ${r.registration_number ? '— Reg: ' + r.registration_number : ''}</div>`);
+        regs.forEach(r=> html += `<div class="mini">• ${r.crop_description || ''}</div>`);
         html += `</div>`;
         html += `</div>`;
         
@@ -700,6 +704,7 @@
         // Prefill basic fields
         brandInput.value = p.product_description || '';
         productCodeInput.value = '';
+        document.getElementById('registration_number').value = p.registration_number || '';
         
         // Set selects by ID
         if(p.active_ingredient_id) activeIngInput.value = p.active_ingredient_id;
@@ -741,8 +746,6 @@
           if(row){
             const cropSelect = row.querySelector('.crop-select');
             if(cropSelect) cropSelect.value = r.crop_id || '';
-            const regInput = row.querySelector('.reg-input');
-            if(regInput) regInput.value = r.registration_number || '';
             const withInput = row.querySelector('.with-input');
             if(withInput) withInput.value = r.withholding_period || '';
             const typeInput = row.querySelector('.type-input');
@@ -864,6 +867,7 @@
       data.colour_code = document.getElementById('colour_code').value;
       data.stocking_unit = document.getElementById('stocking_unit').value;
       data.purchasing_unit = document.getElementById('purchasing_unit').value;
+      data.registration_number = document.getElementById('registration_number').value.trim();
       data.group = document.getElementById('group').value;
       data.group_name = document.getElementById('group').options[document.getElementById('group').selectedIndex]?.text || '';
 
@@ -895,11 +899,10 @@
         const cropSelect = row.querySelector('.crop-select');
         const crop = cropSelect?.value;
         const cropName = cropSelect?.options[cropSelect.selectedIndex]?.text || '';
-        const reg = row.querySelector('.reg-input')?.value;
         const withh = row.querySelector('.with-input')?.value;
         const type = row.querySelector('.type-input')?.value;
         const func = row.querySelector('.func-input')?.value;
-        if(crop) data.chemstockcrop.push({crop,crop_name:cropName,registration_number:reg,withholding_period:withh,type,func});
+        if(crop) data.chemstockcrop.push({crop,crop_name:cropName,withholding_period:withh,type,func});
       });
 
       return data;
@@ -918,7 +921,6 @@
             <option value="{{ c[0] }}">{{ c[2] or c[1] }}</option>
             {% endfor %}
           </select>
-          <input class="reg-input" placeholder="Reg. number" style="flex:1" />
         </div>
         <div style="display:flex;gap:8px;margin-top:6px">
           <input class="with-input small-input" placeholder="Withholding (days)" />

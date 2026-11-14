@@ -1,0 +1,263 @@
+{% extends 'inventory_base.html' %}
+{% block content %}
+<style>
+  .page-wrap { max-width: 1300px; margin: 24px auto; padding: 0 16px 32px; }
+  .card { background: var(--container-bg, #fff); border-radius: 12px; box-shadow: 0 2px 12px rgba(0,0,0,0.06); padding: 18px; }
+  .toolbar { display:flex; justify-content:space-between; gap:12px; align-items:center; flex-wrap:wrap; }
+  .stats { display:grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap:12px; margin: 16px 0 20px; }
+  .stat { background: #f8fafc; border:1px solid var(--input-border,#dfe6ee); border-radius:10px; padding:12px; }
+  .field-grid { display:grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap:12px; margin-bottom:16px; }
+  .field label { display:block; margin-bottom:6px; font-size:12px; color: var(--secondary-text,#475569); }
+  .field input, .field select { width:100%; padding:9px 10px; border:1px solid var(--input-border, #dfe6ee); border-radius:8px; }
+  table { width:100%; border-collapse:collapse; }
+  th, td { border:1px solid var(--input-border,#dfe6ee); padding:8px; }
+  th { background:#f8fafc; }
+  .btn { display:inline-block; border:none; border-radius:8px; padding:9px 14px; cursor:pointer; text-decoration:none; }
+  .btn-primary { background: var(--button-bg,#2d5bff); color: var(--button-text,#fff); }
+  .btn-secondary { background: #e9edf5; color: var(--primary-text,#1f2937); }
+  .btn-danger { background: #d9464f; color:#fff; }
+  .muted { color: var(--secondary-text,#475569); }
+  .status-control { display:flex; align-items:center; gap:10px; }
+  .switch { position:relative; width:46px; height:26px; flex:0 0 auto; }
+  .switch input { position:absolute; width:1px; height:1px; opacity:0; }
+  .switch-track { display:block; width:46px; height:26px; border-radius:20px; background:#94a3b8; cursor:pointer; transition:background .18s ease; }
+  .switch-track::after { content:""; display:block; width:20px; height:20px; margin:3px; border-radius:50%; background:#fff; transition:transform .18s ease; }
+  .switch input:checked + .switch-track { background:#25815a; }
+  .switch input:checked + .switch-track::after { transform:translateX(20px); }
+  .switch input:focus-visible + .switch-track { outline:3px solid #86b7fe; outline-offset:2px; }
+  .grid-wrap { overflow:auto; max-height:65vh; margin-top:14px; }
+  .product-table { min-width:850px; }
+  .product-table th { position:sticky; top:0; z-index:2; white-space:nowrap; }
+  .product-name { min-width:210px; font-weight:650; }
+  .price-input { width:110px; padding:7px; border:1px solid var(--input-border,#dfe6ee); border-radius:5px; text-align:right; }
+  .quantity-input { width:82px; padding:7px; border:1px solid var(--input-border,#dfe6ee); border-radius:5px; text-align:right; }
+  .numeric { text-align:right; white-space:nowrap; font-variant-numeric:tabular-nums; }
+  .search { width:min(420px,100%); padding:9px 11px; border:1px solid var(--input-border,#dfe6ee); border-radius:6px; }
+  .week-range { display:flex; align-items:end; gap:12px; flex-wrap:wrap; margin:14px 0 8px; }
+  .week-range label { display:grid; gap:5px; color:var(--secondary-text,#475569); font-size:12px; font-weight:700; }
+  .week-range input { width:110px; min-height:38px; padding:7px 9px; border:1px solid var(--input-border,#dfe6ee); border-radius:5px; }
+  .week-range-note { align-self:center; }
+  .is-hidden { display:none; }
+  .empty-state { padding:22px; text-align:center; color:var(--secondary-text,#475569); }
+</style>
+<div class="page-wrap">
+  <div class="card">
+    <div class="toolbar">
+      <div>
+        <h2 style="margin:0;">{{ budget.project_name }}</h2>
+        <div class="muted">Budget editor</div>
+      </div>
+      <a class="btn btn-secondary" href="{{ url_for('agri.budgets_overview', tab='projects') }}">Back to projects</a>
+    </div>
+
+    <div class="stats">
+      <div class="stat"><strong>Crop</strong><div>{{ budget.crop }}</div></div>
+      <div class="stat"><strong>Planting date</strong><div>{{ budget.planting_date }}</div></div>
+      <div class="stat"><strong>Actual project area</strong><div>{{ '%.2f'|format(budget.project_ha) }} ha</div></div>
+      <div class="stat"><strong>Budgeted area</strong><div>{{ '%.2f'|format(budget.budget_ha) }} ha</div></div>
+      <div class="stat"><strong>Template</strong><div>{{ budget.template }}</div></div>
+      <div class="stat"><strong>Estimated total</strong><div id="budgetTotal">R {{ '%.2f'|format(total_budget) }}</div></div>
+      <div class="stat"><strong>Estimated per hectare</strong><div id="budgetPerHa">R {{ '%.2f'|format(total_per_ha) }}</div></div>
+    </div>
+
+    <div class="field-grid">
+      <div class="field">
+        <label>Budget status</label>
+        <div class="status-control">
+          <label class="switch" for="budgetActive">
+            <input id="budgetActive" type="checkbox" {% if budget.is_active %}checked{% endif %} />
+            <span class="switch-track"></span>
+          </label>
+          <strong id="statusLabel">{{ 'Active' if budget.is_active else 'Inactive' }}</strong>
+        </div>
+      </div>
+    </div>
+
+    <div style="margin-bottom:12px; display:flex; gap:10px; align-items:center; flex-wrap:wrap;">
+      <button class="btn btn-primary" id="saveBudgetBtn" type="button">Save budget</button>
+      <button class="btn btn-danger" id="deleteBudgetBtn" type="button">Delete budget</button>
+    </div>
+
+    <div class="week-range">
+      <label for="weekStart">First relational week<input id="weekStart" type="number" step="1" /></label>
+      <label for="weekEnd">Last relational week<input id="weekEnd" type="number" step="1" /></label>
+      <span class="muted week-range-note">Week 0 is the planting week. Extend either end as needed.</span>
+    </div>
+    <input class="search" id="productSearch" type="search" placeholder="Search crop products" aria-label="Search crop products" />
+    <div class="grid-wrap">
+      <table class="product-table">
+        <thead id="budgetHeader"></thead>
+        <tbody id="budgetBody"></tbody>
+      </table>
+    </div>
+  </div>
+</div>
+<script>
+  const budgetId = {{ budget.id }};
+  const budgetHa = Number({{ budget.budget_ha | tojson }} || 0);
+  let weeks = {{ weeks | tojson }};
+  const products = {{ products | tojson }};
+  const budgetBody = document.getElementById('budgetBody');
+
+  function escapeHtml(value) {
+    return String(value ?? '').replace(/[&<>"']/g, (character) => ({
+      '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;'
+    })[character]);
+  }
+
+  function productCostPerHa(product) {
+    const totalQuantity = Object.values(product.values).reduce((sum, quantity) => sum + Number(quantity || 0), 0);
+    return totalQuantity * Number(product.unit_price || 0);
+  }
+
+  function renderBudget() {
+    renderHeader();
+    if (!products.length) {
+      budgetBody.innerHTML = `<tr><td class="empty-state" colspan="${weeks.length + 5}">No products are linked to this crop.</td></tr>`;
+      updateTotals();
+      return;
+    }
+    budgetBody.innerHTML = products.map((product) => `
+      <tr data-stock-id="${escapeHtml(product.stock_id)}" data-search="${escapeHtml(`${product.stock_description} ${product.stock_code}`.toLowerCase())}">
+        <td class="product-name">${escapeHtml(product.stock_description)}<div class="muted">${escapeHtml(product.stock_code || '')}</div></td>
+        <td class="numeric"><input class="price-input" type="number" min="0" step="0.01" value="${escapeHtml(product.unit_price)}" data-price-stock="${escapeHtml(product.stock_id)}" aria-label="Unit price for ${escapeHtml(product.stock_description)}" /></td>
+        <td class="numeric" data-cost-stock="${escapeHtml(product.stock_id)}">R ${productCostPerHa(product).toFixed(2)}</td>
+        <td class="numeric" data-quantity-total-stock="${escapeHtml(product.stock_id)}"></td>
+        <td class="numeric" data-cost-total-stock="${escapeHtml(product.stock_id)}"></td>
+        ${weeks.map((week) => `<td class="numeric"><input class="quantity-input" type="number" min="0" step="0.01" value="${Number(product.values[week] || 0) || ''}" data-week="${week}" data-quantity-stock="${escapeHtml(product.stock_id)}" aria-label="${escapeHtml(product.stock_description)} quantity per hectare for week ${week}" /></td>`).join('')}
+      </tr>
+    `).join('');
+    applySearch();
+    updateTotals();
+  }
+
+  function renderHeader() {
+    document.getElementById('budgetHeader').innerHTML = `
+      <tr>
+        <th>Product</th>
+        <th class="numeric">Unit price</th>
+        <th class="numeric">Cost/ha</th>
+        <th class="numeric">Total quantity</th>
+        <th class="numeric">Total cost</th>
+        ${weeks.map((week) => `<th class="numeric">Week ${week}</th>`).join('')}
+      </tr>
+    `;
+  }
+
+  function setWeekRange(start, end) {
+    if (!Number.isSafeInteger(start) || !Number.isSafeInteger(end)) return;
+    weeks = Array.from({ length: end - start + 1 }, (_, index) => start + index);
+    renderBudget();
+  }
+
+  function updateTotals() {
+    const totalPerHa = products.reduce((sum, product) => sum + productCostPerHa(product), 0);
+    document.getElementById('budgetPerHa').textContent = `R ${totalPerHa.toFixed(2)}`;
+    document.getElementById('budgetTotal').textContent = `R ${(totalPerHa * budgetHa).toFixed(2)}`;
+    products.forEach((product) => {
+      const stockId = CSS.escape(String(product.stock_id));
+      const totalQuantity = Object.values(product.values).reduce((sum, quantity) => sum + Number(quantity || 0), 0) * budgetHa;
+      const totalCost = productCostPerHa(product) * budgetHa;
+      const costCell = document.querySelector(`[data-cost-stock="${stockId}"]`);
+      const quantityCell = document.querySelector(`[data-quantity-total-stock="${stockId}"]`);
+      const totalCostCell = document.querySelector(`[data-cost-total-stock="${stockId}"]`);
+      if (costCell) costCell.textContent = `R ${productCostPerHa(product).toFixed(2)}`;
+      if (quantityCell) quantityCell.textContent = totalQuantity.toFixed(2);
+      if (totalCostCell) totalCostCell.textContent = `R ${totalCost.toFixed(2)}`;
+    });
+  }
+
+  function applySearch() {
+    const query = document.getElementById('productSearch').value.trim().toLowerCase();
+    budgetBody.querySelectorAll('tr[data-stock-id]').forEach((row) => {
+      row.classList.toggle('is-hidden', !row.dataset.search.includes(query));
+    });
+  }
+
+  function collectLines() {
+    const lines = [];
+    products.forEach((product) => {
+      Object.entries(product.values).forEach(([week, savedQuantity]) => {
+        const quantity = Number(savedQuantity || 0);
+        if (quantity > 0) {
+          lines.push({
+            stock_id: product.stock_id,
+            relational_week: Number(week),
+            quantity_per_ha: quantity,
+            unit_price: Number(product.unit_price || 0)
+          });
+        }
+      });
+    });
+    return lines;
+  }
+
+  document.getElementById('budgetActive').addEventListener('change', (event) => {
+    document.getElementById('statusLabel').textContent = event.target.checked ? 'Active' : 'Inactive';
+  });
+  document.getElementById('productSearch').addEventListener('input', applySearch);
+  document.getElementById('weekStart').value = weeks[0];
+  document.getElementById('weekEnd').value = weeks[weeks.length - 1];
+  document.getElementById('weekStart').addEventListener('change', () => {
+    const start = Number(document.getElementById('weekStart').value);
+    let end = Number(document.getElementById('weekEnd').value);
+    if (start > end) {
+      end = start;
+      document.getElementById('weekEnd').value = end;
+    }
+    setWeekRange(start, end);
+  });
+  document.getElementById('weekEnd').addEventListener('change', () => {
+    let start = Number(document.getElementById('weekStart').value);
+    const end = Number(document.getElementById('weekEnd').value);
+    if (end < start) {
+      start = end;
+      document.getElementById('weekStart').value = start;
+    }
+    setWeekRange(start, end);
+  });
+  budgetBody.addEventListener('input', (event) => {
+    const stockId = event.target.dataset.priceStock || event.target.dataset.quantityStock;
+    if (!stockId) return;
+    const product = products.find((item) => String(item.stock_id) === stockId);
+    if (!product) return;
+    if (event.target.dataset.priceStock) product.unit_price = Number(event.target.value || 0);
+    else product.values[event.target.dataset.week] = Number(event.target.value || 0);
+    updateTotals();
+  });
+
+  document.getElementById('saveBudgetBtn').addEventListener('click', async () => {
+    const payload = {
+      is_active: document.getElementById('budgetActive').checked,
+      lines: collectLines()
+    };
+
+    const response = await fetch(`/agri/project-budget/${budgetId}/save`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(payload)
+    });
+
+    const result = await response.json();
+    if (result.success) {
+      window.location.reload();
+    } else {
+      alert(result.message || 'Unable to save budget');
+    }
+  });
+
+  document.getElementById('deleteBudgetBtn').addEventListener('click', async () => {
+    const confirmDelete = confirm('Delete this budget?');
+    if (!confirmDelete) return;
+    const response = await fetch(`/agri/project-budget/${budgetId}/delete`, { method: 'POST' });
+    const result = await response.json();
+    if (result.success) {
+      window.location.href = '/agri/budgets?tab=projects';
+    } else {
+      alert(result.message || 'Unable to delete budget');
+    }
+  });
+
+  renderBudget();
+</script>
+{% endblock %}
