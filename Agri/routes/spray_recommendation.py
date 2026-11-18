@@ -6,6 +6,16 @@ from datetime import datetime, timedelta
 from decimal import Decimal
 import math
 
+SPRAY_DESCRIPTION_MAX_LENGTH = 50
+
+
+def _spray_description_validation_error(description):
+    if not description:
+        return "Spray description is required"
+    if len(description) > SPRAY_DESCRIPTION_MAX_LENGTH:
+        return f"Spray description must be {SPRAY_DESCRIPTION_MAX_LENGTH} characters or fewer"
+    return None
+
 
 @agri_bp.route("/spray-recommendation/create", methods=["GET"])
 @login_required
@@ -71,7 +81,13 @@ def _fetch_all_product_catalog(cursor, warehouse_ids):
         FROM cmn._uvStockWarehouse SW
         JOIN cmn._uvStockItems SI ON SI.StockLink = SW.StockID and SI.ItemActive = 1
         JOIN agr.ChemStock STK ON STK.ChemStockLink = SW.StockID
-        LEFT JOIN agr.ChemActiveIngredient ACT ON ACT.IdChemAct = STK.ChemStockActiveIngrId
+        LEFT JOIN (
+            SELECT CSAI.CSAIChemStockId,
+                   STRING_AGG(ACT.ChemActIngredient, ' + ') WITHIN GROUP (ORDER BY ACT.ChemActIngredient) AS ChemActIngredient
+            FROM agr.ChemStockActiveIngredient CSAI
+            JOIN agr.ChemActiveIngredient ACT ON ACT.IdChemAct = CSAI.CSAIActiveIngredientId
+            GROUP BY CSAI.CSAIChemStockId
+        ) ACT ON ACT.CSAIChemStockId = STK.IdChemStock
         LEFT JOIN agr.ChemStockCrop CRP ON CRP.StkCrpChemStockId = STK.IdChemStock
         LEFT JOIN cmn._uvStockUnits SU ON SU.StockLink = SW.StockID
             AND SU.PurchaseUnitId = STK.ChemStockPurchasingUnitId
@@ -272,7 +288,6 @@ def submit_spray_recommendation():
                 "success": False,
                 "message": "No payload received"
             }), 400
-        print(data)
         projects = data.get('projects', [])
         lines = data.get('lines', [])
         mixes = data.get('mixes', [])
@@ -291,10 +306,11 @@ def submit_spray_recommendation():
 
         # Validate description is provided
         spray_description = (data.get('spray_description') or '').strip()
-        if not spray_description:
+        description_error = _spray_description_validation_error(spray_description)
+        if description_error:
             return jsonify({
                 "success": False,
-                "message": "Spray description is required"
+                "message": description_error
             }), 400
 
 

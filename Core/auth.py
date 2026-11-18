@@ -45,15 +45,12 @@ def close_db_connection(conn=None, cursor=None):
 # -------------------------
 # Common DB connection
 # -------------------------
-def create_db_connection():
-    """
-    Return a tuple (conn, cursor) for a given config.
-    If db_config is None, defaults to common DB.
-    """
+def create_db_connection(database_name=None):
+    """Connect to a database using the configured server credentials."""
     conn_str = (
         f"DRIVER={{{DB_DRIVER}}};"
         f"SERVER={DB_SERVER};"
-        f"DATABASE={DB_NAME};"
+        f"DATABASE={database_name or DB_NAME};"
         f"UID={DB_USERNAME};"
         f"PWD={decrypt_password(DB_PASSWORD)};"
         f"Trust_Connection=no;"

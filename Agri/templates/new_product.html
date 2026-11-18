@@ -1,970 +1,1258 @@
 {% extends "inventory_base.html" %}
+{% block title %}Create chemical product{% endblock %}
 {% block content %}
-  <title>New Product</title>
-  <style>
-    :root{--bg:#fff;--card:#ffffff;--muted:#6b7280}
-    body{font-family:Segoe UI,Roboto,Arial;margin:0;background:var(--bg);color:#111}
-    .container{padding:16px;max-width:800px;margin:0 auto}
-    .card{background:var(--card);border-radius:10px;padding:14px;box-shadow:0 1px 2px rgba(0,0,0,.06)}
-    .step{display:none}
-    .step.active{display:block}
-    .controls{display:flex;gap:8px;margin-top:12px}
-    .btn{padding:10px 14px;border-radius:8px;border:0;background:#0366d6;color:#fff}
-    .btn.ghost{background:#eef2ff;color:#0366d6}
-    label{display:block;margin:8px 0 4px;font-weight:600}
-    input,select{width:100%;padding:10px;border-radius:8px;border:1px solid #e5e7eb}
-    .row{display:flex;gap:8px}
-    .col{flex:1}
-    .muted{color:var(--muted);font-size:0.9rem}
-    .mini{font-size:0.9rem}
-    .list-item{display:flex;align-items:center;justify-content:space-between;padding:8px 0;border-bottom:1px solid #f3f4f6}
-    .small-input{width:120px}
-    .add-btn{background:#10b981}
-    .chip{display:inline-block;padding:6px 8px;border-radius:16px;background:#f3f4f6;margin:4px}
-    .modal-backdrop{position:fixed;inset:0;background:rgba(0,0,0,0.35);z-index:9998;display:flex;align-items:center;justify-content:center}
-    .modal-panel{background:#fff;border-radius:12px;max-width:420px;width:100%;padding:20px;box-shadow:0 16px 40px rgba(0,0,0,0.14);position:relative}
-    .modal-panel h3{margin:0 0 12px;font-size:1.1rem}
-    .modal-panel input{width:100%;margin-top:8px}
-    .modal-panel .modal-actions{display:flex;gap:8px;justify-content:flex-end;margin-top:16px}
-  </style>
-</head>
-<body>
-  <div class="container">
-    <h2>New Product (Wizard)</h2>
-    <div class="card">
-      <form id="new-product-form">
-        <div id="form-errors" class="muted" style="min-height:1.5rem; color: red;"></div>
-        <!-- Step 1: Basic -->
-        <div class="step active" data-step="1">
-          <label>Brand name</label>
-          <input name="brand_name" id="brand_name" maxlength="50" required />
+<style>
+  .product-wizard{--wizard-ink:#17212b;--wizard-muted:#65717d;--wizard-border:#dfe5e9;--wizard-soft:#f5f7f8;--wizard-accent:#16734a;max-width:1040px;margin:24px auto;padding:0 20px 36px;color:var(--wizard-ink)}
+  .product-wizard *{box-sizing:border-box}
+  .wizard-heading{margin-bottom:20px}
+  .wizard-heading h1{font-size:1.75rem;margin:0 0 6px}
+  .wizard-heading p,.step-intro{color:var(--wizard-muted);margin:0;line-height:1.5}
+  .wizard-card{background:#fff;border:1px solid var(--wizard-border);border-radius:14px;box-shadow:0 4px 18px rgba(24,39,52,.06);overflow:hidden}
+  .wizard-progress{display:grid;grid-template-columns:repeat(4,1fr);gap:0;list-style:none;padding:18px 22px;margin:0;border-bottom:1px solid var(--wizard-border);background:#fbfcfc}
+  .wizard-progress li{display:flex;align-items:center;gap:9px;color:var(--wizard-muted);font-size:.92rem}
+  .wizard-progress .step-number{display:grid;place-items:center;width:28px;height:28px;border:1px solid #c8d1d7;border-radius:50%;font-weight:700;background:white}
+  .wizard-progress li.active{color:var(--wizard-accent);font-weight:700}
+  .wizard-progress li.active .step-number,.wizard-progress li.complete .step-number{color:white;background:var(--wizard-accent);border-color:var(--wizard-accent)}
+  .wizard-content{padding:26px}
+  .wizard-step{display:none}
+  .wizard-step.active{display:block}
+  .wizard-step h2{font-size:1.35rem;margin:0 0 5px}
+  .step-intro{margin-bottom:20px}
+  .wizard-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:16px}
+  .product-wizard .field{min-width:0}
+  .product-wizard .field.full{grid-column:1/-1}
+  .product-wizard .field label,.product-wizard .field-label{display:block;font-weight:650;margin-bottom:6px}
+  .product-wizard .field input:not([type=checkbox]):not([type=radio]),.product-wizard .field select,.crop-row input:not([type=radio]),.crop-row select,.supplier-row select,.supplier-row input,.warehouse-option select{width:100%;min-height:42px;padding:9px 11px;border:1px solid #cbd4da;border-radius:8px;background:#fff;color:inherit}
+  .product-wizard .field input:focus,.product-wizard .field select:focus,.crop-row input:focus,.crop-row select:focus,.supplier-row input:focus,.supplier-row select:focus{outline:2px solid rgba(22,115,74,.18);border-color:var(--wizard-accent)}
+  .product-wizard .field-help,.product-wizard .muted,.preview-panel .muted{color:var(--wizard-muted);font-size:.9rem;line-height:1.45}
+  .choice-panel,.section-panel{border:1px solid var(--wizard-border);border-radius:10px;padding:16px;background:#fff}
+  .choice-panel{margin-bottom:18px}
+  .choice-panel h3,.section-panel h3{margin:0 0 5px;font-size:1rem}
+  .choice-panel p{margin:0 0 12px;color:var(--wizard-muted);font-size:.92rem}
+  .search-row{display:flex;gap:8px}
+  .search-row input{flex:1;min-width:0}
+  .label-results{display:grid;gap:7px;margin-top:10px}
+  .label-result{display:flex;justify-content:space-between;align-items:center;gap:12px;width:100%;text-align:left;padding:11px 12px;border:1px solid var(--wizard-border);border-radius:8px;background:#fff;color:inherit;cursor:pointer}
+  .label-result:hover{border-color:var(--wizard-accent);background:#f8fbf9}
+  .source-note{margin-top:12px;padding:12px;border-left:3px solid #7e9c2d;background:#f7f9f2;border-radius:4px;color:#495347;font-size:.9rem;line-height:1.5}
+  .inline-actions{display:flex;align-items:center;gap:8px;flex-wrap:wrap}
+  .crop-choice-list{display:grid;gap:12px;margin-bottom:16px}
+  .crop-choice{border:1px solid var(--wizard-border);border-radius:10px;padding:14px}
+  .crop-choice-head{display:flex;justify-content:space-between;align-items:center;gap:12px}
+  .crop-choice-head h3{font-size:1rem;margin:0}
+  .crop-choice-details{margin:10px 0 0;color:#4e5c65;line-height:1.5}
+  .crop-choice-details strong{color:var(--wizard-ink)}
+  .crop-list{display:grid;gap:12px}
+  .crop-row{border:1px solid var(--wizard-border);border-radius:10px;padding:15px;background:#fff}
+  .crop-row-head{display:flex;align-items:center;justify-content:space-between;gap:12px;margin-bottom:12px}
+  .crop-row-head strong{font-size:1rem}
+  .crop-row-fields{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:10px}
+  .crop-row-fields label,.supplier-row label{display:block;font-size:.86rem;font-weight:600;margin-bottom:5px}
+  .crop-phi-field{grid-column:1/-1}
+  .phi-options{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:8px}
+  .phi-option{display:flex;align-items:flex-start;gap:8px;min-height:54px;padding:9px;border:1px solid var(--wizard-border);border-radius:8px;cursor:pointer}
+  .phi-option input{width:16px;height:16px;min-height:0;margin:2px 0 0;accent-color:var(--wizard-accent);flex:none}
+  .phi-option span{display:grid;gap:2px;font-size:.86rem}
+  .phi-option small{color:var(--wizard-muted)}
+  .crop-phi-field .with-input{margin-top:9px}
+  .crop-source{margin-top:10px;padding:9px 10px;background:#f7f8f6;border-radius:7px;color:#596454;font-size:.85rem;line-height:1.45}
+  .warehouse-list{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px}
+  .warehouse-option{display:grid;grid-template-columns:22px minmax(0,1fr);gap:8px 10px;align-items:center;border:1px solid var(--wizard-border);border-radius:9px;padding:12px}
+  .warehouse-option input[type=checkbox]{width:17px;height:17px;accent-color:var(--wizard-accent)}
+  .warehouse-option select{grid-column:2}
+  .warehouse-option select:disabled{background:#f4f6f7;color:#78838b}
+  .supplier-list{display:grid;gap:10px}
+  .supplier-row{display:grid;grid-template-columns:minmax(180px,1.3fr) minmax(120px,.8fr) minmax(130px,.7fr) auto;gap:10px;align-items:end;border:1px solid var(--wizard-border);border-radius:9px;padding:12px}
+  .preferred-choice{display:flex!important;align-items:center;gap:7px;min-height:42px;margin:0!important;white-space:nowrap}
+  .preferred-choice input{accent-color:var(--wizard-accent)}
+  .wizard-actions{display:flex;justify-content:space-between;align-items:center;gap:12px;padding:18px 26px;border-top:1px solid var(--wizard-border);background:#fbfcfc}
+  .wizard-actions-right{display:flex;gap:9px;margin-left:auto}
+  .product-wizard .btn,.preview-panel .btn{display:inline-flex;justify-content:center;align-items:center;gap:7px;min-height:40px;padding:9px 14px;border:1px solid transparent;border-radius:8px;background:var(--wizard-accent);color:#fff;font-weight:650;text-decoration:none;cursor:pointer}
+  .product-wizard .btn:hover,.preview-panel .btn:hover{filter:brightness(.96)}
+  .product-wizard .btn:disabled,.preview-panel .btn:disabled{opacity:.6;cursor:wait}
+  .product-wizard .btn.secondary,.preview-panel .btn.secondary{background:#fff;border-color:#cbd4da;color:#30404a}
+  .product-wizard .btn.subtle,.preview-panel .btn.subtle{background:#eef4f0;border-color:#dbe8df;color:#245a3e}
+  .product-wizard .btn.danger,.preview-panel .btn.danger{background:#fff;border-color:#e4c9c9;color:#9a3434}
+  .form-message{min-height:0;margin:0 26px;color:#a52d2d;font-weight:600}
+  .form-message:not(:empty){padding-top:16px}
+  .duplicate-message{margin-top:12px;padding:11px 12px;border-radius:8px;background:#fff8e6;color:#74551a}
+  .similar-products{display:grid;gap:9px;margin-top:12px}
+  .similar-product{display:flex;justify-content:space-between;align-items:center;gap:12px;border:1px solid var(--wizard-border);border-radius:9px;padding:12px}
+  .similar-actions{display:flex;gap:7px;flex-wrap:wrap}
+  .review-grid{display:grid;gap:12px}
+  .review-section{border:1px solid var(--wizard-border);border-radius:10px;padding:14px}
+  .review-section-header{display:flex;justify-content:space-between;align-items:center;gap:12px;margin-bottom:8px}
+  .review-section h3{margin:0;font-size:1rem}
+  .review-lines{display:grid;gap:5px;color:#4e5c65;line-height:1.45}
+  .wizard-success{padding:34px;text-align:center}
+  .wizard-success h2{color:var(--wizard-accent);margin:0 0 8px}
+  .preview-backdrop{position:fixed;inset:0;background:rgba(16,25,32,.4);z-index:10000}
+  .preview-panel{--wizard-accent:#16734a;--wizard-muted:#65717d;position:fixed;z-index:10001;right:0;top:0;bottom:0;width:min(480px,100%);overflow:auto;background:white;box-shadow:-8px 0 26px rgba(0,0,0,.15);padding:22px}
+  .preview-panel h2{margin:0 0 5px}
+  .preview-section{padding:14px 0;border-top:1px solid var(--wizard-border)}
+  .preview-section h3{margin:0 0 7px;font-size:1rem}
+  .preview-section ul{padding-left:20px;margin:0;display:grid;gap:5px}
+  @media(max-width:720px){
+    .product-wizard{margin:16px auto;padding:0 12px 24px}
+    .wizard-progress{padding:14px 12px;gap:5px}
+    .wizard-progress li{font-size:0;justify-content:center}
+    .wizard-progress .step-number{font-size:.9rem;flex:none}
+    .wizard-content{padding:20px 16px}
+    .wizard-actions{padding:14px 16px}
+    .crop-row-fields{grid-template-columns:repeat(2,minmax(0,1fr))}
+    .supplier-row{grid-template-columns:1fr 1fr}
+    .supplier-row .supplier-select-wrap{grid-column:1/-1}
+    .warehouse-list{grid-template-columns:1fr}
+    .form-message{margin:0 16px}
+  }
+  @media(max-width:440px){
+    .wizard-grid{grid-template-columns:1fr}
+    .field.full{grid-column:auto}
+    .search-row{flex-direction:column}
+    .similar-product{align-items:flex-start;flex-direction:column}
+    .crop-row-fields{grid-template-columns:1fr}
+    .product-wizard .wizard-actions .btn{padding:8px 11px}
+  }
+</style>
 
-          <label>Group</label>
-          <select id="group" name="group" required>
-            <option value="">-- Select --</option>
-            {% for g in groups %}
-            <option value="{{ g[0] }}">{{ g[1] }}</option>
-            {% endfor %}
-          </select>
+<main class="product-wizard">
+  <header class="wizard-heading">
+    <h1>Create a chemical product</h1>
+    <p>Set up the product for use on your farm, from registered uses to purchasing.</p>
+  </header>
 
-          <label>Active ingredient</label>
-          <div style="display:flex;gap:8px;align-items:center">
-            <select id="active_ing" name="active_ing" style="flex:1" required>
-              <option value="">-- Select --</option>
-              {% for ai in active_ings %}
-              <option value="{{ ai[0] }}">{{ ai[1] }}</option>
-              {% endfor %}
-            </select>
-            <button type="button" class="btn ghost" id="add-active-ing" style="min-width:120px">+ Add</button>
+  <div class="wizard-card" id="wizard-card">
+    <ol class="wizard-progress" aria-label="Product setup progress">
+      <li class="active" data-progress-step="0" aria-current="step"><span class="step-number">1</span> Product information</li>
+      <li data-progress-step="1"><span class="step-number">2</span> Crops and uses</li>
+      <li data-progress-step="2"><span class="step-number">3</span> Stock and purchasing</li>
+      <li data-progress-step="3"><span class="step-number">4</span> Review and create</li>
+    </ol>
+
+    <form id="new-product-form" novalidate>
+      <div id="form-errors" class="form-message" role="alert" aria-live="polite"></div>
+      <div class="wizard-content">
+        <section class="wizard-step active" data-step="0" aria-labelledby="step-title-1">
+          <h2 id="step-title-1">Product information</h2>
+          <p class="step-intro">Start with the product identity. You can use registered label information or enter everything manually.</p>
+
+          <div class="choice-panel">
+            <h3>Find a registered product <span class="muted">(optional)</span></h3>
+            <p>Search Agri-Intel by trade name or registration number. You can review and change any imported detail.</p>
+            <div class="search-row">
+              <input id="standardized-label-search" type="search" autocomplete="off" placeholder="Trade name or registration number" aria-label="Search registered products">
+              <button type="button" class="btn secondary" id="clear-label">Enter manually</button>
+            </div>
+            <div id="standardized-label-results" class="label-results"></div>
+            <div id="standardized-label-status" class="field-help" role="status" aria-live="polite"></div>
+            <div id="label-source-summary" class="source-note" hidden></div>
           </div>
 
-          <label>Colour code</label>
-          <div style="display:flex;gap:8px;align-items:center">
-            <select id="colour_code" name="colour_code" style="flex:1" required>
-              <option value="">-- Select --</option>
-              {% for cc in colour_codes %}
-              <option value="{{ cc[0] }}">{{ cc[1] }}</option>
-              {% endfor %}
-            </select>
-            <button type="button" class="btn ghost" id="add-colour-code" style="min-width:120px">+ Add</button>
-          </div>
-
-          <div class="row">
-            <div class="col">
-              <label>Stocking Unit</label>
-              <select id="stocking_unit" name="stocking_unit" required>
-                <option value="">--</option>
-                {% for u in uoms %}
-                <option value="{{ u[0] }}" data-cat="{{ u[2] }}">{{ u[1] }}</option>
+          <div class="wizard-grid">
+            <div class="field">
+              <label for="brand_name">Trade name</label>
+              <input name="brand_name" id="brand_name" maxlength="50" autocomplete="off">
+            </div>
+            <div class="field">
+              <label for="registration_number">Registration number <span class="muted">(if applicable)</span></label>
+              <input id="registration_number" name="registration_number" autocomplete="off">
+            </div>
+            <div class="field full">
+              <label for="active_ing">Active ingredients</label>
+              <select id="active_ing" name="active_ing" multiple>
+                {% for ai in active_ings %}
+                <option value="{{ ai[0] }}">{{ ai[1] }}</option>
                 {% endfor %}
               </select>
-            </div>
-            <div class="col">
-              <label>Purchasing Unit</label>
-              <select id="purchasing_unit" name="purchasing_unit" disabled required>
-                <option value="">Select stocking unit first</option>
-              </select>
-            </div>
-          </div>
-          <label>Product code</label>
-          <input name="product_code" id="product_code" maxlength="20" required />
-          <div id="duplicate-warning" class="muted" style="min-height:1.5rem"></div>
-          <div id="duplicate-search-results" style="margin-top:16px"></div>
-        </div>
-
-        <!-- Step 2: Warehouses -->
-        <div class="step" data-step="2">
-          <label class="mini">Assign shelf locations for each warehouse</label>
-          <table style="width:100%;border-collapse:collapse;margin-top:8px">
-            <thead>
-              <tr style="background:#f9fafb;text-align:left">
-                <th style="padding:10px;border:1px solid #e5e7eb">Warehouse</th>
-                <th style="padding:10px;border:1px solid #e5e7eb;width:200px">
-                  Default shelf
-                  <select id="warehouse-shelf-default" style="width:100%;margin-top:6px">
-                    <option value="">--</option>
-                    {% for c in categories %}
-                    <option value="{{ c[0] }}">{{ c[1] }}</option>
-                    {% endfor %}
-                  </select>
-                </th>
-              </tr>
-            </thead>
-            <tbody>
-              {% for w in warehouses %}
-              <tr>
-                <td style="padding:10px;border:1px solid #e5e7eb">{{ w[1] }}</td>
-                <td style="padding:10px;border:1px solid #e5e7eb">
-                  <select class="wh-shelf" data-whid="{{ w[0] }}" style="width:100%">
-                    <option value="">--</option>
-                    {% for c in categories %}
-                    <option value="{{ c[0] }}">{{ c[1] }}</option>
-                    {% endfor %}
-                  </select>
-                </td>
-              </tr>
-              {% endfor %}
-            </tbody>
-          </table>
-        </div>
-
-        <!-- Step 3: Suppliers -->
-        <div class="step" data-step="3">
-          <label class="mini">Add suppliers for this product</label>
-          <div style="display:flex;gap:8px;align-items:center;margin-bottom:12px;flex-wrap:wrap">
-            <button type="button" class="btn add-btn" id="add-supplier">Add supplier</button>
-            <span class="mini">Select supplier, price and optional default supplier.</span>
-          </div>
-          <div id="suppliers-list"></div>
-          <template id="supplier-row-template">
-            <div class="list-item supplier-row" style="padding:10px 8px">
-              <div style="display:flex;gap:10px;align-items:center;flex-wrap:wrap;width:100%">
-                <select class="supplier-select" style="flex:2;min-width:180px">
-                  <option value="">-- Select Supplier --</option>
-                  {% for s in suppliers %}
-                  <option value="{{ s[0] }}">{{ s[1] }}</option>
-                  {% endfor %}
-                </select>
-                <div style="display:flex;gap:8px;align-items:center;flex:1;min-width:180px">
-                  <input type="number" step="0.01" class="small-input supplier-price" placeholder="Price" style="width:100%;" />
-                  <span class="supplier-price-unit muted" style="white-space:nowrap"></span>
-                </div>
-                <label class="mini" style="display:flex;align-items:center;gap:6px;margin:0">
-                  <input type="radio" name="default_supplier" class="supplier-default" value="" /> Default
-                </label>
-                <button type="button" class="btn ghost supplier-remove" style="min-width:40px">✕</button>
+              <div class="field-help">Choose one or more ingredients. Add a name if it is not in the list.</div>
+              <div class="inline-actions" style="margin-top:8px">
+                <button type="button" class="btn subtle" id="add-active-ing">Add ingredient</button>
               </div>
             </div>
+          </div>
+          <div class="duplicate-search-results similar-products"></div>
+        </section>
+
+        <section class="wizard-step" data-step="1" aria-labelledby="step-title-2">
+          <h2 id="step-title-2">Crops and uses</h2>
+          <p class="step-intro">Choose the crops this product will be used on and review the target, type, and withholding period for each crop.</p>
+          <div id="label-use-choices" class="crop-choice-list"></div>
+          <div id="chem-crops" class="crop-list"></div>
+          <template id="crop-row-template">
+            <article class="crop-row">
+              <div class="crop-row-head">
+                <strong>Crop and use</strong>
+                <button type="button" class="btn danger remove-crop">Remove</button>
+              </div>
+              <div class="crop-row-fields">
+                <div>
+                  <label>Crop</label>
+                  <select class="crop-select">
+                    <option value="">Choose crop</option>
+                    {% for c in crops %}
+                    <option value="{{ c[0] }}" data-code="{{ c[1] }}" data-description="{{ c[2] }}">{{ c[2] or c[1] }}</option>
+                    {% endfor %}
+                  </select>
+                </div>
+                <div>
+                  <label>Target / use</label>
+                  <input class="func-input" type="text" autocomplete="off">
+                </div>
+                <div>
+                  <label>Type</label>
+                  <input class="type-input" type="text" list="crop-types" autocomplete="off">
+                </div>
+                <div class="crop-phi-field">
+                  <span class="field-label">Withholding period</span>
+                  <div class="phi-options" role="radiogroup" aria-label="Withholding period region"></div>
+                  <input class="with-input" type="text" autocomplete="off" aria-label="Selected withholding period">
+                  <div class="field-help">Choose a region to use its imported period, or enter a period manually.</div>
+                </div>
+              </div>
+              <div class="crop-source" hidden></div>
+            </article>
           </template>
-        </div>
-
-        <!-- Step 4: ChemStockCrop -->
-        <div class="step" data-step="4">
-          <label for="registration_number">Registration number</label>
-          <input id="registration_number" name="registration_number" />
-          <label class="mini" style="margin-top:12px">Crop entries</label>
-          <div id="chem-crops"></div>
-          <div style="margin-top:8px">
-            <button type="button" class="btn add-btn" id="add-crop">Add crop</button>
-          </div>
-        </div>
-
-        <!-- Step 5: Review & Submit -->
-        <div class="step" data-step="5">
-          <label>Review before submit</label>
-          <div id="review" class="muted" style="white-space:pre-wrap;line-height:1.5">No data yet</div>
-        </div>
-
-        <div class="controls">
-          <button type="button" class="btn ghost" id="prevBtn">Previous</button>
-          <button type="button" class="btn" id="nextBtn">Next</button>
-          <button type="submit" class="btn" id="submitBtn" style="display:none">Submit</button>
-        </div>
-      </form>
-    </div>
-  </div>
-
-  <script>
-    const steps = Array.from(document.querySelectorAll('.step'));
-    let cur = 0;
-    let autoProductCode = true;
-    const productCodeInput = document.getElementById('product_code');
-    const brandInput = document.getElementById('brand_name');
-    const activeIngInput = document.getElementById('active_ing');
-    const groupInput = document.getElementById('group');
-    const colourCodeInput = document.getElementById('colour_code');
-    const stockingUnitInput = document.getElementById('stocking_unit');
-    const purchasingUnitInput = document.getElementById('purchasing_unit');
-    const duplicateWarning = document.getElementById('duplicate-warning');
-    const formErrors = document.getElementById('form-errors');
-    const duplicateResults = document.getElementById('duplicate-search-results');
-    const warehouseShelfDefault = document.getElementById('warehouse-shelf-default');
-    const suppliersList = document.getElementById('suppliers-list');
-    const supplierRowTemplate = document.getElementById('supplier-row-template');
-    const addActiveIngButton = document.getElementById('add-active-ing');
-    const addColourCodeButton = document.getElementById('add-colour-code');
-
-    function getPurchasingUnitInfo() {
-      const option = purchasingUnitInput.options[purchasingUnitInput.selectedIndex];
-      return {
-        code: option?.textContent || ''
-      };
-    }
-
-    function updateSupplierPriceUnitLabels() {
-      const { code } = getPurchasingUnitInfo();
-      document.querySelectorAll('.supplier-price-unit').forEach(el => {
-        el.textContent = code ? `per ${code}` : '';
-      });
-    }
-
-    const show = (i)=>{
-      steps.forEach(s=>s.classList.remove('active'));
-      steps[i].classList.add('active');
-      document.getElementById('prevBtn').style.display = i? 'inline-flex':'none';
-      document.getElementById('nextBtn').style.display = (i<steps.length-1)?'inline-flex':'none';
-      document.getElementById('submitBtn').style.display = (i===steps.length-1)?'inline-flex':'none';
-      if(i===steps.length-1) buildReview();
-    }
-    document.getElementById('nextBtn').addEventListener('click', async ()=>{
-      if(cur === 0){
-        if(!validateFirstStep()) return;
-        await checkDuplicateValues();
-        if(duplicateWarning.textContent){
-          setFirstStepError(duplicateWarning.textContent);
-          return;
-        }
-      }
-      if(cur === 1 && !validateWarehouses()){
-        setFirstStepError('Each linked warehouse must have a selected shelf.');
-        return;
-      }
-      if(cur === 2 && !validateSuppliers()){
-        setFirstStepError('Each selected supplier must have a price.');
-        return;
-      }
-      if(cur === 3 && !validateCrops()){
-        setFirstStepError('At least one crop with a selected crop is required.');
-        return;
-      }
-      setFirstStepError('');
-      cur = Math.min(cur+1, steps.length-1);
-      show(cur);
-    });
-    document.getElementById('prevBtn').addEventListener('click', ()=>{ cur = Math.max(cur-1,0); show(cur); });
-
-    function computeSuggestedProductCode(){
-      const brand = brandInput.value.trim();
-      const groupName = groupInput.options[groupInput.selectedIndex]?.text.trim() || '';
-      if(!brand || !groupName) return '';
-      const prefix = groupName.slice(0,3).toUpperCase();
-      const safeBrand = brand.replace(/\s+/g, '_').toUpperCase().replace(/[^A-Z0-9_]/g, '');
-      return `${prefix}-${safeBrand}`;
-    }
-
-    function updateProductCode(){
-      const suggested = computeSuggestedProductCode();
-      if(!suggested) return;
-      if(autoProductCode || productCodeInput.value.trim() === ''){
-        productCodeInput.value = suggested;
-      }
-    }
-
-    function setFirstStepError(message){
-      formErrors.textContent = message || '';
-    }
-
-    function validateFirstStep(){
-      const brand = brandInput.value.trim();
-      const code = productCodeInput.value.trim();
-      const active = activeIngInput.value;
-      const colour = colourCodeInput.value;
-      const group = groupInput.value;
-      const stocking = stockingUnitInput.value;
-      const purchasing = purchasingUnitInput.value;
-      const errors = [];
-
-      if(!brand) errors.push('Brand name is required.');
-      else if(brand.length > 50) errors.push('Brand name cannot be longer than 50 characters.');
-
-      if(!group) errors.push('Group is required.');
-      if(!active) errors.push('Active ingredient is required.');
-      if(!colour) errors.push('Colour code is required.');
-      if(!stocking) errors.push('Stocking unit is required.');
-      if(!purchasing) errors.push('Purchasing unit is required.');
-
-      if(!code) errors.push('Product code is required.');
-      else if(code.length > 20) errors.push('Product code cannot be longer than 20 characters.');
-
-      if(errors.length){
-        setFirstStepError(errors[0]);
-        return false;
-      }
-      setFirstStepError('');
-      return true;
-    }
-
-    function validateWarehouses(){
-      let valid = true;
-      document.querySelectorAll('.wh-shelf').forEach(select=>{
-        if(!select.value) valid = false;
-      });
-      return valid;
-    }
-
-    function validateSuppliers(){
-      let valid = true;
-      document.querySelectorAll('.supplier-row').forEach(row=>{
-        const supplierSelect = row.querySelector('.supplier-select');
-        const priceInput = row.querySelector('.supplier-price');
-        if(supplierSelect && supplierSelect.value){
-          if(!priceInput || !priceInput.value.trim()){
-            valid = false;
-          }
-        }
-      });
-      return valid;
-    }
-
-    function validateCrops(){
-      const cropRows = Array.from(document.querySelectorAll('.chem-crop-row'));
-      if(!cropRows.length) return false;
-      return cropRows.some(row => row.querySelector('.crop-select')?.value);
-    }
-
-    function createReviewHtml(){
-      const data = gatherData();
-      let html = '<div style="margin-top:8px;font-size:0.95rem;line-height:1.6;">';
-      html += `<div><strong>Brand:</strong> ${data.brand_name || '—'}</div>`;
-      html += `<div><strong>Product code:</strong> ${data.product_code || '—'}</div>`;
-      html += `<div><strong>Group:</strong> ${data.group_name || '—'}</div>`;
-      html += `<div><strong>Active ingredient:</strong> ${activeIngInput.options[activeIngInput.selectedIndex]?.text || '—'}</div>`;
-      html += `<div><strong>Colour code:</strong> ${colourCodeInput.options[colourCodeInput.selectedIndex]?.text || '—'}</div>`;
-      html += `<div><strong>Registration number:</strong> ${data.registration_number || '—'}</div>`;
-      html += `<div><strong>Stocking unit:</strong> ${stockingUnitInput.options[stockingUnitInput.selectedIndex]?.text || '—'}</div>`;
-      html += `<div><strong>Purchasing unit:</strong> ${purchasingUnitInput.options[purchasingUnitInput.selectedIndex]?.text || '—'}</div>`;
-      if(data.warehouses.length){
-        html += '<div style="margin-top:12px"><strong>Warehouses</strong><ul style="margin:6px 0 0 18px;">';
-        data.warehouses.forEach(w=>{
-          html += `<li>${w.name || w.id} — Shelf: ${w.shelf || 'none'}</li>`;
-        });
-        html += '</ul></div>';
-      }
-      if(data.suppliers.length){
-        const purchaseUnitLabel = purchasingUnitInput.options[purchasingUnitInput.selectedIndex]?.text || '';
-        html += '<div style="margin-top:12px"><strong>Suppliers</strong><ul style="margin:6px 0 0 18px;">';
-        data.suppliers.forEach(s=>{
-          html += `<li>${s.name || s.id}${s.is_default ? ' (default)' : ''}${s.price ? ' — ' + s.price + (purchaseUnitLabel ? ' / ' + purchaseUnitLabel : '') : ''}</li>`;
-        });
-        html += '</ul></div>';
-      }
-      if(data.chemstockcrop.length){
-        html += '<div style="margin-top:12px"><strong>Crop entries</strong><ul style="margin:6px 0 0 18px;">';
-        data.chemstockcrop.forEach(c=>{
-          html += `<li>${c.crop || 'No crop'}${c.withholding_period ? ' — Wh: ' + c.withholding_period : ''}${c.type ? ' — Type: ' + c.type : ''}${c.func ? ' — Function: ' + c.func : ''}</li>`;
-        });
-        html += '</ul></div>';
-      }
-      html += '</div>';
-      return html;
-    }
-
-    function buildReview(){
-      document.getElementById('review').innerHTML = createReviewHtml();
-    }
-
-    function validateForm(){
-      if(!validateFirstStep()){
-        cur = 0;
-        show(cur);
-        return false;
-      }
-      if(!validateWarehouses()){
-        setFirstStepError('Each linked warehouse must have a selected shelf.');
-        return false;
-      }
-      if(!validateCrops()){
-        setFirstStepError('At least one stock crop must be added.');
-        return false;
-      }
-      setFirstStepError('');
-      return true;
-    }
-
-    async function checkDuplicateValues(){
-      const code = productCodeInput.value.trim();
-      const brand = brandInput.value.trim();
-      duplicateWarning.textContent = '';
-      if(!code && !brand) return;
-      try{
-        const params = new URLSearchParams();
-        if(code) params.set('product_code', code);
-        if(brand) params.set('brand_name', brand);
-        const res = await fetch(`/agri/product/check-duplicate?${params.toString()}`);
-        if(!res.ok) return;
-        const json = await res.json();
-        if(json.exists_code){
-          duplicateWarning.textContent = 'That product code already exists. Please choose a different one.';
-        } else if(json.exists_brand){
-          duplicateWarning.textContent = 'That brand name already exists. Please choose a different one.';
-        } else {
-          duplicateWarning.textContent = '';
-        }
-      }catch(err){
-        console.warn('Duplicate check failed', err);
-      }
-    }
-
-    async function postEntity(endpoint, value){
-      const res = await fetch(endpoint, {
-        method: 'POST',
-        headers: {'Content-Type':'application/json'},
-        body: JSON.stringify({value})
-      });
-      if(!res.ok){
-        const json = await res.json().catch(()=>({message:'Save failed'}));
-        throw new Error(json.message || 'Save failed');
-      }
-      return await res.json();
-    }
-
-    async function refreshActiveIngredients(selectedId){
-      try{
-        const res = await fetch('/agri/product/active-ingredients');
-        if(!res.ok) return;
-        const js = await res.json();
-        activeIngInput.innerHTML = '<option value="">-- Select --</option>';
-        js.active_ingredients.forEach(item=>{
-          const opt = document.createElement('option');
-          opt.value = item.id;
-          opt.textContent = item.name;
-          activeIngInput.appendChild(opt);
-        });
-        if(selectedId) activeIngInput.value = selectedId;
-      }catch(err){
-        console.warn('Failed to refresh active ingredients', err);
-      }
-    }
-
-    async function refreshColourCodes(selectedId){
-      try{
-        const res = await fetch('/agri/product/colour-codes');
-        if(!res.ok) return;
-        const js = await res.json();
-        colourCodeInput.innerHTML = '<option value="">-- Select --</option>';
-        js.colour_codes.forEach(item=>{
-          const opt = document.createElement('option');
-          opt.value = item.id;
-          opt.textContent = item.code;
-          colourCodeInput.appendChild(opt);
-        });
-        if(selectedId) colourCodeInput.value = selectedId;
-      }catch(err){
-        console.warn('Failed to refresh colour codes', err);
-      }
-    }
-
-    function createModal({title, placeholder}){
-      const backdrop = document.createElement('div');
-      backdrop.className = 'modal-backdrop';
-      backdrop.innerHTML = `
-        <div class="modal-panel" role="dialog" aria-modal="true" aria-labelledby="modal-title">
-          <h3 id="modal-title"></h3>
-          <input id="modal-input" type="text" placeholder="">
-          <div id="modal-error" class="muted" style="min-height:1.5rem;color:red;"></div>
-          <div class="modal-actions">
-            <button type="button" class="btn ghost" id="modal-cancel">Cancel</button>
-            <button type="button" class="btn" id="modal-submit">Save</button>
-          </div>
-        </div>
-      `;
-      backdrop.querySelector('#modal-title').textContent = title;
-      backdrop.querySelector('#modal-input').placeholder = placeholder;
-      backdrop.querySelector('#modal-cancel').addEventListener('click', () => backdrop.remove());
-      backdrop.addEventListener('click', (event) => {
-        if(event.target === backdrop) backdrop.remove();
-      });
-      document.body.appendChild(backdrop);
-      return backdrop;
-    }
-
-    async function openEntityModal(kind){
-      const title = kind === 'ingredient' ? 'New active ingredient' : 'New colour code';
-      const placeholder = kind === 'ingredient' ? 'Enter ingredient name' : 'Enter colour code';
-      const endpoint = kind === 'ingredient' ? '/agri/product/active-ingredient' : '/agri/product/colour-code';
-      const refreshFn = kind === 'ingredient' ? refreshActiveIngredients : refreshColourCodes;
-      const selectInput = kind === 'ingredient' ? activeIngInput : colourCodeInput;
-      const backdrop = createModal({title, placeholder});
-      const input = document.getElementById('modal-input');
-      const error = document.getElementById('modal-error');
-      const submit = document.getElementById('modal-submit');
-      input.focus();
-      submit.addEventListener('click', async ()=>{
-        const value = input.value.trim();
-        error.textContent = '';
-        if(!value){
-          error.textContent = 'Please enter a value.';
-          return;
-        }
-        try{
-          const result = await postEntity(endpoint, value);
-          await refreshFn(result.id);
-          selectInput.value = result.id;
-          backdrop.remove();
-        }catch(err){
-          error.textContent = err.message || 'Save failed';
-        }
-      });
-    }
-
-    async function fetchPurchasingUnits(stockId, selectedId){
-      purchasingUnitInput.disabled = true;
-      purchasingUnitInput.innerHTML = '<option value="">Loading...</option>';
-      if(!stockId){
-        purchasingUnitInput.innerHTML = '<option value="">Select stocking unit first</option>';
-        updateSupplierPriceUnitLabels();
-        return;
-      }
-      try{
-        const res = await fetch(`/agri/product/purchasing-units?stocking_unit_id=${encodeURIComponent(stockId)}`);
-        if(!res.ok) throw new Error('Unable to load purchasing units');
-        const js = await res.json();
-        purchasingUnitInput.innerHTML = '<option value="">--</option>';
-        js.units.forEach(item=>{
-          const opt = document.createElement('option');
-          opt.value = item.id;
-          opt.textContent = item.code;
-          purchasingUnitInput.appendChild(opt);
-        });
-        purchasingUnitInput.disabled = false;
-        if(selectedId) purchasingUnitInput.value = selectedId;
-        updateSupplierPriceUnitLabels();
-      }catch(err){
-        purchasingUnitInput.innerHTML = '<option value="">Unable to load units</option>';
-        updateSupplierPriceUnitLabels();
-        console.warn(err);
-      }
-    }
-
-    // --- Similar Products UI (aggregated, one card per product) ---
-    function renderSimilarProducts(data){
-      const items = (data.results || []);
-      if(!items.length){
-        duplicateResults.innerHTML = '';
-        return;
-      }
-      let html = '';
-      html += `<div style="margin-top:12px">`;
-      html += `<strong>Similar Products (${items.length})</strong>`;
-      html += `<div style="margin-top:8px;display:grid;gap:10px">`;
-
-      items.forEach(item=>{
-        const cls = item.classification || 'other';
-        const dot = cls === 'exact' ? '🔴' : (cls === 'probable' ? '🟡' : '⚪');
-        html += `<div style="padding:12px;border:1px solid #e5e7eb;border-radius:10px;background:#ffffff;display:flex;justify-content:space-between;align-items:center">`;
-        html += `<div style="max-width:70%">`;
-        html += `<div style="font-weight:700">${dot} ${item.product_description || item.product_code} ${item.product_code? '('+item.product_code+')' : ''}</div>`;
-        if(item.active_ingredient) html += `<div class="mini">${item.active_ingredient}</div>`;
-        if(item.sample_registration) html += `<div class="mini">Registration number: ${item.sample_registration}</div>`;
-        html += `<div class="mini">Suppliers: ${item.supplier_count} • Warehouses: ${item.warehouse_count} • Crops: ${item.crop_count}</div>`;
-        html += `</div>`;
-        html += `<div style="display:flex;gap:8px">`;
-        html += `<button type="button" class="btn ghost preview-btn" data-stock="${item.stock_link}">Preview</button>`;
-        html += `<button type="button" class="btn" style="background:#10b981;color:#fff" data-stock="${item.stock_link}" id="copy-${item.stock_link}">Use as Template</button>`;
-        html += `</div>`;
-        html += `</div>`;
-      });
-
-      html += `</div></div>`;
-      duplicateResults.innerHTML = html;
-
-      // attach handlers
-      duplicateResults.querySelectorAll('.preview-btn').forEach(b=>{
-        b.addEventListener('click', (e)=>{ openPreview(e.currentTarget.dataset.stock); });
-      });
-      duplicateResults.querySelectorAll('[id^="copy-"]').forEach(b=>{
-        b.addEventListener('click', (e)=>{ useAsTemplate(e.currentTarget.dataset.stock); });
-      });
-    }
-
-    let duplicateSearchTimer = null;
-    function scheduleDuplicateSearch(){
-      if(duplicateSearchTimer){
-        clearTimeout(duplicateSearchTimer);
-      }
-      duplicateSearchTimer = setTimeout(runDuplicateSearch, 300);
-    }
-
-    async function runDuplicateSearch(){
-      const brand_name = brandInput.value.trim().toUpperCase();
-      const active_ing = activeIngInput.value.trim().toUpperCase();
-      if(!brand_name && !active_ing){
-        duplicateResults.innerHTML = '';
-        return;
-      }
-      try{
-        const params = new URLSearchParams();
-        if(brand_name.length >= 2) params.set('brand_name', brand_name);
-        if(active_ing) params.set('active_ing', active_ing);
-        const res = await fetch(`/agri/product/duplicate-search?${params.toString()}`);
-        if(!res.ok) return;
-        const json = await res.json();
-        renderSimilarProducts(json);
-      }catch(err){
-        console.warn('Duplicate search failed', err);
-      }
-    }
-
-    async function openPreview(stock_link){
-      try{
-        const res = await fetch(`/agri/product/details?stock_link=${encodeURIComponent(stock_link)}`);
-        if(!res.ok) return;
-        const js = await res.json();
-        
-        // build overlay + drawer
-        let overlay = document.getElementById('preview-overlay');
-        if(!overlay){
-          overlay = document.createElement('div');
-          overlay.id = 'preview-overlay';
-          overlay.style.position = 'fixed';
-          overlay.style.top = '0';
-          overlay.style.left = '0';
-          overlay.style.width = '100%';
-          overlay.style.height = '100%';
-          overlay.style.background = 'rgba(0,0,0,0.3)';
-          overlay.style.zIndex = 9998;
-          overlay.addEventListener('click', ()=>{ overlay.remove(); drawer.remove(); });
-          document.body.appendChild(overlay);
-        }
-        
-        let drawer = document.getElementById('preview-drawer');
-        if(!drawer){
-          drawer = document.createElement('div');
-          drawer.id = 'preview-drawer';
-          drawer.style.position = 'fixed';
-          drawer.style.top = '0';
-          drawer.style.right = '0';
-          drawer.style.bottom = '0';
-          drawer.style.width = window.innerWidth < 640 ? '100%' : '420px';
-          drawer.style.background = '#fff';
-          drawer.style.borderLeft = window.innerWidth < 640 ? 'none' : '1px solid #e5e7eb';
-          drawer.style.boxShadow = window.innerWidth < 640 ? 'none' : '-8px 0 24px rgba(0,0,0,0.08)';
-          drawer.style.zIndex = 9999;
-          drawer.style.overflow = 'auto';
-          drawer.style.display = 'flex';
-          drawer.style.flexDirection = 'column';
-          document.body.appendChild(drawer);
-        }
-        
-        const p = js.product || {};
-        const suppliers = js.suppliers || [];
-        const warehouses = js.warehouses || [];
-        const regs = js.registrations || [];
-        
-        let html = `<div style="padding:16px;padding-bottom:100px;overflow-y:auto;flex:1">`;
-        html += `<div style="display:flex;justify-content:space-between;align-items:flex-start;gap:12px">`;
-        html += `<div style="flex:1"><strong style="font-size:18px;display:block">${p.product_description || p.product_code}</strong><div class="muted" style="margin-top:4px">${p.product_code || ''}</div></div>`;
-        html += `<button id="close-preview" class="btn ghost" style="flex-shrink:0;padding:6px 12px">✕</button>`;
-        html += `</div>`;
-        html += `<hr style="margin:12px 0"/>`;
-        html += `<div><strong>General</strong><div class="mini">Brand: ${p.product_description || ''}</div><div class="mini">Code: ${p.product_code || ''}</div><div class="mini">Ingredient: ${p.active_ingredient || ''}</div><div class="mini">Registration number: ${p.registration_number || '—'}</div></div>`;
-        html += `<div style="margin-top:14px"><strong>Suppliers (${suppliers.length})</strong>`;
-        suppliers.forEach(s=> html += `<div class="mini">• ${s.name}</div>`);
-        html += `</div>`;
-        html += `<div style="margin-top:14px"><strong>Warehouses (${warehouses.length})</strong>`;
-        warehouses.forEach(w=> html += `<div class="mini">• ${w.description}</div>`);
-        html += `</div>`;
-        html += `<div style="margin-top:14px"><strong>Crop Registrations (${regs.length})</strong>`;
-        regs.forEach(r=> html += `<div class="mini">• ${r.crop_description || ''}</div>`);
-        html += `</div>`;
-        html += `</div>`;
-        
-        // sticky footer for actions
-        html += `<div style="position:fixed;bottom:0;left:0;right:0;background:#fff;border-top:2px solid #e5e7eb;padding:16px;display:flex;gap:8px;z-index:10000;box-shadow:0 -4px 12px rgba(0,0,0,0.1)">`;
-        html += `<button id="copy-from-preview" class="btn" style="flex:1;padding:14px 16px;font-size:16px;border-radius:8px">Use as Template</button>`;
-        html += `</div>`;
-        
-        drawer.innerHTML = html;
-
-        document.getElementById('close-preview').addEventListener('click', ()=>{ overlay.remove(); drawer.remove(); });
-        document.getElementById('copy-from-preview').addEventListener('click', ()=>{ useAsTemplate(stock_link); overlay.remove(); drawer.remove(); });
-
-      }catch(err){
-        console.warn('Preview failed', err);
-      }
-    }
-
-    async function useAsTemplate(stock_link){
-      try{
-        const res = await fetch(`/agri/product/details?stock_link=${encodeURIComponent(stock_link)}`);
-        if(!res.ok) return;
-        const js = await res.json();
-        const p = js.product || {};
-        
-        // Prefill basic fields
-        brandInput.value = p.product_description || '';
-        productCodeInput.value = '';
-        document.getElementById('registration_number').value = p.registration_number || '';
-        
-        // Set selects by ID
-        if(p.active_ingredient_id) activeIngInput.value = p.active_ingredient_id;
-        if(p.group_id) groupInput.value = p.group_id;
-        if(p.colour_code_id) colourCodeInput.value = p.colour_code_id;
-        if(p.stocking_unit_id){
-          stockingUnitInput.value = p.stocking_unit_id;
-          await fetchPurchasingUnits(p.stocking_unit_id, p.purchasing_unit_id);
-        } else {
-          purchasingUnitInput.innerHTML = '<option value="">Select stocking unit first</option>';
-          purchasingUnitInput.disabled = true;
-        }
-
-        // copy suppliers
-        document.getElementById('suppliers-list').innerHTML = '';
-        (js.suppliers || []).forEach((s,idx)=>{
-          addSupplierRow();
-          const last = suppliersList.querySelectorAll('.supplier-row');
-          const row = last[last.length-1];
-          const sel = row.querySelector('.supplier-select');
-          sel.value = s.id;
-          if(idx === 0){
-            row.querySelector('.supplier-default').checked = true;
-          }
-        });
-
-        // copy warehouses (all warehouses linked, just set shelf)
-        (js.warehouses || []).forEach(w=>{
-          const shelfSelect = document.querySelector(`.wh-shelf[data-whid="${w.id}"]`);
-          if(shelfSelect) shelfSelect.value = w.shelf_id || '';
-        });
-
-        // copy registrations
-        document.getElementById('chem-crops').innerHTML = '';
-        (js.registrations || []).forEach(r=>{
-          document.getElementById('add-crop').click();
-          const rows = document.querySelectorAll('.chem-crop-row');
-          const row = rows[rows.length-1];
-          if(row){
-            const cropSelect = row.querySelector('.crop-select');
-            if(cropSelect) cropSelect.value = r.crop_id || '';
-            const withInput = row.querySelector('.with-input');
-            if(withInput) withInput.value = r.withholding_period || '';
-            const typeInput = row.querySelector('.type-input');
-            if(typeInput) typeInput.value = r.type || '';
-            const funcInput = row.querySelector('.func-input');
-            if(funcInput) funcInput.value = r.function || '';
-          }
-        });
-
-        // regenerate code for the copied product so the user can submit immediately
-        updateProductCode();
-        scheduleDuplicateSearch();
-
-        // move to step 1 so user can edit
-        cur = 0; show(cur);
-      }catch(err){
-        console.warn('Use as template failed', err);
-      }
-    }
-
-    async function checkDuplicateValues(){
-      const code = productCodeInput.value.trim();
-      const brand = brandInput.value.trim();
-      duplicateWarning.textContent = '';
-      if(!code && !brand) return;
-      try{
-        const params = new URLSearchParams();
-        if(code) params.set('product_code', code);
-        if(brand) params.set('brand_name', brand);
-        const res = await fetch(`/agri/product/check-duplicate?${params.toString()}`);
-        if(!res.ok) return;
-        const json = await res.json();
-        if(json.exists_code){
-          duplicateWarning.textContent = 'That product code already exists. Please choose a different one.';
-        } else if(json.exists_brand){
-          duplicateWarning.textContent = 'That brand name already exists. Please choose a different one.';
-        } else {
-          duplicateWarning.textContent = '';
-        }
-      }catch(err){
-        console.warn('Duplicate check failed', err);
-      }
-    }
-
-    function applyWarehouseShelfDefault(){
-      const value = warehouseShelfDefault.value;
-      if(value === '') return;
-      document.querySelectorAll('.wh-shelf').forEach(select=>{
-        select.value = value;
-      });
-    }
-
-    function addSupplierRow(){
-      const template = supplierRowTemplate.content.cloneNode(true);
-      const row = template.querySelector('.list-item');
-      const supplierSelect = row.querySelector('.supplier-select');
-      const defaultRadio = row.querySelector('.supplier-default');
-      const removeButton = row.querySelector('.supplier-remove');
-
-      supplierSelect.addEventListener('change', ()=>{
-        defaultRadio.value = supplierSelect.value;
-      });
-
-      defaultRadio.addEventListener('change', ()=>{
-        if(defaultRadio.checked && !supplierSelect.value){
-          defaultRadio.checked = false;
-        }
-      });
-
-      removeButton.addEventListener('click', ()=>{
-        row.remove();
-      });
-
-      suppliersList.appendChild(row);
-      updateSupplierPriceUnitLabels();
-    }
-
-    productCodeInput.addEventListener('input', ()=>{
-      autoProductCode = false;
-      duplicateWarning.textContent = '';
-      checkDuplicateValues();
-      scheduleDuplicateSearch();
-    });
-    brandInput.addEventListener('input', ()=>{
-      brandInput.value = brandInput.value.toUpperCase();
-      updateProductCode();
-      checkDuplicateValues();
-      scheduleDuplicateSearch();
-    });
-    groupInput.addEventListener('change', ()=>{
-      updateProductCode();
-      checkDuplicateValues();
-    });
-    productCodeInput.addEventListener('blur', checkDuplicateValues);
-    activeIngInput.addEventListener('change', scheduleDuplicateSearch);
-    warehouseShelfDefault.addEventListener('change', applyWarehouseShelfDefault);
-    stockingUnitInput.addEventListener('change', ()=>{
-      const selected = stockingUnitInput.value;
-      if(selected) fetchPurchasingUnits(selected);
-      else {
-        purchasingUnitInput.innerHTML = '<option value="">Select stocking unit first</option>';
-        purchasingUnitInput.disabled = true;
-      }
-    });
-    addActiveIngButton.addEventListener('click', ()=>openEntityModal('ingredient'));
-    addColourCodeButton.addEventListener('click', ()=>openEntityModal('colour'));
-    document.getElementById('add-supplier').addEventListener('click', addSupplierRow);
-    purchasingUnitInput.addEventListener('change', updateSupplierPriceUnitLabels);
-
-    function buildReview(){
-      document.getElementById('review').innerHTML = createReviewHtml();
-    }
-
-    function gatherData(){
-      const data = {};
-      data.brand_name = document.getElementById('brand_name').value;
-      data.product_code = document.getElementById('product_code').value;
-      data.active_ing = document.getElementById('active_ing').value;
-      data.colour_code = document.getElementById('colour_code').value;
-      data.stocking_unit = document.getElementById('stocking_unit').value;
-      data.purchasing_unit = document.getElementById('purchasing_unit').value;
-      data.registration_number = document.getElementById('registration_number').value.trim();
-      data.group = document.getElementById('group').value;
-      data.group_name = document.getElementById('group').options[document.getElementById('group').selectedIndex]?.text || '';
-
-      data.warehouses = [];
-      document.querySelectorAll('.wh-shelf').forEach(select=>{
-        const id = select.dataset.whid;
-        const row = select.closest('tr');
-        const name = row?.querySelector('td:nth-child(1)')?.textContent.trim() || '';
-        const shelf = select.value || '';
-        data.warehouses.push({id,name,shelf});
-      });
-
-      data.suppliers = [];
-      document.querySelectorAll('.supplier-row').forEach(row=>{
-        const supplierSelect = row.querySelector('.supplier-select');
-        const priceInput = row.querySelector('.supplier-price');
-        const defaultRadio = row.querySelector('.supplier-default');
-        if(!supplierSelect) return;
-        const id = supplierSelect.value;
-        if(!id) return;
-        const price = priceInput?.value || '';
-        const name = supplierSelect.options[supplierSelect.selectedIndex]?.text || '';
-        const isDefault = defaultRadio?.checked || false;
-        data.suppliers.push({id,name,price,is_default:isDefault});
-      });
-
-      data.chemstockcrop = [];
-      document.querySelectorAll('.chem-crop-row').forEach(row=>{
-        const cropSelect = row.querySelector('.crop-select');
-        const crop = cropSelect?.value;
-        const cropName = cropSelect?.options[cropSelect.selectedIndex]?.text || '';
-        const withh = row.querySelector('.with-input')?.value;
-        const type = row.querySelector('.type-input')?.value;
-        const func = row.querySelector('.func-input')?.value;
-        if(crop) data.chemstockcrop.push({crop,crop_name:cropName,withholding_period:withh,type,func});
-      });
-
-      return data;
-    }
-
-    document.getElementById('add-crop').addEventListener('click', ()=>{
-      const container = document.getElementById('chem-crops');
-      const i = document.createElement('div');
-      i.className = 'chem-crop-row';
-      i.style.marginBottom='8px';
-      i.innerHTML = `
-        <div style="display:flex;gap:8px">
-          <select class="crop-select" style="flex:2">
-            <option value="">-- Crop --</option>
-            {% for c in crops %}
-            <option value="{{ c[0] }}">{{ c[2] or c[1] }}</option>
-            {% endfor %}
-          </select>
-        </div>
-        <div style="display:flex;gap:8px;margin-top:6px">
-          <input class="with-input small-input" placeholder="Withholding (days)" />
-          <select class="type-input small-input" style="min-width:160px">
-            <option value="">-- Type --</option>
+          <datalist id="crop-types">
             {% for t in types %}
-            <option value="{{ t[0] }}">{{ t[0] }}</option>
+            {% if t[0] %}<option value="{{ t[0] }}">{% endif %}
             {% endfor %}
-          </select>
-          <input class="func-input" placeholder="Function" />
-          <button type="button" class="btn ghost" style="min-width:40px" onclick="this.closest('.chem-crop-row').remove()">✕</button>
-        </div>
-      `;
-      container.appendChild(i);
-    });
+          </datalist>
+          <div class="inline-actions" style="margin-top:14px">
+            <button type="button" class="btn subtle" id="add-crop">Add a crop manually</button>
+          </div>
+          <p class="field-help" style="margin-top:12px">Only one target/use can be saved for each crop on a product.</p>
+        </section>
 
-    document.getElementById('new-product-form').addEventListener('submit', async (e)=>{
-      e.preventDefault();
-      if(!validateForm()) return;
+        <section class="wizard-step" data-step="2" aria-labelledby="step-title-3">
+          <h2 id="step-title-3">Stock and purchasing</h2>
+          <p class="step-intro">Set up how this product is identified in stock, where it is stored, and who supplies it.</p>
+
+          <div class="section-panel" style="margin-bottom:16px">
+            <h3>Product stock details</h3>
+            <div class="wizard-grid" style="margin-top:14px">
+              <div class="field">
+                <label for="product_code">Product code</label>
+                <input name="product_code" id="product_code" maxlength="20" autocomplete="off">
+                <div class="field-help">Suggested from the product name and group. You can edit it.</div>
+              </div>
+              <div class="field">
+                <label for="group">Product group</label>
+                <select id="group" name="group">
+                  <option value="">Choose group</option>
+                  {% for g in groups %}
+                  <option value="{{ g[0] }}">{{ g[1] }}</option>
+                  {% endfor %}
+                </select>
+              </div>
+              <div class="field">
+                <label for="colour_code">Colour code</label>
+                <select id="colour_code" name="colour_code">
+                  <option value="">Choose colour code</option>
+                  {% for cc in colour_codes %}
+                  <option value="{{ cc[0] }}">{{ cc[1] }}</option>
+                  {% endfor %}
+                </select>
+                <div id="label-colour-note" class="source-note" role="status" aria-live="polite" hidden></div>
+              </div>
+              <div class="field">
+                <label for="stocking_unit">Stocking unit</label>
+                <select id="stocking_unit" name="stocking_unit">
+                  <option value="">Choose unit</option>
+                  {% for u in uoms %}
+                  <option value="{{ u[0] }}" data-cat="{{ u[2] }}">{{ u[1] }}</option>
+                  {% endfor %}
+                </select>
+              </div>
+              <div class="field">
+                <label for="purchasing_unit">Purchasing unit</label>
+                <select id="purchasing_unit" name="purchasing_unit" disabled>
+                  <option value="">Choose stocking unit first</option>
+                </select>
+              </div>
+            </div>
+            <div id="duplicate-warning" class="duplicate-message" hidden></div>
+            <div class="duplicate-search-results similar-products"></div>
+            <div class="inline-actions" style="margin-top:12px">
+              <button type="button" class="btn subtle" id="add-colour-code">Add colour code</button>
+            </div>
+          </div>
+
+          <div class="section-panel" style="margin-bottom:16px">
+            <h3>Warehouses and shelves</h3>
+            <p class="field-help" style="margin:5px 0 12px">Select the warehouses that will stock this product. Shelf locations are optional.</p>
+            <div class="warehouse-list">
+              {% for w in warehouses %}
+              <div class="warehouse-option">
+                <input type="checkbox" class="warehouse-check" id="warehouse-{{ w[0] }}" data-whid="{{ w[0] }}">
+                <label for="warehouse-{{ w[0] }}">{{ w[1] }}</label>
+                <select class="wh-shelf" data-whid="{{ w[0] }}" disabled aria-label="Shelf for {{ w[1] }}">
+                  <option value="">No shelf selected</option>
+                  {% for c in categories %}
+                  <option value="{{ c[0] }}">{{ c[1] }}</option>
+                  {% endfor %}
+                </select>
+              </div>
+              {% endfor %}
+            </div>
+          </div>
+
+          <div class="section-panel">
+            <h3>Suppliers</h3>
+            <p class="field-help" style="margin:5px 0 12px">Choose at least one supplier and mark one as preferred. Prices can be added later.</p>
+            <div id="suppliers-list" class="supplier-list"></div>
+            <template id="supplier-row-template">
+              <div class="supplier-row">
+                <div class="supplier-select-wrap">
+                  <label>Supplier</label>
+                  <select class="supplier-select">
+                    <option value="">Choose supplier</option>
+                    {% for s in suppliers %}
+                    <option value="{{ s[0] }}">{{ s[1] }}</option>
+                    {% endfor %}
+                  </select>
+                </div>
+                <div>
+                  <label>Price <span class="muted">(optional)</span></label>
+                  <input type="number" step="0.01" min="0" class="supplier-price" placeholder="Not set">
+                </div>
+                <label class="preferred-choice"><input type="radio" name="default_supplier" class="supplier-default"> Preferred supplier</label>
+                <button type="button" class="btn danger supplier-remove" aria-label="Remove supplier">Remove</button>
+              </div>
+            </template>
+            <div class="inline-actions" style="margin-top:12px">
+              <button type="button" class="btn subtle" id="add-supplier">Add another supplier</button>
+            </div>
+          </div>
+        </section>
+
+        <section class="wizard-step" data-step="3" aria-labelledby="step-title-4">
+          <h2 id="step-title-4">Review and create</h2>
+          <p class="step-intro">Check each section before creating the product. Use Edit to return to a step.</p>
+          <div id="review" class="review-grid"></div>
+        </section>
+      </div>
+
+      <div class="wizard-actions" id="wizard-actions">
+        <button type="button" class="btn secondary" id="prevBtn" hidden>Back</button>
+        <div class="wizard-actions-right">
+          <button type="button" class="btn" id="nextBtn">Continue</button>
+          <button type="submit" class="btn" id="submitBtn" hidden>Create product</button>
+        </div>
+      </div>
+    </form>
+
+    <section id="wizard-success" class="wizard-success" hidden aria-live="polite">
+      <h2>Product created</h2>
+      <p id="success-message">Your chemical product is ready.</p>
+      <a id="success-product-link" class="btn" href="#">View product</a>
+    </section>
+  </div>
+</main>
+
+<meta name="csrf-token" content="{{ csrf_token }}">
+<script>
+(() => {
+  const steps = Array.from(document.querySelectorAll('.wizard-step'));
+  const progressItems = Array.from(document.querySelectorAll('[data-progress-step]'));
+  const form = document.getElementById('new-product-form');
+  const formErrors = document.getElementById('form-errors');
+  const productName = document.getElementById('brand_name');
+  const registrationInput = document.getElementById('registration_number');
+  const productCode = document.getElementById('product_code');
+  const groupSelect = document.getElementById('group');
+  const colourSelect = document.getElementById('colour_code');
+  const activeIngredients = document.getElementById('active_ing');
+  const stockingUnit = document.getElementById('stocking_unit');
+  const purchasingUnit = document.getElementById('purchasing_unit');
+  const supplierList = document.getElementById('suppliers-list');
+  const supplierTemplate = document.getElementById('supplier-row-template');
+  const cropContainer = document.getElementById('chem-crops');
+  const cropTemplate = document.getElementById('crop-row-template');
+  const labelSearch = document.getElementById('standardized-label-search');
+  const labelResults = document.getElementById('standardized-label-results');
+  const labelStatus = document.getElementById('standardized-label-status');
+  const labelSummary = document.getElementById('label-source-summary');
+  const labelUseChoices = document.getElementById('label-use-choices');
+  const duplicateWarning = document.getElementById('duplicate-warning');
+  const duplicateResults = Array.from(document.querySelectorAll('.duplicate-search-results'));
+  const csrfToken = document.querySelector('meta[name="csrf-token"]')?.content || '';
+  const phiRegions = [
+    { key: 'PHISA', label: 'South Africa' },
+    { key: 'PHIEU', label: 'European Union' },
+    { key: 'PHIGB', label: 'Great Britain' },
+    { key: 'PHIUSA', label: 'United States' },
+    { key: 'PHIRussia', label: 'Russia' },
+    { key: 'PHICodex', label: 'Codex' },
+    { key: 'PHICanada', label: 'Canada' },
+    { key: 'PHIJapan', label: 'Japan' },
+    { key: 'PHIKorea', label: 'Korea' },
+    { key: 'PHIIndo', label: 'Indonesia' },
+    { key: 'PHIChina', label: 'China' },
+    { key: 'PHIMalaysia', label: 'Malaysia' }
+  ];
+
+  let currentStep = 0;
+  let cropRowSequence = 0;
+  let autoProductCode = true;
+  let selectedLabel = null;
+  let labelCrops = [];
+  let labelSearchTimer = null;
+  let duplicateCheckTimer = null;
+  let duplicateSearchTimer = null;
+  let duplicateCheckSequence = 0;
+  let isSubmitting = false;
+  let hasSubmitted = false;
+
+  function setError(message) {
+    formErrors.textContent = message || '';
+  }
+
+  function showStep(index) {
+    currentStep = Math.max(0, Math.min(index, steps.length - 1));
+    steps.forEach((step, stepIndex) => {
+      step.classList.toggle('active', stepIndex === currentStep);
+    });
+    progressItems.forEach((item, stepIndex) => {
+      item.classList.toggle('active', stepIndex === currentStep);
+      item.classList.toggle('complete', stepIndex < currentStep);
+      if (stepIndex === currentStep) item.setAttribute('aria-current', 'step');
+      else item.removeAttribute('aria-current');
+    });
+    document.getElementById('prevBtn').hidden = currentStep === 0;
+    document.getElementById('nextBtn').hidden = currentStep === steps.length - 1;
+    document.getElementById('submitBtn').hidden = currentStep !== steps.length - 1;
+    setError('');
+    if (currentStep === 3) buildReview();
+    window.scrollTo({ top: document.querySelector('.product-wizard').offsetTop, behavior: 'smooth' });
+  }
+
+  function selectedNames(select) {
+    return Array.from(select.selectedOptions).map(option => option.textContent.trim());
+  }
+
+  function newIngredientOptions() {
+    return Array.from(activeIngredients.selectedOptions)
+      .filter(option => option.dataset.newIngredient)
+      .map(option => option.dataset.newIngredient);
+  }
+
+  function getPayload() {
+    const chosenSuppliers = Array.from(supplierList.querySelectorAll('.supplier-row'))
+      .map(row => {
+        const select = row.querySelector('.supplier-select');
+        if (!select.value) return null;
+        return {
+          id: select.value,
+          name: select.options[select.selectedIndex]?.textContent.trim() || '',
+          price: row.querySelector('.supplier-price').value.trim(),
+          is_default: row.querySelector('.supplier-default').checked
+        };
+      })
+      .filter(Boolean);
+
+    const warehouses = Array.from(document.querySelectorAll('.warehouse-check:checked'))
+      .map(check => ({
+        id: check.dataset.whid,
+        shelf: document.querySelector(`.wh-shelf[data-whid="${CSS.escape(check.dataset.whid)}"]`)?.value || ''
+      }));
+
+    const cropUses = Array.from(cropContainer.querySelectorAll('.crop-row'))
+      .map(row => ({
+        crop: row.querySelector('.crop-select').value,
+        crop_name: row.querySelector('.crop-select').selectedOptions[0]?.textContent.trim() || '',
+        func: row.querySelector('.func-input').value.trim(),
+        type: row.querySelector('.type-input').value.trim(),
+        withholding_period: row.querySelector('.with-input').value.trim()
+      }));
+
+    return {
+      brand_name: productName.value.trim(),
+      registration_number: registrationInput.value.trim(),
+      product_code: productCode.value.trim(),
+      group: groupSelect.value,
+      group_name: groupSelect.selectedOptions[0]?.textContent.trim() || '',
+      colour_code: colourSelect.selectedOptions[0]?.dataset.newColourCode ? '' : colourSelect.value,
+      new_colour_code: colourSelect.selectedOptions[0]?.dataset.newColourCode || '',
+      active_ing: Array.from(activeIngredients.selectedOptions)
+        .filter(option => !option.dataset.newIngredient)
+        .map(option => option.value),
+      new_active_ingredients: newIngredientOptions(),
+      stocking_unit: stockingUnit.value,
+      purchasing_unit: purchasingUnit.value,
+      warehouses,
+      suppliers: chosenSuppliers,
+      chemstockcrop: cropUses
+    };
+  }
+
+  function validateStep(index) {
+    const payload = getPayload();
+    if (index === 0) {
+      if (!payload.brand_name) return 'Trade name is required.';
+      if (payload.brand_name.length > 50) return 'Trade name cannot be longer than 50 characters.';
+      if (!payload.active_ing.length && !payload.new_active_ingredients.length) return 'Choose or add at least one active ingredient.';
+      return '';
+    }
+    if (index === 1) {
+      if (!payload.chemstockcrop.length) return 'Add at least one crop and use.';
+      if (payload.chemstockcrop.some(item => !item.crop)) return 'Choose a crop for every crop/use entry.';
+      const cropIds = payload.chemstockcrop.map(item => item.crop);
+      if (new Set(cropIds).size !== cropIds.length) return 'Each crop can only have one target/use. Remove or edit the duplicate crop entry.';
+      return '';
+    }
+    if (index === 2) {
+      if (!payload.product_code) return 'Product code is required.';
+      if (payload.product_code.length > 20) return 'Product code cannot be longer than 20 characters.';
+      if (!payload.group) return 'Choose a product group.';
+      if (!payload.colour_code && !payload.new_colour_code) return 'Choose or add a colour code.';
+      if (!payload.stocking_unit || !payload.purchasing_unit) return 'Choose stocking and purchasing units.';
+      if (!payload.suppliers.length) return 'Choose at least one supplier.';
+      if (payload.suppliers.filter(item => item.is_default).length !== 1) return 'Choose exactly one preferred supplier.';
+      if (new Set(payload.suppliers.map(item => item.id)).size !== payload.suppliers.length) return 'Choose each supplier only once.';
+      return '';
+    }
+    return '';
+  }
+
+  async function nextStep() {
+    const error = validateStep(currentStep);
+    if (error) {
+      setError(error);
+      return;
+    }
+    if (currentStep === 2) {
       await checkDuplicateValues();
-      if(duplicateWarning.textContent) return;
-      const data = gatherData();
-      duplicateWarning.textContent = '';
-      try{
-        const res = await fetch(location.pathname, {
-          method: 'POST',
-          headers: {'Content-Type':'application/json'},
-          body: JSON.stringify(data)
-        });
-        const js = await res.json();
-        if(res.ok && js && js.success){
-          alert('Posted — backend printed data.');
-          window.location.reload();
-        } else {
-          const message = js.message || (js.errors && js.errors[0]) || 'Server did not return success';
-          duplicateWarning.textContent = message;
+      if (duplicateWarning.dataset.blocking === 'true') {
+        setError('Choose a different product code before continuing.');
+        return;
+      }
+    }
+    showStep(currentStep + 1);
+  }
+
+  function computeSuggestedCode() {
+    const name = productName.value.trim();
+    const groupName = groupSelect.selectedOptions[0]?.textContent.trim() || '';
+    if (!name || !groupName || !groupSelect.value) return '';
+    const prefix = groupName.slice(0, 3).toUpperCase();
+    const safeName = name.replace(/\s+/g, '_').toUpperCase().replace(/[^A-Z0-9_]/g, '');
+    return `${prefix}-${safeName}`.slice(0, 20);
+  }
+
+  function updateSuggestedCode() {
+    const suggestion = computeSuggestedCode();
+    if (suggestion && (autoProductCode || !productCode.value.trim())) {
+      productCode.value = suggestion;
+      scheduleDuplicateCheck();
+      scheduleDuplicateSearch();
+    }
+  }
+
+  async function searchLabels() {
+    const query = labelSearch.value.trim();
+    labelResults.replaceChildren();
+    if (query.length < 2) {
+      labelStatus.textContent = '';
+      return;
+    }
+    labelStatus.textContent = 'Searching registered products…';
+    try {
+      const response = await fetch(`/agri/product/labels/search?q=${encodeURIComponent(query)}`);
+      const result = await response.json();
+      if (!response.ok || !result.success) throw new Error(result.message || 'Unable to search registered products.');
+      if (!result.labels.length) {
+        labelStatus.textContent = 'No matching registered products found.';
+        return;
+      }
+      result.labels.forEach(label => {
+        const button = document.createElement('button');
+        button.type = 'button';
+        button.className = 'label-result';
+        const name = document.createElement('strong');
+        name.textContent = label.trade_name || 'Unnamed product';
+        const registration = document.createElement('span');
+        registration.className = 'muted';
+        registration.textContent = label.registration_number ? `Registration: ${label.registration_number}` : 'No registration number';
+        button.append(name, registration);
+        button.addEventListener('click', () => applyStandardizedLabel(label.id));
+        labelResults.appendChild(button);
+      });
+      labelStatus.textContent = `${result.labels.length} matching product(s).`;
+    } catch (error) {
+      labelStatus.textContent = error.message || 'Unable to search registered products.';
+    }
+  }
+
+  function addMissingIngredient(name) {
+    const cleanName = String(name || '').trim();
+    if (!cleanName) return;
+    const existing = Array.from(activeIngredients.options).find(option =>
+      option.textContent.trim().toLowerCase() === cleanName.toLowerCase()
+    );
+    if (existing) {
+      existing.selected = true;
+      return;
+    }
+    const option = new Option(cleanName, `new:${cleanName}`);
+    option.dataset.newIngredient = cleanName;
+    option.selected = true;
+    activeIngredients.add(option);
+  }
+
+  function localCropOption(name) {
+    const normalized = String(name || '').trim().toLowerCase();
+    return Array.from(cropTemplate.content.querySelectorAll('.crop-select option')).find(option =>
+      option.value && [option.textContent, option.dataset.code, option.dataset.description]
+        .some(value => String(value || '').trim().toLowerCase() === normalized)
+    );
+  }
+
+  function labelPhiValue(item, region) {
+    const value = item && item[region];
+    return value === null || value === undefined ? '' : String(value).trim();
+  }
+
+  function renderLabelUseChoices() {
+    labelUseChoices.replaceChildren();
+    labelCrops.forEach((item, index) => {
+      const cropName = String(item.Crop || 'Unspecified crop').trim();
+      const cropKey = cropName.toLowerCase();
+      const sourceKey = String(item.IdLabelCrops || `label-${index}`);
+      const card = document.createElement('div');
+      card.className = 'crop-choice';
+      const header = document.createElement('div');
+      header.className = 'crop-choice-head';
+      const title = document.createElement('h3');
+      title.textContent = cropName;
+      const addButton = document.createElement('button');
+      addButton.type = 'button';
+      addButton.className = 'btn subtle';
+      addButton.textContent = 'Add crop';
+      header.append(title, addButton);
+      const details = document.createElement('p');
+      details.className = 'crop-choice-details';
+      const target = document.createElement('strong');
+      target.textContent = 'Target / use: ';
+      details.append(target, document.createTextNode(item.Target || 'Not listed'));
+      if (item.Type) {
+        details.append(document.createElement('br'));
+        const type = document.createElement('strong');
+        type.textContent = 'Type: ';
+        details.append(type, document.createTextNode(item.Type));
+      }
+      if (item.Category) {
+        details.append(document.createElement('br'));
+        const category = document.createElement('strong');
+        category.textContent = 'Category: ';
+        details.append(category, document.createTextNode(item.Category));
+      }
+      addButton.addEventListener('click', () => {
+        if (Array.from(cropContainer.querySelectorAll('.crop-row'))
+          .some(row => row.dataset.labelCropKey === sourceKey || row.dataset.labelCropName === cropKey)) {
+          setError(`${cropName} already has a crop/use entry.`);
+          return;
         }
-      }catch(err){
-        duplicateWarning.textContent = 'Post failed: '+err;
+        const localCrop = localCropOption(cropName);
+        if (localCrop && Array.from(cropContainer.querySelectorAll('.crop-select'))
+          .some(select => select.value === localCrop.value)) {
+          setError(`${cropName} already has a crop/use entry.`);
+          return;
+        }
+        const row = addCropRow(localCrop?.value || '', item);
+        row.dataset.labelCropKey = sourceKey;
+        row.dataset.labelCropName = cropKey;
+        setError('');
+      });
+      card.append(header, details);
+      labelUseChoices.appendChild(card);
+    });
+  }
+
+  async function applyStandardizedLabel(labelId) {
+    labelStatus.textContent = 'Loading registered product…';
+    try {
+      const response = await fetch(`/agri/product/labels/${encodeURIComponent(labelId)}`);
+      const result = await response.json();
+      if (!response.ok || !result.success) throw new Error(result.message || 'Unable to load registered product.');
+      selectedLabel = result.label;
+      selectedLabel.active_ingredients = result.active_ingredients || [];
+      labelCrops = result.crops || [];
+      productName.value = selectedLabel.trade_name || '';
+      registrationInput.value = selectedLabel.registration_number || '';
+      Array.from(activeIngredients.options).forEach(option => {
+        option.selected = false;
+        if (option.dataset.newIngredient) option.remove();
+      });
+      selectedLabel.active_ingredients.forEach(addMissingIngredient);
+      document.getElementById('chem-crops').replaceChildren();
+      renderLabelUseChoices();
+      const colorMatch = Array.from(colourSelect.options).find(option =>
+        option.value && option.textContent.trim().toLowerCase() === String(selectedLabel.colour_code || '').trim().toLowerCase()
+      );
+      colourSelect.value = colorMatch?.value || '';
+      const colourNote = document.getElementById('label-colour-note');
+      const importedColour = String(selectedLabel.colour_code || '').trim();
+      colourNote.hidden = !importedColour;
+      colourNote.textContent = importedColour
+        ? `Imported label colour: ${importedColour}${colorMatch ? '' : '. No exact FermeSync match; choose an existing colour or add this imported code.'}`
+        : '';
+      labelSummary.hidden = false;
+      labelSummary.textContent = `Imported source: ${selectedLabel.trade_name || 'Unnamed product'}${selectedLabel.registration_number ? ` · Registration ${selectedLabel.registration_number}` : ''}${selectedLabel.colour_code ? ` · Colour ${selectedLabel.colour_code}` : ''}. Ingredients: ${selectedLabel.active_ingredients.join(', ') || 'none listed'}. Source values remain available here for comparison while you edit.`;
+      labelResults.replaceChildren();
+      labelStatus.textContent = `Selected ${selectedLabel.trade_name || 'registered product'}. You can edit the imported details.`;
+      updateSuggestedCode();
+      scheduleDuplicateSearch();
+      checkDuplicateValues();
+      if (window.jQuery && jQuery.fn.select2 && jQuery(activeIngredients).hasClass('select2-hidden-accessible')) {
+        jQuery(activeIngredients).trigger('change.select2');
+      }
+    } catch (error) {
+      labelStatus.textContent = error.message || 'Unable to load registered product.';
+    }
+  }
+
+  function addCropRow(cropId, sourceItem) {
+    const row = cropTemplate.content.firstElementChild.cloneNode(true);
+    const cropSelect = row.querySelector('.crop-select');
+    const targetInput = row.querySelector('.func-input');
+    const typeInput = row.querySelector('.type-input');
+    const withholdingInput = row.querySelector('.with-input');
+    const sourceNote = row.querySelector('.crop-source');
+    if (cropId) cropSelect.value = String(cropId);
+    const radioGroup = `crop-phi-${cropRowSequence++}`;
+    const phiOptions = row.querySelector('.phi-options');
+    phiRegions.forEach(region => {
+      const option = document.createElement('label');
+      option.className = 'phi-option';
+      const radio = document.createElement('input');
+      radio.type = 'radio';
+      radio.name = radioGroup;
+      radio.value = region.key;
+      radio.checked = region.key === 'PHISA';
+      const regionDetails = document.createElement('span');
+      const regionName = document.createElement('strong');
+      regionName.textContent = region.label;
+      const period = document.createElement('small');
+      period.textContent = labelPhiValue(sourceItem, region.key) || 'Not listed';
+      regionDetails.append(regionName, period);
+      option.append(radio, regionDetails);
+      radio.addEventListener('change', () => {
+        if (radio.checked && sourceItem) withholdingInput.value = labelPhiValue(sourceItem, region.key);
+      });
+      phiOptions.appendChild(option);
+    });
+    if (sourceItem) {
+      targetInput.value = sourceItem.Target || '';
+      typeInput.value = sourceItem.Type || '';
+      withholdingInput.value = labelPhiValue(sourceItem, 'PHISA');
+      sourceNote.hidden = false;
+      const cropName = String(sourceItem.Crop || 'Unspecified crop').trim();
+      const matchingCrop = localCropOption(cropName);
+      const mappingNote = matchingCrop
+        ? ''
+        : ' This label crop is not in your farm crop list; choose an existing farm crop above before continuing.';
+      sourceNote.textContent = `Imported label values — Crop: ${cropName}; Target: ${sourceItem.Target || 'not listed'}; Type: ${sourceItem.Type || 'not listed'}${sourceItem.Category ? `; Category: ${sourceItem.Category}` : ''}.${mappingNote}`;
+    }
+    row.querySelector('.remove-crop').addEventListener('click', () => row.remove());
+    if (window.jQuery && jQuery.fn.select2) {
+      jQuery(cropSelect).select2({ width: '100%' });
+    }
+    cropContainer.appendChild(row);
+    return row;
+  }
+
+  function addSupplierRow(supplierData) {
+    const fragment = supplierTemplate.content.cloneNode(true);
+    const row = fragment.querySelector('.supplier-row');
+    const select = row.querySelector('.supplier-select');
+    const price = row.querySelector('.supplier-price');
+    const preferred = row.querySelector('.supplier-default');
+    if (supplierData) {
+      select.value = String(supplierData.id || '');
+      if (supplierData.price !== null && supplierData.price !== undefined && supplierData.price !== '') {
+        price.value = supplierData.price;
+      }
+      preferred.checked = Boolean(supplierData.is_default);
+    }
+    row.querySelector('.supplier-remove').addEventListener('click', () => row.remove());
+    select.addEventListener('change', () => {
+      if (!select.value) preferred.checked = false;
+    });
+    preferred.addEventListener('change', () => {
+      if (preferred.checked && !select.value) {
+        preferred.checked = false;
+        setError('Choose a supplier before marking it preferred.');
       }
     });
+    supplierList.appendChild(fragment);
+    if (window.jQuery && jQuery.fn.select2) {
+      jQuery(supplierList.lastElementChild.querySelector('.supplier-select')).select2({ width: '100%' });
+    }
+    return row;
+  }
 
-    // initial hide prev button
-    show(0);
-  </script>
-</body>
+  function renderDuplicateResults(results) {
+    duplicateResults.forEach(container => container.replaceChildren());
+    (results || []).forEach(item => {
+      duplicateResults.forEach(container => {
+        const card = document.createElement('article');
+        card.className = 'similar-product';
+        const details = document.createElement('div');
+        const title = document.createElement('strong');
+        title.textContent = `${item.product_description || 'Unnamed product'}${item.product_code ? ` (${item.product_code})` : ''}`;
+        const info = document.createElement('div');
+        info.className = 'muted';
+        info.textContent = [
+          item.sample_registration ? `Registration: ${item.sample_registration}` : '',
+          item.active_ingredient || '',
+          `${item.crop_count} crops · ${item.supplier_count} suppliers · ${item.warehouse_count} warehouses`
+        ].filter(Boolean).join(' · ');
+        details.append(title, info);
+        const actions = document.createElement('div');
+        actions.className = 'similar-actions';
+        const preview = document.createElement('button');
+        preview.type = 'button';
+        preview.className = 'btn secondary';
+        preview.textContent = 'Inspect';
+        preview.addEventListener('click', () => openPreview(item.stock_link));
+        const useTemplate = document.createElement('button');
+        useTemplate.type = 'button';
+        useTemplate.className = 'btn subtle';
+        useTemplate.textContent = 'Use as template';
+        useTemplate.addEventListener('click', () => useAsTemplate(item.stock_link));
+        actions.append(preview, useTemplate);
+        card.append(details, actions);
+        container.appendChild(card);
+      });
+    });
+  }
+
+  function scheduleDuplicateSearch() {
+    if (duplicateSearchTimer) clearTimeout(duplicateSearchTimer);
+    duplicateSearchTimer = setTimeout(runDuplicateSearch, 300);
+  }
+
+  async function runDuplicateSearch() {
+    const payload = getPayload();
+    const params = new URLSearchParams();
+    if (payload.brand_name.length >= 2) params.set('brand_name', payload.brand_name);
+    if (payload.product_code.length >= 2) params.set('product_code', payload.product_code);
+    if (payload.registration_number) params.set('registration', payload.registration_number);
+    payload.active_ing.forEach(id => params.append('active_ing', id));
+    if (!params.toString()) {
+      duplicateResults.forEach(container => container.replaceChildren());
+      return;
+    }
+    try {
+      const response = await fetch(`/agri/product/duplicate-search?${params}`);
+      if (!response.ok) throw new Error('Unable to check for similar products.');
+      const result = await response.json();
+      renderDuplicateResults(result.results || []);
+    } catch (error) {
+      duplicateResults.forEach(container => container.replaceChildren());
+      const message = document.createElement('div');
+      message.className = 'field-help';
+      message.textContent = error.message || 'Unable to check for similar products.';
+      duplicateResults.forEach(container => container.appendChild(message.cloneNode(true)));
+    }
+  }
+
+  async function checkDuplicateValues() {
+    const requestSequence = ++duplicateCheckSequence;
+    const payload = getPayload();
+    const params = new URLSearchParams();
+    if (payload.product_code) params.set('product_code', payload.product_code);
+    if (payload.brand_name) params.set('brand_name', payload.brand_name);
+    if (payload.registration_number) params.set('registration_number', payload.registration_number);
+    if (!params.toString()) return null;
+    try {
+      const response = await fetch(`/agri/product/check-duplicate?${params}`);
+      if (!response.ok) throw new Error('Unable to check product duplicates.');
+      const result = await response.json();
+      if (requestSequence !== duplicateCheckSequence) return result;
+      duplicateWarning.hidden = false;
+      duplicateWarning.dataset.blocking = result.exists_code ? 'true' : 'false';
+      if (result.exists_code) {
+        duplicateWarning.textContent = 'This product code is already in use. Choose another code. Matching products are listed below.';
+      } else if (result.exists_brand || result.exists_registration) {
+        const parts = [];
+        if (result.exists_brand) parts.push('trade name');
+        if (result.exists_registration) parts.push('registration number');
+        duplicateWarning.textContent = `An existing product has the same ${parts.join(' and ')}. Inspect the possible match below; registration-number matches are allowed.`;
+      } else {
+        duplicateWarning.hidden = true;
+        duplicateWarning.textContent = '';
+      }
+      scheduleDuplicateSearch();
+      return result;
+    } catch (error) {
+      if (requestSequence !== duplicateCheckSequence) return null;
+      duplicateWarning.hidden = false;
+      duplicateWarning.dataset.blocking = 'false';
+      duplicateWarning.textContent = error.message || 'Unable to check product duplicates. You can continue and the server will validate the product code.';
+      return null;
+    }
+  }
+
+  function scheduleDuplicateCheck() {
+    if (duplicateCheckTimer) clearTimeout(duplicateCheckTimer);
+    duplicateCheckTimer = setTimeout(checkDuplicateValues, 250);
+  }
+
+  async function fetchPurchasingUnits(stockId, selectedId) {
+    purchasingUnit.disabled = true;
+    purchasingUnit.replaceChildren(new Option('Loading units…', ''));
+    if (!stockId) {
+      purchasingUnit.replaceChildren(new Option('Choose stocking unit first', ''));
+      return;
+    }
+    try {
+      const response = await fetch(`/agri/product/purchasing-units?stocking_unit_id=${encodeURIComponent(stockId)}`);
+      if (!response.ok) throw new Error('Unable to load purchasing units.');
+      const result = await response.json();
+      purchasingUnit.replaceChildren(new Option('Choose purchasing unit', ''));
+      result.units.forEach(item => purchasingUnit.add(new Option(item.code, item.id)));
+      purchasingUnit.disabled = false;
+      if (selectedId) purchasingUnit.value = String(selectedId);
+    } catch (error) {
+      purchasingUnit.replaceChildren(new Option('Unable to load units', ''));
+      setError(error.message || 'Unable to load purchasing units.');
+    }
+  }
+
+  function appendTextSection(container, title, lines, stepIndex) {
+    const section = document.createElement('section');
+    section.className = 'review-section';
+    const header = document.createElement('div');
+    header.className = 'review-section-header';
+    const heading = document.createElement('h3');
+    heading.textContent = title;
+    const edit = document.createElement('button');
+    edit.type = 'button';
+    edit.className = 'btn secondary';
+    edit.textContent = 'Edit';
+    edit.addEventListener('click', () => showStep(stepIndex));
+    header.append(heading, edit);
+    const list = document.createElement('div');
+    list.className = 'review-lines';
+    (lines.length ? lines : ['Not provided']).forEach(line => {
+      const item = document.createElement('div');
+      item.textContent = line;
+      list.appendChild(item);
+    });
+    section.append(header, list);
+    container.appendChild(section);
+  }
+
+  function buildReview() {
+    const payload = getPayload();
+    const review = document.getElementById('review');
+    review.replaceChildren();
+    appendTextSection(review, 'Product identity', [
+      `Trade name: ${payload.brand_name || '—'}`,
+      `Registration number: ${payload.registration_number || '—'}`,
+      `Source: ${selectedLabel ? `Agri-Intel (${selectedLabel.trade_name || 'registered product'})` : 'Entered manually'}`
+    ], 0);
+    appendTextSection(review, 'Active ingredients', [selectedNames(activeIngredients).join(' + ')], 0);
+    appendTextSection(review, 'Crops and uses', payload.chemstockcrop.map(item =>
+      `${item.crop_name}: ${item.func || 'No target entered'}${item.type ? ` · ${item.type}` : ''}${item.withholding_period ? ` · Withholding: ${item.withholding_period}` : ''}`
+    ), 1);
+    appendTextSection(review, 'Stock details', [
+      `Product code: ${payload.product_code || '—'}`,
+      `Product group: ${payload.group_name || '—'}`,
+      `Colour code: ${colourSelect.selectedOptions[0]?.textContent.trim() || '—'}`,
+      `Stocking unit: ${stockingUnit.selectedOptions[0]?.textContent.trim() || '—'}`,
+      `Purchasing unit: ${purchasingUnit.selectedOptions[0]?.textContent.trim() || '—'}`
+    ], 2);
+    const warehouseLines = payload.warehouses.map(item => {
+      const check = document.querySelector(`.warehouse-check[data-whid="${CSS.escape(item.id)}"]`);
+      const name = check?.nextElementSibling?.textContent.trim() || item.id;
+      const shelf = document.querySelector(`.wh-shelf[data-whid="${CSS.escape(item.id)}"]`);
+      return `${name}${shelf?.selectedOptions[0]?.textContent && shelf.value ? ` · Shelf: ${shelf.selectedOptions[0].textContent}` : ''}`;
+    });
+    appendTextSection(review, 'Warehouses and shelves', warehouseLines, 2);
+    const supplierLines = payload.suppliers.map(item =>
+      `${item.name}${item.is_default ? ' · Preferred' : ''}${item.price ? ` · ${item.price} per ${purchasingUnit.selectedOptions[0]?.textContent.trim() || 'purchasing unit'}` : ' · Price not set'}`
+    );
+    appendTextSection(review, 'Suppliers and prices', supplierLines, 2);
+  }
+
+  function appendPreviewSection(panel, headingText, lines) {
+    const section = document.createElement('section');
+    section.className = 'preview-section';
+    const heading = document.createElement('h3');
+    heading.textContent = headingText;
+    const list = document.createElement('ul');
+    lines.forEach(value => {
+      const item = document.createElement('li');
+      item.textContent = value;
+      list.appendChild(item);
+    });
+    section.append(heading, list);
+    panel.appendChild(section);
+  }
+
+  function closePreview() {
+    document.getElementById('preview-backdrop')?.remove();
+    document.getElementById('preview-panel')?.remove();
+  }
+
+  async function openPreview(stockLink) {
+    try {
+      const response = await fetch(`/agri/product/details?stock_link=${encodeURIComponent(stockLink)}`);
+      if (!response.ok) throw new Error('Unable to load product details.');
+      const result = await response.json();
+      const product = result.product || {};
+      closePreview();
+      const backdrop = document.createElement('div');
+      backdrop.id = 'preview-backdrop';
+      backdrop.className = 'preview-backdrop';
+      backdrop.addEventListener('click', closePreview);
+      const panel = document.createElement('aside');
+      panel.id = 'preview-panel';
+      panel.className = 'preview-panel';
+      panel.setAttribute('aria-label', 'Existing product details');
+      const close = document.createElement('button');
+      close.type = 'button';
+      close.className = 'btn secondary';
+      close.textContent = 'Close';
+      close.addEventListener('click', closePreview);
+      const heading = document.createElement('h2');
+      heading.textContent = product.product_description || product.product_code || 'Product details';
+      const code = document.createElement('div');
+      code.className = 'muted';
+      code.textContent = product.product_code || '';
+      panel.append(close, heading, code);
+      appendPreviewSection(panel, 'Product information', [
+        `Registration: ${product.registration_number || '—'}`,
+        `Active ingredients: ${product.active_ingredient || '—'}`
+      ]);
+      appendPreviewSection(panel, 'Crops and uses', (result.registrations || []).map(item =>
+        `${item.crop_description || 'Unknown crop'}${item.function ? ` · ${item.function}` : ''}${item.type ? ` · ${item.type}` : ''}${item.withholding_period ? ` · Withholding: ${item.withholding_period}` : ''}`
+      ));
+      appendPreviewSection(panel, 'Suppliers', (result.suppliers || []).map(item =>
+        `${item.name}${item.is_default ? ' · Preferred' : ''}${item.price ? ` · ${item.price}` : ''}`
+      ));
+      appendPreviewSection(panel, 'Warehouses', (result.warehouses || []).map(item =>
+        `${item.description}${item.category_name ? ` · Shelf: ${item.category_name}` : ''}`
+      ));
+      const use = document.createElement('button');
+      use.type = 'button';
+      use.className = 'btn';
+      use.textContent = 'Use as template';
+      use.style.marginTop = '18px';
+      use.addEventListener('click', async () => {
+        closePreview();
+        await useAsTemplate(stockLink);
+      });
+      panel.appendChild(use);
+      document.body.append(backdrop, panel);
+    } catch (error) {
+      setError(error.message || 'Unable to inspect this product.');
+    }
+  }
+
+  async function useAsTemplate(stockLink) {
+    try {
+      const response = await fetch(`/agri/product/details?stock_link=${encodeURIComponent(stockLink)}`);
+      if (!response.ok) throw new Error('Unable to load this product as a template.');
+      const result = await response.json();
+      const product = result.product || {};
+      selectedLabel = null;
+      labelCrops = [];
+      labelSummary.hidden = true;
+      labelUseChoices.replaceChildren();
+      productName.value = product.product_description || '';
+      registrationInput.value = product.registration_number || '';
+      Array.from(activeIngredients.options).forEach(option => {
+        option.selected = false;
+        if (option.dataset.newIngredient) option.remove();
+      });
+      (product.active_ingredient_ids || []).forEach(id => {
+        const option = Array.from(activeIngredients.options).find(item => item.value === String(id));
+        if (option) option.selected = true;
+      });
+      if (window.jQuery && jQuery.fn.select2 && jQuery(activeIngredients).hasClass('select2-hidden-accessible')) {
+        jQuery(activeIngredients).trigger('change.select2');
+      }
+      groupSelect.value = product.group_id || '';
+      colourSelect.value = product.colour_code_id || '';
+      const colourNote = document.getElementById('label-colour-note');
+      colourNote.hidden = !product.colour_code;
+      colourNote.textContent = product.colour_code ? `Template colour: ${product.colour_code}` : '';
+      stockingUnit.value = product.stocking_unit_id || '';
+      await fetchPurchasingUnits(product.stocking_unit_id, product.purchasing_unit_id);
+      autoProductCode = true;
+      productCode.value = '';
+      updateSuggestedCode();
+
+      supplierList.replaceChildren();
+      const supplierItems = result.suppliers || [];
+      supplierItems.forEach((supplier, index) => {
+        const matchingUnit = String(supplier.price_unit_id || '') === String(product.purchasing_unit_id || '');
+        addSupplierRow({
+          id: supplier.id,
+          price: matchingUnit ? supplier.price : '',
+          is_default: supplier.is_default || (!supplierItems.some(item => item.is_default) && index === 0)
+        });
+      });
+      if (!supplierItems.length) addSupplierRow();
+
+      document.querySelectorAll('.warehouse-check').forEach(check => {
+        check.checked = false;
+        const shelf = document.querySelector(`.wh-shelf[data-whid="${CSS.escape(check.dataset.whid)}"]`);
+        shelf.disabled = true;
+        shelf.value = '';
+      });
+      (result.warehouses || []).forEach(warehouse => {
+        const check = document.querySelector(`.warehouse-check[data-whid="${CSS.escape(String(warehouse.id))}"]`);
+        if (!check) return;
+        check.checked = true;
+        const shelf = document.querySelector(`.wh-shelf[data-whid="${CSS.escape(String(warehouse.id))}"]`);
+        shelf.disabled = false;
+        shelf.value = warehouse.category_id || '';
+      });
+
+      cropContainer.replaceChildren();
+      const usedCropIds = new Set();
+      (result.registrations || []).forEach(registration => {
+        if (!registration.crop_id || usedCropIds.has(String(registration.crop_id))) return;
+        usedCropIds.add(String(registration.crop_id));
+        const row = addCropRow(registration.crop_id, null);
+        row.querySelector('.func-input').value = registration.function || '';
+        row.querySelector('.type-input').value = registration.type || '';
+        row.querySelector('.with-input').value = registration.withholding_period || '';
+      });
+      scheduleDuplicateSearch();
+      scheduleDuplicateCheck();
+      showStep(0);
+    } catch (error) {
+      setError(error.message || 'Unable to use this product as a template.');
+    }
+  }
+
+  async function promptForEntity(kind) {
+    const isIngredient = kind === 'ingredient';
+    const result = await Swal.fire({
+      title: isIngredient ? 'Add active ingredient' : 'Add colour code',
+      input: 'text',
+      inputLabel: isIngredient ? 'Ingredient name' : 'Colour code',
+      inputPlaceholder: isIngredient ? 'Enter ingredient name' : 'Enter colour code',
+      showCancelButton: true,
+      confirmButtonText: 'Add',
+      inputValidator: value => value.trim() ? undefined : 'Enter a value.'
+    });
+    if (!result.isConfirmed) return;
+    const value = result.value.trim();
+    if (isIngredient) {
+      addMissingIngredient(value);
+      if (window.jQuery && jQuery.fn.select2) jQuery(activeIngredients).trigger('change.select2');
+      return;
+    }
+    const option = new Option(value, `new-color:${value}`);
+    option.dataset.newColourCode = value;
+    option.selected = true;
+    colourSelect.add(option);
+    colourSelect.value = option.value;
+  }
+
+  async function submitProduct(event) {
+    event.preventDefault();
+    if (isSubmitting || hasSubmitted) return;
+    const error = validateStep(3) || validateStep(2) || validateStep(1) || validateStep(0);
+    if (error) {
+      const stepErrors = [validateStep(0), validateStep(1), validateStep(2)].findIndex(Boolean);
+      showStep(stepErrors >= 0 ? stepErrors : 2);
+      setError(error);
+      return;
+    }
+    await checkDuplicateValues();
+    if (duplicateWarning.dataset.blocking === 'true') {
+      showStep(2);
+      setError('Choose a different product code before creating the product.');
+      return;
+    }
+    isSubmitting = true;
+    const submitButton = document.getElementById('submitBtn');
+    submitButton.disabled = true;
+    submitButton.textContent = 'Creating…';
+    setError('');
+    try {
+      const response = await fetch(location.pathname, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'X-CSRF-Token': csrfToken },
+        body: JSON.stringify(getPayload())
+      });
+      const result = await response.json();
+      if (!response.ok || !result.success) throw new Error(result.message || 'Unable to create product.');
+      hasSubmitted = true;
+      document.getElementById('new-product-form').hidden = true;
+      const success = document.getElementById('wizard-success');
+      success.hidden = false;
+      document.getElementById('success-message').textContent = `${result.product_code || productName.value} has been added to FermeSync.`;
+      const link = document.getElementById('success-product-link');
+      if (result.product_url) {
+        link.href = result.product_url;
+        link.hidden = false;
+      } else {
+        link.hidden = true;
+      }
+    } catch (error) {
+      setError(error.message || 'Unable to create product. Please try again.');
+      submitButton.disabled = false;
+      submitButton.textContent = 'Create product';
+    } finally {
+      isSubmitting = false;
+    }
+  }
+
+  document.getElementById('nextBtn').addEventListener('click', nextStep);
+  document.getElementById('prevBtn').addEventListener('click', () => showStep(currentStep - 1));
+  form.addEventListener('submit', submitProduct);
+  labelSearch.addEventListener('input', () => {
+    if (labelSearchTimer) clearTimeout(labelSearchTimer);
+    labelSearchTimer = setTimeout(searchLabels, 250);
+  });
+  document.getElementById('clear-label').addEventListener('click', () => {
+    selectedLabel = null;
+    labelCrops = [];
+    labelSummary.hidden = true;
+    labelUseChoices.replaceChildren();
+    labelStatus.textContent = 'Enter product information manually. Existing values have not been cleared.';
+  });
+  document.getElementById('add-active-ing').addEventListener('click', () => promptForEntity('ingredient'));
+  document.getElementById('add-colour-code').addEventListener('click', () => promptForEntity('colour'));
+  document.getElementById('add-crop').addEventListener('click', () => addCropRow());
+  document.getElementById('add-supplier').addEventListener('click', () => addSupplierRow());
+  productName.addEventListener('input', () => {
+    updateSuggestedCode();
+    scheduleDuplicateCheck();
+  });
+  registrationInput.addEventListener('input', () => {
+    scheduleDuplicateCheck();
+    scheduleDuplicateSearch();
+  });
+  activeIngredients.addEventListener('change', scheduleDuplicateSearch);
+  productCode.addEventListener('input', () => {
+    autoProductCode = false;
+    scheduleDuplicateCheck();
+    scheduleDuplicateSearch();
+  });
+  groupSelect.addEventListener('change', updateSuggestedCode);
+  stockingUnit.addEventListener('change', () => fetchPurchasingUnits(stockingUnit.value));
+  document.querySelectorAll('.warehouse-check').forEach(check => {
+    check.addEventListener('change', () => {
+      const shelf = document.querySelector(`.wh-shelf[data-whid="${CSS.escape(check.dataset.whid)}"]`);
+      shelf.disabled = !check.checked;
+      if (!check.checked) shelf.value = '';
+    });
+  });
+
+  if (window.jQuery && jQuery.fn.select2) {
+    jQuery(activeIngredients).select2({ width: '100%', placeholder: 'Choose active ingredients' });
+  }
+  addSupplierRow();
+  showStep(0);
+})();
+</script>
 {% endblock %}

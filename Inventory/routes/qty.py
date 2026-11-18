@@ -75,7 +75,13 @@ def inventory_qty_data():
         FROM CandidateStocks Candidate
         JOIN cmn._uvStockItems STK ON STK.StockLink = Candidate.StockLink
         LEFT JOIN agr.ChemStock Chem ON Chem.ChemStockLink = STK.StockLink
-        LEFT JOIN agr.ChemActiveIngredient ACT ON ACT.IdChemAct = Chem.ChemStockActiveIngrId
+        LEFT JOIN (
+            SELECT CSAI.CSAIChemStockId,
+                   STRING_AGG(ACT.ChemActIngredient, ' + ') WITHIN GROUP (ORDER BY ACT.ChemActIngredient) AS ChemActIngredient
+            FROM agr.ChemStockActiveIngredient CSAI
+            JOIN agr.ChemActiveIngredient ACT ON ACT.IdChemAct = CSAI.CSAIActiveIngredientId
+            GROUP BY CSAI.CSAIChemStockId
+        ) ACT ON ACT.CSAIChemStockId = Chem.IdChemStock
         CROSS JOIN (
             SELECT WhseLink, WhseCode, WhseDescription
             FROM cmn._uvWarehouses
@@ -303,7 +309,13 @@ def get_warehouse_stock(warehouse_id):
             FN.SprayHWeek
         FROM stk._uvInventoryQty QTY
 		LEFT JOIN agr.ChemStock STK on STK.ChemStockLink = QTY.StockLink
-		LEFT JOIN agr.ChemActiveIngredient ACT on ACT.IdChemAct = STK.ChemStockActiveIngrId
+		LEFT JOIN (
+            SELECT CSAI.CSAIChemStockId,
+                   STRING_AGG(ACT.ChemActIngredient, ' + ') WITHIN GROUP (ORDER BY ACT.ChemActIngredient) AS ChemActIngredient
+            FROM agr.ChemStockActiveIngredient CSAI
+            JOIN agr.ChemActiveIngredient ACT ON ACT.IdChemAct = CSAI.CSAIActiveIngredientId
+            GROUP BY CSAI.CSAIChemStockId
+        ) ACT ON ACT.CSAIChemStockId = STK.IdChemStock
         LEFT JOIN FirstNegative FN 
             ON FN.SprayHWhseId = QTY.WhseLink 
             AND FN.SprayLineStkId = QTY.StockLink

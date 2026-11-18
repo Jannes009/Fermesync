@@ -6,6 +6,8 @@ document.addEventListener('DOMContentLoaded', () => {
   const addCropBtn = document.getElementById('add-crop-row');
   const cropRows = document.getElementById('crop-rows');
   const inputActive = document.getElementById('edit-active');
+  inputActive.multiple = true;
+  inputActive.size = 4;
   const inputColour = document.getElementById('edit-colour');
   const inputRegistration = document.getElementById('edit-registration');
 
@@ -123,11 +125,10 @@ document.addEventListener('DOMContentLoaded', () => {
         opt.textContent = a.ChemActIngredient || a.name || Object.values(a).join(' ');
         inputActive.appendChild(opt);
       });
-      if (CHEMSTOCK.ActiveIngredientId) {
-        inputActive.value = CHEMSTOCK.ActiveIngredientId;
-      } else if (CHEMSTOCK.ActiveIngredient) {
-        Array.from(inputActive.options).forEach(o => { if (o.textContent === CHEMSTOCK.ActiveIngredient) o.selected = true; });
-      }
+      const activeIds = CHEMSTOCK.ActiveIngredientIds || (CHEMSTOCK.ActiveIngredientId ? [CHEMSTOCK.ActiveIngredientId] : []);
+      Array.from(inputActive.options).forEach(option => {
+        option.selected = activeIds.map(String).includes(option.value);
+      });
 
       inputColour.innerHTML = '<option value="">(none)</option>';
       (OPTIONS.colour_codes || []).forEach(c => {
@@ -208,7 +209,9 @@ document.addEventListener('DOMContentLoaded', () => {
           opt.value = data.id;
           opt.textContent = data.name;
           inputActive.appendChild(opt);
-          inputActive.value = data.id;
+          Array.from(inputActive.options).forEach(option => {
+            if (String(option.value) === String(data.id)) option.selected = true;
+          });
           // remove small modal
           small.remove();
         } catch (err) {
@@ -228,7 +231,9 @@ document.addEventListener('DOMContentLoaded', () => {
 
   saveBtn.addEventListener('click', async () => {
     const payload = {
-      active_ingredient: inputActive.value || null,
+      active_ingredient_ids: Array.from(inputActive.selectedOptions)
+        .map(option => option.value)
+        .filter(value => value),
       colour_code: inputColour.value || null,
       registration_number: inputRegistration.value.trim() || null,
       crops: []

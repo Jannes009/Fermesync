@@ -128,7 +128,13 @@ def fetch_spray_record_data(instruction_id):
 	)ISSQTY on ISSQTY.IssLinProjSprayId = HEA.IdSprayH and ISSQTY.IssLineStockLink = LIN.SprayLineStkId
     JOIN cmn._uvStockItems EVOSTK ON EVOSTK.StockLink = LIN.SprayLineStkId
     LEFT JOIN agr.ChemStock STK ON STK.ChemStockLink = LIN.SprayLineStkId
-    LEFT JOIN agr.ChemActiveIngredient ACT on ACT.IdChemAct = stk.ChemStockActiveIngrId
+    LEFT JOIN (
+        SELECT CSAI.CSAIChemStockId,
+               STRING_AGG(ACT.ChemActIngredient, ' + ') WITHIN GROUP (ORDER BY ACT.ChemActIngredient) AS ChemActIngredient
+        FROM agr.ChemStockActiveIngredient CSAI
+        JOIN agr.ChemActiveIngredient ACT ON ACT.IdChemAct = CSAI.CSAIActiveIngredientId
+        GROUP BY CSAI.CSAIChemStockId
+    ) ACT ON ACT.CSAIChemStockId = STK.IdChemStock
     LEFT JOIN [agr].[ChemColour] CLR on CLR.IdChemCol = STK.ChemStockColourCodeId
     LEFT JOIN cmn._uvUOM UOM ON UOM.idUnits = LIN.SprayLineUoMId
     WHERE HEA.IdSprayH = ?

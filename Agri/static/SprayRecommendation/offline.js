@@ -70,10 +70,11 @@ async function readProjects() {
 async function fetchProjects(force = false) {
     const cached = await readProjects();
     const refreshDue = await shouldRefresh('catalog', cached?.refreshed_at, true);
-    const cacheHasFieldData = (cached?.projects || []).every(project =>
-        Object.prototype.hasOwnProperty.call(project, 'proj_attr_field_id')
+    const cacheHasFieldData = (cached?.projects || []).length > 0 && cached.projects.every(project =>
+        Object.prototype.hasOwnProperty.call(project, 'proj_attr_field_id') &&
+        Object.prototype.hasOwnProperty.call(project, 'proj_attr_field_description')
     );
-    if (!force && cached && !refreshDue && cacheHasFieldData) {
+    if (!force && cached?.projects?.length && !refreshDue && cacheHasFieldData) {
         return { projects: cached.projects, refreshed_at: cached.refreshed_at, source: 'cache' };
     }
     if (!navigator.onLine) {
@@ -86,11 +87,17 @@ async function fetchProjects(force = false) {
     try {
         response = await fetch('/agri/fetch_projects_for_warehouse', { credentials: 'same-origin' });
     } catch (error) {
-        return cached ? { projects: cached.projects, refreshed_at: cached.refreshed_at, source: 'cache' } : { projects: [], refreshed_at: null, source: 'offline' };
+        if (cached?.projects?.length) {
+            return { projects: cached.projects, refreshed_at: cached.refreshed_at, source: 'cache' };
+        }
+        throw error;
     }
     const data = await response.json();
     if (!response.ok || !data.success) {
-        return cached ? { projects: cached.projects, refreshed_at: cached.refreshed_at, source: 'cache' } : { projects: [], refreshed_at: null, source: 'offline' };
+        if (cached?.projects?.length) {
+            return { projects: cached.projects, refreshed_at: cached.refreshed_at, source: 'cache' };
+        }
+        throw new Error(data.message || `Unable to fetch projects (${response.status})`);
     }
     const refreshedAt = now();
     await db.spray_projects.put({

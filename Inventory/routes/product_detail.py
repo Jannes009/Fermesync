@@ -306,6 +306,7 @@ def load_chemstock(stock_link):
     if not conn:
         return {
             'ActiveIngredient': None,
+            'ActiveIngredientIds': [],
             'ColourCode': None,
             'RegNumber': None,
             'Crops': [],
@@ -319,7 +320,6 @@ def load_chemstock(stock_link):
                 STK.ChemStockLink,
                 STK.IdChemStock,
                 STK.ChemStockRegNumber,
-                ACT.IdChemAct AS ChemActId,
                 ACT.ChemActIngredient,
                 CRP.IdCrop AS CropId,
                 CRP.CropDescription,
@@ -329,7 +329,13 @@ def load_chemstock(stock_link):
                 STKCRP.StkCrpFunctionDef,
                 STKCRP.StkCrpWitholdingPeriodDef
             FROM agr.ChemStock STK
-            LEFT JOIN agr.ChemActiveIngredient ACT ON ACT.IdChemAct = STK.ChemStockActiveIngrId
+            LEFT JOIN (
+                SELECT CSAI.CSAIChemStockId,
+                       STRING_AGG(ACT.ChemActIngredient, ' + ') WITHIN GROUP (ORDER BY ACT.ChemActIngredient) AS ChemActIngredient
+                FROM agr.ChemStockActiveIngredient CSAI
+                JOIN agr.ChemActiveIngredient ACT ON ACT.IdChemAct = CSAI.CSAIActiveIngredientId
+                GROUP BY CSAI.CSAIChemStockId
+            ) ACT ON ACT.CSAIChemStockId = STK.IdChemStock
             LEFT JOIN agr.ChemStockCrop STKCRP ON STKCRP.StkCrpChemStockId = STK.IdChemStock
             LEFT JOIN agr.ChemColour CLR ON CLR.IdChemCol = STK.ChemStockColourCodeId
             LEFT JOIN agr.Crop CRP ON CRP.IdCrop = STKCRP.StkCrpCropId
@@ -337,12 +343,22 @@ def load_chemstock(stock_link):
             ORDER BY CRP.CropDescription
         """, (stock_link,))
         rows = [row_to_dict(cur, row) for row in cur.fetchall()]
+        active_ingredient_ids = []
+        if rows:
+            cur.execute("""
+                SELECT CSAIActiveIngredientId
+                FROM agr.ChemStockActiveIngredient
+                WHERE CSAIChemStockId = ?
+                ORDER BY CSAIActiveIngredientId
+            """, (rows[0].get('IdChemStock'),))
+            active_ingredient_ids = [row[0] for row in cur.fetchall()]
     finally:
         close_db_connection(conn)
 
     if not rows:
         return {
             'ActiveIngredient': None,
+            'ActiveIngredientIds': [],
             'ColourCode': None,
             'RegNumber': None,
             'Crops': [],
@@ -364,7 +380,8 @@ def load_chemstock(stock_link):
 
     return {
         'ActiveIngredient': first.get('ChemActIngredient'),
-        'ActiveIngredientId': first.get('ChemActId'),
+        'ActiveIngredientId': active_ingredient_ids[0] if active_ingredient_ids else None,
+        'ActiveIngredientIds': active_ingredient_ids,
         'ColourCode': first.get('ChemColCode'),
         'ColourCodeId': first.get('ChemColId'),
         'RegNumber': first.get('ChemStockRegNumber'),
@@ -378,7 +395,17 @@ def load_chemstock(stock_link):
 @login_required
 def update_chemstock(stock_link):
     data = request.get_json(silent=True) or {}
-    active = (data.get('active_ingredient') or '').strip() or None
+    active_values = data.get('active_ingredient_ids')
+    if active_values is None:
+        active_values = data.get('active_ingredient') or []
+    if not isinstance(active_values, (list, tuple)):
+        active_values = [active_values]
+    try:
+        active_ids = list(dict.fromkeys(int(value) for value in active_values if value not in (None, '')))
+    except (TypeError, ValueError):
+        return jsonify({'success': False, 'message': 'Active ingredient IDs must be integers.'}), 400
+    if any(active_id <= 0 for active_id in active_ids):
+        return jsonify({'success': False, 'message': 'Active ingredient IDs must be positive integers.'}), 400
     colour = (data.get('colour_code') or '').strip() or None
     reg_number = (data.get('registration_number') or '').strip() or None
     crops = data.get('crops') or []
@@ -408,7 +435,14 @@ def update_chemstock(stock_link):
 
         print(chem_id)
         # Update ChemStock fields
-        cur.execute("UPDATE agr.ChemStock SET ChemStockActiveIngrId = ?, ChemStockColourCodeId = ?, ChemStockRegNumber = ? WHERE IdChemStock = ?", (active, colour, reg_number, chem_id))
+        cur.execute("UPDATE agr.ChemStock SET ChemStockColourCodeId = ?, ChemStockRegNumber = ? WHERE IdChemStock = ?", (colour, reg_number, chem_id))
+        cur.execute("DELETE FROM agr.ChemStockActiveIngredient WHERE CSAIChemStockId = ?", (chem_id,))
+        for active_id in active_ids:
+            cur.execute("""
+                INSERT INTO agr.ChemStockActiveIngredient
+                    (CSAIChemStockId, CSAIActiveIngredientId)
+                VALUES (?, ?)
+            """, (chem_id, active_id))
         conn.commit()
         print(crops)
         # Replace ChemStockCrop rows

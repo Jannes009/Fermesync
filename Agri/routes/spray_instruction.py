@@ -484,7 +484,13 @@ def get_spray_lines(spray_id):
             JOIN [cmn].[_uvStockItems] EVOSTK ON EVOSTK.StockLink = LIN.SprayLineStkId
             LEFT JOIN [cmn]._uvUOM UOM ON UOM.idUnits = LIN.SprayLineUoMId
             JOIN agr.ChemStock STK on STK.ChemStockLink = LIN.SprayLineStkId
-            LEFT JOIN agr.ChemActiveIngredient ACT on ACT.IdChemAct = STK.ChemStockActiveIngrId
+            LEFT JOIN (
+                SELECT CSAI.CSAIChemStockId,
+                       STRING_AGG(ACT.ChemActIngredient, ' + ') WITHIN GROUP (ORDER BY ACT.ChemActIngredient) AS ChemActIngredient
+                FROM agr.ChemStockActiveIngredient CSAI
+                JOIN agr.ChemActiveIngredient ACT ON ACT.IdChemAct = CSAI.CSAIActiveIngredientId
+                GROUP BY CSAI.CSAIChemStockId
+            ) ACT ON ACT.CSAIChemStockId = STK.IdChemStock
             WHERE LIN.SprayLineHeaderId = ?
         """, spray_id)
         lines = [
@@ -996,7 +1002,13 @@ def get_spray_instruction_details():
                 JOIN cmn._uvStockItems EVOSTK ON EVOSTK.StockLink = LIN.SprayLineStkId
                 LEFT JOIN cmn._uvUOM UOM ON UOM.idUnits = LIN.SprayLineUoMId
                 JOIN agr.ChemStock STK ON STK.ChemStockLink = LIN.SprayLineStkId
-                LEFT JOIN agr.ChemActiveIngredient ACT ON ACT.IdChemAct = STK.ChemStockActiveIngrId
+                LEFT JOIN (
+                    SELECT CSAI.CSAIChemStockId,
+                           STRING_AGG(ACT.ChemActIngredient, ' + ') WITHIN GROUP (ORDER BY ACT.ChemActIngredient) AS ChemActIngredient
+                    FROM agr.ChemStockActiveIngredient CSAI
+                    JOIN agr.ChemActiveIngredient ACT ON ACT.IdChemAct = CSAI.CSAIActiveIngredientId
+                    GROUP BY CSAI.CSAIChemStockId
+                ) ACT ON ACT.CSAIChemStockId = STK.IdChemStock
                 WHERE LIN.SprayLineHeaderId = ?
             """, spray_id)
             dose_basis = _normalize_dose_basis(header[8])
@@ -1100,7 +1112,13 @@ def fetch_products_for_spray_whse(spray_id):
     FROM [agr].SprayHeader HEA
     JOIN stk._uvInventoryQty QTY on QTY.WhseLink = HEA.SprayHWhseId
 	JOIN agr.ChemStock STK on STK.ChemStockLink = QTY.StockLink
-	JOIN agr.ChemActiveIngredient ACT on ACT.IdChemAct = STK.ChemStockActiveIngrId
+	JOIN (
+        SELECT CSAI.CSAIChemStockId,
+               STRING_AGG(ACT.ChemActIngredient, ' + ') WITHIN GROUP (ORDER BY ACT.ChemActIngredient) AS ChemActIngredient
+        FROM agr.ChemStockActiveIngredient CSAI
+        JOIN agr.ChemActiveIngredient ACT ON ACT.IdChemAct = CSAI.CSAIActiveIngredientId
+        GROUP BY CSAI.CSAIChemStockId
+    ) ACT ON ACT.CSAIChemStockId = STK.IdChemStock
     WHERE HEA.IdSprayH = ?
     ORDER BY ACT.ChemActIngredient, StockDescription
     """, spray_id)

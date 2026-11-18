@@ -338,7 +338,13 @@ def view_execution(execution_id):
     LEFT JOIN users.Users IssueUser ON IssueUser.id = IH.IssByUserId
 	JOIN cmn._uvStockItems EVOSTK on EVOSTK.StockLink = REC.SprayLineStkId
     JOIN agr.ChemStock STK ON STK.ChemStockLink = REC.SprayLineStkId
-	JOIN agr.ChemActiveIngredient ACT on ACT.IdChemAct = STK.ChemStockActiveIngrId
+	JOIN (
+        SELECT CSAI.CSAIChemStockId,
+               STRING_AGG(ACT.ChemActIngredient, ' + ') WITHIN GROUP (ORDER BY ACT.ChemActIngredient) AS ChemActIngredient
+        FROM agr.ChemStockActiveIngredient CSAI
+        JOIN agr.ChemActiveIngredient ACT ON ACT.IdChemAct = CSAI.CSAIActiveIngredientId
+        GROUP BY CSAI.CSAIChemStockId
+    ) ACT ON ACT.CSAIChemStockId = STK.IdChemStock
     JOIN cmn._uvUOM UOM 
         ON UOM.idUnits = REC.SprayLineUoMId
     WHERE REC.IdSprExec = ?

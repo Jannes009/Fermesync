@@ -318,10 +318,10 @@ async function updateProjects(force = false, loadAllData = false) {
         const placeholder = document.createElement('option');
         placeholder.value = '';
         placeholder.disabled = true;
-        placeholder.text = 'Error loading projects';
+        placeholder.text = `Error loading projects: ${error.message || 'Unknown error'}`;
         $projectSelect.append(placeholder);
         $projectSelect.prop('disabled', true).trigger('change');
-        Swal.fire({ icon: 'error', title: 'Error', text: 'Error fetching projects' });
+        Swal.fire({ icon: 'error', title: 'Error fetching projects', text: error.message || 'Unknown error' });
     }
 }
 
@@ -1196,13 +1196,17 @@ function defaultDescription() {
             const b = option.attr('data-block-no');
             if (b) blocks.push(b);
         });
+        const selectedField = document.getElementById('project_field_id')?.selectedOptions[0];
         const descEl = document.getElementById('spray_description');
         if (descEl) {
             // Deduplicate and clean block numbers while preserving order
             const cleaned = blocks.map(x => (x || '').toString().trim()).filter(x => x !== '');
             const unique = cleaned.filter((v, i, a) => a.indexOf(v) === i);
-            const blockPart = unique.length ? ` - ${unique.join(', ')}` : '';
-            descEl.value = `Week ${String(week).padStart(2,'0')}${blockPart}`;
+            const label = selectedField?.value
+                ? selectedField.textContent.trim()
+                : unique.join(', ');
+            const suffix = label ? ` - ${label}` : '';
+            descEl.value = `Week ${String(week).padStart(2,'0')}${suffix}`;
         }
     } catch (err) {
         console.log('Failed to auto-generate description:', err);
