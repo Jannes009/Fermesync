@@ -1,0 +1,276 @@
+{% extends "reports/reports_base.html" %}
+
+{% block title %}Chemical & Fertiliser Analysis | Fermesync{% endblock %}
+
+{% block reports_head %}
+{% endblock %}
+
+{% block content %}
+<main class="reports-page chemical-page">
+  <div class="reports-heading">
+    <div>
+      <h1>Chemical &amp; Fertiliser Analysis</h1>
+      <p>Analyse chemical and fertiliser usage, expenditure, products, active ingredients, farms, projects and crops.</p>
+      <small class="refresh-status" id="refreshStatus">Checking cached data...</small>
+    </div>
+    <div class="reports-heading-actions">
+      <span id="documentActionsPlaceholder" hidden aria-hidden="true"></span>
+      <div class="document-actions" id="documentActions">
+        <button type="button" class="button-secondary document-trigger" id="documentButton" aria-haspopup="menu" aria-expanded="false" aria-controls="documentMenu">
+          <i class="fas fa-file-alt" aria-hidden="true"></i><span>Document</span><i class="fas fa-chevron-down document-chevron" aria-hidden="true"></i>
+        </button>
+        <div class="document-menu" id="documentMenu" role="menu" aria-labelledby="documentButton" hidden>
+          <button type="button" role="menuitem" data-document-action="print"><i class="fas fa-print" aria-hidden="true"></i><span>Print</span></button>
+          <button type="button" role="menuitem" data-document-action="download"><i class="fas fa-file-pdf" aria-hidden="true"></i><span>Download PDF</span></button>
+          <button type="button" role="menuitem" data-document-action="share"><i class="fas fa-share-alt" aria-hidden="true"></i><span>Share</span></button>
+        </div>
+      </div>
+      <button type="button" class="button-secondary" id="refreshData"><i class="fas fa-sync-alt"></i> Refresh Data</button>
+    </div>
+  </div>
+  <div class="document-generation-status" id="documentGenerationStatus" role="status" aria-live="polite" hidden>
+    <i class="fas fa-circle-notch fa-spin" aria-hidden="true"></i>
+    <span>Creating PDF...</span>
+  </div>
+  <div class="document-share-dialog" id="documentShareDialog" hidden>
+    <section class="document-share-panel" role="dialog" aria-modal="true" aria-labelledby="documentShareTitle" aria-describedby="documentShareDescription">
+      <h2 id="documentShareTitle">PDF ready to share</h2>
+      <p id="documentShareDescription">Tap Share PDF to choose an app or person to send the file to.</p>
+      <div class="document-share-actions">
+        <button type="button" class="button-primary" id="documentShareConfirm">Share PDF</button>
+        <button type="button" class="button-secondary" id="documentShareDownload">Download PDF</button>
+        <button type="button" class="button-secondary" id="documentShareCancel">Cancel</button>
+      </div>
+    </section>
+  </div>
+
+  <section class="document-print-meta" id="documentPrintMeta" hidden aria-label="Report document details">
+    <h2>Chemical &amp; Fertiliser Analysis</h2>
+    <p id="documentPrintPeriod"></p>
+    <p id="documentPrintFilters"></p>
+    <p id="documentPrintGenerated"></p>
+  </section>
+
+  <section class="filter-panel" id="filterPanel">
+    <div class="filter-panel-header">
+      <button type="button" class="filter-collapse" id="filterCollapse" aria-expanded="true">
+        <span><i class="fas fa-filter"></i> Filters <small id="activeFilterCount"></small></span>
+        <i class="fas fa-chevron-up"></i>
+      </button>
+      <div class="filter-actions">
+        <button type="button" class="button-secondary" id="clearFilters">Clear</button>
+      </div>
+    </div>
+    <div class="filter-grid" id="filterGrid">
+      <label class="date-filter"><span>Start date</span><input type="date" id="startDate"></label>
+      <label class="date-filter"><span>End date</span><input type="date" id="endDate"></label>
+      <div class="filter-slicer" data-filter="farm">
+        <button type="button" class="slicer-trigger"><span>Farm</span><span class="slicer-count"></span><i class="fas fa-chevron-down"></i></button>
+        <div class="slicer-dropdown"><input class="slicer-search" type="search" placeholder="Search farms"><div class="slicer-options" id="farmOptions"></div></div>
+      </div>
+      <div class="filter-slicer" data-filter="project">
+        <button type="button" class="slicer-trigger"><span>Project</span><span class="slicer-count"></span><i class="fas fa-chevron-down"></i></button>
+        <div class="slicer-dropdown"><input class="slicer-search" type="search" placeholder="Search projects"><div class="slicer-options" id="projectOptions"></div></div>
+      </div>
+      <div class="filter-slicer" data-filter="crop">
+        <button type="button" class="slicer-trigger"><span>Crop</span><span class="slicer-count"></span><i class="fas fa-chevron-down"></i></button>
+        <div class="slicer-dropdown"><input class="slicer-search" type="search" placeholder="Search crops"><div class="slicer-options" id="cropOptions"></div></div>
+      </div>
+      <div class="filter-slicer" data-filter="variety">
+        <button type="button" class="slicer-trigger"><span>Variety</span><span class="slicer-count"></span><i class="fas fa-chevron-down"></i></button>
+        <div class="slicer-dropdown"><input class="slicer-search" type="search" placeholder="Search varieties"><div class="slicer-options" id="varietyOptions"></div></div>
+      </div>
+      <div class="filter-slicer" data-filter="group">
+        <button type="button" class="slicer-trigger"><span>Group</span><span class="slicer-count"></span><i class="fas fa-chevron-down"></i></button>
+        <div class="slicer-dropdown"><input class="slicer-search" type="search" placeholder="Search groups"><div class="slicer-options" id="groupOptions"></div></div>
+      </div>
+      <div class="filter-slicer" data-filter="product_type">
+        <button type="button" class="slicer-trigger"><span>Product type</span><span class="slicer-count"></span><i class="fas fa-chevron-down"></i></button>
+        <div class="slicer-dropdown"><input class="slicer-search" type="search" placeholder="Search types"><div class="slicer-options" id="productTypeOptions"></div></div>
+      </div>
+      <div class="filter-slicer filter-slicer-product" data-filter="product">
+        <button type="button" class="slicer-trigger"><span>Product</span><span class="slicer-count"></span><i class="fas fa-chevron-down"></i></button>
+        <div class="slicer-dropdown"><input class="slicer-search" type="search" placeholder="Search products"><div class="slicer-options" id="productOptions"></div></div>
+      </div>
+    </div>
+  </section>
+
+  <div class="active-filters" id="activeFilters"></div>
+
+  <div class="report-tabs" role="tablist">
+    <button type="button" class="report-tab active" data-tab="report" role="tab">Report</button>
+    <button type="button" class="report-tab" data-tab="source" role="tab">Source Data</button>
+  </div>
+
+  <section id="reportTab" class="tab-panel active">
+    <div class="kpi-grid">
+      <article class="kpi-card"><span>Total costs</span><strong id="kpiCost">-</strong></article>
+      <article class="kpi-card"><span>Cost per hectare</span><strong id="kpiCostHa">-</strong><small id="kpiHaNote"></small></article>
+      <article class="kpi-card kpi-quantity-card"><span>Quantity by unit</span><strong id="kpiQuantityBreakdown" class="kpi-quantity-list" aria-live="polite"></strong></article>
+      <article class="kpi-card"><span>Products used</span><strong id="kpiProducts">-</strong></article>
+    </div>
+
+    <div class="charts-grid">
+      <article class="chart-card chart-wide">
+        <div class="chart-card-header">
+          <div><h2>Usage &amp; Expenditure Over Time</h2><p id="chart1Subtitle">Cost total, overall, weekly</p></div>
+          <div class="chart-controls">
+            <div class="segmented" data-target="chart1Measure"><button type="button" class="active" data-value="cost">Cost</button><button type="button" data-value="quantity">Quantity</button></div>
+            <input type="hidden" id="chart1Measure" value="cost">
+            <div class="segmented" data-target="chart1Calculation"><button type="button" class="active" data-value="total">Total</button><button type="button" data-value="per_hectare">Per hectare</button></div>
+            <input type="hidden" id="chart1Calculation" value="total">
+            <div class="segmented" data-target="chart1Cumulative"><button type="button" class="active" data-value="false">Period</button><button type="button" data-value="true">Cumulative</button></div>
+            <input type="hidden" id="chart1Cumulative" value="false">
+            <input type="hidden" id="chart1Group" value="none">
+            <div class="interval-selector" role="group" aria-label="Chart interval">
+              <button type="button" class="interval-option" data-target="chart1Interval" data-value="daily" aria-pressed="false" title="Daily"><i class="fas fa-calendar-day" aria-hidden="true"></i><span>Daily</span></button>
+              <button type="button" class="interval-option active" data-target="chart1Interval" data-value="weekly" aria-pressed="true" title="Weekly"><i class="fas fa-calendar-week" aria-hidden="true"></i><span>Weekly</span></button>
+              <button type="button" class="interval-option" data-target="chart1Interval" data-value="monthly" aria-pressed="false" title="Monthly"><i class="fas fa-calendar-alt" aria-hidden="true"></i><span>Monthly</span></button>
+              <button type="button" class="interval-option" data-target="chart1Interval" data-value="plant_week" aria-pressed="false" title="Planting-relative"><i class="fas fa-seedling" aria-hidden="true"></i><span>Planting-relative</span></button>
+            </div>
+            <input type="hidden" id="chart1Interval" value="weekly">
+          </div>
+        </div>
+        <div class="chart-empty" id="chart1Empty"></div>
+        <div class="chart-container"><canvas id="chart1"></canvas></div>
+        <div class="chart-group-selector">
+          <small class="chart-group-note" id="chart1PlantDateNote">Plant-date grouping excludes transactions without a plant date.</small>
+          <span class="chart-group-label">Group by</span>
+          <div class="group-tile-list" role="group" aria-label="Group usage and expenditure over time">
+            <button type="button" class="group-tile active" data-target="chart1Group" data-value="none" aria-pressed="true"><i class="fas fa-chart-line"></i><span>Overall</span></button>
+            <button type="button" class="group-tile" data-target="chart1Group" data-value="farm" aria-pressed="false"><i class="fas fa-tractor"></i><span>Farm</span></button>
+            <button type="button" class="group-tile" data-target="chart1Group" data-value="project" aria-pressed="false"><i class="fas fa-project-diagram"></i><span>Project</span></button>
+            <button type="button" class="group-tile" data-target="chart1Group" data-value="crop" aria-pressed="false"><i class="fas fa-seedling"></i><span>Crop</span></button>
+            <button type="button" class="group-tile" data-target="chart1Group" data-value="variety" aria-pressed="false"><i class="fas fa-leaf"></i><span>Variety</span></button>
+            <button type="button" class="group-tile" data-target="chart1Group" data-value="group" aria-pressed="false"><i class="fas fa-layer-group"></i><span>Group</span></button>
+            <button type="button" class="group-tile" data-target="chart1Group" data-value="product_type" aria-pressed="false"><i class="fas fa-tags"></i><span>Product type</span></button>
+            <button type="button" class="group-tile" data-target="chart1Group" data-value="product" aria-pressed="false"><i class="fas fa-flask"></i><span>Product</span></button>
+          </div>
+        </div>
+      </article>
+
+      <article class="chart-card">
+        <div class="chart-card-header">
+          <div><h2>Where expenditure occurs</h2><p id="chart2Subtitle">Cost total by crop</p></div>
+          <div class="chart-controls">
+            <div class="segmented" data-target="chart2Measure"><button type="button" class="active" data-value="cost">Cost</button><button type="button" data-value="quantity">Quantity</button></div>
+            <input type="hidden" id="chart2Measure" value="cost">
+            <div class="segmented" data-target="chart2Calculation"><button type="button" class="active" data-value="total">Total</button><button type="button" data-value="per_hectare">Per hectare</button></div>
+            <input type="hidden" id="chart2Calculation" value="total">
+            <input type="hidden" id="chart2Group" value="crop">
+          </div>
+        </div>
+        <div class="chart-empty" id="chart2Empty"></div>
+        <div class="chart-container"><canvas id="chart2"></canvas></div>
+        <div class="chart-group-selector">
+          <span class="chart-group-label">Group by</span>
+          <div class="group-tile-list" role="group" aria-label="Where expenditure occurs">
+            <button type="button" class="group-tile" data-target="chart2Group" data-value="farm" aria-pressed="false"><i class="fas fa-tractor"></i><span>Farm</span></button>
+            <button type="button" class="group-tile" data-target="chart2Group" data-value="project" aria-pressed="false"><i class="fas fa-project-diagram"></i><span>Project</span></button>
+            <button type="button" class="group-tile active" data-target="chart2Group" data-value="crop" aria-pressed="true"><i class="fas fa-seedling"></i><span>Crop</span></button>
+            <button type="button" class="group-tile" data-target="chart2Group" data-value="variety" aria-pressed="false"><i class="fas fa-leaf"></i><span>Variety</span></button>
+            <button type="button" class="group-tile" data-target="chart2Group" data-value="group" aria-pressed="false"><i class="fas fa-layer-group"></i><span>Group</span></button>
+            <button type="button" class="group-tile" data-target="chart2Group" data-value="product_type" aria-pressed="false"><i class="fas fa-tags"></i><span>Product type</span></button>
+            <button type="button" class="group-tile" data-target="chart2Group" data-value="product" aria-pressed="false"><i class="fas fa-flask"></i><span>Product</span></button>
+            <button type="button" class="group-tile" data-target="chart2Group" data-value="active_ingredient" aria-pressed="false"><i class="fas fa-vial"></i><span>Active ingredient</span></button>
+          </div>
+        </div>
+      </article>
+
+      <article class="chart-card">
+        <div class="chart-card-header">
+          <div><h2>Usage Distribution</h2><p id="chart3Subtitle">Cost total by product</p></div>
+          <div class="chart-controls">
+            <div class="segmented" data-target="chart3Measure"><button type="button" class="active" data-value="cost">Cost</button><button type="button" data-value="quantity">Quantity</button></div>
+            <input type="hidden" id="chart3Measure" value="cost">
+            <div class="segmented" data-target="chart3Calculation"><button type="button" class="active" data-value="total">Total</button><button type="button" data-value="per_hectare">Per hectare</button></div>
+            <input type="hidden" id="chart3Calculation" value="total">
+            <input type="hidden" id="chart3Group" value="product">
+          </div>
+        </div>
+        <div class="chart-empty" id="chart3Empty"></div>
+        <div class="chart-container"><canvas id="chart3"></canvas></div>
+        <div class="chart-group-selector">
+          <span class="chart-group-label">Group by</span>
+          <div class="group-tile-list" role="group" aria-label="Usage distribution grouping">
+            <button type="button" class="group-tile" data-target="chart3Group" data-value="farm" aria-pressed="false"><i class="fas fa-tractor"></i><span>Farm</span></button>
+            <button type="button" class="group-tile" data-target="chart3Group" data-value="project" aria-pressed="false"><i class="fas fa-project-diagram"></i><span>Project</span></button>
+            <button type="button" class="group-tile" data-target="chart3Group" data-value="crop" aria-pressed="false"><i class="fas fa-seedling"></i><span>Crop</span></button>
+            <button type="button" class="group-tile" data-target="chart3Group" data-value="variety" aria-pressed="false"><i class="fas fa-leaf"></i><span>Variety</span></button>
+            <button type="button" class="group-tile" data-target="chart3Group" data-value="group" aria-pressed="false"><i class="fas fa-layer-group"></i><span>Group</span></button>
+            <button type="button" class="group-tile" data-target="chart3Group" data-value="product_type" aria-pressed="false"><i class="fas fa-tags"></i><span>Product type</span></button>
+            <button type="button" class="group-tile active" data-target="chart3Group" data-value="product" aria-pressed="true"><i class="fas fa-flask"></i><span>Product</span></button>
+            <button type="button" class="group-tile" data-target="chart3Group" data-value="active_ingredient" aria-pressed="false"><i class="fas fa-vial"></i><span>Active ingredient</span></button>
+          </div>
+        </div>
+      </article>
+    </div>
+  </section>
+
+  <section id="sourceTab" class="tab-panel">
+    <div class="source-toolbar">
+      <input type="search" id="sourceSearch" placeholder="Search source data">
+      <a class="button-secondary" id="exportExcel" href="/reports/api/chemical-analysis/export">Export Excel</a>
+    </div>
+    <div class="table-loading" id="sourceLoading">Loading...</div>
+    <div class="table-scroll">
+      <table class="fs-table source-table">
+        <thead><tr>
+          <th data-sort="tx_date">Date</th><th data-sort="farm">Farm</th><th data-sort="project">Project</th>
+          <th data-sort="crop">Crop</th><th data-sort="variety">Variety</th><th data-sort="group">Group</th>
+          <th data-sort="product">Product</th><th data-sort="ingredient">Active ingredient</th>
+          <th data-sort="quantity">Quantity</th><th data-sort="cost">Cost</th><th>Hectares</th><th>Spray instruction</th>
+        </tr></thead>
+        <tbody id="sourceRows"></tbody>
+      </table>
+    </div>
+    <div class="source-pagination">
+      <button type="button" class="button-secondary" id="sourcePrev">Previous</button>
+      <span id="sourcePage"></span>
+      <button type="button" class="button-secondary" id="sourceNext">Next</button>
+    </div>
+  </section>
+</main>
+
+<div class="drilldown-backdrop" id="drilldownModal" aria-hidden="true">
+  <section class="drilldown-modal" role="dialog" aria-modal="true" aria-labelledby="drilldownTitle" aria-describedby="drilldownMeta">
+    <header class="drilldown-header">
+      <div>
+        <h2 id="drilldownTitle">Chart transactions</h2>
+        <p id="drilldownMeta"></p>
+      </div>
+      <div class="drilldown-header-actions">
+        <button type="button" class="button-secondary" id="drilldownExport"><i class="fas fa-file-excel"></i> Export Excel</button>
+        <button type="button" class="drilldown-close" data-close-drilldown aria-label="Close dialog"><i class="fas fa-times" aria-hidden="true"></i></button>
+      </div>
+    </header>
+    <section class="document-print-meta drilldown-print-meta" id="drilldownPrintMeta" hidden aria-label="Drill-down document details">
+      <p id="drilldownPrintReport"></p>
+      <p id="drilldownPrintPeriod"></p>
+      <p id="drilldownPrintFilters"></p>
+      <p id="drilldownPrintGenerated"></p>
+    </section>
+    <div class="drilldown-note" id="drilldownNote" role="note" hidden></div>
+    <div class="drilldown-summary" id="drilldownSummary"></div>
+    <div class="drilldown-status" id="drilldownStatus" role="status" aria-live="polite" hidden></div>
+    <div class="table-scroll drilldown-table-scroll">
+      <table class="fs-table">
+        <thead><tr>
+          <th>Date</th><th>Farm</th><th>Project</th><th>Crop</th><th>Variety</th><th>Product</th>
+          <th>Active ingredient</th><th>Quantity</th><th>Unit cost</th><th>Total cost</th><th>Spray no.</th><th>Spray instruction</th>
+        </tr></thead>
+        <tbody id="drilldownRows"></tbody>
+      </table>
+    </div>
+    <footer class="drilldown-footer">
+      <button type="button" class="button-secondary" id="drilldownPrev">Previous</button>
+      <span id="drilldownPage"></span>
+      <button type="button" class="button-secondary" id="drilldownNext">Next</button>
+    </footer>
+  </section>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.7/dist/chart.umd.min.js"></script>
+<script src="{{ url_for('reports.static', filename='reports.js') }}?{{ filemtime('reports', 'reports.js') }}"></script>
+<script src="{{ url_for('reports.static', filename='chemical_analysis.js') }}?{{ filemtime('reports', 'chemical_analysis.js') }}"></script>
+{% endblock %}

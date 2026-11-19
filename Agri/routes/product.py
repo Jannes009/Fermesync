@@ -82,6 +82,8 @@ def new_product():
                 new_active_ingredient_names.append(name)
 
         errors = []
+        if data.get('reviewed') is not True:
+            errors.append('Review the product details before creating the product.')
         if not brand_name:
             errors.append('Trade name is required.')
         elif len(brand_name) > 50:
@@ -103,6 +105,8 @@ def new_product():
         if not isinstance(warehouses_payload, list):
             errors.append('Warehouse selections are invalid.')
             warehouses_payload = []
+        elif not warehouses_payload:
+            errors.append('Choose at least one warehouse.')
         if not isinstance(suppliers_payload, list):
             errors.append('Supplier selections are invalid.')
             suppliers_payload = []
@@ -163,9 +167,9 @@ def new_product():
         parsed_prices = {}
         for supplier in selected_suppliers:
             value = supplier.get('price')
-            if value in (None, ''):
-                parsed_prices[id(supplier)] = None
-                continue
+            if value is None or (isinstance(value, str) and not value.strip()):
+                errors.append('Enter a price for every selected supplier.')
+                break
             try:
                 price = Decimal(str(value))
                 if not price.is_finite() or price < 0:
@@ -245,12 +249,13 @@ def new_product():
                 except ValueError:
                     raise ValueError('Choose valid warehouses.')
                 warehouse_ids.append(warehouse_id)
-                if entry.get('shelf') not in (None, ''):
-                    try:
-                        shelf_id = _positive_id(entry['shelf'])
-                    except ValueError:
-                        raise ValueError('Choose valid shelf locations.')
-                    shelf_ids.append(shelf_id)
+                if entry.get('shelf') in (None, ''):
+                    raise ValueError('Choose a shelf for each selected warehouse.')
+                try:
+                    shelf_id = _positive_id(entry['shelf'])
+                except ValueError:
+                    raise ValueError('Choose valid shelf locations.')
+                shelf_ids.append(shelf_id)
 
             supplier_ids = [_positive_id(entry['id']) for entry in selected_suppliers]
             if len(set(warehouse_ids)) != len(warehouse_ids):
@@ -409,10 +414,8 @@ def new_product():
                 if not isinstance(supplier_entry, dict) or not supplier_entry.get('id'):
                     continue
                 supplier_id = _positive_id(supplier_entry['id'])
-                price_purchasing = parsed_prices.get(id(supplier_entry))
-                if price_purchasing is None:
-                    price_stocking = None
-                elif conversion_factor:
+                price_purchasing = parsed_prices[id(supplier_entry)]
+                if conversion_factor:
                     price_stocking = float(price_purchasing / Decimal(str(conversion_factor)))
                 else:
                     price_stocking = float(price_purchasing)

@@ -1,0 +1,26 @@
+{% extends "reports/reports_base.html" %}
+
+{% block title %}Reports & Analytics | Fermesync{% endblock %}
+
+{% block content %}
+<main class="reports-page">
+  <div class="reports-heading">
+    <div>
+      <h1>Reports &amp; Analytics</h1>
+      <p>Review operational and financial performance across your authorised farms and projects.</p>
+    </div>
+  </div>
+
+  <section class="report-category">
+    <h2>Agriculture</h2>
+    <a class="report-card" href="/reports/chemical-analysis">
+      <div class="report-card-icon"><i class="fas fa-flask"></i></div>
+      <div>
+        <h3>Chemical &amp; Fertiliser Analysis</h3>
+        <p>Analyse chemical and fertiliser usage, expenditure, products, active ingredients, farms, projects and crops.</p>
+      </div>
+      <span class="report-card-arrow"><i class="fas fa-chevron-right"></i></span>
+    </a>
+  </section>
+</main>
+{% endblock %}

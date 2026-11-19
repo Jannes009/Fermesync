@@ -12,7 +12,11 @@ from System.Reflection import BindingFlags
 from .spray_issue_validation import validate_spray_execution_quantities
 
 from Core.sdk_connection import EvolutionConnection, EvolutionAgentNotFoundError, EvolutionConnectionError
-from Instance.local_settings import DEFAULT_STOCK_COUNT_PROJECT_ID
+from Instance.local_settings import (
+    DEFAULT_STOCK_COUNT_PROJECT_ID,
+    UDF_CreditNoteInvLineId,
+    UDF_InvLineId,
+)
 import Pastel.Evolution as Evo
 
 STOCK_ISSUE_PERMISSIONS = {
@@ -548,6 +552,16 @@ def cancel_stock_issue():
                 quantity = float(source_line.Quantity or 0)
                 if quantity <= 0:
                     continue
+                try:
+                    issue_line_project_id = int(source_line.GetUserField(UDF_InvLineId))
+                except (TypeError, ValueError):
+                    raise ValueError(
+                        "The Evolution sales order line is missing its stock issue project allocation reference."
+                    )
+                if issue_line_project_id <= 0:
+                    raise ValueError(
+                        "The Evolution sales order line has an invalid stock issue project allocation reference."
+                    )
                 credit_line = Evo.OrderDetail()
                 credit_note.Detail.Add(credit_line)
                 credit_line.InventoryItem = source_line.InventoryItem
@@ -557,6 +571,10 @@ def cancel_stock_issue():
                 credit_line.Unit = source_line.Unit
                 credit_line.Warehouse = source_line.Warehouse
                 credit_line.Project = source_line.Project
+                credit_line.SetUserField(
+                    UDF_CreditNoteInvLineId,
+                    System.Int32(issue_line_project_id),
+                )
                 line_count += 1
 
             if not line_count:
@@ -749,12 +767,16 @@ def submit_stock_issue(issue_id, cursor):
             SO.InvoiceDate = net_issue_date
 
             cursor.execute("""              
-            Select IssLineStockLink, IssLinProjProjectId, SUM(IssLinProjWeight) as TotalWeight, IssLineQtyFinalised, IssLineUoMId
+            Select PROJ.IdSIssLinProj as IssueLineProjectId,
+                   IssLineStockLink,
+                   IssLinProjProjectId,
+                   IssLinProjWeight as TotalWeight,
+                   IssLineQtyFinalised,
+                   IssLineUoMId
             from [stk].[IssueHeader] HEA
             JOIN [stk].[IssueLines] LIN on HEA.IdIssue = LIN.IssLineIssueId
             JOIN stk.IssueLineProjects PROJ on PROJ.IssLinProjLineId = LIN.IdIssLine
             Where HEA.IdIssue = ?
-            Group by IssLineStockLink, IssLinProjProjectId, IssLineQtyFinalised, IssLineUoMId
             """, (issue_id,))
             lines = cursor.fetchall()
 
@@ -776,6 +798,10 @@ def submit_stock_issue(issue_id, cursor):
                 OD.Unit = Evo.Unit(int(line.IssLineUoMId))
                 OD.Warehouse = Evo.Warehouse(int(warehouse_id))
                 OD.Project = Evo.Project(int(line.IssLinProjProjectId))
+                OD.SetUserField(
+                    UDF_InvLineId,
+                    System.Int32(int(line.IssueLineProjectId)),
+                )
 
             invoice_no = SO.Complete()
             return invoice_no

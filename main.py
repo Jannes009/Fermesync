@@ -36,10 +36,12 @@ def create_app():
     from Core.view_account import account_bp
     from Agri.routes import agri_bp
     from Core.notifications import notifications_bp
+    from Reports.routes import report_bp
 
     app.register_blueprint(market_bp, url_prefix='/market')
     app.register_blueprint(inventory_bp, url_prefix='/inventory')
     app.register_blueprint(agri_bp, url_prefix='/agri')
+    app.register_blueprint(report_bp, url_prefix='/reports')
     app.register_blueprint(admin_bp)
     app.register_blueprint(notifications_bp)
     app.register_blueprint(account_bp)

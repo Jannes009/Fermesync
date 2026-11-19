@@ -1,0 +1,6 @@
+{% extends "inventory_base.html" %}
+
+{% block head %}
+<link rel="stylesheet" href="{{ url_for('reports.static', filename='reports.css') }}?{{ filemtime('reports', 'reports.css') }}">
+{% block reports_head %}{% endblock %}
+{% endblock %}

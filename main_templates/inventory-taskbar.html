@@ -72,6 +72,9 @@
       {% if "BUDGET_VIEW" in current_user.permissions or "BUDGET_CREATE" in current_user.permissions or "BUDGET_TEMPLATE_MANAGE" in current_user.permissions %}
       <li><a href="/agri/budgets" class="taskbar-link">Budgets</a></li>
       {% endif %}
+      {% if "REPORTS_VIEW" in current_user.permissions or "REPORT_VIEW" in current_user.permissions or "CHEMICAL_ANALYSIS_VIEW" in current_user.permissions %}
+      <li><a href="/reports/" class="taskbar-link">Reports &amp; Analytics</a></li>
+      {% endif %}
       {% if "WHSE_QTYS" in current_user.permissions %}
       <li><a href="/inventory/qty" class="taskbar-link">Stock Qty's</a></li>
       {% endif %}
@@ -295,6 +298,16 @@
           <div class="mobile-nav-content">
             <span class="mobile-nav-icon">💰</span>
             <span>Budgets</span>
+          </div>
+        </a>
+      </li>
+      {% endif %}
+      {% if "REPORTS_VIEW" in current_user.permissions or "REPORT_VIEW" in current_user.permissions or "CHEMICAL_ANALYSIS_VIEW" in current_user.permissions %}
+      <li class="mobile-nav-item">
+        <a href="/reports/" class="mobile-nav-link">
+          <div class="mobile-nav-content">
+            <span class="mobile-nav-icon">📊</span>
+            <span>Reports &amp; Analytics</span>
           </div>
         </a>
       </li>

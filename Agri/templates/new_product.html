@@ -84,6 +84,8 @@
   .review-section-header{display:flex;justify-content:space-between;align-items:center;gap:12px;margin-bottom:8px}
   .review-section h3{margin:0;font-size:1rem}
   .review-lines{display:grid;gap:5px;color:#4e5c65;line-height:1.45}
+  .review-confirmation{display:flex;align-items:flex-start;gap:9px;margin-top:14px;padding:12px;border:1px solid var(--wizard-border);border-radius:8px}
+  .review-confirmation input{margin-top:3px;accent-color:var(--wizard-accent)}
   .wizard-success{padding:34px;text-align:center}
   .wizard-success h2{color:var(--wizard-accent);margin:0 0 8px}
   .preview-backdrop{position:fixed;inset:0;background:rgba(16,25,32,.4);z-index:10000}
@@ -279,13 +281,13 @@
 
           <div class="section-panel" style="margin-bottom:16px">
             <h3>Warehouses and shelves</h3>
-            <p class="field-help" style="margin:5px 0 12px">Select the warehouses that will stock this product. Shelf locations are optional.</p>
+            <p class="field-help" style="margin:5px 0 12px">Select at least one warehouse and choose a shelf for each selected warehouse.</p>
             <div class="warehouse-list">
               {% for w in warehouses %}
               <div class="warehouse-option">
                 <input type="checkbox" class="warehouse-check" id="warehouse-{{ w[0] }}" data-whid="{{ w[0] }}">
                 <label for="warehouse-{{ w[0] }}">{{ w[1] }}</label>
-                <select class="wh-shelf" data-whid="{{ w[0] }}" disabled aria-label="Shelf for {{ w[1] }}">
+                <select class="wh-shelf" data-whid="{{ w[0] }}" disabled required aria-label="Shelf for {{ w[1] }}">
                   <option value="">No shelf selected</option>
                   {% for c in categories %}
                   <option value="{{ c[0] }}">{{ c[1] }}</option>
@@ -298,7 +300,7 @@
 
           <div class="section-panel">
             <h3>Suppliers</h3>
-            <p class="field-help" style="margin:5px 0 12px">Choose at least one supplier and mark one as preferred. Prices can be added later.</p>
+            <p class="field-help" style="margin:5px 0 12px">Choose at least one supplier, mark one as preferred, and enter a price for each supplier.</p>
             <div id="suppliers-list" class="supplier-list"></div>
             <template id="supplier-row-template">
               <div class="supplier-row">
@@ -312,8 +314,8 @@
                   </select>
                 </div>
                 <div>
-                  <label>Price <span class="muted">(optional)</span></label>
-                  <input type="number" step="0.01" min="0" class="supplier-price" placeholder="Not set">
+                  <label>Price <span class="muted">(required)</span></label>
+                  <input type="number" step="0.01" min="0" class="supplier-price" placeholder="Enter price" required>
                 </div>
                 <label class="preferred-choice"><input type="radio" name="default_supplier" class="supplier-default"> Preferred supplier</label>
                 <button type="button" class="btn danger supplier-remove" aria-label="Remove supplier">Remove</button>
@@ -329,6 +331,10 @@
           <h2 id="step-title-4">Review and create</h2>
           <p class="step-intro">Check each section before creating the product. Use Edit to return to a step.</p>
           <div id="review" class="review-grid"></div>
+          <label class="review-confirmation">
+            <input id="review-confirmed" type="checkbox">
+            <span>I have reviewed the product details above and confirm they are ready to create.</span>
+          </label>
         </section>
       </div>
 
@@ -481,7 +487,8 @@
       purchasing_unit: purchasingUnit.value,
       warehouses,
       suppliers: chosenSuppliers,
-      chemstockcrop: cropUses
+      chemstockcrop: cropUses,
+      reviewed: document.getElementById('review-confirmed').checked
     };
   }
 
@@ -506,11 +513,15 @@
       if (!payload.group) return 'Choose a product group.';
       if (!payload.colour_code && !payload.new_colour_code) return 'Choose or add a colour code.';
       if (!payload.stocking_unit || !payload.purchasing_unit) return 'Choose stocking and purchasing units.';
+      if (!payload.warehouses.length) return 'Choose at least one warehouse.';
+      if (payload.warehouses.some(item => !item.shelf)) return 'Choose a shelf for every selected warehouse.';
       if (!payload.suppliers.length) return 'Choose at least one supplier.';
+      if (payload.suppliers.some(item => !item.price)) return 'Enter a price for every selected supplier.';
       if (payload.suppliers.filter(item => item.is_default).length !== 1) return 'Choose exactly one preferred supplier.';
       if (new Set(payload.suppliers.map(item => item.id)).size !== payload.suppliers.length) return 'Choose each supplier only once.';
       return '';
     }
+    if (index === 3 && !payload.reviewed) return 'Review the product details and confirm before creating it.';
     return '';
   }
 
@@ -774,8 +785,10 @@
       }
       preferred.checked = Boolean(supplierData.is_default);
     }
+    price.required = Boolean(select.value);
     row.querySelector('.supplier-remove').addEventListener('click', () => row.remove());
     select.addEventListener('change', () => {
+      price.required = Boolean(select.value);
       if (!select.value) preferred.checked = false;
     });
     preferred.addEventListener('change', () => {
@@ -948,6 +961,7 @@
     const payload = getPayload();
     const review = document.getElementById('review');
     review.replaceChildren();
+    document.getElementById('review-confirmed').checked = false;
     appendTextSection(review, 'Product identity', [
       `Trade name: ${payload.brand_name || '—'}`,
       `Registration number: ${payload.registration_number || '—'}`,
@@ -1102,6 +1116,7 @@
         check.checked = false;
         const shelf = document.querySelector(`.wh-shelf[data-whid="${CSS.escape(check.dataset.whid)}"]`);
         shelf.disabled = true;
+        shelf.required = false;
         shelf.value = '';
       });
       (result.warehouses || []).forEach(warehouse => {
@@ -1110,6 +1125,7 @@
         check.checked = true;
         const shelf = document.querySelector(`.wh-shelf[data-whid="${CSS.escape(String(warehouse.id))}"]`);
         shelf.disabled = false;
+        shelf.required = true;
         shelf.value = warehouse.category_id || '';
       });
 
@@ -1159,10 +1175,14 @@
   async function submitProduct(event) {
     event.preventDefault();
     if (isSubmitting || hasSubmitted) return;
+    if (currentStep !== 3) {
+      setError('Review the product details before creating it.');
+      return;
+    }
     const error = validateStep(3) || validateStep(2) || validateStep(1) || validateStep(0);
     if (error) {
       const stepErrors = [validateStep(0), validateStep(1), validateStep(2)].findIndex(Boolean);
-      showStep(stepErrors >= 0 ? stepErrors : 2);
+      if (stepErrors >= 0) showStep(stepErrors);
       setError(error);
       return;
     }
@@ -1244,6 +1264,7 @@
     check.addEventListener('change', () => {
       const shelf = document.querySelector(`.wh-shelf[data-whid="${CSS.escape(check.dataset.whid)}"]`);
       shelf.disabled = !check.checked;
+      shelf.required = check.checked;
       if (!check.checked) shelf.value = '';
     });
   });
