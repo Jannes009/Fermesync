@@ -2,8 +2,8 @@
 const IS_DEV = false;
 
 const CACHE_NAME = IS_DEV
-  ? 'fermesync-dev-v3'          // never rely on versioning
-  : 'fermesync-v5';          // bump ONLY on prod deploys
+  ? 'fermesync-dev-v4'          // never rely on versioning
+  : 'fermesync-v4';          // bump ONLY on prod deploys
 
 // ------------------
 // Static app shell
@@ -129,6 +129,11 @@ self.addEventListener('fetch', event => {
   }
 
   if (url.pathname === '/main_static/offline/db.js') {
+    event.respondWith(networkFirst(req));
+    return;
+  }
+
+  if (url.pathname === '/main_static/module-sidebar.css') {
     event.respondWith(networkFirst(req));
     return;
   }

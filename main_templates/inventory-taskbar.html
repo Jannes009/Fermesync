@@ -1,9 +1,11 @@
 <!-- taskbar.html -->
+{% set can_view_reports = "REPORTS_VIEW" in current_user.permissions or "REPORT_VIEW" in current_user.permissions or "CHEMICAL_ANALYSIS_VIEW" in current_user.permissions %}
 <header class="taskbar">
   <!-- Logo -->
   <div class="logo-container">
     <a href="/inventory/dashboard" class="logo-link">
       <img src="{{ url_for('static', filename='icons/HorizontalLogoAndText.svg') }}" alt="Fermesync Logo" class="taskbar-logo">
+      <span class="module-workspace-label">INVENTORY WORKSPACE</span>
       <!-- Mobile-only status indicators -->
       <div class="mobile-status-indicators">
         <div class="connection-indicator mobile-only" id="connection-indicator-mobile">
@@ -14,35 +16,36 @@
   </div>
 
   <!-- Desktop Navigation -->
-  <nav class="desktop-nav">
+  <nav class="desktop-nav" id="moduleDesktopNav" aria-label="Inventory navigation">
     <ul>
+      <li class="module-sidebar-heading">Inventory</li>
       {% set ibt_view = "IBT_VIEW" in current_user.permissions %}
       {% set ibt_approve = "IBT_APPROVE" in current_user.permissions %}
       {% set ibt_issue = "IBT_ISSUE" in current_user.permissions %}
       {% set ibt_receive = "IBT_RECEIVE" in current_user.permissions %}
       {% if "PO_CREATE" in current_user.permissions %}
-      <li><a href="/inventory/create_purchase_order" class="taskbar-link">Purchase Order</a></li>
+      <li><a href="/inventory/create_purchase_order" class="taskbar-link"><i class="fas fa-file-invoice" aria-hidden="true"></i> Purchase Order</a></li>
       {% endif %}
       {% if "GRV_CREATE" in current_user.permissions %}
-      <li><a href="/inventory/grv" class="taskbar-link">GRV</a></li>
+      <li><a href="/inventory/grv" class="taskbar-link"><i class="fas fa-box-open" aria-hidden="true"></i> GRV</a></li>
       {% endif %}
       {% if ibt_view or ibt_request or ibt_approve or ibt_issue or ibt_receive %}
-      <li><a href="/inventory/SDK/IBT" class="taskbar-link">IBT</a></li>
+      <li><a href="/inventory/SDK/IBT" class="taskbar-link"><i class="fas fa-right-left" aria-hidden="true"></i> IBT</a></li>
       {% endif %}
       {% if "WHSE_TRANSFER" in current_user.permissions %}
-      <li><a href="/inventory/warehouse-transfer" class="taskbar-link">Warehouse Transfer</a></li>
+      <li><a href="/inventory/warehouse-transfer" class="taskbar-link"><i class="fas fa-truck-ramp-box" aria-hidden="true"></i> Warehouse Transfer</a></li>
       {% endif %}
       {% if "STOCK_COUNT" in current_user.permissions %}
-      <li><a href="/inventory/stock-counts" class="taskbar-link">Stock Count</a></li>
+      <li><a href="/inventory/stock-counts" class="taskbar-link"><i class="fas fa-clipboard-check" aria-hidden="true"></i> Stock Count</a></li>
       {% endif %}
       {% if "STOCK_ISSUE_CREATE" in current_user.permissions or "STOCK_ISSUE_VIEW" in current_user.permissions or "STOCK_ISSUE_CANCEL" in current_user.permissions %}
-      <li><a href="/inventory/SDK/stock_issue_summary" class="taskbar-link">Stock Issue</a></li>
+      <li><a href="/inventory/SDK/stock_issue_summary" class="taskbar-link"><i class="fas fa-arrow-up-from-bracket" aria-hidden="true"></i> Stock Issue</a></li>
       {% endif %}
       {% if "STOCK_ADJUSTMENT" in current_user.permissions %}
-      <li><a href="/inventory/adjust_stock" class="taskbar-link">Stock Adjustment</a></li>
+      <li><a href="/inventory/adjust_stock" class="taskbar-link"><i class="fas fa-scale-balanced" aria-hidden="true"></i> Stock Adjustment</a></li>
       {% endif %}
       {% if "COST_ADJUSTMENT" in current_user.permissions %}
-      <li><a href="/inventory/adjust_cost" class="taskbar-link">Cost Adjustment</a></li>
+      <li><a href="/inventory/adjust_cost" class="taskbar-link"><i class="fas fa-coins" aria-hidden="true"></i> Cost Adjustment</a></li>
       {% endif %}
       {% set spray_exec = "SPRAY_EXEC_VIEW" in current_user.permissions %}
       {% set spray_rec = "SPRAY_REC_VIEW" in current_user.permissions %}
@@ -51,15 +54,15 @@
       {% if spray_exec or spray_rec or spray_rec_create or spray_exec_create %}
       <li class="dropdown-parent">
         {% if spray_exec and spray_rec %}
-          <a href="#" class="taskbar-link">Spray <span>▼</span></a>
+          <a href="#" class="taskbar-link"><i class="fas fa-spray-can" aria-hidden="true"></i> Spray <span>▼</span></a>
         {% elif spray_exec %}
-          <a href="/agri/spray-executions-summary" class="taskbar-link">Spray</a>
+          <a href="/agri/spray-executions-summary" class="taskbar-link"><i class="fas fa-spray-can" aria-hidden="true"></i> Spray</a>
         {% elif spray_rec %}
-          <a href="/agri/spray-recommendations-summary" class="taskbar-link">Spray</a>
+          <a href="/agri/spray-recommendations-summary" class="taskbar-link"><i class="fas fa-spray-can" aria-hidden="true"></i> Spray</a>
         {% elif spray_rec_create %}
-          <a href="/agri/spray-recommendation/create" class="taskbar-link">Spray</a>
+          <a href="/agri/spray-recommendation/create" class="taskbar-link"><i class="fas fa-spray-can" aria-hidden="true"></i> Spray</a>
         {% else %}
-          <a href="#" class="taskbar-link">Spray</a>
+          <a href="#" class="taskbar-link"><i class="fas fa-spray-can" aria-hidden="true"></i> Spray</a>
         {% endif %}
         {% if spray_exec and spray_rec %}
         <ul class="dropdown-menu">
@@ -70,13 +73,20 @@
       {% endif %}
       {% endif %}
       {% if "BUDGET_VIEW" in current_user.permissions or "BUDGET_CREATE" in current_user.permissions or "BUDGET_TEMPLATE_MANAGE" in current_user.permissions %}
-      <li><a href="/agri/budgets" class="taskbar-link">Budgets</a></li>
-      {% endif %}
-      {% if "REPORTS_VIEW" in current_user.permissions or "REPORT_VIEW" in current_user.permissions or "CHEMICAL_ANALYSIS_VIEW" in current_user.permissions %}
-      <li><a href="/reports/" class="taskbar-link">Reports &amp; Analytics</a></li>
+      <li><a href="/agri/budgets" class="taskbar-link"><i class="fas fa-chart-pie" aria-hidden="true"></i> Budgets</a></li>
       {% endif %}
       {% if "WHSE_QTYS" in current_user.permissions %}
-      <li><a href="/inventory/qty" class="taskbar-link">Stock Qty's</a></li>
+      <li><a href="/inventory/qty" class="taskbar-link"><i class="fas fa-boxes-stacked" aria-hidden="true"></i> Stock Qty's</a></li>
+      {% endif %}
+      {% if current_user.has_feature("MARKET") or can_view_reports %}
+      <li class="module-sidebar-divider" aria-hidden="true"></li>
+      <li class="module-sidebar-heading">Switch workspace</li>
+      {% endif %}
+      {% if current_user.has_feature("MARKET") %}
+      <li><a href="/market/dashboard" class="taskbar-link"><i class="fas fa-store" aria-hidden="true"></i> Fermesync Market</a></li>
+      {% endif %}
+      {% if can_view_reports %}
+      <li><a href="{{ url_for('reports.reports_index') }}" class="taskbar-link"><i class="fas fa-chart-line" aria-hidden="true"></i> Reports &amp; Analytics</a></li>
       {% endif %}
       <!-- <li><a href="/inventory/barcode_scanner" class="taskbar-link">Barcode Scanner</a></li> -->
     </ul>
@@ -112,27 +122,29 @@
 
   <!-- Desktop User -->
   <div class="user-section desktop-user">
-    <div class="username" id="username">{{ current_user.username }}<span>▼</span></div>
-    <div class="dropdown">
-      {% if current_user.has_feature("MARKET") %}
-      <a href="/market/dashboard">Fermesync Market</a>
-      {% endif %}
+    <button type="button" class="username" id="username" aria-haspopup="true" aria-expanded="false">
+      <span><i class="fas fa-user-circle" aria-hidden="true"></i> {{ current_user.username }}</span>
+      <i class="fas fa-chevron-up account-chevron" aria-hidden="true"></i>
+    </button>
+    <div class="dropdown" role="menu" aria-label="Account menu">
+      <span class="account-menu-heading">Account</span>
+      <a href="{{ url_for('account.view_account') }}" role="menuitem"><i class="fas fa-user-gear" aria-hidden="true"></i> Account settings</a>
       {% if "MANAGE_USERS" in current_user.permissions %}
-      <a href="{{ url_for('admin.manage_users') }}">Manage Users</a>
+      <a href="{{ url_for('admin.manage_users') }}" role="menuitem"><i class="fas fa-users-gear" aria-hidden="true"></i> Manage Users</a>
       {% endif %}
       {% if "AGR_MAIN" in current_user.permissions %}
-      <a href="/agri/setup">Agri Maintanance</a>
+      <a href="/agri/setup" role="menuitem"><i class="fas fa-screwdriver-wrench" aria-hidden="true"></i> Agri Maintenance</a>
       {% endif %}
       {% if "SPRAY_REC_CREATE" in current_user.permissions or "SPRAY_REC_VIEW" in current_user.permissions %}
-      <a href="/agri/settings">Device Settings</a>
+      <a href="/agri/settings" role="menuitem"><i class="fas fa-mobile-screen-button" aria-hidden="true"></i> Device Settings</a>
       {% endif %}
-      <a href="{{ url_for('logout') }}">Logout</a>
+      <a href="{{ url_for('logout') }}" role="menuitem"><i class="fas fa-right-from-bracket" aria-hidden="true"></i> Log out</a>
     </div>
   </div>
 </div>
 
   <!-- Mobile Hamburger -->
-  <button class="mobile-menu-toggle" id="mobile-menu-toggle" aria-label="Menu">
+  <button class="mobile-menu-toggle" id="mobile-menu-toggle" aria-label="Open navigation" aria-controls="moduleDesktopNav" aria-expanded="false">
     <span class="hamburger-line"></span>
     <span class="hamburger-line"></span>
     <span class="hamburger-line"></span>
@@ -145,6 +157,7 @@
     <div class="mobile-nav-header">
       <div class="mobile-user-info">
         <div class="mobile-username" id="mobile-username">{{ current_user.username }}</div>
+        <div class="mobile-workspace-label">Inventory Workspace</div>
         <div class="mobile-status">
           <div class="connection-indicator mobile-inline" id="mobile-connection-text">
             <span class="dot"></span>
@@ -302,16 +315,6 @@
         </a>
       </li>
       {% endif %}
-      {% if "REPORTS_VIEW" in current_user.permissions or "REPORT_VIEW" in current_user.permissions or "CHEMICAL_ANALYSIS_VIEW" in current_user.permissions %}
-      <li class="mobile-nav-item">
-        <a href="/reports/" class="mobile-nav-link">
-          <div class="mobile-nav-content">
-            <span class="mobile-nav-icon">📊</span>
-            <span>Reports &amp; Analytics</span>
-          </div>
-        </a>
-      </li>
-      {% endif %}
       {% if "WHSE_QTYS" in current_user.permissions %}
       <li class="mobile-nav-item">
         <a href="/inventory/qty" class="mobile-nav-link">
@@ -326,9 +329,6 @@
     <div class="mobile-nav-footer">
       {% if "SPRAY_REC_CREATE" in current_user.permissions or "SPRAY_REC_VIEW" in current_user.permissions %}
       <a href="/agri/settings" class="mobile-nav-footer-link">Device Settings</a>
-      {% endif %}
-      {% if current_user.market_module %}
-      <a href="/market/dashboard" class="mobile-nav-footer-link">Fermesync Market</a>
       {% endif %}
       <a href="{{ url_for('logout') }}" class="mobile-nav-footer-link">Logout</a>
     </div>
@@ -1097,10 +1097,20 @@ document.addEventListener("DOMContentLoaded", function () {
     usernameEl.addEventListener("click", function () {
       const dropdown = document.querySelector(".user-section .dropdown");
       if (dropdown) {
-        dropdown.style.display = dropdown.style.display === "block" ? "none" : "block";
+        const open = dropdown.style.display !== "block";
+        dropdown.style.display = open ? "block" : "none";
+        usernameEl.setAttribute("aria-expanded", String(open));
       }
     });
   }
+  document.addEventListener("click", function(event) {
+    const userSection = document.querySelector(".user-section");
+    const dropdown = userSection && userSection.querySelector(".dropdown");
+    if (dropdown && !userSection.contains(event.target)) {
+      dropdown.style.display = "none";
+      usernameEl.setAttribute("aria-expanded", "false");
+    }
+  });
   
   // Prevent parent links with href '#' from adding a hash and toggle menu on click
   document.querySelectorAll('.dropdown-parent > a').forEach(function(anchor) {
@@ -1109,7 +1119,7 @@ document.addEventListener("DOMContentLoaded", function () {
       const menu = parent && parent.querySelector('.dropdown-menu');
       if (menu) {
         e.preventDefault();
-        if (window.innerWidth > 768) {
+        if (window.innerWidth > 1024) {
           menu.style.display = (menu.style.display === 'block') ? 'none' : 'block';
         }
       }
@@ -1141,7 +1151,10 @@ document.addEventListener("DOMContentLoaded", function () {
   function openMobileMenu() {
     if (mobileMenuToggle && mobileMenuOverlay) {
       mobileMenuToggle.classList.add('active');
+      mobileMenuToggle.setAttribute('aria-expanded', 'true');
+      mobileMenuToggle.setAttribute('aria-label', 'Close navigation');
       mobileMenuOverlay.classList.add('active');
+      document.querySelector('.taskbar').classList.add('mobile-open');
       document.body.style.overflow = 'hidden';
     }
   }
@@ -1149,7 +1162,10 @@ document.addEventListener("DOMContentLoaded", function () {
   function closeMobileMenu() {
     if (mobileMenuToggle && mobileMenuOverlay) {
       mobileMenuToggle.classList.remove('active');
+      mobileMenuToggle.setAttribute('aria-expanded', 'false');
+      mobileMenuToggle.setAttribute('aria-label', 'Open navigation');
       mobileMenuOverlay.classList.remove('active');
+      document.querySelector('.taskbar').classList.remove('mobile-open');
       document.body.style.overflow = '';
       
       // Close any open submenus
@@ -1221,7 +1237,7 @@ document.addEventListener("DOMContentLoaded", function () {
   
   // Close mobile menu on window resize if it becomes desktop size
   window.addEventListener('resize', function() {
-    if (window.innerWidth > 768) {
+    if (window.innerWidth > 1024) {
       closeMobileMenu();
     }
   });

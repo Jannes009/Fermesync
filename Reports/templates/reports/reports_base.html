@@ -1,6 +1,95 @@
-{% extends "inventory_base.html" %}
+{% set can_view_reports = "REPORTS_VIEW" in current_user.permissions or "REPORT_VIEW" in current_user.permissions or "CHEMICAL_ANALYSIS_VIEW" in current_user.permissions %}
+{% set current_report_endpoint = request.endpoint or "" %}
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="theme-color" content="#f4f6f9">
+  <title>{% block title %}Reports &amp; Analytics | FermeSync{% endblock %}</title>
+  <link rel="icon" type="image/svg+xml" href="{{ url_for('static', filename='icons/LogoIcon - Copy.svg') }}">
+  <link rel="stylesheet" href="{{ url_for('static', filename='color-template.css') }}?{{ filemtime('app', 'color-template.css') }}">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css">
+  <link rel="stylesheet" href="{{ url_for('reports.static', filename='reports.css') }}?{{ filemtime('reports', 'reports.css') }}">
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/sweetalert2@11/dist/sweetalert2.min.css">
+  <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+  {% block reports_head %}{% endblock %}
+</head>
+<body class="reports-workspace">
+  <header class="reports-mobile-header">
+    <button type="button" class="reports-sidebar-toggle" id="reportsSidebarToggle" aria-label="Open Reports navigation" aria-controls="reportsSidebar" aria-expanded="false">
+      <span class="reports-hamburger-line"></span>
+      <span class="reports-hamburger-line"></span>
+      <span class="reports-hamburger-line"></span>
+    </button>
+    <a class="reports-mobile-brand" href="{{ url_for('reports.reports_index') }}">
+      <img src="{{ url_for('static', filename='icons/HorizontalLogoAndText.svg') }}" alt="FermeSync">
+    </a>
+  </header>
 
-{% block head %}
-<link rel="stylesheet" href="{{ url_for('reports.static', filename='reports.css') }}?{{ filemtime('reports', 'reports.css') }}">
-{% block reports_head %}{% endblock %}
-{% endblock %}
+  <div class="reports-sidebar-backdrop" id="reportsSidebarBackdrop" hidden></div>
+  <aside class="reports-sidebar" id="reportsSidebar" aria-label="Reports navigation">
+    <div class="reports-sidebar-brand">
+      <a class="reports-brand-link" href="{{ url_for('reports.reports_index') }}" aria-label="FermeSync Reports & Analytics home">
+        <img src="{{ url_for('static', filename='icons/HorizontalLogoAndText.svg') }}" alt="FermeSync">
+      </a>
+      <span class="reports-workspace-label">REPORTS &amp; ANALYTICS</span>
+      <button type="button" class="reports-sidebar-close" id="reportsSidebarClose" aria-label="Close Reports navigation">
+        <i class="fas fa-times" aria-hidden="true"></i>
+      </button>
+    </div>
+
+    <nav class="reports-sidebar-nav">
+      {% if can_view_reports %}
+      <div class="reports-nav-section">
+        <span class="reports-nav-heading">Reports</span>
+        <a class="reports-nav-link{% if current_report_endpoint == 'reports.chemical_analysis_page' %} active{% endif %}"
+           href="{{ url_for('reports.chemical_analysis_page') }}"
+           {% if current_report_endpoint == 'reports.chemical_analysis_page' %}aria-current="page"{% endif %}>
+          <i class="fas fa-flask" aria-hidden="true"></i>
+          <span>Chemical &amp; Fertiliser Analysis</span>
+        </a>
+      </div>
+      {% endif %}
+
+      <div class="reports-nav-section reports-operations-section">
+        <span class="reports-nav-heading">Back to Operations</span>
+        {% if current_user.has_feature("MARKET") %}
+        <a class="reports-nav-link" href="{{ url_for('market.market_dashboard') }}">
+          <i class="fas fa-store" aria-hidden="true"></i>
+          <span>FermeSync Market</span>
+        </a>
+        {% endif %}
+        {% if current_user.has_feature("INVENTORY") %}
+        <a class="reports-nav-link" href="{{ url_for('inventory.dashboard') }}">
+          <i class="fas fa-boxes-stacked" aria-hidden="true"></i>
+          <span>FermeSync Inventory</span>
+        </a>
+        {% endif %}
+      </div>
+    </nav>
+
+    <footer class="reports-sidebar-footer">
+      <div class="reports-account" id="reportsAccount">
+        <button type="button" class="reports-account-trigger" id="reportsAccountToggle"
+                aria-haspopup="true" aria-expanded="false" aria-controls="reportsAccountMenu">
+          <span><i class="fas fa-user-circle" aria-hidden="true"></i>{{ current_user.username }}</span>
+          <i class="fas fa-chevron-up reports-account-chevron" aria-hidden="true"></i>
+        </button>
+        <div class="reports-account-menu" id="reportsAccountMenu" role="menu" aria-label="Account menu" hidden>
+          <span class="reports-account-heading">Account</span>
+          <a href="{{ url_for('logout') }}" role="menuitem">
+            <i class="fas fa-right-from-bracket" aria-hidden="true"></i><span>Log out</span>
+          </a>
+        </div>
+      </div>
+    </footer>
+  </aside>
+
+  <div class="reports-main" id="reportsMain">
+    {% block content %}{% endblock %}
+  </div>
+
+  <script src="{{ url_for('reports.static', filename='reports_workspace.js') }}?{{ filemtime('reports', 'reports_workspace.js') }}"></script>
+</body>
+</html>

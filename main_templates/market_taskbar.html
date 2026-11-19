@@ -1,49 +1,65 @@
-<!-- taskbar.html -->    
+<!-- taskbar.html -->
+{% set can_view_reports = "REPORTS_VIEW" in current_user.permissions or "REPORT_VIEW" in current_user.permissions or "CHEMICAL_ANALYSIS_VIEW" in current_user.permissions %}
 <header class="taskbar">
     <div class="logo-container">
         <a href="/market/dashboard" class="logo-link">
             <img src="{{ url_for('static', filename='icons/HorizontalLogoAndText.svg') }}" alt="Fermesync Logo" class="taskbar-logo">
+            <span class="module-workspace-label">MARKET WORKSPACE</span>
         </a>
     </div>
     
     <!-- Desktop Navigation -->
-    <nav class="desktop-nav">
+    <nav class="desktop-nav" id="moduleDesktopNav" aria-label="Market navigation">
         <ul>
+            <li class="module-sidebar-heading">Market</li>
             <li class="dropdown-parent" style="position:relative;">
-                <a href="/market/create_entry" class="taskbar-link" id="delivery-note-link">Delivery Note <span style="font-size:0.8em;">▼</span></a>
+                <a href="/market/create_entry" class="taskbar-link" id="delivery-note-link"><i class="fas fa-file-circle-plus" aria-hidden="true"></i> Delivery Note <span style="font-size:0.8em;">▼</span></a>
                 <ul class="dropdown-menu">
                     <li><a href="/market/create_entry" class="dropdown-item">Create</a></li>
                     <li><a href="/market/view_entries" class="dropdown-item">View</a></li>
                 </ul>
             </li>
-            <li><a href="/market/import/main" class="taskbar-link" id="import-link">Import</a></li>
+            <li><a href="/market/import/main" class="taskbar-link" id="import-link"><i class="fas fa-file-import" aria-hidden="true"></i> Import</a></li>
             <li class="dropdown-parent" style="position:relative;">
-                <a href="/market/sales-orders" class="taskbar-link" id="sales-orders-link">Order Entry <span style="font-size:0.8em;">▼</span></a>
+                <a href="/market/sales-orders" class="taskbar-link" id="sales-orders-link"><i class="fas fa-cart-shopping" aria-hidden="true"></i> Order Entry <span style="font-size:0.8em;">▼</span></a>
                 <ul class="dropdown-menu">
                     <li><a href="/market/sales-orders" class="dropdown-item">Sales Orders</a></li>
                     <li><a href="/market/purchase-orders" class="dropdown-item">Purchase Orders</a></li>
                 </ul>
             </li>
-            <li><a href="/market/bill_of_materials" class="taskbar-link" id="bill-of-materials-link">Bill Of Material</a></li>
-            <li><a href="/market/maintanance" class="taskbar-link" id="maintanance-link">Maintenance</a></li>
-            <li><a href="/market/delivery-note-report" class="taskbar-link" id="report-link">Reports</a></li>
+            <li><a href="/market/bill_of_materials" class="taskbar-link" id="bill-of-materials-link"><i class="fas fa-list-check" aria-hidden="true"></i> Bill Of Material</a></li>
+            <li><a href="/market/maintanance" class="taskbar-link" id="maintanance-link"><i class="fas fa-gear" aria-hidden="true"></i> Maintenance</a></li>
+            <li><a href="/market/delivery-note-report" class="taskbar-link" id="report-link"><i class="fas fa-chart-column" aria-hidden="true"></i> Reports</a></li>
+            {% if current_user.has_feature("INVENTORY") or can_view_reports %}
+            <li class="module-sidebar-divider" aria-hidden="true"></li>
+            <li class="module-sidebar-heading">Switch workspace</li>
+            {% endif %}
+            {% if current_user.has_feature("INVENTORY") %}
+            <li><a href="{{ url_for('inventory.dashboard') }}" class="taskbar-link"><i class="fas fa-boxes-stacked" aria-hidden="true"></i> FermeSync Inventory</a></li>
+            {% endif %}
+            {% if can_view_reports %}
+            <li><a href="{{ url_for('reports.reports_index') }}" class="taskbar-link"><i class="fas fa-chart-line" aria-hidden="true"></i> Reports &amp; Analytics</a></li>
+            {% endif %}
         </ul>
     </nav>
     
     <!-- Desktop User Section -->
-    <div class="user-section desktop-user">
-        <div class="username" id="username">{{ current_user.username }} <span>▼</span></div>
-        <div class="dropdown">
-            {% if current_user.has_feature("INVENTORY") %}
-                <a href="/inventory/dashboard">Fermesync Inventory</a>
-            {% endif %}
-            <a href="{{ url_for('account.view_account') }}">View Account</a>
-            <a href="{{ url_for('logout') }}">Logout</a>
+    <div class="desktop-actions">
+        <div class="user-section desktop-user">
+            <button type="button" class="username" id="username" aria-haspopup="true" aria-expanded="false">
+                <span><i class="fas fa-user-circle" aria-hidden="true"></i> {{ current_user.username }}</span>
+                <i class="fas fa-chevron-up account-chevron" aria-hidden="true"></i>
+            </button>
+            <div class="dropdown" role="menu" aria-label="Account menu">
+                <span class="account-menu-heading">Account</span>
+                <a href="{{ url_for('account.view_account') }}" role="menuitem"><i class="fas fa-user-gear" aria-hidden="true"></i> Account settings</a>
+                <a href="{{ url_for('logout') }}" role="menuitem"><i class="fas fa-right-from-bracket" aria-hidden="true"></i> Log out</a>
+            </div>
         </div>
     </div>
     
     <!-- Mobile Menu Button -->
-    <button class="mobile-menu-toggle" id="mobile-menu-toggle" aria-label="Toggle menu">
+    <button class="mobile-menu-toggle" id="mobile-menu-toggle" aria-label="Open navigation" aria-controls="moduleDesktopNav" aria-expanded="false">
         <span class="hamburger-line"></span>
         <span class="hamburger-line"></span>
         <span class="hamburger-line"></span>
@@ -54,7 +70,10 @@
 <div class="mobile-menu-overlay" id="mobile-menu-overlay">
     <nav class="mobile-nav">
         <div class="mobile-nav-header">
-            <div class="mobile-username" id="mobile-username">{{ current_user.username }}</div>
+            <div class="mobile-user-info">
+                <div class="mobile-username" id="mobile-username">{{ current_user.username }}</div>
+                <div class="mobile-workspace-label">Market Workspace</div>
+            </div>
             <button class="mobile-menu-close" id="mobile-menu-close" aria-label="Close menu">×</button>
         </div>
         <ul class="mobile-nav-list">
@@ -118,9 +137,6 @@
             </li>
         </ul>
         <div class="mobile-nav-footer">
-            {% if current_user.inventory_module %}
-                <a href="{{ url_for('inventory.dashboard') }}" class="mobile-nav-footer-link">Fermesync Inventory</a>
-            {% endif %}
             <a href="{{ url_for('account.view_account') }}" class="mobile-nav-footer-link">View Account</a>
             <a href="{{ url_for('logout') }}" class="mobile-nav-footer-link">Logout</a>
         </div>
@@ -609,12 +625,23 @@ main {
         const usernameEl = document.getElementById("username");
         if (usernameEl) {
             usernameEl.addEventListener("click", function () {
-                const dropdown = document.querySelector(".user-section .dropdown");
+                const userSection = usernameEl.closest(".user-section");
+                const dropdown = userSection && userSection.querySelector(".dropdown");
                 if (dropdown) {
-                    dropdown.style.display = dropdown.style.display === "block" ? "none" : "block";
+                    const open = dropdown.style.display !== "block";
+                    dropdown.style.display = open ? "block" : "none";
+                    usernameEl.setAttribute("aria-expanded", String(open));
                 }
             });
         }
+        document.addEventListener("click", function(event) {
+            const userSection = document.querySelector(".user-section");
+            const dropdown = userSection && userSection.querySelector(".dropdown");
+            if (dropdown && !userSection.contains(event.target)) {
+                dropdown.style.display = "none";
+                usernameEl.setAttribute("aria-expanded", "false");
+            }
+        });
 
         // Desktop: Dropdown handling for nav (hover)
         document.querySelectorAll('.dropdown-parent').forEach(function(parent) {
@@ -623,6 +650,15 @@ main {
                 if (menu) {
                     menu.style.display = 'block';
                 }
+            });
+            document.querySelectorAll('.desktop-nav .dropdown-parent > a').forEach(function(anchor) {
+                anchor.addEventListener('click', function(event) {
+                    if (window.innerWidth > 1024) return;
+                    const menu = this.parentElement.querySelector('.dropdown-menu');
+                    if (!menu) return;
+                    event.preventDefault();
+                    menu.style.display = menu.style.display === 'block' ? 'none' : 'block';
+                });
             });
             parent.addEventListener('mouseleave', function() {
                 const menu = this.querySelector('.dropdown-menu');
@@ -641,7 +677,10 @@ main {
         function openMobileMenu() {
             if (mobileMenuToggle && mobileMenuOverlay) {
                 mobileMenuToggle.classList.add('active');
+                mobileMenuToggle.setAttribute('aria-expanded', 'true');
+                mobileMenuToggle.setAttribute('aria-label', 'Close navigation');
                 mobileMenuOverlay.classList.add('active');
+                document.querySelector('.taskbar').classList.add('mobile-open');
                 document.body.style.overflow = 'hidden'; // Prevent background scrolling
             }
         }
@@ -649,7 +688,10 @@ main {
         function closeMobileMenu() {
             if (mobileMenuToggle && mobileMenuOverlay) {
                 mobileMenuToggle.classList.remove('active');
+                mobileMenuToggle.setAttribute('aria-expanded', 'false');
+                mobileMenuToggle.setAttribute('aria-label', 'Open navigation');
                 mobileMenuOverlay.classList.remove('active');
+                document.querySelector('.taskbar').classList.remove('mobile-open');
                 document.body.style.overflow = ''; // Restore scrolling
                 
                 // Close any open submenus
@@ -722,7 +764,7 @@ main {
 
         // Close mobile menu on window resize if it becomes desktop size
         window.addEventListener('resize', function() {
-            if (window.innerWidth > 768) {
+            if (window.innerWidth > 1024) {
                 closeMobileMenu();
             }
         });

@@ -1,6 +1,6 @@
 # inventory/__init__.py
 import os
-from flask import Blueprint, render_template
+from flask import Blueprint, abort, render_template
 
 inventory_bp = Blueprint(
     'inventory',
@@ -25,9 +25,11 @@ from . import warehouse_transfer
 from . import qty
 from . import product_detail
 from . import edit_product
-from flask_login import login_required
+from flask_login import current_user, login_required
 
 @inventory_bp.route('/dashboard', methods=['GET'])
 @login_required
 def dashboard():
+    if not current_user.has_feature("INVENTORY"):
+        abort(403)
     return render_template('inventory_dashboard.html')
