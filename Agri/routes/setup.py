@@ -1,6 +1,6 @@
 from datetime import date, datetime
 
-from flask import render_template, request, redirect, url_for, jsonify
+from flask import abort, render_template, request, redirect, url_for, jsonify
 from flask_login import login_required, current_user
 from Core.auth import create_db_connection
 from . import agri_bp
@@ -32,6 +32,43 @@ def format_setup_date(value):
     return str(value)
 
 
+def table_column_exists(cur, schema, table, column):
+    cur.execute("""
+        SELECT 1
+        FROM INFORMATION_SCHEMA.COLUMNS
+        WHERE TABLE_SCHEMA = ? AND TABLE_NAME = ? AND COLUMN_NAME = ?
+    """, schema, table, column)
+    return cur.fetchone() is not None
+
+
+CROP_ICON_DEFAULT = "fa-seedling"
+FARM_COLOR_DEFAULT = "#2E7D32"
+FARM_COLOUR_PALETTE = (
+    ("#2E7D32", "Forest"),
+    ("#2563EB", "Ocean"),
+    ("#D97706", "Amber"),
+    ("#7C3AED", "Purple"),
+    ("#0F766E", "Teal"),
+    ("#E11D48", "Rose"),
+    ("#71852A", "Olive"),
+    ("#0284C7", "Sky"),
+    ("#8D5A3B", "Brown"),
+    ("#64748B", "Slate"),
+    ("#4F46E5", "Indigo"),
+    ("#D65A45", "Coral"),
+)
+
+
+def row_value(row, name, default=None):
+    try:
+        return getattr(row, name)
+    except (AttributeError, KeyError):
+        try:
+            return row[name]
+        except (KeyError, IndexError, TypeError):
+            return default
+
+
 @agri_bp.route("/setup", methods=["GET"])
 @login_required
 def setup():
@@ -39,12 +76,25 @@ def setup():
     cur = conn.cursor()
 
     # Farms
+    farm_has_colour = table_column_exists(cur, "agr", "Farm", "FarmColour")
+    farm_colour_column = (
+        ", FarmColour" if farm_has_colour
+        else ", CAST(NULL AS nvarchar(7)) AS FarmColour"
+    )
     cur.execute("""
         SELECT IdFarm, FarmName
+        %s
         FROM agr.Farm
         ORDER BY FarmName
-    """)
+    """ % farm_colour_column)
     farms = cur.fetchall()
+
+    for farm in farms:
+        if not farm_has_colour:
+            try:
+                farm.FarmColour = FARM_COLOR_DEFAULT
+            except Exception:
+                pass
 
     # People
     cur.execute("""
@@ -66,12 +116,31 @@ def setup():
         people_farms[person[0]] = cur.fetchall()
 
     # Crops
+    crop_has_icon = table_column_exists(cur, "agr", "Crop", "CropIcon")
+    crop_has_theme = table_column_exists(cur, "agr", "Crop", "CropThemeColor")
     cur.execute("""
         SELECT IdCrop, CropCode, CropDescription
+        %s
+        %s
         FROM agr.Crop
         ORDER BY CropCode
-    """)
+    """ % (
+        ", CropIcon" if crop_has_icon else "",
+        ", CropThemeColor" if crop_has_theme else "",
+    ))
     crops = cur.fetchall()
+
+    for crop in crops:
+        if not crop_has_icon:
+            try:
+                crop.CropIcon = CROP_ICON_DEFAULT
+            except Exception:
+                pass
+        if not crop_has_theme:
+            try:
+                crop.CropThemeColor = "#4d7c0f"
+            except Exception:
+                pass
 
     # Varieties
     cur.execute("""
@@ -108,11 +177,12 @@ def setup():
     warehouses = cur.fetchall()
 
     # Spray Methods
-    cur.execute("""
+    cur.execute(f"""
         SELECT
             sm.IdSprayMethod,
             sm.SprayMethodFarmId,
             f.FarmName,
+            {("f.FarmColour" if farm_has_colour else "CAST(NULL AS nvarchar(7))")} AS FarmColour,
             sm.SprayMethodName,
             sm.SprayMethodWaterPerHa,
             sm.SprayMethodTankSize
@@ -129,10 +199,14 @@ def setup():
         PRJ.ProjectName,
         pa.ProjAttrFarmId,
         F.FarmName AS ProjAttrFarmName,
+        {("F.FarmColour" if farm_has_colour else "CAST(NULL AS nvarchar(7))")} AS ProjAttrFarmColour,
         pa.ProjAttrWhseId,
         WHSE.WhseDescription AS ProjAttrWhseName,
         pa.ProjAttrCropId,
         CRP.CropCode,
+        CRP.CropDescription,
+        {("CRP.CropIcon" if crop_has_icon else "CAST(NULL AS nvarchar(50))")} AS CropIcon,
+        {("CRP.CropThemeColor" if crop_has_theme else "CAST(NULL AS nvarchar(20))")} AS CropThemeColor,
         pa.ProjAttrVarietyId,
         VA.VarietyCode,
         pa.ProjAttrHa,
@@ -174,6 +248,7 @@ def setup():
         spray_projects=spray_projects,
         people=people,
         people_farms=people_farms,
+        farm_colour_palette=FARM_COLOUR_PALETTE,
         format_setup_date=format_setup_date
     )
 
@@ -185,13 +260,25 @@ def setup():
 @login_required
 def add_farm():
     name = request.form["farm_name"]
+    colour = request.form.get("farm_colour")
+    if colour not in {value for value, _ in FARM_COLOUR_PALETTE}:
+        abort(400, description="Choose a farm colour from the approved palette.")
 
     conn = create_db_connection()
     cur = conn.cursor()
-    cur.execute("""
-        INSERT INTO agr.Farm (FarmName)
-        VALUES (?)
-    """, name)
+    has_colour = table_column_exists(cur, "agr", "Farm", "FarmColour")
+    columns = ["FarmName"]
+    values = [name]
+    if has_colour:
+        columns.append("FarmColour")
+        values.append(colour)
+    placeholders = ", ".join(["?"] * len(columns))
+    cur.execute(
+        "INSERT INTO agr.Farm ({0}) VALUES ({1})".format(
+            ", ".join(columns), placeholders
+        ),
+        tuple(values)
+    )
     conn.commit()
     conn.close()
 
@@ -292,16 +379,45 @@ def update_farm():
 
     farm_id = data.get('id')
     name = (data.get('name') or '').strip()
+    requested_colour = data.get('farm_colour', data.get('colour'))
     if not farm_id or not name:
         return jsonify({"success": False, "message": "Farm ID and name are required"}), 400
 
     conn = create_db_connection()
     cur = conn.cursor()
-    cur.execute("""
-        UPDATE agr.Farm
-        SET FarmName = ?
-        WHERE IdFarm = ?
-    """, name, farm_id)
+    assignments = ["FarmName = ?"]
+    values = [name]
+    has_colour = table_column_exists(cur, "agr", "Farm", "FarmColour")
+    if requested_colour not in (None, ""):
+        approved_colour = (
+            isinstance(requested_colour, str)
+            and requested_colour in {value for value, _ in FARM_COLOUR_PALETTE}
+        )
+        if approved_colour:
+            if has_colour:
+                assignments.append("FarmColour = ?")
+                values.append(requested_colour)
+        else:
+            if not has_colour:
+                conn.close()
+                return jsonify({
+                    "success": False,
+                    "message": "Choose a farm colour from the approved palette."
+                }), 400
+            cur.execute("SELECT FarmColour FROM agr.Farm WHERE IdFarm = ?", farm_id)
+            existing = cur.fetchone()
+            existing_colour = existing[0] if existing and existing[0] else None
+            if requested_colour != existing_colour:
+                conn.close()
+                return jsonify({
+                    "success": False,
+                    "message": "Choose a farm colour from the approved palette."
+                }), 400
+    values.append(farm_id)
+    cur.execute(
+        "UPDATE agr.Farm SET {0} WHERE IdFarm = ?".format(", ".join(assignments)),
+        tuple(values)
+    )
     conn.commit()
     conn.close()
 
@@ -529,4 +645,4 @@ def get_person_farms(person_id):
     """, person_id)
     farm_ids = [row[0] for row in cur.fetchall()]
     conn.close()
-    return jsonify({"farm_ids": farm_ids})
+    return jsonify({"success": True, "farm_ids": farm_ids})

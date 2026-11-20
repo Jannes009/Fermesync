@@ -429,6 +429,22 @@ def chemical_analysis_filters():
     conn = create_db_connection()
     cursor = conn.cursor()
     try:
+        cursor.execute("""
+            SELECT 1
+            FROM INFORMATION_SCHEMA.COLUMNS
+            WHERE TABLE_SCHEMA = 'agr'
+              AND TABLE_NAME = 'Farm'
+              AND COLUMN_NAME = 'FarmColour'
+        """)
+        farm_has_colour = cursor.fetchone() is not None
+        farm_colour_expression = (
+            """(SELECT TOP 1 F.FarmColour
+               FROM agr.Farm F
+               WHERE F.FarmName = C.FarmName
+               ORDER BY F.IdFarm)"""
+            if farm_has_colour else "CAST(NULL AS nvarchar(7))"
+        )
+
         def distinct(column, order_column=None, extra_params=None):
             extra_params = extra_params or []
             cursor.execute(
@@ -456,14 +472,18 @@ def chemical_analysis_filters():
 
         cursor.execute(
             f"""
-            SELECT DISTINCT C.FarmName AS Id, C.FarmName AS Label
+            SELECT DISTINCT C.FarmName AS Id, C.FarmName AS Label,
+                   {farm_colour_expression} AS Colour
             {BASE_FROM}
             WHERE {where} AND C.FarmName IS NOT NULL
             ORDER BY C.FarmName
             """,
             tuple(params),
         )
-        farms = [{"id": row.Id, "label": row.Label} for row in cursor.fetchall()]
+        farms = [
+            {"id": row.Id, "label": row.Label, "colour": row.Colour}
+            for row in cursor.fetchall()
+        ]
 
         cursor.execute(
             f"""
@@ -478,14 +498,19 @@ def chemical_analysis_filters():
 
         cursor.execute(
             f"""
-            SELECT DISTINCT C.ProjAttrCropId AS Id, C.CropDescription AS Label
+            SELECT DISTINCT C.ProjAttrCropId AS Id, C.CropDescription AS Label,
+                   CRP.CropThemeColor AS Colour
             {BASE_FROM}
+            LEFT JOIN agr.Crop CRP ON CRP.IdCrop = C.ProjAttrCropId
             WHERE {where} AND C.ProjAttrCropId IS NOT NULL
             ORDER BY C.CropDescription
             """,
             tuple(params),
         )
-        crops = [{"id": int(row.Id), "label": row.Label} for row in cursor.fetchall()]
+        crops = [
+            {"id": int(row.Id), "label": row.Label, "colour": row.Colour}
+            for row in cursor.fetchall()
+        ]
 
         cursor.execute(
             f"""

@@ -66,33 +66,203 @@
   /* Tabs */
   .tab-pane { display: none; }
   .tab-pane.active { display: block; }
+
+  .setup-page{max-width:1360px}
+  .setup-nav{
+    display:grid;
+    grid-template-columns:repeat(4,minmax(0,1fr));
+    gap:.35rem;
+    margin-bottom:1rem;
+    padding:.35rem;
+    background:var(--form-bg,#f7f9fb);
+    border:1px solid var(--input-border,#dfe6ee);
+    border-radius:11px;
+  }
+  .setup-nav .nav-link{
+    min-width:0;
+    min-height:46px;
+    margin:0;
+    padding:.65rem .75rem;
+    display:flex;
+    align-items:center;
+    justify-content:center;
+    gap:.5rem;
+    border-radius:8px;
+    color:var(--secondary-text,#64748b);
+    font-weight:500;
+    line-height:1.2;
+    text-align:center;
+    text-decoration:none;
+    white-space:nowrap;
+    cursor:pointer;
+    transition:background-color .16s ease,color .16s ease,font-weight .16s ease;
+  }
+  .setup-nav .nav-link i{
+    width:1rem;
+    flex:none;
+    text-align:center;
+    color:var(--secondary-text,#64748b);
+    transition:color .16s ease;
+  }
+  .setup-nav .sprayer-icon{width:1.5rem;height:.94rem;flex:none}
+  .setup-nav .nav-link:hover{
+    background:rgba(100,116,139,.08);
+  }
+  .setup-nav .nav-link.active,
+  .setup-nav .nav-link.active:hover{
+    background:#eaf2ff;
+    background:color-mix(in srgb,var(--button-bg,#2563eb) 11%,var(--container-bg,#fff));
+    color:var(--button-bg,#2563eb);
+    font-weight:700;
+  }
+  .setup-nav .nav-link.active i{
+    color:var(--button-bg,#2563eb);
+  }
+  .setup-content-layout{display:block}
+  .setup-summary{display:grid;grid-template-columns:repeat(4,minmax(120px,1fr));gap:.75rem;margin-bottom:1rem}
+  .setup-stat{background:var(--form-bg,#fff);border:1px solid var(--input-border,#dfe6ee);border-radius:9px;padding:.75rem}
+  .setup-stat strong{display:block;font-size:1.25rem;color:var(--primary-text)}
+  .setup-stat span{font-size:.78rem;color:var(--secondary-text)}
+  .sprayer-icon{width:1.75rem;height:1.1rem;display:inline-block;flex:none;vertical-align:middle;color:inherit}
+  .spray-method-heading,.spray-method-add-btn,.spray-method-identity,.spray-method-modal-title{display:flex;align-items:center;gap:.45rem}
+  .spray-method-heading .sprayer-icon{width:1.9rem;height:1.2rem;color:var(--button-bg,#2563eb)}
+  .spray-method-add-btn .sprayer-icon{width:1.5rem;height:.94rem}
+  .spray-method-identity{color:var(--primary-text)}
+  .spray-method-identity .sprayer-icon{width:2.1rem;height:1.31rem;color:var(--button-bg,#2563eb)}
+  .spray-method-modal-title .sprayer-icon{width:1.8rem;height:1.13rem;color:var(--button-bg,#2563eb)}
+  .spray-method-default-label{display:flex;align-items:center;gap:.4rem}
+  .spray-method-default-label .sprayer-icon{width:1.4rem;height:.88rem;color:var(--button-bg,#2563eb)}
+  .project-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(310px,1fr));gap:.75rem}
+  .project-card{border:1px solid var(--input-border,#dfe6ee);border-radius:10px;background:var(--container-bg,#fff);padding:.85rem}
+  .project-card-head{display:flex;justify-content:space-between;gap:.5rem}
+  .identity-line,.info-line{display:flex;align-items:center;gap:.5rem}
+  .farm-badge,.crop-badge{display:inline-flex;align-items:center;gap:.4rem;border-radius:999px;padding:.25rem .55rem;font-size:.78rem;background:var(--form-bg,#f7f9fb)}
+  .farm-icon{width:32px;height:32px;border-radius:8px;display:inline-flex;align-items:center;justify-content:center;color:white;flex:none}
+  .farm-select-preview{display:inline-flex;align-items:center;gap:.45rem;color:var(--secondary-text);font-size:.82rem}
+  .farm-select-preview .farm-icon{width:26px;height:26px;border-radius:7px}
+  .farm-create-form{display:grid;grid-template-columns:minmax(170px,.8fr) minmax(320px,1.8fr) auto;gap:.8rem;align-items:end;flex:1}
+  .farm-create-name{width:100%;min-width:0}
+  .farm-create-name label{display:block;margin-bottom:.4rem;font-weight:600;font-size:.85rem;color:var(--primary-text)}
+  .farm-colour-selector{position:relative;min-width:0}
+  .farm-colour-trigger{
+    width:100%;min-height:40px;padding:.5rem .7rem;display:flex;align-items:center;gap:.55rem;
+    border:1px solid var(--input-border,#dfe6ee);border-radius:8px;background:var(--container-bg,#fff);
+    color:var(--primary-text);font:inherit;text-align:left;cursor:pointer;
+  }
+  .farm-colour-trigger:hover{background:var(--form-bg,#f7f9fb)}
+  .farm-colour-trigger:focus-visible{outline:2px solid var(--button-bg,#2563eb);outline-offset:2px}
+  .farm-colour-trigger-label{flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+  .farm-colour-trigger-icon{color:var(--secondary-text)}
+  .farm-colour-trigger-swatch{width:18px;height:18px;flex:none;border:1px solid rgba(15,23,42,.14);border-radius:5px}
+  .farm-colour-popover{
+    position:absolute;top:calc(100% + .35rem);left:0;width:min(340px,calc(100vw - 16px));padding:.55rem;
+    z-index:10001;border:1px solid var(--input-border,#dfe6ee);border-radius:10px;
+    background:var(--container-bg,#fff);box-shadow:0 12px 30px rgba(15,23,42,.18);
+  }
+  .farm-colour-popover.is-portaled{position:fixed;top:0;left:0}
+  .farm-colour-popover[hidden]{display:none}
+  .farm-colour-popover .farm-colour-grid{max-height:min(360px,calc(100vh - 32px));max-height:min(360px,calc(100dvh - 32px));overflow-y:auto}
+  .farm-colour-error{grid-column:1/-1;margin:.25rem 0 0;color:#b91c1c;font-size:.82rem}
+  .farm-colour-grid{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:.35rem}
+  .farm-colour-card{
+    min-width:0;min-height:38px;padding:.35rem .45rem;display:flex;align-items:center;gap:.4rem;
+    border:1px solid var(--input-border,#dfe6ee);border-radius:7px;background:var(--container-bg,#fff);
+    color:var(--primary-text);font:inherit;font-size:.76rem;text-align:left;cursor:pointer;
+    transition:border-color .14s ease,background-color .14s ease,box-shadow .14s ease;
+  }
+  .farm-colour-card:hover{background:var(--form-bg,#f7f9fb);border-color:#94a3b8}
+  .farm-colour-card:focus-visible{outline:2px solid var(--button-bg,#2563eb);outline-offset:2px}
+  .farm-colour-card[aria-pressed="true"]{
+    border-color:var(--button-bg,#2563eb);background:#eff6ff;background:color-mix(in srgb,var(--button-bg,#2563eb) 7%,var(--container-bg,#fff));
+    box-shadow:0 0 0 1px var(--button-bg,#2563eb);
+  }
+  .farm-colour-swatch{width:19px;height:19px;flex:none;border:1px solid rgba(15,23,42,.14);border-radius:5px}
+  .farm-colour-name{overflow:hidden;text-overflow:ellipsis;white-space:nowrap;flex:1}
+  .farm-colour-check{width:13px;flex:none;color:var(--button-bg,#2563eb);opacity:0}
+  .farm-colour-card[aria-pressed="true"] .farm-colour-check{opacity:1}
+  .farm-colour-card-legacy{border-style:dashed}
+  .farm-colour-submit{white-space:nowrap}
+  .project-meta{display:grid;grid-template-columns:1fr 1fr;gap:.55rem;margin:.75rem 0}
+  .project-meta span{color:var(--secondary-text);font-size:.78rem}
+  .project-meta strong{display:block;color:var(--primary-text);font-size:.88rem}
+  .field-allocation{border-top:1px solid var(--input-border,#e5e7eb);padding-top:.65rem}
+  .allocation-bar{display:flex;height:18px;border-radius:5px;overflow:hidden;background:#edf0f2;margin:.35rem 0}
+  .allocation-segment{min-width:2px;color:white;font-size:.68rem;text-align:center;line-height:18px;overflow:hidden}
+  .allocation-unknown{font-size:.78rem;color:var(--secondary-text)}
+  .project-filters{display:grid;grid-template-columns:minmax(180px,1fr) repeat(3,minmax(130px,.45fr));gap:.5rem;width:100%;margin-bottom:.75rem}
+  .wizard-progress{display:grid;grid-template-columns:repeat(4,1fr);gap:.35rem;margin-bottom:1rem}
+  .wizard-progress button{border:0;border-radius:6px;background:var(--form-bg,#f3f4f6);color:var(--secondary-text);min-height:34px}
+  .wizard-progress button.active{background:var(--button-bg);color:var(--button-text)}
+  .wizard-step{display:none}.wizard-step.active{display:block}
+  .wizard-summary{background:var(--form-bg,#f8fafc);border:1px solid var(--input-border,#e5e7eb);border-radius:8px;padding:.75rem}
+  .defaults-step{border-left:3px solid #60a5fa;padding-left:.75rem}
+  @media(max-width:900px){.setup-summary{grid-template-columns:repeat(2,1fr)}.project-filters{grid-template-columns:1fr 1fr}.row{flex-direction:column}.col-md-3,.col-md-9{flex:auto}}
+  @media(max-width:760px){
+    .farm-section-head{flex-wrap:wrap}
+    .farm-create-form{grid-template-columns:1fr;flex-basis:100%}
+    .farm-colour-grid{grid-template-columns:repeat(3,minmax(0,1fr))}
+    .farm-colour-submit{justify-self:start}
+    .farm-colour-popover .farm-colour-grid{grid-template-columns:repeat(3,minmax(0,1fr))}
+  }
+  @media(max-width:560px){
+    .page-wrap{padding:.75rem}
+    .po-table-card{padding:.75rem}
+    .setup-nav{grid-template-columns:repeat(2,minmax(0,1fr))}
+    .setup-nav .nav-link{
+      min-height:50px;
+      padding:.6rem .45rem;
+      white-space:normal;
+    }
+    .setup-summary{grid-template-columns:1fr 1fr}
+    .project-grid{grid-template-columns:1fr}
+    .project-filters{grid-template-columns:1fr}
+    .project-meta{grid-template-columns:1fr 1fr}
+    .wizard-progress span{display:none}
+  }
 </style>
 
-<div class="page-wrap">
+<div class="page-wrap setup-page">
   <div class="po-table-card">
     <div class="section-head">
       <h1 class="page-title">Agricultural Setup</h1>
     </div>
 
-    <div class="row">
-      <div class="col-md-3">
-        <div class="card">
-          <ul class="sidebar-nav">
-            <li><a class="nav-link active" data-tab="tab-farms">Farms</a></li>
-            <li><a class="nav-link" data-tab="tab-spray">Spray Methods</a></li>
-            <li><a class="nav-link" data-tab="tab-projects">Project Attributes</a></li>
-            <li><a class="nav-link" data-tab="tab-people">People</a></li>
-          </ul>
-        </div>
-      </div>
+    <nav class="setup-nav" aria-label="Agricultural setup sections">
+      <a class="nav-link active" data-tab="tab-farms" aria-current="page"><i class="fas fa-tractor" aria-hidden="true"></i><span>Farms</span></a>
+      <a class="nav-link" data-tab="tab-spray"><svg class="sprayer-icon" aria-hidden="true" focusable="false"><use href="{{ url_for('agri.static', filename='icons/agri-sprayer.svg') }}#agri-sprayer-icon"></use></svg><span>Spray Methods</span></a>
+      <a class="nav-link" data-tab="tab-projects"><i class="fas fa-layer-group" aria-hidden="true"></i><span>Project Attributes</span></a>
+      <a class="nav-link" data-tab="tab-people"><i class="fas fa-users" aria-hidden="true"></i><span>People</span></a>
+    </nav>
 
-      <div class="col-md-9">
+    <div class="setup-content-layout">
         <div class="tab-pane active" id="tab-farms">
-          <div class="section-head">
+          <div class="section-head farm-section-head">
             <h2>Farms</h2>
-            <form method="post" action="{{ url_for('agri.add_farm') }}" class="controls">
-              <input name="farm_name" class="input" placeholder="Farm name" required>
-              <button class="btn">Add Farm</button>
+            <form method="post" action="{{ url_for('agri.add_farm') }}" class="farm-create-form">
+              <div class="farm-create-name">
+                <label class="field-label" for="new-farm-name">Farm name</label>
+                <input id="new-farm-name" name="farm_name" class="input" placeholder="Farm name" required>
+              </div>
+              <div class="farm-colour-selector" id="add-farm-colour-selector" data-farm-colour-selector>
+                <input type="hidden" name="farm_colour" value="" data-farm-colour-value>
+                <button type="button" class="farm-colour-trigger" data-farm-colour-trigger aria-haspopup="dialog" aria-controls="add-farm-colour-popover" aria-expanded="false" aria-label="Choose farm colour">
+                  <i class="fas fa-palette farm-colour-trigger-icon" data-palette-icon aria-hidden="true"></i>
+                  <span class="farm-colour-trigger-swatch" data-trigger-swatch hidden aria-hidden="true"></span>
+                  <span class="farm-colour-trigger-label" data-trigger-label>Choose farm colour</span>
+                  <i class="fas fa-chevron-down" data-chevron aria-hidden="true"></i>
+                </button>
+                <div class="farm-colour-popover" id="add-farm-colour-popover" data-farm-colour-popover hidden role="dialog" aria-label="Choose farm colour">
+                  <div class="farm-colour-grid" role="group" aria-label="Farm colour options">
+                    {% for colour, label in farm_colour_palette %}
+                    <button type="button" class="farm-colour-card" data-colour="{{ colour }}" data-name="{{ label }}" aria-label="Select {{ label }} farm colour" aria-pressed="false">
+                      <span class="farm-colour-swatch" aria-hidden="true"></span><span class="farm-colour-name">{{ label }}</span><i class="fas fa-check farm-colour-check" aria-hidden="true"></i>
+                    </button>
+                    {% endfor %}
+                  </div>
+                </div>
+                <div class="farm-colour-error" data-farm-colour-error role="alert" hidden>Please choose a farm colour.</div>
+              </div>
+              <button type="submit" class="btn farm-colour-submit">Add Farm</button>
             </form>
           </div>
           <div style="overflow:auto;">
@@ -100,9 +270,9 @@
               <thead><tr><th>ID</th><th>Name</th><th>Actions</th></tr></thead>
               <tbody>
                 {% for f in farms %}
-                <tr data-entity="farm" data-id="{{ f.IdFarm }}" data-name="{{ f.FarmName }}">
+                <tr data-entity="farm" data-id="{{ f.IdFarm }}" data-name="{{ f.FarmName }}" data-colour="{{ f.FarmColour or '#2f7d32' }}">
                   <td>{{ f.IdFarm }}</td>
-                  <td>{{ f.FarmName }}</td>
+                  <td><span class="identity-line"><span class="farm-icon" style="background:{{ f.FarmColour or '#2f7d32' }}"><i class="fas fa-tractor" aria-hidden="true"></i></span><strong>{{ f.FarmName }}</strong></span></td>
                   <td><button class="btn edit-row-btn" type="button" data-entity="farm" data-id="{{ f.IdFarm }}">Edit</button></td>
                 </tr>
                 {% endfor %}
@@ -113,15 +283,16 @@
 
         <div class="tab-pane" id="tab-spray">
           <div class="section-head">
-            <h2>Spray Methods</h2>
+            <h2 class="spray-method-heading"><svg class="sprayer-icon" aria-hidden="true" focusable="false"><use href="{{ url_for('agri.static', filename='icons/agri-sprayer.svg') }}#agri-sprayer-icon"></use></svg><span>Spray Methods</span></h2>
             <form method="post" action="{{ url_for('agri.add_spray_method') }}" class="controls">
-              <select name="farm_id" class="input select2">
-                {% for f in farms %}<option value="{{ f.IdFarm }}">{{ f.FarmName }}</option>{% endfor %}
+              <select name="farm_id" class="input select2 farm-color-select">
+                {% for f in farms %}<option value="{{ f.IdFarm }}" data-colour="{{ f.FarmColour or '#2f7d32' }}">{{ f.FarmName }}</option>{% endfor %}
               </select>
+              <span class="farm-select-preview" aria-live="polite"><span class="farm-icon" style="background:#2f7d32"><i class="fas fa-tractor" aria-hidden="true"></i></span><span></span></span>
               <input name="spray_method_name" type="text" class="input" placeholder="Name">
               <input name="water_per_ha" type="number" step="1" class="input" placeholder="Water / Ha">
               <input name="tank_size" type="number" step="1" class="input" placeholder="Tank Size(L)">
-              <button class="btn">Add Spray Method</button>
+              <button class="btn spray-method-add-btn"><svg class="sprayer-icon" aria-hidden="true" focusable="false"><use href="{{ url_for('agri.static', filename='icons/agri-sprayer.svg') }}#agri-sprayer-icon"></use></svg><span>Add Spray Method</span></button>
             </form>
           </div>
 
@@ -138,9 +309,9 @@
               </thead>
               <tbody>
                 {% for sm in spray_methods %}
-                <tr data-entity="spray_method" data-id="{{ sm.IdSprayMethod }}" data-farm-id="{{ sm.SprayMethodFarmId }}" data-name="{{ sm.SprayMethodName }}" data-water-per-ha="{{ sm.SprayMethodWaterPerHa }}" data-tank-size="{{ sm.SprayMethodTankSize }}">
-                  <td>{{ sm.FarmName }}</td>
-                  <td>{{ sm.SprayMethodName }}</td>
+                <tr data-entity="spray_method" data-id="{{ sm.IdSprayMethod }}" data-farm-id="{{ sm.SprayMethodFarmId }}" data-farm-colour="{{ sm.FarmColour or '#2f7d32' }}" data-name="{{ sm.SprayMethodName }}" data-water-per-ha="{{ sm.SprayMethodWaterPerHa }}" data-tank-size="{{ sm.SprayMethodTankSize }}">
+                  <td><span class="identity-line"><span class="farm-icon" style="width:26px;height:26px;background:{{ sm.FarmColour or '#2f7d32' }}"><i class="fas fa-tractor" aria-hidden="true"></i></span><strong>{{ sm.FarmName }}</strong></span></td>
+                  <td><span class="spray-method-identity"><svg class="sprayer-icon" aria-hidden="true" focusable="false"><use href="{{ url_for('agri.static', filename='icons/agri-sprayer.svg') }}#agri-sprayer-icon"></use></svg><strong>{{ sm.SprayMethodName }}</strong></span></td>
                   <td>{{ sm.SprayMethodWaterPerHa }}</td>
                   <td>{{ sm.SprayMethodTankSize }}</td>
                   <td><button class="btn edit-row-btn" type="button" data-entity="spray_method" data-id="{{ sm.IdSprayMethod }}">Edit</button></td>
@@ -154,67 +325,56 @@
         <div class="tab-pane" id="tab-projects">
           <div class="section-head">
               <h2>Project Attributes</h2>
-              <div class="controls" style="width:100%;">
-                <div style="flex:1; display:flex; gap:8px; align-items:center;">
-                  <input id="filter-search" class="input" placeholder="Search project or block..." style="min-width:220px;">
-                </div>
-                <div style="display:flex; gap:8px; align-items:center;">
-                  <button id="add-project-attr-btn" type="button" class="btn">+ New Project</button>
-                </div>
-              </div>
+              <button id="add-project-attr-btn" type="button" class="btn">+ New Project</button>
             </div>
-
-            <div style="overflow:auto;">
-              <table class="summary-table">
-                <thead>
-                  <tr>
-                    <th>Project</th>
-                    <th>Farm</th>
-                    <th>Crop</th>
-                    <th>Variety</th>
-                    <th>Ha</th>
-                    <th>Warehouse</th>
-                    <th>Field</th>
-                    <th>Actions</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {% for pa in spray_projects %}
-                  <tr class="main-row" data-entity="project_attr" data-id="{{ pa.IdProjAttr }}" data-project-id="{{ pa.ProjAttrProjectId }}" data-farm-id="{{ pa.ProjAttrFarmId }}" data-whse-id="{{ pa.ProjAttrWhseId }}" data-whse-name="{{ pa.ProjAttrWhseName }}" data-crop-id="{{ pa.ProjAttrCropId }}" data-variety-id="{{ pa.ProjAttrVarietyId }}" data-ha="{{ pa.ProjAttrHa }}" data-plant-date="{{ format_setup_date(pa.ProjAttrPlantDate) }}" data-harvest-date="{{ format_setup_date(pa.ProjAttrHarvestDate) }}" data-petal-fall-date="{{ format_setup_date(pa.ProjAttr80PercPetalFallDate) }}" data-project-manager="{{ pa.ProjAttrProjectManager }}" data-agriculturist="{{ pa.ProjAttrAgriculturist }}" data-block-no="{{ pa.ProjAttrBlockNo }}" data-field-id="{{ pa.ProjAttrFieldId or '' }}" data-field-description="{{ pa.ProjAttrFieldDescription or '' }}" data-default-spray-method-id="{{ pa.ProjAttrDefaultSprayMethodId or '' }}" data-default-dose="{{ pa.ProjAttrDefaultDose or '' }}" data-default-water-per-ha="{{ pa.ProjAttrDefaultWaterPerHa or '' }}" data-default-water-per-tank="{{ pa.ProjAttrDefaultWaterPerTank or '' }}">
-                    <td>{{ pa.ProjectName }}</td>
-                    <td>{{ pa.ProjAttrFarmName }}</td>
-                    <td>{{ pa.CropCode }}</td>
-                    <td>{{ pa.VarietyCode }}</td>
-                    <td>{{ pa.ProjAttrHa }}</td>
-                    <td>{{ pa.ProjAttrWhseName }}</td>
-                    <td>{{ pa.ProjAttrFieldDescription or '-' }}</td>
-                    <td style="white-space:nowrap;">
-                      <button class="btn edit-row-btn" type="button" data-entity="project_attr" data-id="{{ pa.IdProjAttr }}">Edit</button>
-                      <button class="btn ghost toggle-details-btn" type="button" data-id="{{ pa.IdProjAttr }}">▼</button>
-                    </td>
-                  </tr>
-                  <tr class="expand-row" data-parent-id="{{ pa.IdProjAttr }}" style="display:none;">
-                    <td colspan="8">
-                      <div style="display:flex; gap:24px;">
-                        <div><strong>Plant Date:</strong> {{ format_setup_date(pa.ProjAttrPlantDate) }}</div>
-                        <div><strong>Harvest Date:</strong> {{ format_setup_date(pa.ProjAttrHarvestDate) }}</div>
-                        <div><strong>80% Petal Fall:</strong> {{ format_setup_date(pa.ProjAttr80PercPetalFallDate) }}</div>
-                        <div><strong>Manager:</strong> {{ pa.ProjAttrProjectManager }}</div>
-                        <div><strong>Agriculturist:</strong> {{ pa.ProjAttrAgriculturist }}</div>
-                        <div><strong>Block:</strong> {{ pa.ProjAttrBlockNo }}</div>
-                        <div><strong>Field:</strong> {{ pa.ProjAttrFieldDescription or '-' }}</div>
-                        <div style="margin-left:12px;"><strong>Defaults:</strong>
-                          <div>Method: {{ pa.ProjAttrDefaultSprayMethodId or '-' }}</div>
-                          <div>Dose: {{ pa.ProjAttrDefaultDose or '-' }}</div>
-                          <div>Water/Ha: {{ pa.ProjAttrDefaultWaterPerHa or '-' }}</div>
-                          <div>Water/Tank: {{ pa.ProjAttrDefaultWaterPerTank or '-' }}</div>
-                        </div>
-                      </div>
-                    </td>
-                  </tr>
-                  {% endfor %}
-                </tbody>
-              </table>
+            {% set ns = namespace(total_ha=0, farm_ids=[], crop_ids=[], project_ids=[]) %}
+            {% for pa in spray_projects %}
+              {% set ns.total_ha = ns.total_ha + (pa.ProjAttrHa or 0) %}
+              {% if pa.ProjAttrFarmId not in ns.farm_ids %}{% set _ = ns.farm_ids.append(pa.ProjAttrFarmId) %}{% endif %}
+              {% if pa.ProjAttrCropId not in ns.crop_ids %}{% set _ = ns.crop_ids.append(pa.ProjAttrCropId) %}{% endif %}
+              {% if pa.ProjAttrProjectId not in ns.project_ids %}{% set _ = ns.project_ids.append(pa.ProjAttrProjectId) %}{% endif %}
+            {% endfor %}
+            <div class="setup-summary">
+              <div class="setup-stat"><strong>{{ '%.2f'|format(ns.total_ha) }}</strong><span>Total hectares</span></div>
+              <div class="setup-stat"><strong>{{ ns.project_ids|length }}</strong><span>Projects</span></div>
+              <div class="setup-stat"><strong>{{ ns.farm_ids|length }}</strong><span>Farms</span></div>
+              <div class="setup-stat"><strong>{{ ns.crop_ids|length }}</strong><span>Different crops</span></div>
+            </div>
+            <div class="project-filters">
+              <input id="filter-search" class="input" placeholder="Search project or block">
+              <select id="filter-farm" class="input"><option value="">All farms</option>{% for f in farms %}<option value="{{ f.IdFarm }}">{{ f.FarmName }}</option>{% endfor %}</select>
+              <select id="filter-crop" class="input"><option value="">All crops</option>{% for c in crops %}<option value="{{ c.IdCrop }}">{{ c.CropCode }}</option>{% endfor %}</select>
+              <select id="filter-field" class="input"><option value="">All fields</option>{% for field in fields %}<option value="{{ field.IdField }}">{{ field.FieldDescription }}</option>{% endfor %}</select>
+            </div>
+            <div class="project-grid" id="project-grid">
+              {% for pa in spray_projects %}
+              <article class="project-card main-row" data-entity="project_attr" data-id="{{ pa.IdProjAttr }}" data-project-id="{{ pa.ProjAttrProjectId }}" data-farm-id="{{ pa.ProjAttrFarmId }}" data-farm-name="{{ pa.ProjAttrFarmName or '' }}" data-whse-id="{{ pa.ProjAttrWhseId }}" data-whse-name="{{ pa.ProjAttrWhseName or '' }}" data-crop-id="{{ pa.ProjAttrCropId }}" data-crop-name="{{ pa.CropCode or '' }}" data-variety-id="{{ pa.ProjAttrVarietyId }}" data-ha="{{ pa.ProjAttrHa or 0 }}" data-plant-date="{{ format_setup_date(pa.ProjAttrPlantDate) }}" data-harvest-date="{{ format_setup_date(pa.ProjAttrHarvestDate) }}" data-petal-fall-date="{{ format_setup_date(pa.ProjAttr80PercPetalFallDate) }}" data-project-manager="{{ pa.ProjAttrProjectManager or '' }}" data-agriculturist="{{ pa.ProjAttrAgriculturist or '' }}" data-block-no="{{ pa.ProjAttrBlockNo or '' }}" data-field-id="{{ pa.ProjAttrFieldId or '' }}" data-field-description="{{ pa.ProjAttrFieldDescription or '' }}" data-default-spray-method-id="{{ pa.ProjAttrDefaultSprayMethodId or '' }}" data-default-dose="{{ pa.ProjAttrDefaultDose or '' }}" data-default-water-per-ha="{{ pa.ProjAttrDefaultWaterPerHa or '' }}" data-default-water-per-tank="{{ pa.ProjAttrDefaultWaterPerTank or '' }}">
+                <div class="project-card-head">
+                  <div>
+                    <strong>{{ pa.ProjectName }}</strong>
+                    <div class="identity-line" style="margin-top:.35rem">
+                      <span class="farm-badge"><span class="farm-icon" style="width:26px;height:26px;background:{{ pa.ProjAttrFarmColour or '#2f7d32' }}"><i class="fas fa-tractor" aria-hidden="true"></i></span>{{ pa.ProjAttrFarmName or '-' }}</span>
+                      <span class="crop-badge" style="color:{{ pa.CropThemeColor or '#4d7c0f' }}"><i class="fas {{ pa.CropIcon or 'fa-seedling' }}"></i>{{ pa.CropCode or '-' }}</span>
+                    </div>
+                  </div>
+                  <button class="btn edit-row-btn" type="button" data-entity="project_attr" data-id="{{ pa.IdProjAttr }}">Edit</button>
+                </div>
+                <div class="project-meta">
+                  <div><span>Variety</span><strong>{{ pa.VarietyCode or '-' }}</strong></div>
+                  <div><span>Hectares</span><strong>{{ pa.ProjAttrHa or 0 }} ha</strong></div>
+                  <div><span><i class="fas fa-map"></i> Field / block</span><strong>{{ pa.ProjAttrFieldDescription or '-' }} / {{ pa.ProjAttrBlockNo or '-' }}</strong></div>
+                  <div><span><i class="fas fa-warehouse"></i> Warehouse</span><strong>{{ pa.ProjAttrWhseName or '-' }}</strong></div>
+                  <div><span><i class="fas fa-calendar-day"></i> Planting</span><strong>{{ format_setup_date(pa.ProjAttrPlantDate) or '-' }}</strong></div>
+                  <div><span><i class="fas fa-calendar-check"></i> Harvest</span><strong>{{ format_setup_date(pa.ProjAttrHarvestDate) or '-' }}</strong></div>
+                  <div><span><i class="fas fa-user"></i> Project manager</span><strong>{{ pa.ProjAttrProjectManager or '-' }}</strong></div>
+                  <div><span><i class="fas fa-user"></i> Agriculturist</span><strong>{{ pa.ProjAttrAgriculturist or '-' }}</strong></div>
+                </div>
+                <details class="field-allocation">
+                  <summary>Field allocation</summary>
+                  <div class="allocation-content" data-field-id="{{ pa.ProjAttrFieldId or '' }}" data-block="{{ pa.ProjAttrBlockNo or 'Block' }}" data-ha="{{ pa.ProjAttrHa or 0 }}"></div>
+                </details>
+              </article>
+              {% endfor %}
             </div>
         </div>
 
@@ -263,7 +423,7 @@
   <div id="edit-modal" class="edit-modal">
     <div class="edit-modal-backdrop" id="edit-modal-backdrop"></div>
     <div class="edit-modal-content">
-      <h3 id="edit-modal-title">Edit Item</h3>
+      <h3 id="edit-modal-title"><svg class="sprayer-icon" data-spray-method-title-icon hidden aria-hidden="true" focusable="false"><use href="{{ url_for('agri.static', filename='icons/agri-sprayer.svg') }}#agri-sprayer-icon"></use></svg><span data-modal-title-text>Edit Item</span></h3>
         <form id="edit-modal-form" novalidate>
         <input type="hidden" id="edit-entity" name="entity">
         <input type="hidden" id="edit-id" name="id">
@@ -273,15 +433,36 @@
             <label for="edit-farm-name">Farm name</label>
             <input type="text" id="edit-farm-name" name="farm_name" required>
           </div>
+          <div class="form-row">
+            <div class="farm-colour-selector" id="edit-farm-colour-selector" data-farm-colour-selector>
+              <input type="hidden" id="edit-farm-colour" name="farm_colour" value="" data-farm-colour-value>
+              <button type="button" class="farm-colour-trigger" data-farm-colour-trigger aria-haspopup="dialog" aria-controls="edit-farm-colour-popover" aria-expanded="false" aria-label="Choose farm colour">
+                <i class="fas fa-palette farm-colour-trigger-icon" data-palette-icon aria-hidden="true"></i>
+                <span class="farm-colour-trigger-swatch" data-trigger-swatch hidden aria-hidden="true"></span>
+                <span class="farm-colour-trigger-label" data-trigger-label>Choose farm colour</span>
+                <i class="fas fa-chevron-down" data-chevron aria-hidden="true"></i>
+              </button>
+              <div class="farm-colour-popover" id="edit-farm-colour-popover" data-farm-colour-popover hidden role="dialog" aria-label="Choose farm colour">
+                <div class="farm-colour-grid" role="group" aria-label="Farm colour options">
+                  {% for colour, label in farm_colour_palette %}
+                  <button type="button" class="farm-colour-card" data-colour="{{ colour }}" data-name="{{ label }}" aria-label="Select {{ label }} farm colour" aria-pressed="false">
+                    <span class="farm-colour-swatch" aria-hidden="true"></span><span class="farm-colour-name">{{ label }}</span><i class="fas fa-check farm-colour-check" aria-hidden="true"></i>
+                  </button>
+                  {% endfor %}
+                </div>
+              </div>
+            </div>
+          </div>
         </div>
 
         <div class="edit-modal-field edit-field-spray_method">
           <div class="form-row">
             <label for="edit-spray-method-farm">Farm</label>
-            <select id="edit-spray-method-farm" name="farm_id" class="input select2">
+            <select id="edit-spray-method-farm" name="farm_id" class="input select2 farm-color-select">
               <option value="">Select Farm</option>
-              {% for f in farms %}<option value="{{ f.IdFarm }}">{{ f.FarmName }}</option>{% endfor %}
+              {% for f in farms %}<option value="{{ f.IdFarm }}" data-colour="{{ f.FarmColour or '#2f7d32' }}">{{ f.FarmName }}</option>{% endfor %}
             </select>
+            <span class="farm-select-preview" aria-live="polite"><span class="farm-icon" style="background:#2f7d32"><i class="fas fa-tractor" aria-hidden="true"></i></span><span>Select Farm</span></span>
           </div>
           <div class="form-row">
             <label for="edit-spray-method-name">Method name</label>
@@ -298,28 +479,36 @@
         </div>
 
         <div class="edit-modal-field edit-field-project_attr">
-          <div class="form-row">
+          <div class="wizard-progress" aria-label="Project wizard progress">
+            <button type="button" class="active" data-wizard-step="1">1. Project</button>
+            <button type="button" data-wizard-step="2">2. Crop</button>
+            <button type="button" data-wizard-step="3">3. Dates</button>
+            <button type="button" data-wizard-step="4">4. Spray</button>
+          </div>
+          <div class="wizard-step active" data-wizard-step="1">
+            <div class="form-row">
             <label for="edit-project-attr-project">Project</label>
             <select id="edit-project-attr-project" name="project_id" class="input select2" required>
               <option value="">Select Project</option>
               {% for p in projects %}<option value="{{ p.ProjectLink }}">{{ p.ProjectCode }} - {{ p.ProjectName }}</option>{% endfor %}
             </select>
-          </div>
-          <div class="form-row">
+            </div>
+            <div class="form-row">
             <label for="edit-project-attr-farm">Farm</label>
-            <select id="edit-project-attr-farm" name="farm_id" class="input select2" required>
+            <select id="edit-project-attr-farm" name="farm_id" class="input select2 farm-color-select" required>
               <option value="">Select Farm</option>
-              {% for f in farms %}<option value="{{ f.IdFarm }}">{{ f.FarmName }}</option>{% endfor %}
+              {% for f in farms %}<option value="{{ f.IdFarm }}" data-colour="{{ f.FarmColour or '#2f7d32' }}">{{ f.FarmName }}</option>{% endfor %}
             </select>
-          </div>
-          <div class="form-row">
+            <span class="farm-select-preview" aria-live="polite"><span class="farm-icon" style="background:#2f7d32"><i class="fas fa-tractor" aria-hidden="true"></i></span><span>Select Farm</span></span>
+            </div>
+            <div class="form-row">
             <label for="edit-project-attr-warehouse">Warehouse</label>
             <select id="edit-project-attr-warehouse" name="warehouse_id" class="input select2" required>
               <option value="">Select Warehouse</option>
               {% for w in warehouses %}<option value="{{ w.WhseLink }}">{{ w.WhseDescription }}</option>{% endfor %}
             </select>
-          </div>
-          <div class="form-row">
+            </div>
+            <div class="form-row">
             <label for="edit-project-attr-field">Field</label>
             <div class="field-select-control">
               <select id="edit-project-attr-field" name="field_id" class="input select2" required>
@@ -328,53 +517,58 @@
               </select>
               <button type="button" id="add-field-btn" class="btn add-field-btn" aria-label="Add field" title="Add field">+</button>
             </div>
+            </div>
+            <div class="form-row">
+              <label for="edit-project-attr-block-no">Block number</label>
+              <input type="text" id="edit-project-attr-block-no" name="block_no" required>
+            </div>
           </div>
-          <div class="form-row">
+          <div class="wizard-step" data-wizard-step="2">
+            <div class="form-row">
             <label for="edit-project-attr-crop">Crop</label>
             <select id="edit-project-attr-crop" name="crop_id" class="input select2" required>
               <option value="">Select Crop</option>
-              {% for c in crops %}<option value="{{ c.IdCrop }}">{{ c.CropCode }} - {{ c.CropDescription }}</option>{% endfor %}
+              {% for c in crops %}<option value="{{ c.IdCrop }}" data-icon="{{ c.CropIcon or 'fa-seedling' }}">{{ c.CropCode }} - {{ c.CropDescription }}</option>{% endfor %}
             </select>
-          </div>
-          <div class="form-row">
+            </div>
+            <div class="form-row">
             <label for="edit-project-attr-variety">Variety</label>
             <select id="edit-project-attr-variety" name="variety_id" class="input select2" required>
               <option value="">Select Variety</option>
               {% for v in varieties %}<option value="{{ v.IdVariety }}">{{ v.VarietyCode }} - {{ v.VarietyDescription }}</option>{% endfor %}
             </select>
-          </div>
-          <div class="form-row">
+            </div>
+            <div class="form-row">
             <label for="edit-project-attr-ha">Hectares</label>
             <input type="number" id="edit-project-attr-ha" name="ha" step="0.01" required>
+            </div>
           </div>
-          <div class="form-row">
+          <div class="wizard-step" data-wizard-step="3">
+            <div class="form-row">
             <label for="edit-project-attr-plant-date">Plant Date</label>
             <input type="date" id="edit-project-attr-plant-date" name="plant_date" required>
-          </div>
-          <div class="form-row">
+            </div>
+            <div class="form-row">
             <label for="edit-project-attr-harvest-date">Harvest Date</label>
             <input type="date" id="edit-project-attr-harvest-date" name="harvest_date">
-          </div>
-          <div class="form-row">
+            </div>
+            <div class="form-row">
             <label for="edit-project-attr-petal-fall-date">80% Petal Fall Date</label>
             <input type="date" id="edit-project-attr-petal-fall-date" name="80_perc_petal_fall_date">
+            </div>
+            <div class="form-row">
+            <label for="edit-project-attr-manager"><i class="fas fa-user"></i> Project Manager</label>
+            <input type="text" id="edit-project-attr-manager" name="project_manager">
+            </div>
+            <div class="form-row">
+            <label for="edit-project-attr-agriculturist"><i class="fas fa-user"></i> Agriculturist</label>
+            <input type="text" id="edit-project-attr-agriculturist" name="agriculturist">
+            </div>
           </div>
-          <div class="form-row">
-            <label for="edit-project-attr-manager">Project Manager</label>
-            <input type="text" id="edit-project-attr-manager" name="project_manager" required>
-          </div>
-          <div class="form-row">
-            <label for="edit-project-attr-agriculturist">Agriculturist</label>
-            <input type="text" id="edit-project-attr-agriculturist" name="agriculturist" required>
-          </div>
-          <div class="form-row">
-            <label for="edit-project-attr-block-no">Block No</label>
-            <input type="text" id="edit-project-attr-block-no" name="block_no" required>
-          </div>
-          <div style="margin-top:12px; border-left:2px solid #f1f5f9; padding-left:12px;">
+          <div class="wizard-step defaults-step" data-wizard-step="4">
             <h4 style="margin:0 0 8px 0;">Defaults</h4>
             <div class="form-row">
-              <label for="edit-project-default-spray-method">Default Spray Method</label>
+              <label for="edit-project-default-spray-method" class="spray-method-default-label"><svg class="sprayer-icon" aria-hidden="true" focusable="false"><use href="{{ url_for('agri.static', filename='icons/agri-sprayer.svg') }}#agri-sprayer-icon"></use></svg><span>Default Spray Method</span></label>
               <select id="edit-project-default-spray-method" name="default_spray_method_id" class="input select2">
                 <option value="">(inherit)</option>
               </select>
@@ -423,8 +617,10 @@
         </div>
 
         <div class="edit-modal-footer">
+          <button type="button" class="btn ghost" id="wizard-back" style="display:none">Back</button>
+          <button type="button" class="btn" id="wizard-next">Next</button>
           <button type="button" class="btn ghost" id="edit-modal-cancel">Cancel</button>
-           <button type="submit" class="btn">Save</button>
+           <button type="submit" class="btn" id="wizard-save" style="display:none">Save</button>
         </div>
       </form>
     </div>
@@ -448,13 +644,223 @@
   </div>
 
   <script>
+    function selectFarmColourCard(selector, card) {
+      const valueInput = selector.querySelector('[data-farm-colour-value]');
+      if (!valueInput || !card) return;
+      valueInput.value = card.dataset.colour;
+      selector.querySelectorAll('.farm-colour-card').forEach(item => {
+        item.setAttribute('aria-pressed', item === card ? 'true' : 'false');
+      });
+      const trigger = selector.querySelector('[data-farm-colour-trigger]');
+      const triggerLabel = trigger?.querySelector('[data-trigger-label]');
+      const triggerSwatch = trigger?.querySelector('[data-trigger-swatch]');
+      const paletteIcon = trigger?.querySelector('[data-palette-icon]');
+      const label = card.dataset.name || card.querySelector('.farm-colour-name')?.textContent || 'Selected colour';
+      if (triggerLabel) triggerLabel.textContent = label;
+      if (triggerSwatch) {
+        triggerSwatch.style.backgroundColor = /^#[0-9a-f]{6}$/i.test(card.dataset.colour) ? card.dataset.colour : '#94a3b8';
+        triggerSwatch.hidden = false;
+      }
+      if (paletteIcon) paletteIcon.hidden = true;
+      if (trigger) trigger.setAttribute('aria-label', `Farm colour: ${label}. Click to change.`);
+      const error = selector.querySelector('[data-farm-colour-error]');
+      if (error) error.hidden = true;
+    }
+
+    function restoreFarmColourCard(selector, colour, allowLegacy, expandPopover) {
+      if (!selector) return;
+      const grid = selector.querySelector('.farm-colour-grid');
+      if (!grid) return;
+      grid.querySelectorAll('[data-legacy-colour="true"]').forEach(card => card.remove());
+      let card = Array.from(grid.querySelectorAll('.farm-colour-card')).find(item =>
+        item.dataset.colour.toLowerCase() === String(colour || '').toLowerCase()
+      );
+      if (!card && allowLegacy && colour) {
+        card = document.createElement('button');
+        card.type = 'button';
+        card.className = 'farm-colour-card farm-colour-card-legacy';
+        card.dataset.colour = colour;
+        card.dataset.name = `Legacy · ${colour}`;
+        card.dataset.legacyColour = 'true';
+        card.setAttribute('aria-label', `Keep existing farm colour ${colour}`);
+        card.setAttribute('aria-pressed', 'false');
+        const swatch = document.createElement('span');
+        swatch.className = 'farm-colour-swatch';
+        swatch.setAttribute('aria-hidden', 'true');
+        swatch.style.backgroundColor = /^#[0-9a-f]{6}$/i.test(colour) ? colour : '#94a3b8';
+        const label = document.createElement('span');
+        label.className = 'farm-colour-name';
+        label.textContent = `Legacy · ${colour}`;
+        const check = document.createElement('i');
+        check.className = 'fas fa-check farm-colour-check';
+        check.setAttribute('aria-hidden', 'true');
+        card.append(swatch, label, check);
+        grid.appendChild(card);
+      }
+      grid.querySelectorAll('.farm-colour-card').forEach(item => {
+        const swatch = item.querySelector('.farm-colour-swatch');
+        if (swatch) {
+          swatch.style.backgroundColor = /^#[0-9a-f]{6}$/i.test(item.dataset.colour) ? item.dataset.colour : '#94a3b8';
+        }
+      });
+      if (card) {
+        selectFarmColourCard(selector, card);
+      } else {
+        const valueInput = selector.querySelector('[data-farm-colour-value]');
+        const trigger = selector.querySelector('[data-farm-colour-trigger]');
+        const triggerLabel = trigger?.querySelector('[data-trigger-label]');
+        const triggerSwatch = trigger?.querySelector('[data-trigger-swatch]');
+        const paletteIcon = trigger?.querySelector('[data-palette-icon]');
+        if (valueInput) valueInput.value = '';
+        grid.querySelectorAll('.farm-colour-card').forEach(item => item.setAttribute('aria-pressed', 'false'));
+        if (triggerLabel) triggerLabel.textContent = 'Choose farm colour';
+        if (triggerSwatch) triggerSwatch.hidden = true;
+        if (paletteIcon) paletteIcon.hidden = false;
+        if (trigger) trigger.setAttribute('aria-label', 'Choose farm colour');
+      }
+      if (expandPopover) openFarmColourPopover(selector, true);
+    }
+
+    function positionFarmColourPopover(selector) {
+      const trigger = selector?.querySelector('[data-farm-colour-trigger]');
+      const popover = selector?.querySelector('[data-farm-colour-popover]') ||
+        document.querySelector(`[data-farm-colour-popover][data-owner-id="${selector?.id}"]`);
+      if (!trigger || !popover || popover.hidden) return;
+      const anchor = trigger.getBoundingClientRect();
+      const bounds = popover.getBoundingClientRect();
+      const margin = 8;
+      const left = Math.max(margin, Math.min(anchor.left, window.innerWidth - bounds.width - margin));
+      let top = anchor.bottom + 6;
+      if (top + bounds.height > window.innerHeight - margin && anchor.top - bounds.height - 6 >= margin) {
+        top = anchor.top - bounds.height - 6;
+      } else {
+        top = Math.min(top, window.innerHeight - bounds.height - margin);
+      }
+      popover.style.left = `${left}px`;
+      popover.style.top = `${Math.max(margin, top)}px`;
+    }
+
+    function closeFarmColourPopover(selector, returnFocus) {
+      if (!selector) return;
+      const popover = document.querySelector(`[data-farm-colour-popover][data-owner-id="${selector.id}"]`) ||
+        selector.querySelector('[data-farm-colour-popover]');
+      if (popover) {
+        popover.hidden = true;
+        popover.classList.remove('is-portaled');
+        popover.style.left = '';
+        popover.style.top = '';
+        popover.removeAttribute('data-owner-id');
+        selector.appendChild(popover);
+      }
+      const trigger = selector.querySelector('[data-farm-colour-trigger]');
+      if (trigger) {
+        trigger.setAttribute('aria-expanded', 'false');
+        if (returnFocus) trigger.focus();
+      }
+    }
+
+    function openFarmColourPopover(selector, focusSelected) {
+      if (!selector) return;
+      document.querySelectorAll('[data-farm-colour-selector]').forEach(other => {
+        if (other !== selector) closeFarmColourPopover(other, false);
+      });
+      const popover = selector.querySelector('[data-farm-colour-popover]');
+      const trigger = selector.querySelector('[data-farm-colour-trigger]');
+      if (!popover || !trigger) return;
+      popover.dataset.ownerId = selector.id;
+      popover.classList.add('is-portaled');
+      document.body.appendChild(popover);
+      popover.hidden = false;
+      trigger.setAttribute('aria-expanded', 'true');
+      positionFarmColourPopover(selector);
+      if (focusSelected) {
+        (popover.querySelector('[aria-pressed="true"]') || popover.querySelector('.farm-colour-card'))?.focus();
+      }
+    }
+
     document.addEventListener('DOMContentLoaded', () => {
-      // Sidebar tab navigation (mirror permissions page behavior)
-      document.querySelectorAll('.nav-link').forEach(link => {
+      let selectorIndex = 0;
+      document.querySelectorAll('[data-farm-colour-selector]').forEach(selector => {
+        if (!selector.id) selector.id = `farm-colour-selector-${++selectorIndex}`;
+        const input = selector.querySelector('[data-farm-colour-value]');
+        restoreFarmColourCard(selector, input?.value, false, false);
+      });
+      document.addEventListener('click', event => {
+        const trigger = event.target.closest('[data-farm-colour-trigger]');
+        if (trigger) {
+          const selector = trigger.closest('[data-farm-colour-selector]');
+          if (trigger.getAttribute('aria-expanded') === 'true') {
+            closeFarmColourPopover(selector, false);
+          } else {
+            openFarmColourPopover(selector, true);
+          }
+          return;
+        }
+
+        const card = event.target.closest('.farm-colour-card');
+        if (card) {
+          const popover = card.closest('[data-farm-colour-popover]');
+          const selector = popover?.dataset.ownerId
+            ? document.getElementById(popover.dataset.ownerId)
+            : card.closest('[data-farm-colour-selector]');
+          if (selector) {
+            selectFarmColourCard(selector, card);
+            closeFarmColourPopover(selector, true);
+          }
+          return;
+        }
+
+        if (!event.target.closest('[data-farm-colour-selector]') &&
+            !event.target.closest('[data-farm-colour-popover]')) {
+          document.querySelectorAll('[data-farm-colour-selector]').forEach(selector => {
+            closeFarmColourPopover(selector, false);
+          });
+        }
+      });
+      document.addEventListener('keydown', event => {
+        if (event.key !== 'Escape') return;
+        const open = document.querySelector('[data-farm-colour-trigger][aria-expanded="true"]');
+        if (!open) return;
+        event.preventDefault();
+        closeFarmColourPopover(open.closest('[data-farm-colour-selector]'), true);
+      });
+      window.addEventListener('resize', () => {
+        document.querySelectorAll('[data-farm-colour-selector]').forEach(selector => {
+          if (selector.querySelector('[data-farm-colour-trigger]')?.getAttribute('aria-expanded') === 'true') {
+            positionFarmColourPopover(selector);
+          }
+        });
+      });
+      window.addEventListener('scroll', () => {
+        document.querySelectorAll('[data-farm-colour-selector]').forEach(selector => {
+          if (selector.querySelector('[data-farm-colour-trigger]')?.getAttribute('aria-expanded') === 'true') {
+            positionFarmColourPopover(selector);
+          }
+        });
+      }, true);
+
+      document.querySelectorAll('.farm-create-form').forEach(form => {
+        form.addEventListener('submit', event => {
+          const selector = form.querySelector('[data-farm-colour-selector]');
+          const input = selector?.querySelector('[data-farm-colour-value]');
+          if (input?.value) return;
+          event.preventDefault();
+          const error = selector?.querySelector('[data-farm-colour-error]');
+          if (error) error.hidden = false;
+          selector?.querySelector('[data-farm-colour-trigger]')?.focus();
+        });
+      });
+
+      // Agricultural setup tab navigation
+      document.querySelectorAll('.setup-nav .nav-link').forEach(link => {
         link.addEventListener('click', () => {
-          document.querySelectorAll('.nav-link').forEach(l => l.classList.remove('active'));
-          document.querySelectorAll('.tab-pane').forEach(p => p.classList.remove('active'));
+          document.querySelectorAll('.setup-nav .nav-link').forEach(l => {
+            l.classList.remove('active');
+            l.removeAttribute('aria-current');
+          });
+          document.querySelectorAll('.setup-content-layout .tab-pane').forEach(p => p.classList.remove('active'));
           link.classList.add('active');
+          link.setAttribute('aria-current', 'page');
           const id = link.dataset.tab;
           const pane = document.getElementById(id);
           if (pane) pane.classList.add('active');
@@ -476,6 +882,41 @@ document.addEventListener('DOMContentLoaded', function () {
   const $ = window.jQuery;
   if (!$ || !$.fn.select2) return;
 
+  let wizardStep = 1;
+  function showWizardStep(step) {
+    if (document.getElementById('edit-entity').value !== 'project_attr') return;
+    wizardStep = Math.max(1, Math.min(4, step));
+    document.querySelectorAll('.edit-modal-field.edit-field-project_attr .wizard-step').forEach(el => {
+      el.classList.toggle('active', el.dataset.wizardStep === String(wizardStep));
+    });
+    document.querySelectorAll('.wizard-progress button').forEach(el => {
+      el.classList.toggle('active', el.dataset.wizardStep === String(wizardStep));
+    });
+    document.getElementById('wizard-back').style.display = wizardStep === 1 ? 'none' : '';
+    document.getElementById('wizard-next').style.display = wizardStep === 4 ? 'none' : '';
+    document.getElementById('wizard-save').style.display = wizardStep === 4 ? '' : 'none';
+  }
+  function validateWizardStep(step) {
+    const requiredByStep = {
+      1: ['edit-project-attr-project','edit-project-attr-farm','edit-project-attr-warehouse','edit-project-attr-field','edit-project-attr-block-no'],
+      2: ['edit-project-attr-crop','edit-project-attr-variety','edit-project-attr-ha'],
+      3: ['edit-project-attr-plant-date']
+    };
+    const missing = (requiredByStep[step] || []).find(id => !document.getElementById(id)?.value);
+    if (missing) {
+      Swal.fire('Required information', 'Please complete the required fields before continuing.', 'warning');
+      return false;
+    }
+    return true;
+  }
+  document.querySelectorAll('.wizard-progress button').forEach(button => {
+    button.addEventListener('click', () => showWizardStep(Number(button.dataset.wizardStep)));
+  });
+  document.getElementById('wizard-back')?.addEventListener('click', () => showWizardStep(wizardStep - 1));
+  document.getElementById('wizard-next')?.addEventListener('click', () => {
+    if (validateWizardStep(wizardStep)) showWizardStep(wizardStep + 1);
+  });
+
 
   $('.select2').each(function () {
     const $el = $(this);
@@ -487,6 +928,43 @@ document.addEventListener('DOMContentLoaded', function () {
       }
     });
   });
+
+  function updateFarmSelectPreview(select) {
+    const container = select.closest('.form-row') || select.parentElement;
+    const preview = container?.querySelector('.farm-select-preview');
+    if (!preview) return;
+    const option = select.selectedOptions[0];
+    const colour = option?.dataset.colour;
+    const safeColour = /^#[0-9a-f]{6}$/i.test(colour || '') ? colour : '#2f7d32';
+    const icon = preview.querySelector('.farm-icon');
+    const label = preview.lastElementChild;
+    if (icon) icon.style.backgroundColor = safeColour;
+    if (label) label.textContent = option?.value ? option.textContent.trim() : 'Select Farm';
+  }
+
+  document.querySelectorAll('.farm-color-select').forEach(select => {
+    updateFarmSelectPreview(select);
+    $(select).on('change', () => updateFarmSelectPreview(select));
+  });
+
+  function renderFarmIdentity(cell, name, colour) {
+    const safeColour = /^#[0-9a-f]{6}$/i.test(colour || '') ? colour : '#2f7d32';
+    const identity = document.createElement('span');
+    identity.className = 'identity-line';
+    const badge = document.createElement('span');
+    badge.className = 'farm-icon';
+    badge.style.width = '26px';
+    badge.style.height = '26px';
+    badge.style.backgroundColor = safeColour;
+    const tractor = document.createElement('i');
+    tractor.className = 'fas fa-tractor';
+    tractor.setAttribute('aria-hidden', 'true');
+    badge.appendChild(tractor);
+    const label = document.createElement('strong');
+    label.textContent = name || '';
+    identity.append(badge, label);
+    cell.replaceChildren(identity);
+  }
 
   // Focus search field when opened
   $(document).on('select2:open', function () {
@@ -537,7 +1015,10 @@ document.addEventListener('DOMContentLoaded', function () {
 
     entityInput.value = entity;
     idInput.value = id;
-    title.textContent = `Edit ${entity.replace('_', ' ').replace(/\b\w/g, c => c.toUpperCase())}`;
+    title.querySelector('[data-modal-title-text]').textContent = `Edit ${entity.replace('_', ' ').replace(/\b\w/g, c => c.toUpperCase())}`;
+    const sprayMethodTitle = entity === 'spray_method';
+    title.querySelector('[data-spray-method-title-icon]').hidden = !sprayMethodTitle;
+    title.classList.toggle('spray-method-modal-title', sprayMethodTitle);
 
     const allModalInputs = document.querySelectorAll('#edit-modal-form input, #edit-modal-form select');
     allModalInputs.forEach(el => el.disabled = true);
@@ -549,8 +1030,27 @@ document.addEventListener('DOMContentLoaded', function () {
       activeField.querySelectorAll('input, select').forEach(el => el.disabled = false);
     }
 
+    if (entity === 'project_attr') {
+      showWizardStep(1);
+      document.getElementById('edit-modal-cancel').style.display = '';
+      document.getElementById('wizard-back').style.display = 'none';
+      document.getElementById('wizard-next').style.display = '';
+      document.getElementById('wizard-save').style.display = 'none';
+    } else {
+      document.getElementById('wizard-back').style.display = 'none';
+      document.getElementById('wizard-next').style.display = 'none';
+      document.getElementById('wizard-save').style.display = '';
+    }
+
     if (entity === 'farm') {
       document.getElementById('edit-farm-name').value = row.dataset.name || '';
+      const farmColour = row.dataset.colour || '#2E7D32';
+      restoreFarmColourCard(
+        document.getElementById('edit-farm-colour-selector'),
+        farmColour,
+        true,
+        false
+      );
     }
 
     if (entity === 'person') {
@@ -607,6 +1107,9 @@ document.addEventListener('DOMContentLoaded', function () {
     }
 
     modal.classList.add('active');
+    if (entity === 'farm') {
+      openFarmColourPopover(document.getElementById('edit-farm-colour-selector'), true);
+    }
   }
 
   function showAddModal() {
@@ -617,7 +1120,9 @@ document.addEventListener('DOMContentLoaded', function () {
 
     entityInput.value = 'project_attr';
     idInput.value = '';
-    title.textContent = 'New Project Attribute';
+    title.querySelector('[data-modal-title-text]').textContent = 'New Project Attribute';
+    title.querySelector('[data-spray-method-title-icon]').hidden = true;
+    title.classList.remove('spray-method-modal-title');
 
     document.querySelectorAll('.edit-modal-field').forEach(el => el.classList.remove('active'));
     const activeField = document.querySelector('.edit-field-project_attr');
@@ -632,6 +1137,7 @@ document.addEventListener('DOMContentLoaded', function () {
         }
       });
     }
+    showWizardStep(1);
     // If there's a saved draft for a new project_attr, restore it
     try {
       const draftRaw = sessionStorage.getItem('project_attr_draft');
@@ -667,6 +1173,7 @@ document.addEventListener('DOMContentLoaded', function () {
   }
 
   function closeEditModal() {
+    closeFarmColourPopover(document.getElementById('edit-farm-colour-selector'), false);
     document.getElementById('edit-modal').classList.remove('active');
   }
 
@@ -674,7 +1181,7 @@ document.addEventListener('DOMContentLoaded', function () {
     if (event.target.matches('.edit-row-btn')) {
       const entity = event.target.dataset.entity;
       const id = event.target.dataset.id;
-      const row = document.querySelector(`tr[data-entity="${entity}"][data-id="${id}"]`);
+      const row = document.querySelector(`[data-entity="${entity}"][data-id="${id}"]`);
       if (row) {
         showEditModal(entity, id, row);
       }
@@ -704,6 +1211,7 @@ document.addEventListener('DOMContentLoaded', function () {
 
     if (entity === 'farm') {
       payload.name = document.getElementById('edit-farm-name').value.trim();
+      payload.farm_colour = document.getElementById('edit-farm-colour').value;
     }
     if (entity === 'spray_method') {
       payload.farm_id = document.getElementById('edit-spray-method-farm').value;
@@ -779,6 +1287,11 @@ document.addEventListener('DOMContentLoaded', function () {
           alert(result.message || 'Unable to save changes');
           return;
         }
+        if (entity === 'project_attr') {
+          try { sessionStorage.removeItem('project_attr_draft'); } catch(e) {}
+          window.location.reload();
+          return;
+        }
         if (!id) {
           // newly added record - reload to show it in the list
           // Clear any saved draft for new project_attr
@@ -789,17 +1302,18 @@ document.addEventListener('DOMContentLoaded', function () {
         const row = document.querySelector(`tr[data-entity="${entity}"][data-id="${id}"]`);
         if (row) {
           if (entity === 'farm') {
-            const name = payload.name;
-            row.dataset.name = name;
-            row.cells[1].textContent = name;
+            window.location.reload();
+            return;
           }
           if (entity === 'spray_method') {
             const farmOption = document.querySelector(`#edit-spray-method-farm option[value="${payload.farm_id}"]`);
+            const farmColour = farmOption?.dataset.colour || '#2f7d32';
             row.dataset.farmId = payload.farm_id;
+            row.dataset.farmColour = farmColour;
             row.dataset.name = payload.name;
             row.dataset.waterPerHa = payload.water_per_ha;
             row.dataset.tankSize = payload.tank_size;
-            row.cells[0].textContent = farmOption ? farmOption.textContent : row.cells[0].textContent;
+            renderFarmIdentity(row.cells[0], farmOption ? farmOption.textContent.trim() : '', farmColour);
             row.cells[1].textContent = payload.name;
             row.cells[2].textContent = payload.water_per_ha;
             row.cells[3].textContent = payload.tank_size;
@@ -936,22 +1450,52 @@ document.addEventListener('DOMContentLoaded', function () {
   });
 
   const filterSearchEl = document.getElementById('filter-search');
+  const filterFarmEl = document.getElementById('filter-farm');
+  const filterCropEl = document.getElementById('filter-crop');
+  const filterFieldEl = document.getElementById('filter-field');
 
   function applyProjectFilters() {
-    const s = filterSearchEl ? filterSearchEl.value.trim().toLowerCase() : '';
-    document.querySelectorAll('.main-row').forEach(row => {
-      const rid = row.dataset.id;
-      let show = true;
-      if (s) {
-        const combined = (row.textContent || '') + ' ' + (document.querySelector(`.expand-row[data-parent-id="${rid}"]`)?.textContent || '');
-        if (!combined.toLowerCase().includes(s)) show = false;
-      }
-      row.style.display = show ? '' : 'none';
-      const expand = document.querySelector(`.expand-row[data-parent-id="${rid}"]`);
-      if (expand) expand.style.display = 'none';
+    const search = (filterSearchEl?.value || '').trim().toLowerCase();
+    const farm = filterFarmEl?.value || '';
+    const crop = filterCropEl?.value || '';
+    const field = filterFieldEl?.value || '';
+    document.querySelectorAll('#project-grid .project-card').forEach(card => {
+      const matchesSearch = !search || card.textContent.toLowerCase().includes(search);
+      const matchesFarm = !farm || card.dataset.farmId === farm;
+      const matchesCrop = !crop || card.dataset.cropId === crop;
+      const matchesField = !field || card.dataset.fieldId === field;
+      card.style.display = matchesSearch && matchesFarm && matchesCrop && matchesField ? '' : 'none';
     });
   }
-  if (filterSearchEl) filterSearchEl.addEventListener('input', applyProjectFilters);
+  [filterSearchEl, filterFarmEl, filterCropEl, filterFieldEl].forEach(el => el?.addEventListener(el === filterSearchEl ? 'input' : 'change', applyProjectFilters));
+
+  function renderFieldAllocations() {
+    const allocations = new Map();
+    document.querySelectorAll('.project-card').forEach(card => {
+      const fieldId = card.dataset.fieldId;
+      if (!fieldId) return;
+      if (!allocations.has(fieldId)) allocations.set(fieldId, []);
+      allocations.get(fieldId).push({
+        block: card.dataset.blockNo || 'Block',
+        ha: Number(card.dataset.ha || 0)
+      });
+    });
+    document.querySelectorAll('.allocation-content').forEach(container => {
+      const fieldId = container.dataset.fieldId;
+      const items = allocations.get(fieldId) || [{block: container.dataset.block, ha: Number(container.dataset.ha || 0)}];
+      const allocated = items.reduce((sum, item) => sum + item.ha, 0);
+      const total = allocated;
+      let html = `<div class="allocation-bar">`;
+      const palette = ['#64748b', '#2f7d32', '#8a6d3b', '#2563a5', '#7c6aa6'];
+      items.forEach((item, index) => {
+        const percent = total > 0 ? (item.ha / total) * 100 : 0;
+        html += `<span class="allocation-segment" style="width:${percent}%;background:${palette[index % palette.length]}" title="${item.block}: ${item.ha} ha">${percent >= 12 ? item.ha + ' ha' : ''}</span>`;
+      });
+      html += `</div><div class="allocation-unknown">${items.map(item => `${item.block}: ${item.ha} ha`).join(' · ')}<br><strong>Allocated: ${allocated} ha</strong></div>`;
+      container.innerHTML = html;
+    });
+  }
+  renderFieldAllocations();
 
   const fieldModal = document.getElementById('add-field-modal');
   const fieldDescriptionInput = document.getElementById('new-field-description');

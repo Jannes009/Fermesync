@@ -14,6 +14,10 @@
   const categoryColorMaps = new Map();
   const categoryColorIndexes = new Map();
   const categoryUsedColors = new Map();
+  const assignedCategoryColors = new Map([
+    ["farm", new Map()],
+    ["crop", new Map()]
+  ]);
   let sourcePage = 1;
   let sourceSearch = "";
   let sourceSort = "tx_date";
@@ -47,6 +51,8 @@
   function categoryColor(groupBy, value) {
     if (groupBy === "none" || value == null || value === "") return "#64748b";
     const key = String(value);
+    const assigned = assignedCategoryColors.get(groupBy)?.get(key);
+    if (assigned) return assigned;
     if (!categoryColorMaps.has(groupBy)) categoryColorMaps.set(groupBy, new Map());
     if (!categoryUsedColors.has(groupBy)) categoryUsedColors.set(groupBy, new Set());
     const colors = categoryColorMaps.get(groupBy);
@@ -66,6 +72,18 @@
     usedColors.add(color);
     categoryColorIndexes.set(groupBy, colorIndex);
     return color;
+  }
+
+  function setAssignedCategoryColors(groupBy, items) {
+    const colors = assignedCategoryColors.get(groupBy);
+    if (!colors) return;
+    colors.clear();
+    (items || []).forEach(item => {
+      const colour = String(item.colour || "").trim();
+      if (/^#[0-9a-f]{6}$/i.test(colour)) {
+        colors.set(String(item.id), colour);
+      }
+    });
   }
 
   function registerCategoryColors(groupBy, items) {
@@ -195,6 +213,8 @@
         globalFilters.start_date = data.period.start;
         globalFilters.end_date = data.period.end;
       }
+      setAssignedCategoryColors("farm", data.farms);
+      setAssignedCategoryColors("crop", data.crops);
       registerCategoryColors("farm", data.farms);
       registerCategoryColors("project", data.projects);
       registerCategoryColors("crop", data.crops);
